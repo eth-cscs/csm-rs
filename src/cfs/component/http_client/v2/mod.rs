@@ -54,6 +54,14 @@ pub async fn get(
     }
 }
 
+pub async fn get_all(
+    shasta_token: &str,
+    shasta_base_url: &str,
+    shasta_root_cert: &[u8],
+) -> Result<Vec<Component>, Error> {
+    get(shasta_token, shasta_base_url, shasta_root_cert, None, None).await
+}
+
 pub async fn get_single_component(
     shasta_token: &str,
     shasta_base_url: &str,
@@ -320,7 +328,7 @@ pub async fn put_component(
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     component: Component,
-) -> Result<Value, Error> {
+) -> Result<Component, Error> {
     let client_builder = reqwest::Client::builder()
         .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
@@ -366,8 +374,8 @@ pub async fn put_component_list(
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     component_list: Vec<Component>,
-) -> Vec<Result<Value, Error>> {
-    let mut result_vec = Vec::new();
+) -> Result<Vec<Component>, Error> {
+    let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
 
     for component in component_list {
         let result =
@@ -375,7 +383,8 @@ pub async fn put_component_list(
         result_vec.push(result);
     }
 
-    result_vec
+    // Convert from Vec<Result<Component, Error>> to Result<Vec<Component>, Error>>
+    result_vec.into_iter().collect()
 }
 
 pub async fn delete_single_component(

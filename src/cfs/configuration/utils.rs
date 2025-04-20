@@ -1,22 +1,71 @@
 use crate::{
     bos::{self, template::http_client::v2::types::BosSessionTemplate},
     cfs::{
-        self, component::http_client::v3::types::Component,
-        configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse,
-        session::http_client::v3::types::CfsSessionGetResponse,
+        self, component::http_client::v2::types::Component,
+        configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
+        session::http_client::v2::types::CfsSessionGetResponse,
     },
     common::{self, gitea},
     error::Error,
     hsm,
-    ims::image::http_client::types::Image,
+    ims::{self, image::http_client::types::Image},
 };
 
+use chrono::NaiveDateTime;
 use globset::Glob;
 use serde_json::Value;
 
 use super::http_client::v3::types::{
     cfs_configuration::LayerDetails, cfs_configuration_response::Layer,
 };
+
+pub fn filter_3(
+    cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
+    configuration_name_pattern_opt: Option<&str>,
+    limit_number_opt: Option<&u8>,
+    since_opt: Option<NaiveDateTime>,
+    until_opt: Option<NaiveDateTime>,
+) -> Result<Vec<CfsConfigurationResponse>, Error> {
+    log::info!("Filter CFS configurations");
+
+    // Filter CFS configurations based on user input (date range or configuration name)
+    if let (Some(since), Some(until)) = (since_opt, until_opt) {
+        cfs_configuration_vec.retain(|cfs_configuration| {
+            let date = chrono::DateTime::parse_from_rfc3339(&cfs_configuration.last_updated)
+                .unwrap()
+                .naive_utc();
+
+            since <= date && date < until
+        });
+    }
+
+    // Sort by last updated date in ASC order
+    cfs_configuration_vec.sort_by(|cfs_configuration_1, cfs_configuration_2| {
+        cfs_configuration_1
+            .last_updated
+            .cmp(&cfs_configuration_2.last_updated)
+    });
+
+    if let Some(limit_number) = limit_number_opt {
+        // Limiting the number of results to return to client
+
+        *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
+            .len()
+            .saturating_sub(*limit_number as usize)..]
+            .to_vec();
+    }
+
+    // Filter CFS configurations based on pattern matching
+    if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
+        let glob = Glob::new(configuration_name_pattern)
+            .unwrap()
+            .compile_matcher();
+        cfs_configuration_vec
+            .retain(|cfs_configuration| glob.is_match(cfs_configuration.name.clone()));
+    }
+
+    Ok(cfs_configuration_vec.to_vec())
+}
 
 /// Filter the list of CFS configurations provided. This operation is very expensive since it is
 /// filtering by HSM group which means it needs to link CFS configurations with CFS sessions and
@@ -35,20 +84,10 @@ pub async fn filter_2(
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     log::info!("Filter CFS configurations");
 
-    let (_, cfs_session_vec_opt, bos_sessiontemplate_vec_opt, _) =
-        common::utils::get_configurations_sessions_bos_sessiontemplates_images(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            false,
-            true,
-            true,
-            false,
-        )
-        .await?;
-
-    let mut cfs_session_vec = cfs_session_vec_opt.unwrap();
-    let mut bos_sessiontemplate_vec = bos_sessiontemplate_vec_opt.unwrap();
+    let (mut cfs_session_vec, mut bos_sessiontemplate_vec) = tokio::try_join!(
+        cfs::session::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,),
+        bos::template::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,)
+    )?;
 
     // Filter BOS sessiontemplates based on HSM groups
     bos::template::utils::filter(
@@ -169,7 +208,7 @@ pub async fn filter(
 
         // Note: nodes can be configured calling the component APi directly (bypassing BOS
         // session API)
-        cfs::component::http_client::v3::get_parallel(
+        cfs::component::http_client::v2::get_parallel(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -180,20 +219,18 @@ pub async fn filter(
         Vec::new()
     };
 
-    let (_, cfs_session_vec_opt, bos_sessiontemplate_vec_opt, _) =
-        common::utils::get_configurations_sessions_bos_sessiontemplates_images(
+    let (mut cfs_session_vec, mut bos_sessiontemplate_vec) = tokio::try_join!(
+        crate::cfs::session::http_client::v2::get_all(
             shasta_token,
             shasta_base_url,
-            shasta_root_cert,
-            false,
-            true,
-            true,
-            false,
+            shasta_root_cert
+        ),
+        crate::bos::template::http_client::v2::get_all(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert
         )
-        .await?;
-
-    let mut cfs_session_vec = cfs_session_vec_opt.unwrap();
-    let mut bos_sessiontemplate_vec = bos_sessiontemplate_vec_opt.unwrap();
+    )?;
 
     // Filter BOS sessiontemplates based on HSM groups
     bos::template::utils::filter(
@@ -300,7 +337,7 @@ pub async fn get_and_filter(
     limit_number_opt: Option<&u8>,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     let mut cfs_configuration_vec: Vec<CfsConfigurationResponse> =
-        cfs::configuration::http_client::v3::get(
+        cfs::configuration::http_client::v2::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -342,55 +379,45 @@ pub async fn get_derivatives(
     // List of image ids from CFS sessions and BOS sessiontemplates related to CFS configuration
     let mut image_id_vec: Vec<String> = Vec::new();
 
-    let (_, cfs_sessions_opt, bos_sessiontemplates_opt, ims_images_opt) =
-        common::utils::get_configurations_sessions_bos_sessiontemplates_images(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            false,
-            true,
-            true,
-            true,
-        )
-        .await?;
-
-    let mut cfs_sessions = cfs_sessions_opt.unwrap();
-    let mut bos_sessiontemplates = bos_sessiontemplates_opt.unwrap();
-    let mut ims_images = ims_images_opt.unwrap();
+    let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
+        cfs::session::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert),
+        bos::template::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert),
+        ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    )?;
 
     // Filter CFS sessions
-    cfs::session::utils::filter_by_cofiguration(&mut cfs_sessions, configuration_name);
+    cfs::session::utils::filter_by_cofiguration(&mut cfs_session_vec, configuration_name);
 
     // Filter BOS sessiontemplate
-    bos_sessiontemplates.retain(|bos_sessiontemplate| {
+    bos_sessiontemplate_vec.retain(|bos_sessiontemplate| {
         bos_sessiontemplate
             .get_image_vec()
             .iter()
             .any(|image_id_aux| image_id_vec.contains(image_id_aux))
-            || bos_sessiontemplate.get_confguration().unwrap_or_default() == configuration_name
+            || bos_sessiontemplate.get_configuration().unwrap_or_default() == configuration_name
     });
 
     // Add all image ids in CFS sessions into image_id_vec
     image_id_vec.extend(
-        cfs_sessions
+        cfs_session_vec
             .iter()
             .flat_map(|cfs_session| cfs_session.get_result_id_vec().into_iter()),
     );
 
     // Add boot images from BOS sessiontemplate to image_id_vec
     image_id_vec.extend(
-        bos_sessiontemplates
+        bos_sessiontemplate_vec
             .iter()
             .flat_map(|bos_sessiontemplate| bos_sessiontemplate.get_image_vec()),
     );
 
     // Filter images
-    ims_images.retain(|image| image_id_vec.contains(image.id.as_ref().unwrap()));
+    ims_image_vec.retain(|image| image_id_vec.contains(image.id.as_ref().unwrap()));
 
     Ok((
-        Some(cfs_sessions),
-        Some(bos_sessiontemplates),
-        Some(ims_images),
+        Some(cfs_session_vec),
+        Some(bos_sessiontemplate_vec),
+        Some(ims_image_vec),
     ))
 }
 

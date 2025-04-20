@@ -2,7 +2,7 @@ pub mod http_client;
 pub mod utils;
 
 use crate::cfs;
-use http_client::v3::types::{CfsSessionGetResponse, CfsSessionPostRequest};
+use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 use crate::{
     common::{
@@ -25,19 +25,15 @@ pub async fn get_and_sort(
     session_name_opt: Option<&String>,
     is_succeded_opt: Option<bool>,
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    let mut cfs_session_vec = cfs::session::http_client::v3::get(
+    let mut cfs_session_vec = cfs::session::http_client::v2::get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        min_age_opt,
+        max_age_opt,
+        status_opt,
         session_name_opt,
-        None,
-        None,
-        min_age_opt.cloned(),
-        max_age_opt.cloned(),
-        status_opt.cloned(),
-        None,
         is_succeded_opt,
-        None,
     )
     .await?;
 
@@ -77,7 +73,7 @@ pub async fn post(
     log::info!("Create CFS session '{}'", session.name);
     log::debug!("Create CFS session request payload:\n{:#?}", session);
 
-    cfs::session::http_client::v3::post(shasta_token, shasta_base_url, shasta_root_cert, session)
+    cfs::session::http_client::v2::post(shasta_token, shasta_base_url, shasta_root_cert, session)
         .await
 }
 

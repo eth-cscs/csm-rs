@@ -45,7 +45,7 @@ pub async fn filter_by_configuration(
     cfs_configuration_name: &str,
 ) {
     bos_sessiontemplate_vec.retain(|bos_template| {
-        bos_template.get_confguration().as_deref() == Some(cfs_configuration_name)
+        bos_template.get_configuration().as_deref() == Some(cfs_configuration_name)
     });
 }
 

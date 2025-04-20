@@ -82,10 +82,10 @@ impl CfsConfigurationRequest {
         configuration_yaml: &serde_yaml::Value,
         cray_product_catalog: &BTreeMap<String, String>,
         site_name: &str,
-    ) -> Result<Self, Error> {
+    ) -> Result<(String, Self), Error> {
         let mut cfs_configuration = Self::new();
 
-        cfs_configuration.name = configuration_yaml["name"].as_str().unwrap().to_string();
+        let cfs_configuration_name = configuration_yaml["name"].as_str().unwrap().to_string();
 
         for layer_yaml in configuration_yaml["layers"].as_sequence().unwrap() {
             // println!("\n\n### Layer:\n{:#?}\n", layer_json);
@@ -126,7 +126,7 @@ impl CfsConfigurationRequest {
                         tag_details
                     } else {
                         return Err(Error::Message(
-                            format!("ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}", git_tag, cfs_configuration.name, tag_details_rslt)
+                            format!("ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}", git_tag, cfs_configuration_name, tag_details_rslt)
                         ));
                     };
 
@@ -276,6 +276,6 @@ impl CfsConfigurationRequest {
             }
         }
 
-        Ok(cfs_configuration)
+        Ok((cfs_configuration_name, cfs_configuration))
     }
 }

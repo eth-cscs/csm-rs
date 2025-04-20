@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::error::Error;
 
-use super::v3::types::{CfsSessionGetResponse, CfsSessionPostRequest};
+use super::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
 pub async fn get(
@@ -92,6 +92,24 @@ pub async fn get(
             .map_err(|error| Error::NetError(error))?;
         Err(Error::CsmError(payload))
     }
+}
+
+pub async fn get_all(
+    shasta_token: &str,
+    shasta_base_url: &str,
+    shasta_root_cert: &[u8],
+) -> Result<Vec<CfsSessionGetResponse>, Error> {
+    get(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await
 }
 
 pub async fn post(

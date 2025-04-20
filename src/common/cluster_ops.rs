@@ -1,7 +1,7 @@
 use crate::{
     cfs::{
-        configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse,
-        session::http_client::v3::types::CfsSessionGetResponse,
+        configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
+        session::http_client::v2::types::CfsSessionGetResponse,
     },
     error::Error,
 };
@@ -93,7 +93,7 @@ pub async fn get_details(
 
                 // Get CFS configuration linked to CFS session related to HSM GROUP or any of its
                 // members
-                let cfs_configuration_vec = crate::cfs::configuration::http_client::v3::get(
+                let cfs_configuration_vec = crate::cfs::configuration::http_client::v2::get(
                     shasta_token,
                     shasta_base_url,
                     shasta_root_cert,

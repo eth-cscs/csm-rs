@@ -3,7 +3,7 @@ pub mod types;
 use serde_json::Value;
 
 use crate::{
-    cfs::configuration::http_client::v3::types::{
+    cfs::configuration::http_client::v2::types::{
         cfs_configuration_request::CfsConfigurationRequest,
         cfs_configuration_response::CfsConfigurationResponse,
     },
@@ -75,6 +75,14 @@ pub async fn get(
 
         Err(Error::CsmError(payload))
     }
+}
+
+pub async fn get_all(
+    shasta_token: &str,
+    shasta_base_url: &str,
+    shasta_root_cert: &[u8],
+) -> Result<Vec<CfsConfigurationResponse>, Error> {
+    get(shasta_token, shasta_base_url, shasta_root_cert, None).await
 }
 
 pub async fn put(

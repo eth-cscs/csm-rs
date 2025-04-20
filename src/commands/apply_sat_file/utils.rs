@@ -8,11 +8,11 @@ use crate::{
     },
     cfs::{
         self,
-        configuration::http_client::v3::types::{
+        configuration::http_client::v2::types::{
             cfs_configuration_request::CfsConfigurationRequest,
             cfs_configuration_response::CfsConfigurationResponse,
         },
-        session::http_client::v3::types::CfsSessionPostRequest,
+        session::http_client::v2::types::CfsSessionPostRequest,
     },
     common,
     error::Error,
@@ -706,7 +706,7 @@ pub async fn create_cfs_configuration_from_sat_file(
         .await?;
 
     if !dry_run {
-        cfs::configuration::http_client::v3::put(
+        cfs::configuration::http_client::v2::put(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -1094,16 +1094,11 @@ pub async fn create_image_from_sat_file_serde_yaml(
             image_name.clone(),
             configuration_name,
             None,
-            None,
-            None,
             ansible_verbosity_opt,
             ansible_passthrough_opt.cloned(),
             true,
             Some(groups_name.to_vec()),
             Some(base_image_id),
-            None,
-            debug_on_failure,
-            Some(image_name.clone()),
         );
 
         if !dry_run {

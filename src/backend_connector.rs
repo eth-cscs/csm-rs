@@ -10,6 +10,7 @@ use backend_dispatcher::{
         bos::{ClusterSessionTrait, ClusterTemplateTrait},
         bss::BootParametersTrait,
         cfs::CfsTrait,
+        commands::CommandsTrait,
         get_bos_session_templates::GetTemplatesTrait,
         get_images_and_details::GetImagesAndDetailsTrait,
         hsm::{
@@ -37,6 +38,7 @@ use backend_dispatcher::{
         NodeMetadataArray,
     },
 };
+use chrono::NaiveDateTime;
 use futures::{AsyncBufRead, AsyncReadExt};
 use hostlist_parser::parse;
 use regex::Regex;
@@ -950,14 +952,10 @@ impl CfsTrait for Csm {
         // k8s_api_url: &str,
         k8s: &K8sDetails,
     ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
-        let mut session_vec = crate::cfs::session::http_client::v3::get(
+        let mut session_vec = crate::cfs::session::http_client::v2::get(
             auth_token,
             self.base_url.as_str(),
             self.root_cert.as_slice(),
-            None,
-            Some(1),
-            None,
-            None,
             None,
             None,
             None,
@@ -1226,29 +1224,6 @@ impl CfsTrait for Csm {
             .collect())
     }
 
-    async fn i_delete_and_cancel_session(
-        &self,
-        shasta_token: &str,
-        shasta_base_url: &str,
-        shasta_root_cert: &[u8],
-        target_hsm_group_vec: Vec<String>,
-        cfs_session_name: &str,
-        dry_run: bool,
-        assume_yes: bool,
-    ) -> Result<(), Error> {
-        crate::commands::delete_and_cancel_session::command::exec(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            target_hsm_group_vec,
-            cfs_session_name,
-            dry_run,
-            assume_yes,
-        )
-        .await
-        .map_err(|e| Error::Message(e.to_string()))
-    }
-
     async fn create_configuration_from_repos(
         &self,
         gitea_token: &str,
@@ -1368,19 +1343,15 @@ impl CfsTrait for Csm {
         tags_opt: Option<String>,
     ) -> Result<Vec<CfsSessionGetResponse>, Error> {
         // Get local/backend CFS sessions
-        let mut local_cfs_session_vec = crate::cfs::session::http_client::v3::get(
+        let mut local_cfs_session_vec = crate::cfs::session::http_client::v2::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            after_id_opt.as_ref(),
+            min_age_opt.as_ref(),
+            max_age_opt.as_ref(),
             None,
-            limit_opt,
-            after_id_opt,
-            min_age_opt,
-            max_age_opt,
-            status_opt,
-            name_contains_opt,
             is_succeded_opt,
-            tags_opt,
         )
         .await
         .map_err(|e| Error::Message(e.to_string()))?;
@@ -1876,6 +1847,58 @@ impl ClusterTemplateTrait for Csm {
             shasta_base_url,
             shasta_root_cert,
             bos_template_id,
+        )
+        .await
+        .map_err(|e| Error::Message(e.to_string()))
+    }
+}
+
+impl CommandsTrait for Csm {
+    async fn i_delete_and_cancel_session(
+        &self,
+        shasta_token: &str,
+        shasta_base_url: &str,
+        shasta_root_cert: &[u8],
+        target_hsm_group_vec: Vec<String>,
+        cfs_session_name: &str,
+        dry_run: bool,
+        assume_yes: bool,
+    ) -> Result<(), Error> {
+        crate::commands::i_delete_and_cancel_session::command::exec(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            target_hsm_group_vec,
+            cfs_session_name,
+            dry_run,
+            assume_yes,
+        )
+        .await
+        .map_err(|e| Error::Message(e.to_string()))
+    }
+
+    async fn i_delete_data_related_to_cfs_configuration(
+        &self,
+        shasta_token: &str,
+        shasta_base_url: &str,
+        shasta_root_cert: &[u8],
+        hsm_name_available_vec: Vec<String>,
+        configuration_name_opt: Option<&String>,
+        configuration_name_pattern: Option<&String>,
+        since_opt: Option<NaiveDateTime>,
+        until_opt: Option<NaiveDateTime>,
+        assume_yes: bool,
+    ) -> Result<(), Error> {
+        crate::commands::i_delete_data_related_to_cfs_configuration::exec(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            &hsm_name_available_vec,
+            configuration_name_opt,
+            configuration_name_pattern,
+            since_opt,
+            until_opt,
+            assume_yes,
         )
         .await
         .map_err(|e| Error::Message(e.to_string()))

@@ -2,6 +2,15 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use backend_dispatcher::types::cfs::session::{
+    Ansible as FrontEndAnsible, Artifact as FrontEndArtifact,
+    CfsSessionGetResponse as FrontEndCfsSessionGetResponse,
+    CfsSessionGetResponseList as FrontEndCfsSessionGetResponseList,
+    CfsSessionPostRequest as FrontEndCfsSessionPostRequest, Configuration as FrontEndConfiguration,
+    Group as FrontEndGroup, ImageMap as FrontEndImageMap, Next as FrontEndNext,
+    Session as FrontEndSession, Status as FrontEndStatus, Target as FrontEndTarget,
+};
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsSessionGetResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -16,6 +25,34 @@ pub struct CfsSessionGetResponse {
     pub status: Option<Status>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<HashMap<String, String>>,
+}
+
+impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
+    fn from(value: FrontEndCfsSessionGetResponse) -> Self {
+        CfsSessionGetResponse {
+            name: value.name,
+            configuration: value.configuration.map(Configuration::from),
+            ansible: value.ansible.map(Ansible::from),
+            target: value.target.map(Target::from),
+            status: value.status.map(Status::from),
+            tags: value.tags,
+        }
+    }
+}
+
+impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
+    fn into(self) -> FrontEndCfsSessionGetResponse {
+        FrontEndCfsSessionGetResponse {
+            name: self.name,
+            configuration: self.configuration.map(|configuration| configuration.into()),
+            ansible: self.ansible.map(|ansible| ansible.into()),
+            target: self.target.map(|target| target.into()),
+            status: self.status.map(|status| status.into()),
+            tags: self.tags,
+            debug_on_failure: true,
+            logs: None,
+        }
+    }
 }
 
 impl CfsSessionGetResponse {
@@ -118,6 +155,24 @@ pub struct Configuration {
     pub limit: Option<String>,
 }
 
+impl From<FrontEndConfiguration> for Configuration {
+    fn from(value: FrontEndConfiguration) -> Self {
+        Configuration {
+            name: value.name,
+            limit: value.limit,
+        }
+    }
+}
+
+impl Into<FrontEndConfiguration> for Configuration {
+    fn into(self) -> FrontEndConfiguration {
+        FrontEndConfiguration {
+            name: self.name,
+            limit: self.limit,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Ansible {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -130,12 +185,56 @@ pub struct Ansible {
     pub passthrough: Option<String>,
 }
 
+impl From<FrontEndAnsible> for Ansible {
+    fn from(value: FrontEndAnsible) -> Self {
+        Ansible {
+            config: value.config,
+            limit: value.limit,
+            verbosity: value.verbosity,
+            passthrough: value.passthrough,
+        }
+    }
+}
+
+impl Into<FrontEndAnsible> for Ansible {
+    fn into(self) -> FrontEndAnsible {
+        FrontEndAnsible {
+            config: self.config,
+            limit: self.limit,
+            verbosity: self.verbosity,
+            passthrough: self.passthrough,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Status {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<Vec<Artifact>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session: Option<Session>,
+}
+
+impl From<FrontEndStatus> for Status {
+    fn from(value: FrontEndStatus) -> Self {
+        Status {
+            artifacts: value
+                .artifacts
+                .map(|artifacts| artifacts.into_iter().map(Artifact::from).collect()),
+            session: value.session.map(Session::from),
+        }
+    }
+}
+
+impl Into<FrontEndStatus> for Status {
+    fn into(self) -> FrontEndStatus {
+        FrontEndStatus {
+            artifacts: self
+                .artifacts
+                .map(|artifacts| artifacts.into_iter().map(Artifact::into).collect()),
+            session: self.session.map(Session::into),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -146,6 +245,26 @@ pub struct Artifact {
     pub result_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
+}
+
+impl From<FrontEndArtifact> for Artifact {
+    fn from(value: FrontEndArtifact) -> Self {
+        Artifact {
+            image_id: value.image_id,
+            result_id: value.result_id,
+            r#type: value.r#type,
+        }
+    }
+}
+
+impl Into<FrontEndArtifact> for Artifact {
+    fn into(self) -> FrontEndArtifact {
+        FrontEndArtifact {
+            image_id: self.image_id,
+            result_id: self.result_id,
+            r#type: self.r#type,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -162,6 +281,31 @@ pub struct Session {
     pub status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub succeeded: Option<String>,
+}
+
+impl From<FrontEndSession> for Session {
+    fn from(value: FrontEndSession) -> Self {
+        Session {
+            job: value.job,
+            completion_time: value.completion_time,
+            start_time: value.start_time,
+            status: value.status,
+            succeeded: value.succeeded,
+        }
+    }
+}
+
+impl Into<FrontEndSession> for Session {
+    fn into(self) -> FrontEndSession {
+        FrontEndSession {
+            job: self.job,
+            ims_job: None,
+            completion_time: self.completion_time,
+            start_time: self.start_time,
+            status: self.status,
+            succeeded: self.succeeded,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -196,12 +340,53 @@ pub struct Group {
     pub members: Vec<String>,
 }
 
+impl From<FrontEndGroup> for Group {
+    fn from(value: FrontEndGroup) -> Self {
+        Group {
+            name: value.name,
+            members: value.members,
+        }
+    }
+}
+
+impl Into<FrontEndGroup> for Group {
+    fn into(self) -> FrontEndGroup {
+        FrontEndGroup {
+            name: self.name,
+            members: self.members,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Target {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub definition: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub groups: Option<Vec<Group>>,
+}
+
+impl From<FrontEndTarget> for Target {
+    fn from(value: FrontEndTarget) -> Self {
+        Target {
+            definition: value.definition,
+            groups: value
+                .groups
+                .map(|groups| groups.into_iter().map(Group::from).collect()),
+        }
+    }
+}
+
+impl Into<FrontEndTarget> for Target {
+    fn into(self) -> FrontEndTarget {
+        FrontEndTarget {
+            definition: self.definition,
+            groups: self
+                .groups
+                .map(|groups| groups.into_iter().map(Group::into).collect()),
+            image_map: None,
+        }
+    }
 }
 
 impl CfsSessionPostRequest {

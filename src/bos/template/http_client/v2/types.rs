@@ -250,7 +250,7 @@ impl BosSessionTemplate {
             .collect()
     }
 
-    pub fn get_confguration(&self) -> Option<String> {
+    pub fn get_configuration(&self) -> Option<String> {
         self.cfs.as_ref().and_then(|cfs| cfs.configuration.clone())
     }
 

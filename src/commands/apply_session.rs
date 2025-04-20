@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    cfs::{self, session::http_client::v3::types::CfsSessionPostRequest},
+    cfs::{self, session::http_client::v2::types::CfsSessionPostRequest},
     common::local_git_repo,
     error::Error,
     hsm,
@@ -578,16 +578,11 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     let session = CfsSessionPostRequest::new(
         cfs_session_name,
         cfs_configuration_name.clone(),
-        None,
         limit,
-        None,
         ansible_verbosity,
         ansible_passthrough,
         false,
         None,
-        None,
-        None,
-        false,
         None,
     );
 

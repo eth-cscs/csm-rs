@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    cfs::configuration::http_client::v3::types::cfs_configuration_response::{
+    cfs::configuration::http_client::v2::types::cfs_configuration_response::{
         CfsConfigurationResponse, Layer,
     },
     commands::apply_sat_file::utils::{
@@ -423,7 +423,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
             name: "my-layer-name".to_string(),
             playbook: "my-playbook".to_string(),
             branch: None,
-            source: None,
+            // source: None,
         }],
         additional_inventory: None,
     }];

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     cfs::{
         self,
-        configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse,
+        configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
     },
     commands::{apply_hw_cluster_pin, apply_sat_file::utils},
     common::kubernetes::{self},
@@ -194,7 +194,7 @@ pub async fn exec(
     // Get data from CSM
     //
     // Get configurations from CSM
-    let configuration_vec = cfs::configuration::http_client::v3::get(
+    let configuration_vec = cfs::configuration::http_client::v2::get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,

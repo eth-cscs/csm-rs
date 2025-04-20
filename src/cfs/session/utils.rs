@@ -11,7 +11,7 @@ use crate::{
 };
 use std::io::{self, Write};
 
-use super::http_client::v3::types::CfsSessionGetResponse;
+use super::http_client::v2::types::CfsSessionGetResponse;
 
 // Check if a session is related to a group the user has access to
 pub fn check_cfs_session_against_groups_available(
@@ -364,18 +364,16 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
 /// Return a list of the images ids related with a list of CFS sessions. The result list if
 /// filtered to CFS session completed and target def 'image' therefore the length of the
 /// resulting list may be smaller than the list of CFS sessions
-pub fn get_image_id_from_cfs_session_vec(
-    cfs_session_value_vec: &[CfsSessionGetResponse],
-) -> Vec<String> {
-    cfs_session_value_vec
+pub fn get_image_id_from_cfs_session_vec(cfs_session_vec: &[CfsSessionGetResponse]) -> Vec<String> {
+    let mut image_id_vec: Vec<String> = cfs_session_vec
         .iter()
-        .filter(|cfs_session| {
-            cfs_session.is_target_def_image()
-                && cfs_session.is_success()
-                && cfs_session.get_first_result_id().is_some()
-        })
-        .map(|cfs_session| cfs_session.get_first_result_id().unwrap())
-        .collect::<Vec<String>>()
+        .flat_map(|cfs_session| cfs_session.get_result_id_vec())
+        .collect();
+
+    image_id_vec.sort();
+    image_id_vec.dedup();
+
+    image_id_vec
 }
 
 /// Wait a CFS session to finish

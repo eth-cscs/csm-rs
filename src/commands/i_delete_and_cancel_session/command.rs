@@ -1,7 +1,7 @@
 use crate::{
-    bss::types::BootParameters,
+    bss::{self, types::BootParameters},
     cfs::{
-        self, component::http_client::v3::types::Component,
+        self, component::http_client::v2::types::Component,
         session::utils::get_list_xnames_related_to_session,
     },
     error::Error,
@@ -21,32 +21,11 @@ pub async fn exec(
     log::info!("Deleting session '{}'", cfs_session_name);
 
     // Get collectives (CFS configuration, CFS session, BOS session template, IMS image and CFS component)
-    let get_cfs_configuration = false;
-    let get_cfs_session = true;
-    let get_bos_sessiontemplate = false;
-    let get_ims_image = false;
-    let get_cfs_component = true;
-    let get_bss_bootparameters = true;
-
-    let (
-        _cfs_configuration_vec_opt,
-        cfs_session_vec_opt,
-        _bos_sessiontemplate_vec_opt,
-        _image_vec_opt,
-        cfs_component_vec_opt,
-        bss_bootparameters_vec_opt
-    ) = crate::common::utils::get_configurations_sessions_bos_sessiontemplates_images_components_bootparameters(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        get_cfs_configuration,
-        get_cfs_session,
-        get_bos_sessiontemplate,
-        get_ims_image,
-        get_cfs_component,
-        get_bss_bootparameters,
-    )
-    .await;
+    let (mut cfs_session_vec, cfs_component_vec, bss_bootparameters_vec) = tokio::try_join!(
+        cfs::session::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,),
+        cfs::component::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,),
+        bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    )?;
 
     // Validate:
     // - Check CFS session belongs to a cluster available to the user
@@ -56,7 +35,7 @@ pub async fn exec(
     //
     // Get CFS session to delete
     // Filter CFS sessions based on use input
-    let mut cfs_session_vec = cfs_session_vec_opt.unwrap_or_default();
+    // let mut cfs_session_vec = cfs_session_vec_opt.unwrap_or_default();
 
     // Check CFS session belongs to a cluster the user has access to (filter sessions by HSM
     // group)
@@ -137,7 +116,7 @@ pub async fn exec(
             shasta_base_url,
             shasta_root_cert,
             xname_vec,
-            cfs_component_vec_opt,
+            Some(cfs_component_vec),
             retry_policy,
             dry_run,
         )
@@ -163,8 +142,6 @@ pub async fn exec(
                     return Ok(());
                 }
             }
-
-            let bss_bootparameters_vec = bss_bootparameters_vec_opt.unwrap_or_default();
 
             delete_images(
                 shasta_token,
@@ -283,7 +260,7 @@ async fn cancel_session(
     );
 
     if !dry_run {
-        let _ = cfs::component::http_client::v3::put_component_list(
+        let _ = cfs::component::http_client::v2::put_component_list(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
