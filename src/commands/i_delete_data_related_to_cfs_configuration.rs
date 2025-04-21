@@ -25,14 +25,14 @@ pub async fn exec(
     until_opt: Option<NaiveDateTime>,
     assume_yes: bool,
 ) -> Result<(), Error> {
-    let xname_vec = crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+    /* let xname_vec = crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
         hsm_name_available_vec.to_vec(),
     )
     .await
-    .unwrap();
+    .unwrap(); */
 
     // COLLECT SITE WIDE DATA FOR VALIDATION
     //
@@ -40,9 +40,9 @@ pub async fn exec(
     let (
         cfs_component_vec,
         mut cfs_configuration_vec,
-        cfs_session_vec,
+        mut cfs_session_vec,
         mut bos_sessiontemplate_vec,
-        image_vec,
+        // image_vec,
         bss_bootparameters_vec,
     ) = tokio::try_join!(
         cfs::component::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert),
@@ -51,13 +51,9 @@ pub async fn exec(
             shasta_base_url,
             shasta_root_cert
         ),
-        cfs::configuration::http_client::v2::get_all(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert
-        ),
+        cfs::session::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert),
         bos::template::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert),
-        ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert),
+        // ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert),
         bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
     )?;
 
@@ -112,7 +108,7 @@ pub async fn exec(
     // deletes all CFS sessions every now and then
     //
     // Get all CFS sessions
-    let mut cfs_session_vec = cfs::session::get_and_sort(
+    /* let mut cfs_session_vec = cfs::session::get_and_sort(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -123,7 +119,7 @@ pub async fn exec(
         None,
     )
     .await
-    .unwrap();
+    .unwrap(); */
 
     // Filter CFS sessions related to a HSM group
     // NOTE: Admins (pa-admin) are the only ones who can delete generic sessions
@@ -217,18 +213,12 @@ pub async fn exec(
             log::info!("Artifact for image ID {} does NOT exists", image_id);
             image_id_filtered_vec.push(image_id.clone().as_str());
         }
-    } */
-    let image_id_filtered_vec: Vec<&str> = image_id_vec.iter().map(|elem| elem.as_str()).collect();
-
-    image_id_vec = image_id_filtered_vec
-        .into_iter()
-        .map(|image_id| image_id.to_string())
-        .collect();
+    }
 
     log::info!(
                 "Image id related to CFS sessions and/or BOS sessiontemplate related to CFS configurations filtered by user input: {:?}",
                 image_id_vec
-            );
+            ); */
 
     log::info!("Image ids to delete: {:?}", image_id_vec);
 

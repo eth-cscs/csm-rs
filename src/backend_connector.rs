@@ -1332,14 +1332,14 @@ impl CfsTrait for Csm {
         shasta_base_url: &str,
         shasta_root_cert: &[u8],
         xname_vec: &[&str],
-        limit_opt: Option<u8>,
+        _limit_opt: Option<u8>,
         after_id_opt: Option<String>,
         min_age_opt: Option<String>,
         max_age_opt: Option<String>,
-        status_opt: Option<String>,
-        name_contains_opt: Option<String>,
+        _status_opt: Option<String>,
+        _name_contains_opt: Option<String>,
         is_succeded_opt: Option<bool>,
-        tags_opt: Option<String>,
+        _tags_opt: Option<String>,
     ) -> Result<Vec<CfsSessionGetResponse>, Error> {
         // Get local/backend CFS sessions
         let mut local_cfs_session_vec = crate::cfs::session::http_client::v2::get(

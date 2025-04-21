@@ -18,11 +18,8 @@ pub async fn exec(
     shasta_root_cert: &[u8],
     vault_base_url: &str,
     site_name: &str,
-    // vault_secret_path: &str,
-    // vault_role_id: &str,
     k8s_api_url: &str,
     shasta_k8s_secrets: serde_json::Value,
-    // sat_file_content: String,
     sat_template_file_yaml: serde_yaml::Value,
     hsm_group_param_opt: Option<&String>,
     hsm_group_available_vec: &Vec<String>,
@@ -37,105 +34,6 @@ pub async fn exec(
     debug_on_failure: bool,
     dry_run: bool,
 ) -> Result<(), Error> {
-    /* // Validate Pre-hook
-    if prehook.is_some() {
-        match crate::common::hooks::check_hook_perms(prehook).await {
-            Ok(_r) => println!(
-                "Pre-hook script '{}' exists and is executable.",
-                prehook.unwrap()
-            ),
-            Err(e) => {
-                log::error!("{}. File: {}", e, &prehook.unwrap());
-                std::process::exit(2);
-            }
-        };
-    }
-
-    // Validate Post-hook
-    if posthook.is_some() {
-        match crate::common::hooks::check_hook_perms(posthook).await {
-            Ok(_) => println!(
-                "Post-hook script '{}' exists and is executable.",
-                posthook.unwrap()
-            ),
-            Err(e) => {
-                log::error!("{}. File: {}", e, &posthook.unwrap());
-                std::process::exit(2);
-            }
-        };
-    }
-
-    let sat_template_file_yaml: Value = utils::render_jinja2_sat_file_yaml(
-        &sat_file_content,
-        values_file_content_opt.as_ref(),
-        values_cli_opt,
-    )
-    // .as_mapping_mut()
-    // .unwrap()
-    .clone();
-
-    let sat_template_file_string = serde_yaml::to_string(&sat_template_file_yaml).unwrap();
-
-    let mut sat_template: utils::SatFile = serde_yaml::from_str(&sat_template_file_string)
-        .expect("Could not parse SAT template yaml file");
-
-    // Filter either images or session_templates section according to user request
-    //
-    sat_template.filter(image_only, session_template_only);
-
-    let sat_template_file_yaml: Value = serde_yaml::to_value(sat_template).unwrap();
-
-    println!(
-        "{}#### SAT file content ####{}\n{}",
-        color::Fg(color::Blue),
-        color::Fg(color::Reset),
-        serde_yaml::to_string(&sat_template_file_yaml).unwrap(),
-    );
-
-    let process_sat_file = if !assume_yes {
-        dialoguer::Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt("Please check the template above and confirm to proceed.")
-            .interact()
-            .unwrap()
-    } else {
-        true
-    };
-
-    // Run/process Pre-hook
-    if prehook.is_some() {
-        println!("Running the pre-hook '{}'", &prehook.unwrap());
-        match crate::common::hooks::run_hook(prehook).await {
-            Ok(_code) => log::debug!("Pre-hook script completed ok. RT={}", _code),
-            Err(_error) => {
-                log::error!("{}", _error);
-                std::process::exit(2);
-            }
-        };
-    }
-
-    if process_sat_file {
-        println!("Proceed and process SAT file");
-    } else {
-        println!("Operation canceled by user. Exit");
-        std::process::exit(0);
-    }
-
-    // Get K8s secrets
-    let shasta_k8s_secrets = match &k8s.authentication {
-        common::config_ops::K8sAuth::Native {
-            certificate_authority_data,
-            client_certificate_data,
-            client_key_data,
-        } => {
-            serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
-        }
-        common::config_ops::K8sAuth::Vault {
-            base_url,
-            secret_path,
-            role_id,
-        } => fetch_shasta_k8s_secrets_from_vault(&base_url, &secret_path, &role_id).await,
-    }; */
-
     // GET DATA
     //
     // Get data from SAT YAML file
@@ -152,32 +50,6 @@ pub async fn exec(
     // Get images from SAT YAML file
     let bos_session_template_yaml_vec_opt =
         sat_template_file_yaml["session_templates"].as_sequence();
-
-    // Get Cray/HPE product catalog
-    //
-    // Get k8s secrets
-    /* let shasta_k8s_secrets =
-    crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault(
-        vault_base_url,
-        vault_secret_path,
-        vault_role_id,
-    )
-    .await; */
-
-    /* let shasta_k8s_secrets = match &k8s.authentication {
-        common::config_ops::K8sAuth::Native {
-            certificate_authority_data,
-            client_certificate_data,
-            client_key_data,
-        } => {
-            serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
-        }
-        common::config_ops::K8sAuth::Vault {
-            base_url,
-            secret_path,
-            role_id,
-        } => fetch_shasta_k8s_secrets_from_vault(&base_url, &secret_path, &role_id).await,
-    }; */
 
     // Get k8s credentials needed to check HPE/Cray product catalog in k8s
     let kube_client = kubernetes::get_k8s_client_programmatically(k8s_api_url, shasta_k8s_secrets)
@@ -409,18 +281,6 @@ pub async fn exec(
         )
         .await?;
     }
-
-    /* // Run/process Post-hook
-    if posthook.is_some() {
-        println!("Running the post-hook '{}'", &posthook.unwrap());
-        match crate::common::hooks::run_hook(posthook).await {
-            Ok(_code) => log::debug!("Post-hook script completed ok. RT={}", _code),
-            Err(_error) => {
-                log::error!("{}", _error);
-                std::process::exit(2);
-            }
-        };
-    } */
 
     Ok(())
 }
