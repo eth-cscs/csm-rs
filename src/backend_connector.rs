@@ -11,7 +11,6 @@ use backend_dispatcher::{
         bss::BootParametersTrait,
         cfs::CfsTrait,
         commands::CommandsTrait,
-        get_bos_session_templates::GetTemplatesTrait,
         get_images_and_details::GetImagesAndDetailsTrait,
         hsm::{
             component::ComponentTrait, group::GroupTrait, hardware_inventory::HardwareInventory,
@@ -1592,7 +1591,7 @@ impl ImsTrait for Csm {
 }
 
 impl ApplySessionTrait for Csm {
-    async fn apply_session(
+    async fn i_apply_session(
         &self,
         gitea_token: &str,
         gitea_base_url: &str,
@@ -1611,7 +1610,7 @@ impl ApplySessionTrait for Csm {
         /* kafka_audit: &Kafka,
         k8s: &K8sDetails, */
     ) -> Result<(String, String), Error> {
-        crate::commands::apply_session::exec(
+        crate::commands::i_apply_session::exec(
             gitea_token,
             gitea_base_url,
             shasta_token,
@@ -1711,50 +1710,6 @@ impl GetImagesAndDetailsTrait for Csm {
     }
 }
 
-impl GetTemplatesTrait for Csm {
-    async fn get_templates(
-        &self,
-        shasta_token: &str,
-        shasta_base_url: &str,
-        shasta_root_cert: &[u8],
-        hsm_group_name_vec: &Vec<String>,
-        hsm_member_vec: &[String],
-        bos_sessiontemplate_name_opt: Option<&String>,
-        limit_number_opt: Option<&u8>,
-    ) -> Result<Vec<BosSessionTemplate>, Error> {
-        let bos_sessiontemplate_vec_rslt = bos::template::http_client::v2::get(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            bos_sessiontemplate_name_opt.map(|value| value.as_str()),
-        )
-        .await;
-
-        let mut bos_sessiontemplate_vec = match bos_sessiontemplate_vec_rslt {
-            Ok(bos_sessiontemplate_vec) => bos_sessiontemplate_vec,
-            Err(e) => {
-                eprintln!(
-                    "ERROR - Could not fetch BOS sessiontemplate list. Reason:\n{:#?}\nExit",
-                    e
-                );
-                std::process::exit(1);
-            }
-        };
-
-        bos::template::utils::filter(
-            &mut bos_sessiontemplate_vec,
-            hsm_group_name_vec,
-            hsm_member_vec,
-            limit_number_opt,
-        );
-
-        Ok(bos_sessiontemplate_vec
-            .into_iter()
-            .map(|template| template.into())
-            .collect::<Vec<BosSessionTemplate>>())
-    }
-}
-
 impl ClusterSessionTrait for Csm {
     async fn post_template_session(
         &self,
@@ -1796,6 +1751,38 @@ impl ClusterTemplateTrait for Csm {
                 .collect::<Vec<BosSessionTemplate>>()
         })
         .map_err(|e| Error::Message(e.to_string()))
+    }
+
+    async fn get_and_filter_templates(
+        &self,
+        shasta_token: &str,
+        shasta_base_url: &str,
+        shasta_root_cert: &[u8],
+        hsm_group_name_vec: &Vec<String>,
+        hsm_member_vec: &[String],
+        bos_sessiontemplate_name_opt: Option<&String>,
+        limit_number_opt: Option<&u8>,
+    ) -> Result<Vec<BosSessionTemplate>, Error> {
+        let mut bos_sessiontemplate_vec = bos::template::http_client::v2::get(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            bos_sessiontemplate_name_opt.map(|value| value.as_str()),
+        )
+        .await
+        .map_err(|e| Error::Message(e.to_string()))?;
+
+        bos::template::utils::filter(
+            &mut bos_sessiontemplate_vec,
+            hsm_group_name_vec,
+            hsm_member_vec,
+            limit_number_opt,
+        );
+
+        Ok(bos_sessiontemplate_vec
+            .into_iter()
+            .map(|template| template.into())
+            .collect::<Vec<BosSessionTemplate>>())
     }
 
     async fn get_all_templates(
