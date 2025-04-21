@@ -1,19 +1,5 @@
-use std::time::Instant;
 
-use futures::future::OptionFuture;
-use tokio::task;
 
-use crate::{
-    bos::{self, template::http_client::v2::types::BosSessionTemplate},
-    bss::{self, types::BootParameters},
-    cfs::{
-        self, component::http_client::v2::types::Component,
-        configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
-        session::http_client::v2::types::CfsSessionGetResponse,
-    },
-    error::Error,
-    ims::{self, image::http_client::types::Image},
-};
 
 /* pub async fn get_configurations_sessions_bos_sessiontemplates_images(
     shasta_token: &str,

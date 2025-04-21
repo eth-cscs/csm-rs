@@ -40,7 +40,7 @@ pub async fn exec(
     let (
         cfs_component_vec,
         mut cfs_configuration_vec,
-        mut cfs_session_vec,
+        cfs_session_vec,
         mut bos_sessiontemplate_vec,
         image_vec,
         bss_bootparameters_vec,
