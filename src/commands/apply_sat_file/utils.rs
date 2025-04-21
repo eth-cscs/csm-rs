@@ -862,15 +862,13 @@ pub async fn create_image_from_sat_file_serde_yaml(
     shasta_root_cert: &[u8],
     vault_base_url: &str,
     site_name: &str,
-    // vault_secret_path: &str,
-    // vault_role_id: &str,
     k8s_api_url: &str,
     image_yaml: &serde_yaml::Value, // NOTE: image may be an IMS job or a CFS session
     cray_product_catalog: &BTreeMap<String, String>,
     ansible_verbosity_opt: Option<u8>,
     ansible_passthrough_opt: Option<&String>,
     ref_name_image_id_hashmap: &HashMap<String, String>,
-    debug_on_failure: bool,
+    _1debug_on_failure: bool,
     dry_run: bool,
     watch_logs: bool,
 ) -> Result<String, Error> {
@@ -1049,17 +1047,6 @@ pub async fn create_image_from_sat_file_serde_yaml(
 
                 let product_image_id = image_id;
 
-                /* let product_image_id = product_image_map
-                .as_object()
-                .unwrap()
-                .values()
-                .collect::<Vec<_>>()
-                .first()
-                .unwrap()["id"]
-                .as_str()
-                .unwrap()
-                .to_string(); */
-
                 product_image_id
             } else {
                 return Err(Error::Message(
@@ -1133,11 +1120,6 @@ pub async fn create_image_from_sat_file_serde_yaml(
                     "CFS session '{}' failed. Exit",
                     cfs_session.name.unwrap()
                 )));
-                /* eprintln!(
-                    "Error: CFS session '{}' failed. Exit",
-                    cfs_session.name.unwrap()
-                );
-                std::process::exit(1); */
             }
 
             let image_id = cfs_session.get_first_result_id().unwrap();
@@ -1163,17 +1145,6 @@ async fn process_sat_file_image_product_type_ims_recipe(
     recipe_id: &str,
     image_name: &str,
 ) -> Result<String, Error> {
-    /* let recipe_id: String = product_details
-    .as_object()
-    .unwrap()
-    .values()
-    .collect::<Vec<_>>()
-    .first()
-    .unwrap()["id"]
-    .as_str()
-    .unwrap()
-    .to_string(); */
-
     // Get root public ssh key
     let root_public_ssh_key_value: serde_json::Value =
         ims::public_keys::http_client::v3::get_single(
@@ -1800,13 +1771,6 @@ pub async fn validate_sat_file_session_template_section(
                     session_template_yaml["name"].as_str().unwrap(),
                     hsm_group_available_vec
                 )));
-                /* eprintln!(
-                        "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
-                        hsm_group,
-                        session_template_yaml["name"].as_str().unwrap(),
-                        hsm_group_available_vec
-                    );
-                std::process::exit(1); */
             }
         }
 
@@ -1840,11 +1804,6 @@ pub async fn validate_sat_file_session_template_section(
                     "Could not find image ref '{}' in SAT file. Exit",
                     ref_name_to_find.as_str().unwrap()
                 )));
-                /* eprintln!(
-                    "Could not find image ref '{}' in SAT file. Exit",
-                    ref_name_to_find.as_str().unwrap()
-                );
-                std::process::exit(1); */
             }
         } else if let Some(image_name_substr_to_find) = session_template_yaml
             .get("image")
@@ -1895,12 +1854,6 @@ pub async fn validate_sat_file_session_template_section(
                     image_name_substr_to_find.as_str().unwrap(),
                     session_template_yaml["name"].as_str().unwrap()
                 )));
-                /* eprintln!(
-                    "Could not find image name '{}' in session_template '{}'. Exit",
-                    image_name_substr_to_find.as_str().unwrap(),
-                    session_template_yaml["name"].as_str().unwrap()
-                );
-                std::process::exit(1); */
             }
         } else if let Some(image_id) = session_template_yaml
             .get("image")
@@ -1928,16 +1881,10 @@ pub async fn validate_sat_file_session_template_section(
                     image_id.as_str().unwrap(),
                     session_template_yaml["name"].as_str().unwrap()
                 )));
-                /* eprintln!(
-                    "Could not find image id '{}' in session_template '{}'. Exit",
-                    image_id.as_str().unwrap(),
-                    session_template_yaml["name"].as_str().unwrap()
-                );
-                std::process::exit(1); */
             }
         } else if let Some(image_name_substr_to_find) = session_template_yaml.get("image") {
             // Backward compatibility
-            // VaVjlidate image name (session_template.image.ims.name). Search in SAT file and CSM
+            // Validate image name (session_template.image.ims.name). Search in SAT file and CSM
             log::info!(
                 "Searching image name '{}' related to session template '{}' in CSM - ('sessiontemplate' section in SAT file is outdated - switching to backward compatibility)",
                 image_name_substr_to_find.as_str().unwrap(),
@@ -1961,22 +1908,12 @@ pub async fn validate_sat_file_session_template_section(
                     "Image name '{}' not found in CSM. Exit",
                     image_name_substr_to_find.as_str().unwrap()
                 )));
-                /* log::warn!(
-                    "Image name '{}' not found in CSM. Exit",
-                    image_name_substr_to_find.as_str().unwrap()
-                );
-                std::process::exit(1); */
             }
         } else {
             return Err(Error::Message(format!(
                 "Session template '{}' must have one of these entries 'image.ref_name', 'image.ims.name' or 'image.ims.id' values. Exit",
                 session_template_yaml["name"].as_str().unwrap(),
             )));
-            /* eprintln!(
-                "Session template '{}' must have one of these entries 'image.ref_name', 'image.ims.name' or 'image.ims.id' values. Exit",
-                session_template_yaml["name"].as_str().unwrap(),
-            );
-            std::process::exit(1); */
         }
 
         // Validate configuration
@@ -2025,12 +1962,6 @@ pub async fn validate_sat_file_session_template_section(
                         configuration_to_find,
                         session_template_yaml["name"].as_str().unwrap(),
                     )));
-                    /* eprintln!(
-                        "ERROR - Could not find configuration '{}' in session_template '{}'. Exit",
-                        configuration_to_find,
-                        session_template_yaml["name"].as_str().unwrap(),
-                    );
-                    std::process::exit(1); */
                 }
             }
         } else {
@@ -2038,11 +1969,6 @@ pub async fn validate_sat_file_session_template_section(
                 "Session template '{}' does not have 'configuration' value. Exit",
                 session_template_yaml["name"].as_str().unwrap(),
             )));
-            /* eprintln!(
-                "Session template '{}' does not have 'configuration' value. Exit",
-                session_template_yaml["name"].as_str().unwrap(),
-            );
-            std::process::exit(1); */
         }
     }
 
@@ -2387,16 +2313,6 @@ pub async fn process_session_template_section_in_sat_file(
             boot_set_vec.insert(parameter.as_str().unwrap().to_string(), boot_set);
         }
 
-        /* let create_bos_session_template_payload = BosSessionTemplate::new_for_hsm_group(
-            bos_session_template_configuration_name,
-            bos_session_template_name,
-            ims_image_name,
-            ims_image_path.to_string(),
-            ims_image_type.to_string(),
-            ims_image_etag.to_string(),
-            hsm_group,
-        ); */
-
         let cfs = Cfs {
             // clone_url: None,
             // branch: None,
@@ -2445,10 +2361,7 @@ pub async fn process_session_template_section_in_sat_file(
                         "ERROR: BOS session template creation failed.\nReason:\n{}\nExit",
                         error
                     )))
-                } /* Err(error) => eprintln!(
-                      "ERROR: BOS session template creation failed.\nReason:\n{}\nExit",
-                      error
-                  ), */
+                }
             }
         } else {
             println!(
@@ -2471,17 +2384,6 @@ pub async fn process_session_template_section_in_sat_file(
                 "Creating BOS session for BOS sessiontemplate '{}' to reboot",
                 bos_st_name
             );
-
-            // BOS session v1
-            /* let create_bos_session_resp = bos::session::shasta::http_client::v1::post(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                &bos_st_name,
-                "reboot",
-                None,
-            )
-            .await; */
 
             // BOS session v2
             let bos_session = BosSession {
@@ -2518,11 +2420,6 @@ pub async fn process_session_template_section_in_sat_file(
                     bos_st_name,
                     error
                 ))),
-                /* Err(error) => eprintln!(
-                    "ERROR: BOS session for BOS sessiontemplate '{}' creation failed.\nReason:\n{}\nExit",
-                    bos_st_name,
-                    error
-                ), */
             }
 
             let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
@@ -2555,16 +2452,6 @@ pub async fn process_session_template_section_in_sat_file(
                 // Get list of XNAMES
                 bos_sessiontemplate.get_target_xname()
             };
-
-            // power_reset_nodes::exec(
-            //     shasta_token,
-            //     shasta_base_url,
-            //     shasta_root_cert,
-            //     xnames,
-            //     Some("Force BOS session reboot".to_string()),
-            //     true,
-            // )
-            // .await;
         }
     }
 
