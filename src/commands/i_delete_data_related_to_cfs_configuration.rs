@@ -1,6 +1,7 @@
 use core::time;
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::time::Instant;
 
 use chrono::NaiveDateTime;
 use comfy_table::Table;
@@ -36,7 +37,8 @@ pub async fn exec(
 
     // COLLECT SITE WIDE DATA FOR VALIDATION
     //
-
+    let start = Instant::now();
+    log::info!("Fetching data from the backend...");
     let (
         cfs_component_vec,
         mut cfs_configuration_vec,
@@ -56,6 +58,11 @@ pub async fn exec(
         // ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert),
         bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
     )?;
+    let duration = start.elapsed();
+    log::info!(
+        "Time elapsed to fetch information from backend: {:?}",
+        duration
+    );
 
     // Filter CFS configurations related to HSM group, configuration name or configuration name
     // pattern

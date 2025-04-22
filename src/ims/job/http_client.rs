@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::error::Error;
 
 use super::{
-    types::{JobPostRequest, SshContainer},
+    types::{Job, SshContainer},
     utils::wait_ims_job_to_finish,
 };
 
@@ -24,7 +24,7 @@ pub async fn post_customize(
 
     let ssh_container_list = vec![ssh_container];
 
-    let ims_job = JobPostRequest {
+    let ims_job = Job {
         job_type: "customize".to_string(),
         image_root_archive_name: image_root_archive_name.to_string(),
         kernel_file_name: Some("kernel".to_string()),
@@ -35,6 +35,16 @@ pub async fn post_customize(
         ssh_containers: Some(ssh_container_list),
         enable_debug: Some(false),
         build_env_size: None,
+        require_dkms: None, // FIXME: check if SAT file uses this value
+        id: None,
+        created: None,
+        status: None,
+        kubernetes_job: None,
+        kubernetes_service: None,
+        kubernetes_configmap: None,
+        resultant_image_id: None,
+        kubernetes_namespace: None,
+        arch: None,
     };
 
     let client;
@@ -86,8 +96,8 @@ pub async fn post(
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    ims_job: &JobPostRequest,
-) -> Result<Value, Error> {
+    ims_job: &Job,
+) -> Result<Job, Error> {
     let client;
 
     let client_builder = reqwest::Client::builder()
@@ -126,29 +136,32 @@ pub async fn post_sync(
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    ims_job: &JobPostRequest,
-) -> Result<Value, Error> {
+    ims_job: &Job,
+) -> Result<Job, Error> {
     log::info!("Create IMS job");
-    log::debug!("Create IMS job request payload:\n{:#?}", ims_job);
+    log::debug!(
+        "Create IMS job request payload:\n{}",
+        serde_json::to_string_pretty(&ims_job)?
+    );
 
-    let ims_job_details_value: Value =
-        post(shasta_token, shasta_base_url, shasta_root_cert, ims_job)
-            .await
-            .unwrap();
+    let ims_job: Job = post(shasta_token, shasta_base_url, shasta_root_cert, ims_job).await?;
 
-    let ims_job_id: &str = ims_job_details_value["id"].as_str().unwrap();
+    let ims_job_id = ims_job.id.unwrap();
 
     // Wait till the IMS job finishes
-    wait_ims_job_to_finish(shasta_token, shasta_base_url, shasta_root_cert, ims_job_id).await;
+    wait_ims_job_to_finish(shasta_token, shasta_base_url, shasta_root_cert, &ims_job_id).await?;
 
-    // Get most recent IMS job status
+    // Get IMS job status
     get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
-        Some(ims_job_id),
+        Some(&ims_job_id),
     )
-    .await
+    .await?
+    .first()
+    .cloned()
+    .ok_or_else(|| Error::Message(format!("ERROR - IMS job '{}' not found", ims_job_id)))
 }
 
 /// Create IMS job ref --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/post_v3_job/
@@ -157,7 +170,7 @@ pub async fn get(
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     job_id_opt: Option<&str>,
-) -> Result<Value, Error> {
+) -> Result<Vec<Job>, Error> {
     let client;
 
     let client_builder = reqwest::Client::builder()
@@ -181,15 +194,21 @@ pub async fn get(
         shasta_base_url.to_owned() + "/ims/v3/jobs"
     };
 
-    client
+    let response = client
         .get(api_url)
         .bearer_auth(shasta_token)
         .send()
         .await
         .map_err(Error::NetError)?
         .error_for_status()
-        .map_err(Error::NetError)?
-        .json()
-        .await
-        .map_err(Error::NetError)
+        .map_err(Error::NetError)?;
+
+    if job_id_opt.is_some() {
+        Ok(vec![response
+            .json::<Job>()
+            .await
+            .map_err(Error::NetError)?])
+    } else {
+        response.json().await.map_err(Error::NetError)
+    }
 }

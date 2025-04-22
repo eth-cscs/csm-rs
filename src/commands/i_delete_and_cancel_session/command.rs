@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     bss::{self, types::BootParameters},
     cfs::{
@@ -21,11 +23,18 @@ pub async fn exec(
     log::info!("Deleting session '{}'", cfs_session_name);
 
     // Get collectives (CFS configuration, CFS session, BOS session template, IMS image and CFS component)
+    let start = Instant::now();
+    log::info!("Fetching data from the backend...");
     let (mut cfs_session_vec, cfs_component_vec, bss_bootparameters_vec) = tokio::try_join!(
         cfs::session::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,),
         cfs::component::http_client::v2::get_all(shasta_token, shasta_base_url, shasta_root_cert,),
         bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
     )?;
+    let duration = start.elapsed();
+    log::info!(
+        "Time elapsed to fetch information from backend: {:?}",
+        duration
+    );
 
     // Validate:
     // - Check CFS session belongs to a cluster available to the user
@@ -111,7 +120,8 @@ pub async fn exec(
                 return Ok(());
             }
         }
-        let _ = cancel_session(
+
+        cancel_session(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -143,6 +153,7 @@ pub async fn exec(
                 }
             }
 
+            // Delete images
             delete_images(
                 shasta_token,
                 shasta_base_url,
@@ -161,20 +172,17 @@ pub async fn exec(
     };
 
     // Delete CFS session
-    log::info!("Delete CFS session '{}'", cfs_session_name);
-    if !dry_run {
-        let _ = cfs::session::http_client::v3::delete(
+    if dry_run {
+        println!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
+    } else {
+        cfs::session::http_client::v3::delete(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
             &cfs_session_name,
         )
-        .await;
-    } else {
-        println!("Delete CFS session '{}'", cfs_session_name);
+        .await?;
     }
-
-    println!("Session '{cfs_session_name}' has been deleted.");
 
     Ok(())
 }
@@ -194,7 +202,12 @@ async fn delete_images(
             .any(|boot_parameters| boot_parameters.get_boot_image().eq(image_id));
 
         if !is_image_boot_node {
-            if !dry_run {
+            if dry_run {
+                println!(
+                    "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{}'",
+                    image_id
+                );
+            } else {
                 ims::image::http_client::delete(
                     shasta_token,
                     shasta_base_url,
@@ -202,11 +215,6 @@ async fn delete_images(
                     image_id,
                 )
                 .await?;
-            } else {
-                println!(
-                    "DRYRUN - CFS session target definition is 'image'. Deleting image '{}'",
-                    image_id
-                );
             }
         } else {
             println!(
@@ -250,25 +258,25 @@ async fn cancel_session(
         .cloned()
         .collect();
 
-    // Convert CFS components to another struct we can use for CFS component PUT API
-    let cfs_component_request_vec = cfs_component_vec;
-
     log::info!(
         "Update error count on nodes {:?} to {}",
         xname_vec,
         retry_policy
     );
 
-    if !dry_run {
-        let _ = cfs::component::http_client::v2::put_component_list(
+    if dry_run {
+        println!(
+            "Dry Run Mode: Update error count on nodes {:?}",
+            cfs_component_vec
+        );
+    } else {
+        cfs::component::http_client::v2::put_component_list(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            cfs_component_request_vec,
+            cfs_component_vec,
         )
         .await?;
-    } else {
-        println!("Update error count on nodes {:?}", xname_vec);
     }
 
     Ok(())

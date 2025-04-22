@@ -15,6 +15,7 @@ pub async fn get(
     components_ids: Option<&str>,
     status: Option<&str>,
 ) -> Result<Vec<Component>, Error> {
+    log::info!("Get CFS components");
     let client_builder = reqwest::Client::builder()
         .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 

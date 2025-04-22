@@ -1,8 +1,9 @@
 use std::io::{self, Write};
 
-use serde_json::Value;
-
-use crate::ims::{self};
+use crate::{
+    error::Error,
+    ims::{self, job::types::Job},
+};
 
 /// Wait an IMS job to finish
 pub async fn wait_ims_job_to_finish(
@@ -10,25 +11,27 @@ pub async fn wait_ims_job_to_finish(
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     ims_job_id: &str,
-) {
+) -> Result<(), Error> {
     let mut i = 0;
     let max = 1800; // Max ammount of attempts to check if CFS session has ended
     loop {
-        let ims_job: Value = ims::job::http_client::get(
+        let ims_job: Job = ims::job::http_client::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
             Some(ims_job_id),
         )
-        .await
-        .unwrap();
+        .await?
+        .first()
+        .cloned()
+        .ok_or_else(|| Error::Message(format!("ERROR - IMS job '{}' not found", ims_job_id)))?;
 
         log::debug!(
             "IMS job details:\n{}",
             serde_json::to_string_pretty(&ims_job).unwrap()
         );
 
-        let ims_job_status = ims_job["status"].as_str().unwrap();
+        let ims_job_status = ims_job.status.unwrap();
 
         if (ims_job_status != "error" && ims_job_status != "success") && i < max {
             print!("\x1B[2K"); // Clear current line
@@ -50,4 +53,6 @@ pub async fn wait_ims_job_to_finish(
             break;
         }
     }
+
+    Ok(())
 }

@@ -134,18 +134,22 @@ pub async fn exec(
                 log::info!("Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'", pattern, target_hsm_group_name, parent_hsm_group_name);
                 // When applying a SAT file, I'm assuming the user doesn't want to create new HSM groups or delete empty parent hsm groups
                 // But this could be changed.
-                let _ = apply_hw_cluster_pin::command::exec(
-                    shasta_token,
-                    shasta_base_url,
-                    shasta_root_cert,
-                    target_hsm_group_name,
-                    parent_hsm_group_name,
-                    pattern,
-                    true,
-                    false,
-                    false,
-                )
-                .await;
+                if dry_run {
+                    println!("Dry run: Create HSM groups based on hardware pattern");
+                } else {
+                    apply_hw_cluster_pin::command::exec(
+                        shasta_token,
+                        shasta_base_url,
+                        shasta_root_cert,
+                        target_hsm_group_name,
+                        parent_hsm_group_name,
+                        pattern,
+                        true,
+                        false,
+                        false,
+                    )
+                    .await?;
+                }
             } else if let Some(nodes) = hw_component_pattern
                 .get("nodespattern")
                 .and_then(|pattern_value| pattern_value.as_str())
@@ -177,24 +181,28 @@ pub async fn exec(
                     target_hsm_group_name,
                 );
 
-                let _ = update_hsm_group_members(
-                    shasta_token,
-                    shasta_base_url,
-                    shasta_root_cert,
-                    target_hsm_group_name,
-                    &hsm_group_members_vec,
-                    &new_target_hsm_group_members_vec,
-                )
-                .await?;
-                /* let _ = hsm::group::utils::update_hsm_group_members(
-                    shasta_token,
-                    shasta_base_url,
-                    shasta_root_cert,
-                    target_hsm_group_name,
-                    &hsm_group_members_vec,
-                    &new_target_hsm_group_members_vec,
-                )
-                .await; */
+                if dry_run {
+                    println!("Dry run: Create HSM groups based on list of nodes");
+                } else {
+                    update_hsm_group_members(
+                        shasta_token,
+                        shasta_base_url,
+                        shasta_root_cert,
+                        target_hsm_group_name,
+                        &hsm_group_members_vec,
+                        &new_target_hsm_group_members_vec,
+                    )
+                    .await?;
+                    /* let _ = hsm::group::utils::update_hsm_group_members(
+                        shasta_token,
+                        shasta_base_url,
+                        shasta_root_cert,
+                        target_hsm_group_name,
+                        &hsm_group_members_vec,
+                        &new_target_hsm_group_members_vec,
+                    )
+                    .await; */
+                }
             }
         }
     }

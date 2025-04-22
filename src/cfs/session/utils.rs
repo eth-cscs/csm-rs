@@ -120,7 +120,7 @@ pub async fn filter_by_hsm(
     limit_number_opt: Option<&u8>,
     keep_generic_sessions: bool,
 ) -> Result<(), Error> {
-    log::info!("Filter CFS sessions");
+    log::info!("Filter CFS sessions by groups");
     let xname_vec: Vec<String> = hsm::group::utils::get_member_vec_from_hsm_name_vec(
         shasta_token,
         shasta_base_url,
@@ -152,26 +152,9 @@ pub async fn filter_by_hsm(
 
     // Sort CFS sessions by start time order ASC
     cfs_session_vec.sort_by(|a, b| {
-        a.status
-            .as_ref()
+        a.get_start_time()
             .unwrap()
-            .session
-            .as_ref()
-            .unwrap()
-            .start_time
-            .as_ref()
-            .unwrap()
-            .cmp(
-                b.status
-                    .as_ref()
-                    .unwrap()
-                    .session
-                    .as_ref()
-                    .unwrap()
-                    .start_time
-                    .as_ref()
-                    .unwrap(),
-            )
+            .cmp(&b.get_start_time().unwrap())
     });
 
     if let Some(limit_number) = limit_number_opt {
@@ -193,6 +176,7 @@ pub async fn filter_by_xname(
     limit_number_opt: Option<&u8>,
     keep_generic_sessions: bool,
 ) {
+    log::info!("Filter CFS sessions by xnames");
     let hsm_group_name_from_xnames_vec: Vec<String> =
         hsm::group::utils::get_hsm_group_name_vec_from_xname_vec(
             shasta_token,

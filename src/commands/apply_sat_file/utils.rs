@@ -715,7 +715,10 @@ pub async fn create_cfs_configuration_from_sat_file(
         )
         .await
     } else {
-        println!("Create CFS configuration:\n{:#?}", cfs_configuration);
+        println!(
+            "Dry run mode: Create CFS configuration:\n{}",
+            serde_json::to_string_pretty(&cfs_configuration)?
+        );
 
         let cfs_configuration = CfsConfigurationResponse {
             name: cfs_configuration_name,
@@ -868,7 +871,7 @@ pub async fn create_image_from_sat_file_serde_yaml(
     ansible_verbosity_opt: Option<u8>,
     ansible_passthrough_opt: Option<&String>,
     ref_name_image_id_hashmap: &HashMap<String, String>,
-    _1debug_on_failure: bool,
+    _debug_on_failure: bool,
     dry_run: bool,
     watch_logs: bool,
 ) -> Result<String, Error> {
@@ -952,6 +955,7 @@ pub async fn create_image_from_sat_file_serde_yaml(
                     shasta_root_cert,
                     sat_file_image_base_ims_value_yaml,
                     &image_name,
+                    dry_run,
                 )
                 .await
                 .unwrap();
@@ -1032,6 +1036,7 @@ pub async fn create_image_from_sat_file_serde_yaml(
                     shasta_root_cert,
                     &product_recipe_id,
                     &image_name,
+                    dry_run,
                 )
                 .await
                 .unwrap()
@@ -1127,11 +1132,17 @@ pub async fn create_image_from_sat_file_serde_yaml(
 
             Ok(image_id)
         } else {
-            println!("Create CFS session:\n{:#?}", cfs_session);
+            println!(
+                "Dry run mode: Create CFS session:\n{}",
+                serde_json::to_string_pretty(&cfs_session)?
+            );
 
             let image_id = Uuid::new_v4().to_string();
 
-            println!("Image '{}' ({}) created", image_name, image_id);
+            println!(
+                "Dry run mode: Image '{}' ({}) created",
+                image_name, image_id
+            );
 
             Ok(image_id)
         }
@@ -1144,6 +1155,7 @@ async fn process_sat_file_image_product_type_ims_recipe(
     shasta_root_cert: &[u8],
     recipe_id: &str,
     image_name: &str,
+    dry_run: bool,
 ) -> Result<String, Error> {
     // Get root public ssh key
     let root_public_ssh_key_value: serde_json::Value =
@@ -1158,7 +1170,8 @@ async fn process_sat_file_image_product_type_ims_recipe(
 
     let root_public_ssh_key = root_public_ssh_key_value["id"].as_str().unwrap();
 
-    let ims_job = ims::job::types::JobPostRequest {
+    // let ims_job = ims::job::types::JobPostRequest {
+    let ims_job = ims::job::types::Job {
         job_type: "create".to_string(),
         image_root_archive_name: image_name.to_string(),
         kernel_file_name: Some("vmlinuz".to_string()),
@@ -1169,14 +1182,33 @@ async fn process_sat_file_image_product_type_ims_recipe(
         ssh_containers: None, // Should this be None ???
         enable_debug: Some(false),
         build_env_size: Some(15),
+        require_dkms: None, // FIXME: check SAT file and see if this value needs to be set
+        id: None,
+        created: None,
+        status: None,
+        kubernetes_job: None,
+        kubernetes_service: None,
+        kubernetes_configmap: None,
+        resultant_image_id: None,
+        kubernetes_namespace: None,
+        arch: None,
     };
 
-    let ims_job: serde_json::Value =
+    let ims_job = if dry_run {
+        println!(
+            "Dry run mode: Create IMS job:\n{}",
+            serde_json::to_string_pretty(&ims_job)?
+        );
+        let mut dry_run_ims_job = ims_job;
+        dry_run_ims_job.resultant_image_id = Some(Uuid::new_v4().to_string());
+        dry_run_ims_job
+    } else {
         ims::job::http_client::post_sync(shasta_token, shasta_base_url, shasta_root_cert, &ims_job)
             .await
-            .unwrap();
+            .unwrap()
+    };
 
-    Ok(ims_job["resultant_image_id"].as_str().unwrap().to_string())
+    Ok(ims_job.resultant_image_id.unwrap())
 }
 
 async fn process_sat_file_image_ims_type_recipe(
@@ -1185,6 +1217,7 @@ async fn process_sat_file_image_ims_type_recipe(
     shasta_root_cert: &[u8],
     sat_file_image_base_ims_value_yaml: &serde_yaml::Value,
     image_name: &String,
+    dry_run: bool,
 ) -> Result<String, Error> {
     // Base image needs to be created from a IMS job using an IMS recipe
     let recipe_name = sat_file_image_base_ims_value_yaml["name"].as_str().unwrap();
@@ -1227,7 +1260,7 @@ async fn process_sat_file_image_ims_type_recipe(
 
     let root_public_ssh_key = root_public_ssh_key_value["id"].as_str().unwrap();
 
-    let ims_job = ims::job::types::JobPostRequest {
+    let ims_job = ims::job::types::Job {
         job_type: "create".to_string(),
         image_root_archive_name: image_name.to_string(),
         kernel_file_name: Some("vmlinuz".to_string()),
@@ -1238,16 +1271,33 @@ async fn process_sat_file_image_ims_type_recipe(
         ssh_containers: None, // Should this be None ???
         enable_debug: Some(false),
         build_env_size: Some(15),
+        require_dkms: None, // FIXME: check SAT file and see if this value needs to be set
+        id: None,
+        created: None,
+        status: None,
+        kubernetes_job: None,
+        kubernetes_service: None,
+        kubernetes_configmap: None,
+        resultant_image_id: None,
+        kubernetes_namespace: None,
+        arch: None,
     };
 
-    let ims_job: serde_json::Value =
+    let ims_job = if dry_run {
+        println!(
+            "Dry run mode: Create IMS job:\n{}",
+            serde_json::to_string_pretty(&ims_job)?
+        );
+        ims_job.into()
+    } else {
         ims::job::http_client::post_sync(shasta_token, shasta_base_url, shasta_root_cert, &ims_job)
             .await
-            .unwrap();
+            .unwrap()
+    };
 
     log::info!("IMS job response:\n{:#?}", ims_job);
 
-    Ok(ims_job["resultant_image_id"].as_str().unwrap().to_string())
+    Ok(ims_job.resultant_image_id.unwrap())
 }
 
 fn process_sat_file_image_old_version(
@@ -2145,27 +2195,23 @@ pub async fn process_session_template_section_in_sat_file(
             bos_session_template_configuration_name
         );
 
-        if !dry_run {
-            let cfs_configuration_vec_rslt = cfs::configuration::http_client::v3::get(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                Some(&bos_session_template_configuration_name),
-            )
-            .await;
+        let cfs_configuration_vec_rslt = cfs::configuration::http_client::v3::get(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            Some(&bos_session_template_configuration_name),
+        )
+        .await;
 
-            if cfs_configuration_vec_rslt.is_err() || cfs_configuration_vec_rslt.unwrap().is_empty()
-            {
-                return Err(Error::Message(
-                    "ERROR: BOS session template configuration not found in SAT file image list."
-                        .to_string(),
-                ));
-                /* eprintln!(
-                    "ERROR: BOS session template configuration not found in SAT file image list."
-                );
-                std::process::exit(1); */
-            }
-        } else {
+        if cfs_configuration_vec_rslt.is_err() || cfs_configuration_vec_rslt.unwrap().is_empty() {
+            return Err(Error::Message(
+                "ERROR: BOS session template configuration not found in SAT file image list."
+                    .to_string(),
+            ));
+            /* eprintln!(
+                "ERROR: BOS session template configuration not found in SAT file image list."
+            );
+            std::process::exit(1); */
         }
 
         let _ims_image_name = image_details.name.to_string();
@@ -2177,8 +2223,6 @@ pub async fn process_session_template_section_in_sat_file(
             .as_str()
             .unwrap_or("")
             .to_string();
-
-        // bos_session_template_name.replace("__DATE__", tag);
 
         let mut boot_set_vec: HashMap<String, BootSet> = HashMap::new();
 
@@ -2336,7 +2380,15 @@ pub async fn process_session_template_section_in_sat_file(
             tenant: None,
         };
 
-        if !dry_run {
+        dbg!(&create_bos_session_template_payload);
+        std::process::exit(0);
+
+        /* if dry_run {
+            println!(
+                "Dry run mode: BOS sessiontemplate to create:\n{}",
+                serde_json::to_string_pretty(&create_bos_session_template_payload)?
+            );
+        } else {
             let create_bos_session_template_resp = bos::template::http_client::v2::put(
                 shasta_token,
                 shasta_base_url,
@@ -2363,50 +2415,48 @@ pub async fn process_session_template_section_in_sat_file(
                     )))
                 }
             }
-        } else {
-            println!(
-                "BOS sessiontemplate to create:\n{:#?}",
-                create_bos_session_template_payload
-            );
-        }
+        } */
     }
+
+    std::process::exit(0);
 
     // Create BOS session. Note: reboot operation shuts down the nodes and they may not start
     // up... hence we will split the reboot into 2 operations shutdown and start
 
-    if do_not_reboot {
-        log::info!("Reboot canceled by user");
-    } else {
-        log::info!("Rebooting");
+    if !dry_run {
+        if do_not_reboot {
+            log::info!("Reboot canceled by user");
+        } else {
+            log::info!("Rebooting");
 
-        for bos_st_name in bos_st_created_vec {
-            log::info!(
-                "Creating BOS session for BOS sessiontemplate '{}' to reboot",
-                bos_st_name
-            );
+            for bos_st_name in bos_st_created_vec {
+                log::info!(
+                    "Creating BOS session for BOS sessiontemplate '{}' to reboot",
+                    bos_st_name
+                );
 
-            // BOS session v2
-            let bos_session = BosSession {
-                name: None,
-                tenant: None,
-                operation: Some(Operation::Reboot),
-                template_name: bos_st_name.clone(),
-                limit: None,
-                stage: None,
-                include_disabled: None,
-                status: None,
-                components: None,
-            };
+                // BOS session v2
+                let bos_session = BosSession {
+                    name: None,
+                    tenant: None,
+                    operation: Some(Operation::Reboot),
+                    template_name: bos_st_name.clone(),
+                    limit: None,
+                    stage: None,
+                    include_disabled: None,
+                    status: None,
+                    components: None,
+                };
 
-            let create_bos_session_resp = bos::session::http_client::v2::post(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                bos_session,
-            )
-            .await;
+                let create_bos_session_resp = bos::session::http_client::v2::post(
+                    shasta_token,
+                    shasta_base_url,
+                    shasta_root_cert,
+                    bos_session,
+                )
+                .await;
 
-            match create_bos_session_resp {
+                match create_bos_session_resp {
                 Ok(bos_session) => {
                     // log::info!("K8s job relates to BOS session v1 '{}'", bos_session["job"].as_str().unwrap());
                     println!(
@@ -2422,36 +2472,37 @@ pub async fn process_session_template_section_in_sat_file(
                 ))),
             }
 
-            let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                Some(&bos_st_name),
-            )
-            .await?;
+                let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
+                    shasta_token,
+                    shasta_base_url,
+                    shasta_root_cert,
+                    Some(&bos_st_name),
+                )
+                .await?;
 
-            let bos_sessiontemplate = bos_sessiontemplate_vec.first().unwrap();
+                let bos_sessiontemplate = bos_sessiontemplate_vec.first().unwrap();
 
-            let _ = if !bos_sessiontemplate.get_target_hsm().is_empty() {
-                // Get list of XNAMES for all HSM groups
-                let mut xnames = Vec::new();
-                for hsm in bos_sessiontemplate.get_target_hsm().iter() {
-                    xnames.append(
-                        &mut hsm::group::utils::get_member_vec_from_hsm_group_name(
-                            shasta_token,
-                            shasta_base_url,
-                            shasta_root_cert,
-                            hsm,
-                        )
-                        .await,
-                    );
-                }
+                let _ = if !bos_sessiontemplate.get_target_hsm().is_empty() {
+                    // Get list of XNAMES for all HSM groups
+                    let mut xnames = Vec::new();
+                    for hsm in bos_sessiontemplate.get_target_hsm().iter() {
+                        xnames.append(
+                            &mut hsm::group::utils::get_member_vec_from_hsm_group_name(
+                                shasta_token,
+                                shasta_base_url,
+                                shasta_root_cert,
+                                hsm,
+                            )
+                            .await,
+                        );
+                    }
 
-                xnames
-            } else {
-                // Get list of XNAMES
-                bos_sessiontemplate.get_target_xname()
-            };
+                    xnames
+                } else {
+                    // Get list of XNAMES
+                    bos_sessiontemplate.get_target_xname()
+                };
+            }
         }
     }
 
