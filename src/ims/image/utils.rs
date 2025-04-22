@@ -1,6 +1,7 @@
 use crate::{
     bos,
     bss::http_client::get_multiple,
+    cfs::session::http_client::v2::types::CfsSessionGetResponse,
     common,
     error::Error,
     hsm::group::utils::get_member_vec_from_hsm_name_vec,
@@ -79,7 +80,7 @@ pub async fn get_by_name(
 }
 
 /// Just sorts images by creation time in ascendent order
-pub async fn filter(image_vec: &mut [Image]) {
+pub fn filter(image_vec: &mut [Image]) {
     // Sort images by creation time order ASC
     image_vec.sort_by(|a, b| a.created.as_ref().unwrap().cmp(b.created.as_ref().unwrap()));
 }
@@ -274,7 +275,7 @@ pub async fn get_image_available_vec(
     let mut image_vec: Vec<Image> =
         super::http_client::get(shasta_token, shasta_base_url, shasta_root_cert, None).await?;
 
-    ims::image::utils::filter(&mut image_vec).await;
+    ims::image::utils::filter(&mut image_vec);
 
     // We need BOS session templates to find an image created by SAT
     let mut bos_sessiontemplate_vec =

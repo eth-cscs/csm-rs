@@ -1572,6 +1572,27 @@ impl ImsTrait for Csm {
         .map_err(|e| Error::Message(e.to_string()))
     }
 
+    async fn get_all_images(
+        &self,
+        shasta_token: &str,
+        shasta_base_url: &str,
+        shasta_root_cert: &[u8],
+    ) -> Result<Vec<FrontEndImage>, Error> {
+        crate::ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+            .await
+            .map(|image_vec| image_vec.into_iter().map(|image| image.into()).collect())
+            .map_err(|e| Error::Message(e.to_string()))
+    }
+
+    fn filter_images(&self, image_vec: &mut Vec<FrontEndImage>) -> Result<(), Error> {
+        let mut image_aux_vec: Vec<crate::ims::image::http_client::types::Image> =
+            image_vec.iter().map(|image| image.clone().into()).collect();
+
+        crate::ims::image::utils::filter(&mut image_aux_vec);
+
+        Ok(())
+    }
+
     async fn delete_image(
         &self,
         shasta_token: &str,
