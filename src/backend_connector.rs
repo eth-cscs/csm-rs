@@ -1489,8 +1489,6 @@ impl SatTrait for Csm {
         gitea_token: &str,
         do_not_reboot: bool,
         watch_logs: bool,
-        image_only: bool,
-        session_template_only: bool,
         debug_on_failure: bool,
         dry_run: bool,
     ) -> Result<(), Error> {
@@ -1514,8 +1512,6 @@ impl SatTrait for Csm {
             gitea_token,
             do_not_reboot,
             watch_logs,
-            image_only,
-            session_template_only,
             debug_on_failure,
             dry_run,
         )

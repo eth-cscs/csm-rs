@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 use crate::{
     cfs::{
@@ -29,8 +29,6 @@ pub async fn exec(
     gitea_token: &str,
     do_not_reboot: bool,
     watch_logs: bool,
-    image_only: bool,
-    session_template_only: bool,
     debug_on_failure: bool,
     dry_run: bool,
 ) -> Result<(), Error> {
@@ -61,11 +59,26 @@ pub async fn exec(
         .await
         .unwrap();
 
-    // TODO: multiple API calls to CSM sequentially
-    //
     // Get data from CSM
     //
-    // Get configurations from CSM
+    let start = Instant::now();
+    log::info!("Fetching data from the backend...");
+    let (configuration_vec, image_vec, ims_recipe_vec) = tokio::try_join!(
+        cfs::configuration::http_client::v2::get_all(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert
+        ),
+        ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert),
+        ims::recipe::http_client::get(shasta_token, shasta_base_url, shasta_root_cert, None)
+    )?;
+    let duration = start.elapsed();
+    log::info!(
+        "Time elapsed to fetch information from backend: {:?}",
+        duration
+    );
+
+    /* // Get configurations from CSM
     let configuration_vec = cfs::configuration::http_client::v2::get(
         shasta_token,
         shasta_base_url,
@@ -81,7 +94,7 @@ pub async fn exec(
     // Get IMS recipes from CSM
     let ims_recipe_vec =
         ims::recipe::http_client::get(shasta_token, shasta_base_url, shasta_root_cert, None)
-            .await?;
+            .await?; */
 
     // VALIDATION
     //
@@ -182,7 +195,10 @@ pub async fn exec(
                 );
 
                 if dry_run {
-                    println!("Dry run: Create HSM groups based on list of nodes");
+                    println!(
+                        "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
+                        target_hsm_group_name, new_target_hsm_group_members_vec
+                    );
                 } else {
                     update_hsm_group_members(
                         shasta_token,
@@ -241,54 +257,52 @@ pub async fn exec(
 
     // Process "images" section in SAT file
     //
+    log::info!("Process images section in SAT file");
     // List of image.ref_name already processed
     let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
-    if session_template_only == false {
-        let cfs_session_created_hashmap: HashMap<String, serde_yaml::Value> =
-            utils::import_images_section_in_sat_file(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                vault_base_url,
-                site_name,
-                // vault_secret_path,
-                // vault_role_id,
-                k8s_api_url,
-                &mut ref_name_processed_hashmap,
-                image_yaml_vec_opt.unwrap_or(&Vec::new()).to_vec(),
-                &cray_product_catalog,
-                ansible_verbosity_opt,
-                ansible_passthrough_opt,
-                debug_on_failure,
-                dry_run,
-                watch_logs,
-            )
-            .await?;
-
-        log::info!(
-            "Images created: {:?}",
-            cfs_session_created_hashmap.keys().collect::<Vec<&String>>()
-        );
-    }
-
-    // Process "session_templates" section in SAT file
-    //
-    if image_only == false {
-        utils::process_session_template_section_in_sat_file(
+    let cfs_session_created_hashmap: HashMap<String, serde_yaml::Value> =
+        utils::import_images_section_in_sat_file(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            ref_name_processed_hashmap,
-            hsm_group_param_opt,
-            hsm_group_available_vec,
-            sat_template_file_yaml,
-            // &tag,
-            do_not_reboot,
+            vault_base_url,
+            site_name,
+            // vault_secret_path,
+            // vault_role_id,
+            k8s_api_url,
+            &mut ref_name_processed_hashmap,
+            image_yaml_vec_opt.unwrap_or(&Vec::new()).to_vec(),
+            &cray_product_catalog,
+            ansible_verbosity_opt,
+            ansible_passthrough_opt,
+            debug_on_failure,
             dry_run,
+            watch_logs,
         )
         .await?;
-    }
+
+    log::info!(
+        "Images created: {:?}",
+        cfs_session_created_hashmap.keys().collect::<Vec<&String>>()
+    );
+
+    // Process "session_templates" section in SAT file
+    //
+    log::info!("Process session_template section in SAT file");
+    utils::process_session_template_section_in_sat_file(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        ref_name_processed_hashmap,
+        // hsm_group_param_opt,
+        hsm_group_available_vec,
+        sat_template_file_yaml,
+        // &tag,
+        do_not_reboot,
+        dry_run,
+    )
+    .await?;
 
     Ok(())
 }

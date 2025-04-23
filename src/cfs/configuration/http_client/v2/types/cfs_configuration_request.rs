@@ -87,6 +87,8 @@ impl CfsConfigurationRequest {
 
         let cfs_configuration_name = configuration_yaml["name"].as_str().unwrap().to_string();
 
+        cfs_configuration.name = cfs_configuration_name.clone();
+
         for layer_yaml in configuration_yaml["layers"].as_sequence().unwrap() {
             // println!("\n\n### Layer:\n{:#?}\n", layer_json);
 

@@ -16,7 +16,8 @@ use crate::{
     },
     common,
     error::Error,
-    hsm, ims,
+    hsm,
+    ims::{self, image::http_client::types::Link},
     node::utils::validate_target_hsm_members,
 };
 use image::Image;
@@ -705,7 +706,23 @@ pub async fn create_cfs_configuration_from_sat_file(
         )
         .await?;
 
-    if !dry_run {
+    if dry_run {
+        println!(
+            "Dry run mode: Create CFS configuration:\n{}",
+            serde_json::to_string_pretty(&cfs_configuration)?
+        );
+
+        // Generate mock CFS configuration
+        let cfs_configuration = CfsConfigurationResponse {
+            name: cfs_configuration_name,
+            last_updated: "".to_string(),
+            layers: Vec::new(),
+            additional_inventory: None,
+        };
+
+        // Return mock CFS configuration
+        Ok(cfs_configuration)
+    } else {
         cfs::configuration::http_client::v2::put(
             shasta_token,
             shasta_base_url,
@@ -714,20 +731,6 @@ pub async fn create_cfs_configuration_from_sat_file(
             &cfs_configuration_name,
         )
         .await
-    } else {
-        println!(
-            "Dry run mode: Create CFS configuration:\n{}",
-            serde_json::to_string_pretty(&cfs_configuration)?
-        );
-
-        let cfs_configuration = CfsConfigurationResponse {
-            name: cfs_configuration_name,
-            last_updated: "".to_string(),
-            layers: Vec::new(),
-            additional_inventory: None,
-        };
-
-        Ok(cfs_configuration)
     }
 }
 
@@ -817,6 +820,7 @@ pub async fn import_images_section_in_sat_file(
         );
 
     // Process images
+    log::info!("Processing image '{:?}'", next_image_to_process_opt);
     let mut image_processed_hashmap: HashMap<String, serde_yaml::Value> = HashMap::new();
 
     while let Some(image_yaml) = &next_image_to_process_opt {
@@ -2030,7 +2034,7 @@ pub async fn process_session_template_section_in_sat_file(
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     ref_name_processed_hashmap: HashMap<String, String>,
-    _hsm_group_param_opt: Option<&String>,
+    // hsm_group_param_opt: Option<&String>,
     hsm_group_available_vec: &Vec<String>,
     sat_file_yaml: Value,
     do_not_reboot: bool,
@@ -2048,137 +2052,66 @@ pub async fn process_session_template_section_in_sat_file(
             serde_yaml::from_value(bos_sessiontemplate_yaml.clone())
                 .map_err(|e| Error::Message(e.to_string()))?;
 
-        let image_details: ims::image::http_client::types::Image = if let Some(
-            bos_sessiontemplate_image,
-        ) =
-            bos_sessiontemplate_yaml.get("image")
-        {
-            if let Some(bos_sessiontemplate_image_ims) = bos_sessiontemplate_image.get("ims") {
-                // Get boot image to configure the nodes
-                if let Some(bos_session_template_image_ims_name) =
-                    bos_sessiontemplate_image_ims.get("name")
-                {
-                    // BOS sessiontemplate boot image defined by name
-                    let bos_session_template_image_name = bos_session_template_image_ims_name
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-
-                    // Get base image details
-                    ims::image::utils::get_fuzzy(
-                        shasta_token,
-                        shasta_base_url,
-                        shasta_root_cert,
-                        hsm_group_available_vec,
-                        Some(&bos_session_template_image_name),
-                        Some(&1),
-                    )
-                    .await?
-                    .first()
-                    .unwrap()
-                    .clone()
-                } else if let Some(bos_session_template_image_ims_id) =
-                    bos_sessiontemplate_image_ims.get("id")
-                {
-                    // BOS sessiontemplate boot image defined by id
-                    let bos_session_template_image_id = bos_session_template_image_ims_id
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-
-                    // Get base image details
-                    ims::image::http_client::get(
-                        shasta_token,
-                        shasta_base_url,
-                        shasta_root_cert,
-                        Some(&bos_session_template_image_id),
-                    )
-                    .await?
-                    .first()
-                    .unwrap()
-                    .clone()
-                } else {
-                    return Err(Error::Message("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()));
-                    /* eprintln!("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.\nExit");
-                    std::process::exit(1); */
-                }
-            } else if let Some(bos_session_template_image_image_ref) =
-                bos_sessiontemplate_image.get("image_ref")
-            {
-                // BOS sessiontemplate boot image defined by image_ref
-                let image_ref = bos_session_template_image_image_ref
-                    .as_str()
-                    .unwrap()
-                    .to_string();
-
-                let image_id = ref_name_processed_hashmap
-                    .get(&image_ref)
-                    .unwrap()
-                    .to_string();
-
-                // Get Image by id
-                ims::image::http_client::get(
-                    shasta_token,
-                    shasta_base_url,
-                    shasta_root_cert,
-                    Some(&image_id),
-                )
-                .await?
-                .first()
-                .unwrap()
-                .clone()
-            } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str() {
-                let image_name = image_name_substring;
-                // Backward compatibility
-                // Get base image details
-                log::info!("Looking for IMS image which name contains '{}'", image_name);
-
-                if !dry_run {
-                    let image_vec = ims::image::utils::get_fuzzy(
-                        shasta_token,
-                        shasta_base_url,
-                        shasta_root_cert,
-                        hsm_group_available_vec,
-                        Some(&image_name),
-                        None,
-                    )
-                    .await?;
-
-                    // Validate/check if image exists
-                    if image_vec.is_empty() {
-                        return Err(Error::Message(format!(
-                            "ERROR: Could not find an image which name contains '{}'. Exit",
-                            image_name
-                        )));
-                        /* eprintln!(
-                            "ERROR: Could not find an image which name contains '{}'. Exit",
-                            image_name
-                        );
-                        std::process::exit(1); */
+        // Get boot image details in BOS sessiontemplate. This is needed to create the BOS
+        // sessiontemplate BootSets
+        let image_details: ims::image::http_client::types::Image =
+            if let Some(bos_sessiontemplate_image) = bos_sessiontemplate_yaml.get("image") {
+                let (image_reference, is_image_id) =
+                    get_image_reference_from_bos_sessiontemplate_yaml(
+                        bos_sessiontemplate_image,
+                        &ref_name_processed_hashmap,
+                    )?;
+                if dry_run {
+                    let dry_run_mock_image = if is_image_id {
+                        ims::image::http_client::types::Image {
+                            id: Some(image_reference.to_string()),
+                            created: None,
+                            name: "dryrun_image".to_string(),
+                            link: Some(Link {
+                                path: "dryrun_path".to_string(),
+                                etag: Some("dryrun_etag".to_string()),
+                                r#type: "dryrun_type".to_string(),
+                            }),
+                            arch: None,
+                        }
+                    } else {
+                        ims::image::http_client::types::Image {
+                            id: None,
+                            created: None,
+                            name: image_reference.to_string(),
+                            link: Some(Link {
+                                path: "dryrun_path".to_string(),
+                                etag: Some("dryrun_etag".to_string()),
+                                r#type: "dryrun_type".to_string(),
+                            }),
+                            arch: None,
+                        }
                     };
 
-                    image_vec.first().unwrap().clone()
+                    println!(
+                        "Dry run mode: Generate mock Image\n{}",
+                        serde_json::to_string_pretty(&dry_run_mock_image)?
+                    );
+
+                    dry_run_mock_image
                 } else {
-                    ims::image::http_client::types::Image {
-                        id: None,
-                        created: None,
-                        name: image_name.to_string(),
-                        link: None,
-                        arch: None,
-                    }
+                    get_image_details_from_bos_sessiontemplate_yaml(
+                        shasta_token,
+                        shasta_base_url,
+                        shasta_root_cert,
+                        &hsm_group_available_vec,
+                        &image_reference,
+                        is_image_id,
+                    )
+                    .await?
                 }
             } else {
-                return Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' sections found in session_template.image.\nExit".to_string()));
-                /* eprintln!("ERROR: neither 'image.ims' nor 'image.image_ref' sections found in session_template.image.\nExit");
+                return Err(Error::Message(
+                    "ERROR: no 'image' section in session_template.\nExit".to_string(),
+                ));
+                /* eprintln!("ERROR: no 'image' section in session_template.\nExit");
                 std::process::exit(1); */
-            }
-        } else {
-            return Err(Error::Message(
-                "ERROR: no 'image' section in session_template.\nExit".to_string(),
-            ));
-            /* eprintln!("ERROR: no 'image' section in session_template.\nExit");
-            std::process::exit(1); */
-        };
+            };
 
         log::info!("Image with name '{}' found", image_details.name);
 
@@ -2188,33 +2121,28 @@ pub async fn process_session_template_section_in_sat_file(
             .unwrap()
             .to_string();
 
-        // bos_session_template_configuration_name.replace("__DATE__", tag);
-
+        // Check CFS configuration exists in CSM
         log::info!(
             "Looking for CFS configuration with name: {}",
             bos_session_template_configuration_name
         );
 
-        let cfs_configuration_vec_rslt = cfs::configuration::http_client::v3::get(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            Some(&bos_session_template_configuration_name),
-        )
-        .await;
-
-        if cfs_configuration_vec_rslt.is_err() || cfs_configuration_vec_rslt.unwrap().is_empty() {
-            return Err(Error::Message(
-                "ERROR: BOS session template configuration not found in SAT file image list."
-                    .to_string(),
-            ));
-            /* eprintln!(
-                "ERROR: BOS session template configuration not found in SAT file image list."
+        if dry_run {
+            println!(
+                "Dry run mode: CFS configuration '{}' found in CSM.",
+                bos_session_template_configuration_name
             );
-            std::process::exit(1); */
-        }
+        } else {
+            cfs::configuration::http_client::v3::get(
+                shasta_token,
+                shasta_base_url,
+                shasta_root_cert,
+                Some(&bos_session_template_configuration_name),
+            )
+            .await?;
+        };
 
-        let _ims_image_name = image_details.name.to_string();
+        // let ims_image_name = image_details.name.to_string();
         let ims_image_etag = image_details.link.as_ref().unwrap().etag.as_ref().unwrap();
         let ims_image_path = &image_details.link.as_ref().unwrap().path;
         let ims_image_type = &image_details.link.as_ref().unwrap().r#type;
@@ -2380,16 +2308,21 @@ pub async fn process_session_template_section_in_sat_file(
             tenant: None,
         };
 
-        dbg!(&create_bos_session_template_payload);
-        std::process::exit(0);
-
-        /* if dry_run {
+        if dry_run {
             println!(
-                "Dry run mode: BOS sessiontemplate to create:\n{}",
+                "Dry run mode: Create BOS sessiontemplate:\n{}",
                 serde_json::to_string_pretty(&create_bos_session_template_payload)?
             );
+
+            // Generate a mock name for the BOS session template
+            let dry_run_bos_sessiontemplate_name = format!("DRYRUN_{}", Uuid::new_v4().to_string());
+            println!(
+                "Dry Run Mode: BOS sessiontemplate name '{}' created",
+                dry_run_bos_sessiontemplate_name
+            );
+            bos_st_created_vec.push(dry_run_bos_sessiontemplate_name);
         } else {
-            let create_bos_session_template_resp = bos::template::http_client::v2::put(
+            let bos_sessiontemplate = bos::template::http_client::v2::put(
                 shasta_token,
                 shasta_base_url,
                 shasta_root_cert,
@@ -2397,112 +2330,89 @@ pub async fn process_session_template_section_in_sat_file(
                 // &create_bos_session_template_payload.name.as_ref().unwrap(),
                 &bos_sessiontemplate_name,
             )
-            .await;
+            .await?;
 
-            match create_bos_session_template_resp {
-                Ok(bos_sessiontemplate) => {
-                    println!(
-                        "BOS sessiontemplate name '{}' created",
-                        bos_sessiontemplate_name
-                    );
+            println!(
+                "BOS sessiontemplate name '{}' created",
+                bos_sessiontemplate_name
+            );
 
-                    bos_st_created_vec.push(bos_sessiontemplate.name.unwrap())
-                }
-                Err(error) => {
-                    return Err(Error::Message(format!(
-                        "ERROR: BOS session template creation failed.\nReason:\n{}\nExit",
-                        error
-                    )))
-                }
-            }
-        } */
+            bos_st_created_vec.push(bos_sessiontemplate.name.unwrap())
+        }
     }
-
-    std::process::exit(0);
 
     // Create BOS session. Note: reboot operation shuts down the nodes and they may not start
     // up... hence we will split the reboot into 2 operations shutdown and start
 
-    if !dry_run {
-        if do_not_reboot {
-            log::info!("Reboot canceled by user");
-        } else {
-            log::info!("Rebooting");
+    if do_not_reboot {
+        log::info!("Reboot canceled by user");
+    } else {
+        log::info!("Rebooting");
 
-            for bos_st_name in bos_st_created_vec {
-                log::info!(
-                    "Creating BOS session for BOS sessiontemplate '{}' to reboot",
-                    bos_st_name
+        for bos_st_name in bos_st_created_vec {
+            log::info!(
+                "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
+                bos_st_name
+            );
+
+            // BOS session v2
+            let bos_session = BosSession {
+                name: None,
+                tenant: None,
+                operation: Some(Operation::Reboot),
+                template_name: bos_st_name.clone(),
+                limit: None,
+                stage: None,
+                include_disabled: None,
+                status: None,
+                components: None,
+            };
+
+            if dry_run {
+                println!(
+                    "Dry run mode: Create BOS session:\n{}",
+                    serde_json::to_string_pretty(&bos_session)?
                 );
-
-                // BOS session v2
-                let bos_session = BosSession {
-                    name: None,
-                    tenant: None,
-                    operation: Some(Operation::Reboot),
-                    template_name: bos_st_name.clone(),
-                    limit: None,
-                    stage: None,
-                    include_disabled: None,
-                    status: None,
-                    components: None,
-                };
-
-                let create_bos_session_resp = bos::session::http_client::v2::post(
+            } else {
+                bos::session::http_client::v2::post(
                     shasta_token,
                     shasta_base_url,
                     shasta_root_cert,
                     bos_session,
                 )
-                .await;
-
-                match create_bos_session_resp {
-                Ok(bos_session) => {
-                    // log::info!("K8s job relates to BOS session v1 '{}'", bos_session["job"].as_str().unwrap());
-                    println!(
-                        "BOS session '{}' for BOS sessiontemplate '{}' created",
-                        bos_session["name"].as_str().unwrap(),
-                        bos_st_name
-                    )
-                }
-                Err(error) => return Err(Error::Message(format!(
-                    "ERROR: BOS session for BOS sessiontemplate '{}' creation failed.\nReason:\n{}\nExit",
-                    bos_st_name,
-                    error
-                ))),
-            }
-
-                let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
-                    shasta_token,
-                    shasta_base_url,
-                    shasta_root_cert,
-                    Some(&bos_st_name),
-                )
                 .await?;
-
-                let bos_sessiontemplate = bos_sessiontemplate_vec.first().unwrap();
-
-                let _ = if !bos_sessiontemplate.get_target_hsm().is_empty() {
-                    // Get list of XNAMES for all HSM groups
-                    let mut xnames = Vec::new();
-                    for hsm in bos_sessiontemplate.get_target_hsm().iter() {
-                        xnames.append(
-                            &mut hsm::group::utils::get_member_vec_from_hsm_group_name(
-                                shasta_token,
-                                shasta_base_url,
-                                shasta_root_cert,
-                                hsm,
-                            )
-                            .await,
-                        );
-                    }
-
-                    xnames
-                } else {
-                    // Get list of XNAMES
-                    bos_sessiontemplate.get_target_xname()
-                };
             }
+
+            /* let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
+                shasta_token,
+                shasta_base_url,
+                shasta_root_cert,
+                Some(&bos_st_name),
+            )
+            .await?;
+
+            let bos_sessiontemplate = bos_sessiontemplate_vec.first().unwrap();
+
+            let _ = if !bos_sessiontemplate.get_target_hsm().is_empty() {
+                // Get list of XNAMES for all HSM groups
+                let mut xnames = Vec::new();
+                for hsm in bos_sessiontemplate.get_target_hsm().iter() {
+                    xnames.append(
+                        &mut hsm::group::utils::get_member_vec_from_hsm_group_name(
+                            shasta_token,
+                            shasta_base_url,
+                            shasta_root_cert,
+                            hsm,
+                        )
+                        .await,
+                    );
+                }
+
+                xnames
+            } else {
+                // Get list of XNAMES
+                bos_sessiontemplate.get_target_xname()
+            }; */
         }
     }
 
@@ -2513,4 +2423,184 @@ pub async fn process_session_template_section_in_sat_file(
     log::info!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
 
     Ok(())
+}
+
+/// Returns image reference related to a session template in SAT file.
+/// An image refenrece can be:
+///     - image_name
+///     - image_id
+/// Image names are supposed to be fetched using 'get_fuzzy' function (so we increase the probablity of finding the image in CSM if it was created using 'sat bootprep --overwrite-images') while image ids can be fetched
+/// by just 'get' function
+/// This function returns a tuple with the image reference and a boolean indicating whether the image is
+/// an image id or not
+fn get_image_reference_from_bos_sessiontemplate_yaml(
+    bos_sessiontemplate_image: &Value,
+    ref_name_processed_hashmap: &HashMap<String, String>,
+) -> Result<(String, bool), Error> {
+    if let Some(bos_sessiontemplate_image_ims) = bos_sessiontemplate_image.get("ims") {
+        // Get boot image to configure the nodes
+        if let Some(bos_session_template_image_ims_name) = bos_sessiontemplate_image_ims.get("name")
+        {
+            // BOS sessiontemplate boot image defined by name
+            let image_name = bos_session_template_image_ims_name
+                .as_str()
+                .unwrap()
+                .to_string();
+
+            Ok((image_name, false))
+        } else if let Some(bos_session_template_image_ims_id) =
+            bos_sessiontemplate_image_ims.get("id")
+        {
+            // BOS sessiontemplate boot image defined by id
+            let image_id = bos_session_template_image_ims_id
+                .as_str()
+                .unwrap()
+                .to_string();
+
+            Ok((image_id, true))
+        } else {
+            return Err(Error::Message("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()));
+        }
+    } else if let Some(bos_session_template_image_image_ref) =
+        bos_sessiontemplate_image.get("image_ref")
+    {
+        // BOS sessiontemplate boot image defined by image_ref
+        let image_ref = bos_session_template_image_image_ref
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let image_id = ref_name_processed_hashmap
+            .get(&image_ref)
+            .unwrap()
+            .to_string();
+
+        Ok((image_id, true))
+    } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str() {
+        let image_name = image_name_substring;
+        // Backward compatibility
+        // Get base image details
+
+        Ok((image_name.to_string(), false))
+    } else {
+        return Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()));
+    }
+}
+
+async fn get_image_details_from_bos_sessiontemplate_yaml(
+    shasta_token: &str,
+    shasta_base_url: &str,
+    shasta_root_cert: &[u8],
+    hsm_group_available_vec: &[String],
+    image_reference: &str,
+    is_image_id: bool,
+) -> Result<ims::image::http_client::types::Image, Error> {
+    let image = if is_image_id {
+        ims::image::http_client::get(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            Some(&image_reference),
+        )
+        .await
+        .map(|image_vec| image_vec.first().cloned().unwrap())
+    } else {
+        ims::image::utils::get_fuzzy(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            hsm_group_available_vec,
+            Some(&image_reference),
+            Some(&1),
+        )
+        .await
+        .map(|image_vec| image_vec.first().cloned().unwrap())
+    };
+
+    image
+
+    /* if let Some(bos_sessiontemplate_image_ims) = bos_sessiontemplate_image.get("ims") {
+        // Get boot image to configure the nodes
+        if let Some(bos_session_template_image_ims_name) = bos_sessiontemplate_image_ims.get("name")
+        {
+            // BOS sessiontemplate boot image defined by name
+            let bos_session_template_image_name = bos_session_template_image_ims_name
+                .as_str()
+                .unwrap()
+                .to_string();
+
+            // Get base image details
+            ims::image::utils::get_fuzzy(
+                shasta_token,
+                shasta_base_url,
+                shasta_root_cert,
+                hsm_group_available_vec,
+                Some(&bos_session_template_image_name),
+                Some(&1),
+            )
+            .await
+            .map(|image_vec| image_vec.first().cloned().unwrap())
+        } else if let Some(bos_session_template_image_ims_id) =
+            bos_sessiontemplate_image_ims.get("id")
+        {
+            // BOS sessiontemplate boot image defined by id
+            let bos_session_template_image_id = bos_session_template_image_ims_id
+                .as_str()
+                .unwrap()
+                .to_string();
+
+            // Get base image details
+            ims::image::http_client::get(
+                shasta_token,
+                shasta_base_url,
+                shasta_root_cert,
+                Some(&bos_session_template_image_id),
+            )
+            .await
+            .map(|image_vec| image_vec.first().cloned().unwrap())
+        } else {
+            return Err(Error::Message("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()));
+        }
+    } else if let Some(bos_session_template_image_image_ref) =
+        bos_sessiontemplate_image.get("image_ref")
+    {
+        // BOS sessiontemplate boot image defined by image_ref
+        let image_ref = bos_session_template_image_image_ref
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let image_id = ref_name_processed_hashmap
+            .get(&image_ref)
+            .unwrap()
+            .to_string();
+
+        // Get Image by id
+        ims::image::http_client::get(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            Some(&image_id),
+        )
+        .await
+        .map(|image_vec| image_vec.first().cloned().unwrap())
+    } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str() {
+        let image_name = image_name_substring;
+        // Backward compatibility
+        // Get base image details
+        log::info!("Looking for IMS image which name contains '{}'", image_name);
+
+        ims::image::utils::get_fuzzy(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            hsm_group_available_vec,
+            Some(&image_name),
+            None,
+        )
+        .await
+        .map(|image_vec| image_vec.first().cloned().unwrap())
+    } else {
+        return Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()));
+    } */
 }
