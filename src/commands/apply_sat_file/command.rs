@@ -21,7 +21,6 @@ pub async fn exec(
     k8s_api_url: &str,
     shasta_k8s_secrets: serde_json::Value,
     sat_template_file_yaml: serde_yaml::Value,
-    hsm_group_param_opt: Option<&String>,
     hsm_group_available_vec: &Vec<String>,
     ansible_verbosity_opt: Option<u8>,
     ansible_passthrough_opt: Option<&String>,

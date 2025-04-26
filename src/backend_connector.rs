@@ -823,24 +823,6 @@ impl BackendTrait for Csm {
             }
 
             let nid_short = nid_short_vec.join(",");
-            /* let nid_short = nid_hostlist_expanded_vec
-            .iter()
-            .map(|nid_long| {
-                nid_long
-                    .strip_prefix("nid")
-                    .ok_or_else(|| {
-                        Error::Message(format!(
-                            "Nid '{}' not valid, 'nid' prefix missing",
-                            nid_long
-                        ))
-                    })?
-                    /* .expect(
-                        format!("Nid '{}' not valid, 'nid' prefix missing", nid_long).as_str(),
-                    ) */
-                    .trim_start_matches("0")
-            })
-            .collect::<Vec<&str>>()
-            .join(","); */
 
             log::debug!("short NID list: {}", nid_short);
 
@@ -1478,13 +1460,9 @@ impl SatTrait for Csm {
         shasta_root_cert: &[u8],
         vault_base_url: &str,
         site_name: &str,
-        // vault_secret_path: &str,
-        // vault_role_id: &str,
         k8s_api_url: &str,
         shasta_k8s_secrets: serde_json::Value,
-        // sat_file_content: String,
         sat_template_file_yaml: serde_yaml::Value,
-        hsm_group_param_opt: Option<&String>,
         hsm_group_available_vec: &Vec<String>,
         ansible_verbosity_opt: Option<u8>,
         ansible_passthrough_opt: Option<&String>,
@@ -1501,13 +1479,9 @@ impl SatTrait for Csm {
             shasta_root_cert,
             vault_base_url,
             site_name,
-            // vault_secret_path,
-            // vault_role_id,
             k8s_api_url,
             shasta_k8s_secrets,
-            // sat_file_content,
             sat_template_file_yaml,
-            hsm_group_param_opt,
             hsm_group_available_vec,
             ansible_verbosity_opt,
             ansible_passthrough_opt,
