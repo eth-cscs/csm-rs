@@ -40,7 +40,8 @@ hyper-socks2 = { version = "0.8.0", default-features = false } # needed by kube-
 hyper = { version = "0.14" } # needed by kube-rs (to operate with kube api)
 hyper-rustls = { version = "0.24.0", default-features = false }
 tower = { version = "0.4.13", default-features = false }
-futures = { version = "0.3.28", default-features = false }
+futures = { version = "0.3.31", default-features = false }
+futures-channel = "0.3.31"
 dialoguer = { version = "0.10.2", features = ["password"], default-features = false }
 git2 = { version = "0.18.1", default-features = false }
 regex = "1.6.0"

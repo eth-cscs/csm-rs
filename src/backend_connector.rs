@@ -40,8 +40,9 @@ use backend_dispatcher::{
 };
 use chrono::NaiveDateTime;
 use futures::{AsyncBufRead, AsyncReadExt};
+use futures_channel::mpsc::Sender;
 use hostlist_parser::parse;
-use kube::api::AttachedProcess;
+use kube::api::{AttachedProcess, TerminalSize};
 use regex::Regex;
 use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -1920,6 +1921,8 @@ impl ConsoleTrait for Csm {
         shasta_token: &str,
         site_name: &str,
         xname: &str,
+        term_width: u16,
+        term_height: u16,
         k8s: &K8sDetails,
     ) -> Result<(Box<dyn AsyncWrite + Unpin>, Box<dyn AsyncRead + Unpin>), Error> {
         let shasta_k8s_secrets = match &k8s.authentication {
@@ -1945,6 +1948,14 @@ impl ConsoleTrait for Csm {
         )
         .await
         .map_err(|e| Error::Message(e.to_string()))?;
+
+        let mut terminal_size_writer: Sender<TerminalSize> = attached.terminal_size().unwrap();
+        terminal_size_writer
+            .try_send(TerminalSize {
+                width: term_width,
+                height: term_height,
+            })
+            .map_err(|e| Error::Message(e.to_string()))?;
 
         println!("Connected to {}!", xname,);
         println!("Use &. key combination to exit the console.",);
