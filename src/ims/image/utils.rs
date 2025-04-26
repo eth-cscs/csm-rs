@@ -1,7 +1,6 @@
 use crate::{
     bos,
     bss::http_client::get_multiple,
-    cfs::session::http_client::v2::types::CfsSessionGetResponse,
     common,
     error::Error,
     hsm::group::utils::get_member_vec_from_hsm_name_vec,
