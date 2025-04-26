@@ -116,26 +116,6 @@ pub fn get_token_from_local_file(path: &std::ffi::OsStr) -> Result<String, Error
     Ok(shasta_token.to_string())
 }
 
-pub async fn test_connectivity_to_backend(shasta_base_url: &str) -> bool {
-    let client;
-
-    let client_builder = reqwest::Client::builder().connect_timeout(Duration::new(3, 0));
-
-    // Build client
-    client = client_builder.build().unwrap();
-
-    let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
-
-    log::info!("Validate CSM token against {}", api_url);
-
-    let resp_rslt = client.get(api_url).send().await;
-
-    match resp_rslt {
-        Ok(_) => true,
-        Err(error) => !error.is_timeout(),
-    }
-}
-
 pub async fn test_client_api(
     shasta_base_url: &str,
     shasta_token: &str,

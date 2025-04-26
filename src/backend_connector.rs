@@ -977,6 +977,12 @@ impl CfsTrait for Csm {
         .await
     }
 
+    async fn get_cfs_health(&self) -> Result<(), Error> {
+        crate::cfs::health::test_connectivity_to_backend(self.base_url.as_str())
+            .await
+            .map_err(|e| Error::Message(e.to_string()))
+    }
+
     async fn post_session(
         &self,
         shasta_token: &str,
