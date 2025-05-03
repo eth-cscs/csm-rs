@@ -1,4 +1,4 @@
-use backend_dispatcher::types::cfs::cfs_configuration_details::LayerDetails as FrontendLayerDetails;
+use manta_backend_dispatcher::types::cfs::cfs_configuration_details::LayerDetails as FrontendLayerDetails;
 
 use std::fmt;
 

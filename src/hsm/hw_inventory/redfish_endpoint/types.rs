@@ -1,4 +1,4 @@
-use backend_dispatcher::types::hsm::inventory::{
+use manta_backend_dispatcher::types::hsm::inventory::{
     DiscoveryInfo as FrontEndDiscoveryInfo, RedfishEndpoint as FrontEndRedfishEndpoint,
     RedfishEndpointArray as FrontEndRedfishEndpointArray,
 };

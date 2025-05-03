@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use backend_dispatcher::types::cfs::component::{
+use manta_backend_dispatcher::types::cfs::component::{
     Component as FrontEndComponent, ComponentVec as FrontEndComponentVec, State as FrontEndState,
 };
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use backend_dispatcher::types::{
+use manta_backend_dispatcher::types::{
     Component as FrontEndComponent, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
     ComponentCreate as FrontEndComponentCreate, NodeMetadataArray as FrontEndNodeMetadataArray,
 };

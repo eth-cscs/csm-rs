@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use backend_dispatcher::types::cfs::session::{
+use manta_backend_dispatcher::types::cfs::session::{
     Ansible as FrontEndAnsible, Artifact as FrontEndArtifact,
     CfsSessionGetResponse as FrontEndCfsSessionGetResponse, Configuration as FrontEndConfiguration,
-    Group as FrontEndGroup,
-    Session as FrontEndSession, Status as FrontEndStatus, Target as FrontEndTarget,
+    Group as FrontEndGroup, Session as FrontEndSession, Status as FrontEndStatus,
+    Target as FrontEndTarget,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

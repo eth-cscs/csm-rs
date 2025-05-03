@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use backend_dispatcher::types::bos::session::{
+use manta_backend_dispatcher::types::bos::session::{
     BosSession as FrontEndBosSession, Operation as FrontEndOperation, Status as FrontEndStatus,
     StatusLabel as FrontEndStatusLabel,
 };

@@ -1,4 +1,4 @@
-use backend_dispatcher::types::{Group as FrontEndGroup, Member as FrontEndMember};
+use manta_backend_dispatcher::types::{Group as FrontEndGroup, Member as FrontEndMember};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

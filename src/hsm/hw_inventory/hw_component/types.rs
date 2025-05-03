@@ -1,4 +1,4 @@
-use backend_dispatcher::types::{
+use manta_backend_dispatcher::types::{
     ArtifactSummary as FrontEndArtifactSummary, ArtifactType as FrontEndArtifactType,
     HSNNICFRUInfo as FrontEndHSNNICFRUInfo, HSNNICLocationInfo as FrontEndHSNNICLocationInfo,
     HWInvByFRUHSNNIC as FrontEndHWInvByFRUHSNNIC, HWInvByFRUMemory as FrontEndHWInvByFRUMemory,

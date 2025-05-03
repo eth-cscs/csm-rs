@@ -1,6 +1,11 @@
 use std::{collections::HashMap, path::PathBuf, pin::Pin};
 
-use backend_dispatcher::{
+use chrono::NaiveDateTime;
+use futures::{AsyncBufRead, AsyncReadExt};
+use futures_channel::mpsc::Sender;
+use hostlist_parser::parse;
+use kube::api::{AttachedProcess, TerminalSize};
+use manta_backend_dispatcher::{
     contracts::BackendTrait,
     error::Error,
     interfaces::{
@@ -38,11 +43,6 @@ use backend_dispatcher::{
         NodeMetadataArray,
     },
 };
-use chrono::NaiveDateTime;
-use futures::{AsyncBufRead, AsyncReadExt};
-use futures_channel::mpsc::Sender;
-use hostlist_parser::parse;
-use kube::api::{AttachedProcess, TerminalSize};
 use regex::Regex;
 use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -684,7 +684,7 @@ impl RedfishEndpointTrait for Csm {
     async fn add_redfish_endpoint(
         &self,
         _auth_token: &str,
-        _redfish_endpoint: &backend_dispatcher::types::hsm::inventory::RedfishEndpoint,
+        _redfish_endpoint: &manta_backend_dispatcher::types::hsm::inventory::RedfishEndpoint,
     ) -> Result<(), Error> {
         Err(Error::Message(
             "Add redfish endpoint command not implemented for this backend".to_string(),
@@ -694,7 +694,7 @@ impl RedfishEndpointTrait for Csm {
     async fn update_redfish_endpoint(
         &self,
         _auth_token: &str,
-        _redfish_endpoint: &backend_dispatcher::types::hsm::inventory::RedfishEndpoint,
+        _redfish_endpoint: &manta_backend_dispatcher::types::hsm::inventory::RedfishEndpoint,
     ) -> Result<(), Error> {
         Err(Error::Message(
             "Update redfish endpoint command not implemented for this backend".to_string(),
@@ -1438,7 +1438,7 @@ impl CfsTrait for Csm {
         configuration_name: Option<&str>,
         components_ids: Option<&str>,
         status: Option<&str>,
-    ) -> Result<Vec<backend_dispatcher::types::cfs::component::Component>, Error> {
+    ) -> Result<Vec<manta_backend_dispatcher::types::cfs::component::Component>, Error> {
         crate::cfs::component::http_client::v3::get_query(
             shasta_token,
             shasta_base_url,
@@ -1716,7 +1716,7 @@ impl ClusterSessionTrait for Csm {
         shasta_token: &str,
         shasta_base_url: &str,
         shasta_root_cert: &[u8],
-        bos_session: backend_dispatcher::types::bos::session::BosSession,
+        bos_session: manta_backend_dispatcher::types::bos::session::BosSession,
     ) -> Result<Value, Error> {
         bos::session::http_client::v2::post(
             shasta_token,

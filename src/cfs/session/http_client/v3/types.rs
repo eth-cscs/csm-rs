@@ -1,4 +1,4 @@
-use backend_dispatcher::types::cfs::session::{
+use manta_backend_dispatcher::types::cfs::session::{
     Ansible as FrontEndAnsible, Artifact as FrontEndArtifact,
     CfsSessionGetResponse as FrontEndCfsSessionGetResponse,
     CfsSessionGetResponseList as FrontEndCfsSessionGetResponseList,

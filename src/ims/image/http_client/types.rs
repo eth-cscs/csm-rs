@@ -1,4 +1,4 @@
-use backend_dispatcher::types::ims::{
+use manta_backend_dispatcher::types::ims::{
     Image as FrontEndImage, ImsImageRecord2Update as FrontEndImsImageRecord2Update,
     Link as FrontEndLink,
 };
