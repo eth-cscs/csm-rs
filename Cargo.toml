@@ -3,13 +3,13 @@ build = "build.rs"
 [package]
 edition = "2021"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
-name = "mesa"
+name = "csm-rs"
 description = "A library for Shasta"
 version = "0.43.18"
 license-file = "LICENSE"
-documentation = "https://github.com/eth-cscs/mesa/blob/main/README.md"
-homepage = "https://github.com/eth-cscs/mesa/blob/main/README.md"
-repository = "https://github.com/eth-cscs/mesa"
+documentation = "https://github.com/eth-cscs/csm-rs/blob/main/README.md"
+homepage = "https://github.com/eth-cscs/csm-rs/blob/main/README.md"
+repository = "https://github.com/eth-cscs/csm-rs"
 publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
