@@ -1,5 +1,5 @@
 /* use directories::ProjectDirs;
-use mesa::ims::s3::{
+use csm_rs::ims::s3::{
     s3_auth, s3_download_object, s3_multipart_upload_object, s3_remove_object, s3_upload_object,
 };
 use rand::distributions::Alphanumeric;

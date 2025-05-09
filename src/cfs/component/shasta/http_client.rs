@@ -36,7 +36,7 @@ pub mod v3 {
 
     #[deprecated(
         since = "0.31.2",
-        note = "Please use `get_multiple_components` in module `cfs::component::mesa::http_clent` instead"
+        note = "Please use `get_multiple_components` in module `cfs::component::csm_rs::http_clent` instead"
     )]
     pub async fn get_multiple_components(
         shasta_token: &str,

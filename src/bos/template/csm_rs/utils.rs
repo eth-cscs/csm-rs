@@ -1,4 +1,4 @@
-use crate::bos::template::mesa::r#struct::v2::BosSessionTemplate;
+use crate::bos::template::csm_rs::r#struct::v2::BosSessionTemplate;
 
 pub async fn filter(
     bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,

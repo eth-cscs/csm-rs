@@ -2,7 +2,7 @@ pub mod v2 {
     use serde_json::Value;
 
     use crate::{
-        cfs::configuration::mesa::r#struct::{
+        cfs::configuration::csm_rs::r#struct::{
             cfs_configuration_request::v2::CfsConfigurationRequest,
             cfs_configuration_response::v2::CfsConfigurationResponse,
         },
@@ -182,7 +182,7 @@ pub mod v3 {
     use serde_json::Value;
 
     use crate::{
-        cfs::configuration::mesa::r#struct::{
+        cfs::configuration::csm_rs::r#struct::{
             cfs_configuration_request::v3::CfsConfigurationRequest,
             cfs_configuration_response::v3::{
                 CfsConfigurationResponse, CfsConfigurationVecResponse,

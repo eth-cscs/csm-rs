@@ -1,7 +1,7 @@
 // tests for BSS
 #[cfg(test)]
 mod tests {
-    use mesa::bss::bootparameters::{utils::get_image_id_from_s3_path, BootParameters};
+    use csm_rs::bss::bootparameters::{utils::get_image_id_from_s3_path, BootParameters};
 
     #[test]
     fn test_get_image_id_from_s3_path() {

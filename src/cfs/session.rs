@@ -5,7 +5,7 @@ pub mod shasta {
             use serde_json::Value;
 
             use crate::{
-                cfs::session::mesa::r#struct::v2::{CfsSessionGetResponse, CfsSessionPostRequest},
+                cfs::session::csm_rs::r#struct::v2::{CfsSessionGetResponse, CfsSessionPostRequest},
                 error::Error,
             };
 
@@ -204,7 +204,7 @@ pub mod shasta {
             use serde_json::Value;
 
             use crate::{
-                cfs::session::mesa::r#struct::v3::{
+                cfs::session::csm_rs::r#struct::v3::{
                     CfsSessionGetResponse, CfsSessionGetResponseList, CfsSessionPostRequest,
                 },
                 error::Error,
@@ -609,7 +609,7 @@ pub mod shasta {
     } */
 }
 
-pub mod mesa {
+pub mod csm_rs {
     use crate::cfs;
     use std::io::{self, Write};
 
@@ -1266,7 +1266,7 @@ pub mod mesa {
             session: &CfsSessionPostRequest,
             watch_logs: bool,
         ) -> Result<CfsSessionGetResponse, Error> {
-            let cfs_session: CfsSessionGetResponse = cfs::session::mesa::http_client::post(
+            let cfs_session: CfsSessionGetResponse = cfs::session::csm_rs::http_client::post(
                 shasta_token,
                 shasta_base_url,
                 shasta_root_cert,
@@ -1695,7 +1695,7 @@ pub mod mesa {
         let mut i = 0;
         let max = 3000; // Max ammount of attempts to check if CFS session has ended
         loop {
-            let cfs_session_vec_rslt = cfs::session::mesa::http_client::get(
+            let cfs_session_vec_rslt = cfs::session::csm_rs::http_client::get(
                 shasta_token,
                 shasta_base_url,
                 shasta_root_cert,

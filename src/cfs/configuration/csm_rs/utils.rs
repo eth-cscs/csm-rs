@@ -1,8 +1,8 @@
 use crate::{
-    bos::{self, template::mesa::r#struct::v2::BosSessionTemplate},
+    bos::{self, template::csm_rs::r#struct::v2::BosSessionTemplate},
     cfs::{
         self, component::shasta::r#struct::v2::ComponentResponse,
-        session::mesa::r#struct::v2::CfsSessionGetResponse,
+        session::csm_rs::r#struct::v2::CfsSessionGetResponse,
     },
     common, hsm,
     ims::image::r#struct::Image,
@@ -22,7 +22,7 @@ pub async fn create(
     cfs_configuration_name: &str,
     cfs_configuration: &CfsConfigurationRequest,
 ) -> Result<CfsConfigurationResponse, crate::error::Error> {
-    cfs::configuration::mesa::http_client::put(
+    cfs::configuration::csm_rs::http_client::put(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -59,7 +59,7 @@ pub async fn filter(
 
         // Note: nodes can be configured calling the component APi directly (bypassing BOS
         // session API)
-        crate::cfs::component::mesa::http_client::get_multiple(
+        crate::cfs::component::csm_rs::http_client::get_multiple(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -72,7 +72,7 @@ pub async fn filter(
     };
 
     /* // Fetch CFS sessions
-    let mut cfs_session_vec = cfs::session::mesa::http_client::get(
+    let mut cfs_session_vec = cfs::session::csm_rs::http_client::get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -87,7 +87,7 @@ pub async fn filter(
 
     // Fetch BOS sessiontemplates
     let mut bos_sessiontemplate_vec =
-        bos::template::mesa::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+        bos::template::csm_rs::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
             .await
             .unwrap(); */
 
@@ -107,7 +107,7 @@ pub async fn filter(
     let mut bos_sessiontemplate_vec = bos_sessiontemplate_vec_opt.unwrap();
 
     // Filter BOS sessiontemplates based on HSM groups
-    bos::template::mesa::utils::filter(
+    bos::template::csm_rs::utils::filter(
         &mut bos_sessiontemplate_vec,
         hsm_group_name_vec,
         &Vec::new(),
@@ -117,7 +117,7 @@ pub async fn filter(
     .await;
 
     // Filter CFS sessions based on HSM groups
-    cfs::session::mesa::utils::filter_by_hsm(
+    cfs::session::csm_rs::utils::filter_by_hsm(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -133,13 +133,13 @@ pub async fn filter(
         String,
         String,
         Vec<String>,
-    )> = crate::bos::template::mesa::utils::get_image_id_cfs_configuration_target_tuple_vec(
+    )> = crate::bos::template::csm_rs::utils::get_image_id_cfs_configuration_target_tuple_vec(
         bos_sessiontemplate_vec,
     );
 
     // Get image id, configuration and targets from CFS sessions
     let image_id_cfs_configuration_target_from_cfs_session: Vec<(String, String, Vec<String>)> =
-        cfs::session::mesa::utils::get_image_id_cfs_configuration_target_tuple_vec(cfs_session_vec);
+        cfs::session::csm_rs::utils::get_image_id_cfs_configuration_target_tuple_vec(cfs_session_vec);
 
     // Get desired configuration from CFS components
     let desired_config_vec: Vec<String> = cfs_component_vec
@@ -212,7 +212,7 @@ pub async fn get_and_filter(
     limit_number_opt: Option<&u8>,
 ) -> Vec<CfsConfigurationResponse> {
     let mut cfs_configuration_value_vec: Vec<CfsConfigurationResponse> =
-        crate::cfs::configuration::mesa::http_client::get(
+        crate::cfs::configuration::csm_rs::http_client::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -228,7 +228,7 @@ pub async fn get_and_filter(
     } else {
         // If user is not admin or function checking if user is admin fails, then filter CFS
         // configurations
-        crate::cfs::configuration::mesa::utils::filter(
+        crate::cfs::configuration::csm_rs::utils::filter(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -259,7 +259,7 @@ pub async fn get_derivatives(
 
     /* // Get CFS sessions related to CFS configuration
     //
-    let mut cfs_sessions = cfs::session::mesa::http_client::get(
+    let mut cfs_sessions = cfs::session::csm_rs::http_client::get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -275,13 +275,13 @@ pub async fn get_derivatives(
     // Get BOS sessiontemplate related to CFS configuration
     //
     let mut bos_sessiontemplates =
-        bos::template::mesa::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+        bos::template::csm_rs::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
             .await
             .unwrap();
 
     // Get Images from CFS sessions
     //
-    let mut images = crate::ims::image::mesa::http_client::get_all(
+    let mut images = crate::ims::image::csm_rs::http_client::get_all(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
@@ -306,7 +306,7 @@ pub async fn get_derivatives(
     let mut ims_images = ims_images_opt.unwrap();
 
     // Filter CFS sessions
-    cfs::session::mesa::utils::filter_by_cofiguration(&mut cfs_sessions, configuration_name);
+    cfs::session::csm_rs::utils::filter_by_cofiguration(&mut cfs_sessions, configuration_name);
 
     // Filter BOS sessiontemplate
     bos_sessiontemplates.retain(|bos_sessiontemplate| {
