@@ -84,7 +84,7 @@ termion = "2.0.1" # used by manta_console to enable terminal raw
 #thiserror = "1.0.56"
 thiserror = { workspace = true }
 # tokio-native-tls = "0.3.0" # used by kube-rs to configure client with socks proxy -- REMOVE
-tokio-rustls = "0.26.0" # used by kube-rs to configure client with socks proxy -- REMOVE
+tokio-rustls = "0.24.0" # used by kube-rs to configure client with socks proxy -- REMOVE
 tokio-stream = "0.1.11"    # used by manta_console to create a read stream from container stdout (alternative?)
 #tokio-util = "0.7.4"       # used by manta_console to create a read stream from container stdout
 tokio-util = { workspace = true }   # used by manta_console to create a read stream from container stdout
