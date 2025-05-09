@@ -1,5 +1,5 @@
 pub mod v1 {
-    use crate::{bos::template::mesa::r#struct::v1::BosSessionTemplate, error::Error};
+    use crate::{bos::template::csm_rs::r#struct::v1::BosSessionTemplate, error::Error};
 
     /// Get BOS session templates. Ref --> https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/
     pub async fn get(
@@ -105,7 +105,7 @@ pub mod v1 {
 pub mod v2 {
     use serde_json::Value;
 
-    use crate::{bos::template::mesa::r#struct::v2::BosSessionTemplate, error::Error};
+    use crate::{bos::template::csm_rs::r#struct::v2::BosSessionTemplate, error::Error};
 
     /// Get BOS session templates. Ref --> https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/
     pub async fn get(

@@ -20,7 +20,7 @@ pub async fn filter(
         )
         .await;
 
-        let mut cfs_session_vec = crate::cfs::session::mesa::http_client::get(
+        let mut cfs_session_vec = crate::cfs::session::csm_rs::http_client::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -33,7 +33,7 @@ pub async fn filter(
         .await
         .unwrap();
 
-        crate::cfs::session::mesa::utils::filter_by_hsm(
+        crate::cfs::session::csm_rs::utils::filter_by_hsm(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -49,7 +49,7 @@ pub async fn filter(
             .map(|cfs_session| cfs_session.configuration.clone().unwrap().name.unwrap())
             .collect::<Vec<_>>();
 
-        let bos_sessiontemplate_vec = crate::bos::template::mesa::http_client::get_all(
+        let bos_sessiontemplate_vec = crate::bos::template::csm_rs::http_client::get_all(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,

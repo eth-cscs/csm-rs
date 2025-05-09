@@ -98,7 +98,7 @@ pub async fn get_node_details(
         cfs_session_vec_rslt,
     ) = tokio::join!(
         // Get CFS component status
-        cfs::component::mesa::http_client::get_multiple(
+        cfs::component::csm_rs::http_client::get_multiple(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -119,7 +119,7 @@ pub async fn get_node_details(
             &xname_list,
         ),
         // Get CFS sessions
-        crate::cfs::session::mesa::http_client::get(
+        crate::cfs::session::csm_rs::http_client::get(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
@@ -204,7 +204,7 @@ pub async fn get_node_details(
 
         // Get CFS configuration related to image id
         let cfs_session_related_to_image_id_opt =
-            cfs::session::mesa::utils::find_cfs_session_related_to_image_id(
+            cfs::session::csm_rs::utils::find_cfs_session_related_to_image_id(
                 &cfs_session_vec_rslt.as_ref().unwrap(),
                 &image_id_in_kernel_params,
             );
@@ -212,7 +212,7 @@ pub async fn get_node_details(
         let cfs_configuration_boot = if let Some(cfs_session_related_to_image_id) =
             cfs_session_related_to_image_id_opt
         {
-            cfs::session::mesa::utils::get_cfs_configuration_name(&cfs_session_related_to_image_id)
+            cfs::session::csm_rs::utils::get_cfs_configuration_name(&cfs_session_related_to_image_id)
                 .unwrap()
         } else {
             log::warn!(
