@@ -1727,10 +1727,11 @@ pub mod hw_inventory {
             use serde_json::Value;
             use std::str::FromStr;
             use std::string::ToString;
-            use strum_macros::{AsRefStr, Display, EnumString, IntoStaticStr};
+            use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
             #[derive(
                 Debug,
+                EnumIter,
                 EnumString,
                 IntoStaticStr,
                 AsRefStr,
