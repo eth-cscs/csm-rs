@@ -5,7 +5,6 @@ use crate::{
     hsm::group::types::{Group, Member, Members},
 };
 
-
 /// Get list of HSM group using --> shttps://apidocs.svc.cscs.ch/iaas/hardware-state-manager/operation/doGroupsGet/
 pub async fn get_raw(
     shasta_token: &str,
@@ -316,7 +315,7 @@ pub async fn post_member(
     hsm_group_name: &str,
     member: Member,
 ) -> Result<Value, Error> {
-    log::info!("Add members {}/{:?}", hsm_group_name, member);
+    log::info!("Add members {:?} to group '{}'", member, hsm_group_name);
     let client_builder = reqwest::Client::builder()
         .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
@@ -333,7 +332,7 @@ pub async fn post_member(
     };
 
     let api_url: String = format!(
-        "{}/hsm/v2/groups/{}/members",
+        "{}/smd/hsm/v2/groups/{}/members",
         shasta_base_url, hsm_group_name
     );
 
@@ -355,15 +354,15 @@ pub async fn post_member(
                 return Err(error);
             }
             _ => {
-                let error_payload = response.json::<Value>().await?;
-                let error = Error::CsmError(error_payload);
+                let error_payload = response.text().await?;
+                let error = Error::Message(error_payload);
                 return Err(error);
             }
         }
     }
 
     response
-        .json()
+        .json::<Value>()
         .await
         .map_err(|e| Error::Message(e.to_string()))
 }
