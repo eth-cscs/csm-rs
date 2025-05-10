@@ -606,6 +606,23 @@ impl PCSTrait for Csm {
 }
 
 impl BootParametersTrait for Csm {
+    async fn get_all_bootparameters(
+        &self,
+        auth_token: &str,
+    ) -> Result<Vec<FrontEndBootParameters>, Error> {
+        let boot_parameter_vec =
+            bss::http_client::get_all(auth_token, &self.base_url, &self.root_cert)
+                .await
+                .map_err(|e| Error::Message(e.to_string()))?;
+
+        let boot_parameter_infra_vec = boot_parameter_vec
+            .into_iter()
+            .map(|boot_parameter| boot_parameter.into())
+            .collect();
+
+        Ok(boot_parameter_infra_vec)
+    }
+
     async fn get_bootparameters(
         &self,
         auth_token: &str,
