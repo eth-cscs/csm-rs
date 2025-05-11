@@ -1,6 +1,3 @@
-
-
-
 /* pub async fn get_configurations_sessions_bos_sessiontemplates_images(
     shasta_token: &str,
     shasta_base_url: &str,
