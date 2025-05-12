@@ -1,9 +1,11 @@
+build = "build.rs"
+
 [package]
 edition = "2021"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
 name = "mesa"
 description = "A library for Shasta"
-version = "0.5.0-beta.5"
+version = "0.43.20"
 license-file = "LICENSE"
 documentation = "https://github.com/eth-cscs/mesa/blob/main/README.md"
 homepage = "https://github.com/eth-cscs/mesa/blob/main/README.md"
@@ -13,53 +15,90 @@ publish = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
-manta-backend-dispatcher = "0.1.71"
-chrono = { version = "0.4.31", default-features = false }
-substring = "1.4.5"
-strum = { version = "0.25.0", default-features = false }
-strum_macros = "0.25"
-anyhow = { version = "1.0.44", default-features = false }
-thiserror = "1.0.56"
-hostlist-parser = "0.1.6"
-reqwest = { version = "0.11", default-features = false }
-serde = { version = "1.0.145", default-features = false }
-serde_json = "1.0"
-serde_yaml = "0.9.17"
-log = "0.4.17"
-log4rs = { version = "1.2.0" }
-tokio = { version = "1.14", features = ["full"] }
-tokio-rustls = { version = "0.24.0", default-features = false }
-tokio-util = "0.7.4"       # used by manta_console to create a read stream from container stdout
-tokio-stream = { version = "0.1.11", default-features = false }
-kube = { version = "0.87.2", features = ["ws"] }
-k8s-openapi = { version = "0.20.0", features = ["v1_26"] }
-rustls-pemfile = "1.0.3"
-# https://github.com/kube-rs/kube-rs/discussions/1012 and https://crates.io/crates/hyper-socks2
-hyper-socks2 = { version = "0.8.0", default-features = false } # needed by kube-rs (to operate with kube api) 
-hyper = { version = "0.14" } # needed by kube-rs (to operate with kube api)
-hyper-rustls = { version = "0.24.0", default-features = false }
-tower = { version = "0.4.13", default-features = false }
-futures = { version = "0.3.31", default-features = false }
-futures-channel = "0.3.31"
-dialoguer = { version = "0.10.2", features = ["password"], default-features = false }
-git2 = { version = "0.18.1", default-features = false }
-regex = "1.6.0"
-directories = "4.0.1" # XDG Base Directory Specification
-config = { version = "0.13.2", features = ["ron"], default-features = false }
-secrecy = { version = "0.8.0", default-features = false }
-termion = "2.0.1" # used by manta_console to enable terminal raw
-base64 = { version = "0.13.1", default-features = false }
-aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false }
-aws-config = { version = "1.1.2", default-features = false }
+
+anyhow = "1.0.44"
+aws-config = "1.1.2" # used to configure the http connector to s3 endpoint with socks5 and CSM CA root
+aws-sdk-s3 = "1.12.0" # used to download IMS images from S3 endpoint
+# aws-smithy-client = { version = "0.60.3" }
+# aws-smithy-runtime = "0.56.1"
+# aws-smithy-runtime-api = "0.56.1"
+# aws-smithy-runtime-api = { version = "1.0.1", features = ["client"] }
 aws-smithy-runtime = { version = "1.0.1" }
-aws-smithy-types = { version = "1.1.2", features = ["rt-tokio"] }
-indicatif = { version = "0.17.7", default-features = false }
-uuid = { version = "1.10.0", features = ["fast-rng", "v4"] }
-globset = { version = "0.4.14", default-features = false }
-humansize = "2.0.0"
-md5 = { version = "0.7.0", default-features = false }
-comfy-table = "6.1.1"
+aws-smithy-types = { version = "1.1.2", features = ["rt-tokio", "http-body-0-4-x"] }
+#base64 = "0.13.1"
+base64 = { workspace = true }
+# bytes = { version = "1", features = ["serde"] }
+#chrono = "0.4.31"
+chrono = { workspace = true }
+# clap_complete = "4.0.3"
+# clap = { version =  "4.0.32", features = ["derive","cargo"] }
+#config = { version = "0.13.2", features = ["toml"] } # used to read manta configuration file
+config = { workspace = true } # used to read manta configuration file
+comfy-table = { workspace = true } 
+# dhat = "0.3.2"
+dialoguer = { workspace = true } 
+#directories = "4.0.1" # XDG Base Directory Specification
+directories = { workspace = true } # XDG Base Directory Specification
+# env_logger = "0.9.0" # Changing to log4rs because we also need to log in files for auditing
+#futures = "0.3.28" 
+futures = { workspace = true } 
+futures-channel = { workspace = true } 
+# futures-util = "0.3.24"
+git2 = { workspace = true }
+globset = "0.4.14" # Used when searching for entities, use could use full name or patterns using glob
+# https://github.com/kube-rs/kube-rs/discussions/1012 and https://crates.io/crates/hyper-socks2
+ #humansize = "2.1.3"
+hostlist-parser = { workspace = true }
+humansize = { workspace = true }
+hyper-rustls = { version = "0.24.0", features = ["webpki-roots"] } # used by kube-rs to configure client with socks proxy
+hyper-socks2 = { version = "0.8.0", default-features = false, features = ["rustls"] } # needed by kube-rs (to operate with kube api) 
+# hyper-tls = "0.5.0" # needed by kube-rs (to operate with kube api) -- REMOVE ???
+hyper = { version = "0.14" } # needed by kube-rs (to operate with kube api)
+indicatif = "0.17.7"
+# jsonwebtoken = "8.3.0"
+k8s-openapi = { workspace = true, features = ["v1_26"] }
+kube = { workspace = true, features = ["kube-client", "kube-runtime", "derive", "rustls-tls", "ws"] }
+#log = "0.4.17"
+log = { workspace = true }
+log4rs = { workspace = true } # Docs about pattern encoder https://docs.rs/log4rs/0.10.0/log4rs/encode/pattern/index.html
+manta-backend-dispatcher = { workspace = true }
+md5 = { workspace = true } 
+# mime_guess = "2"
+# native-tls = "0.2.10"
+# openssl-sys = { version = "0.9.87", features = ["vendored"] }
+rand = "0.9.1"
+regex = { workspace = true }
+reqwest = { workspace = true, default-features = false, features = ["blocking", "json", "rustls-tls", "socks"] }
+rustls-pemfile = "1.0.3"
+# rustls = { version = "0.21.1", features = [ "dangerous_configuration" ] }
+secrecy = "0.8.0"
+#serde_json = "1.0"
+serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true } # TODO: deprecated, need to replace, potential candidate: yaml-rust2
+strum = { workspace = true }
+strum_macros = { workspace = true }
+substring = "1.4.5"
+tempfile = "3.8.1"
+termion = "2.0.1" # used by manta_console to enable terminal raw
+thiserror = { workspace = true }
+# tokio-native-tls = "0.3.0" # used by kube-rs to configure client with socks proxy -- REMOVE
+tokio-rustls = "0.24.0" # used by kube-rs to configure client with socks proxy -- REMOVE
+tokio-stream = "0.1.11"    # used by manta_console to create a read stream from container stdout (alternative?)
+#tokio-util = "0.7.4"       # used by manta_console to create a read stream from container stdout
+tokio-util = { workspace = true }   # used by manta_console to create a read stream from container stdout
+#tokio = { version = "1" }
+tokio = { workspace = true }
+#tower = "0.4.13"
+tower = { workspace = true }
+# tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+#uuid = "1.6.1"
+uuid = { workspace = true, features = ["v4"] }
+# walkdir = "2.3.2"
+
+[build-dependencies]
+# clap = "4.0.32"
+# clap_complete = "4.0.3"
 
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.
@@ -70,3 +109,24 @@ debug = 1
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+# Config for 'cargo dist'
+#[workspace.metadata.dist]
+## The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+#cargo-dist-version = "0.0.7"
+## The preferred Rust toolchain to use in CI (rustup toolchain syntax)
+#rust-toolchain-version = "1.67.1"
+## Target platforms to build apps for (Rust target-triple syntax)
+#targets = ["x86_64-unknown-linux-gnu"]
+## CI backends to support (see 'cargo dist generate-ci')
+#ci = ["github"]
+## The installers to generate for each app
+#installers = []
+## Whether to consider the binaries in a package for distribution (defaults true)
+#dist = true
+
+[features]
+default = ["ochami"]
+ochami = []
+#dhat-heap = []    # if you are doing heap profiling
+#dhat-ad-hoc = []  # if you are doing ad hoc profiling
