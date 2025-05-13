@@ -3,7 +3,7 @@ build = "build.rs"
 [package]
 edition = "2021"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
-name = "mesa"
+name = "csm-rs"
 description = "A library for Shasta"
 version = "0.5.0-beta.5"
 license-file = "LICENSE"
@@ -15,7 +15,6 @@ publish = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-
 anyhow = "1.0.44"
 aws-config = "1.1.2" # used to configure the http connector to s3 endpoint with socks5 and CSM CA root
 aws-sdk-s3 = "1.12.0" # used to download IMS images from S3 endpoint

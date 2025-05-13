@@ -740,6 +740,16 @@ impl BootParametersTrait for Csm {
 }
 
 impl RedfishEndpointTrait for Csm {
+  async fn get_all_redfish_endpoints(
+    &self,
+    _auth_token: &str,
+  ) -> Result<FrontEndRedfishEndpointArray, Error> {
+    Err(Error::Message(
+      "Get all redfish endpoints command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
   async fn get_redfish_endpoints(
     &self,
     _auth_token: &str,
