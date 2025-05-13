@@ -1,6 +1,6 @@
 use std::io;
-
 use serde_json::Value;
+use dialoguer::Error as DialoguerError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -28,4 +28,6 @@ pub enum Error {
   ImageNotFound(String),
   #[error("CSM-RS > Group '{0}' not found")]
   GroupNotFound(String),
+  #[error("CSM-RS > Dialoguer: {0}")]
+  DialoguerError(#[from] DialoguerError),
 }
