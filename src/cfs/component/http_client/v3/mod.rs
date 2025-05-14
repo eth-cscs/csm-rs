@@ -330,7 +330,7 @@ pub async fn patch_component_list(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   component_list: Vec<Component>,
-) -> Result<Vec<Value>, Error> {
+) -> Result<(), Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
@@ -357,10 +357,7 @@ pub async fn patch_component_list(
     .map_err(|error| Error::NetError(error))?;
 
   if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
+    Ok(())
   } else {
     let payload = response
       .text()
