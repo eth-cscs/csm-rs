@@ -769,7 +769,7 @@ impl RedfishEndpointTrait for Csm {
   async fn add_redfish_endpoint(
     &self,
     _auth_token: &str,
-    _redfish_endpoint: &manta_backend_dispatcher::types::hsm::inventory::RedfishEndpoint,
+    _redfish_endpoint: &manta_backend_dispatcher::types::hsm::inventory::RedfishEndpointArray,
   ) -> Result<(), Error> {
     Err(Error::Message(
       "Add redfish endpoint command not implemented for this backend"
