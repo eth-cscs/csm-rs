@@ -365,7 +365,10 @@ impl CfsConfigurationRequest {
           .as_str()
           .unwrap()
           .to_string()
-          .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
+          .replace(
+            format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
+            "api-gw-service-nmn.local",
+          );
 
         let commit_id_opt = if let Some(commit_value) = product_commit_value_opt
         {

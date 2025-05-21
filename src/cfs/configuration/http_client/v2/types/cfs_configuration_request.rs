@@ -233,7 +233,10 @@ impl CfsConfigurationRequest {
           .as_str()
           .unwrap()
           .to_string()
-          .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
+          .replace(
+            format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
+            "api-gw-service-nmn.local",
+          );
 
         let commit_id_opt = if product_branch_value_opt.is_some() {
           // If branch is provided, then ignore the commit id in the CRAY products table

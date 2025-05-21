@@ -183,10 +183,6 @@ pub mod http_client {
       "https://api.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/{}/tags/{}",
       site_name, repo_name, tag
     );
-    /* let api_url = format!(
-        "https://api.cmn.alps.cscs.ch/vcs/api/v1/repos/cray/{}/tags/{}",
-        repo_name, tag
-    ); */
 
     let client;
 

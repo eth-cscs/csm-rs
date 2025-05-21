@@ -642,7 +642,9 @@ pub async fn get_configuration_layer_details(
     &layer.name,
     layer
       .clone_url
-      .trim_start_matches("https://api.cmn.alps.cscs.ch")
+      .trim_start_matches(
+        format!("https://api.cmn.{}.cscs.ch", site_name).as_str(),
+      )
       .trim_end_matches(".git"),
     &commit_id,
     gitea_commit_details
