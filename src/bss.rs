@@ -949,11 +949,6 @@ mod tests {
         let param_value_opt = boot_parameters.get_kernel_param_value("test");
         let new_num_params = boot_parameters.get_num_kernel_params();
 
-        dbg!(&num_params);
-        dbg!(&new_num_params);
-        dbg!(&changed);
-        dbg!(&param_value_opt);
-
         let pass = changed
             && (new_num_params == num_params + 1)
             && param_value_opt == Some("1".to_string());

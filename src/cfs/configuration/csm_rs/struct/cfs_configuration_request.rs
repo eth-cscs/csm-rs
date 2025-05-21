@@ -160,6 +160,7 @@ pub mod v2 {
                                 shasta_root_cert,
                                 &repo_url,
                                 branch_value_opt.unwrap().as_str().unwrap(),
+                                site_name,
                             )
                             .await
                             .unwrap(),
@@ -229,15 +230,11 @@ pub mod v2 {
 
                     // Manta may run outside the CSM local network therefore we have to change the
                     // internal URLs for the external one
-                    let repo_url = product_details["clone_url"]
-                        .as_str()
-                        .unwrap()
-                        .to_string()
-                        .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
+                    let repo_url = product_details["clone_url"].as_str().unwrap().to_string();
+                    // .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
 
                     let commit_id_opt = if product_branch_value_opt.is_some() {
                         // If branch is provided, then ignore the commit id in the CRAY products table
-
                         let commit = Some(
                             gitea::http_client::get_commit_pointed_by_branch(
                                 gitea_base_url,
@@ -245,6 +242,7 @@ pub mod v2 {
                                 shasta_root_cert,
                                 &repo_url,
                                 product_branch_value_opt.unwrap().as_str().unwrap(),
+                                site_name,
                             )
                             .await
                             .unwrap(),
@@ -546,6 +544,7 @@ pub mod v3 {
                                 shasta_root_cert,
                                 &repo_url,
                                 branch_value_opt.unwrap().as_str().unwrap(),
+                                site_name,
                             )
                             .await
                             .unwrap(),
@@ -618,11 +617,8 @@ pub mod v3 {
 
                     // Manta may run outside the CSM local network therefore we have to change the
                     // internal URLs for the external one
-                    let repo_url = product_details["clone_url"]
-                        .as_str()
-                        .unwrap()
-                        .to_string()
-                        .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
+                    let repo_url = product_details["clone_url"].as_str().unwrap().to_string();
+                    // .replace("vcs.cmn.alps.cscs.ch", "api-gw-service-nmn.local");
 
                     let commit_id_opt = if let Some(commit_value) = product_commit_value_opt {
                         commit_value
@@ -639,6 +635,7 @@ pub mod v3 {
                                     shasta_root_cert,
                                     &repo_url,
                                     product_branch_value_opt.unwrap().as_str().unwrap(),
+                                    site_name,
                                 )
                                 .await
                                 .unwrap(),

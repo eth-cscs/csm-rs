@@ -14,12 +14,23 @@ pub mod http_client {
         gitea_token: &str,
         repo_url: &str,
         shasta_root_cert: &[u8],
+        site_name: &str,
     ) -> Result<Vec<Value>, crate::error::Error> {
-        let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/cray/";
+        let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/";
         // let gitea_external_base_url = "https://api.cmn.alps.cscs.ch/vcs/";
+        let gitea_external_base_url = format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
+        let cray_product_catalog_base_url = format!("https://vcs.cmn.{}.cscs.ch/vcs/", site_name);
+
+        let gitea_api_base_url = gitea_internal_base_url.to_owned() + "api/v1";
 
         let repo_name = repo_url
             .trim_start_matches(gitea_internal_base_url)
+            .trim_end_matches(".git");
+        let repo_name = repo_name
+            .trim_start_matches(&gitea_external_base_url)
+            .trim_end_matches(".git");
+        let repo_name = repo_name
+            .trim_start_matches(&cray_product_catalog_base_url)
             .trim_end_matches(".git");
 
         get_all_refs(gitea_base_url, gitea_token, repo_name, shasta_root_cert).await
@@ -47,10 +58,7 @@ pub mod http_client {
             client_builder.build().unwrap()
         };
 
-        let api_url = format!(
-            "{}/api/v1/repos/cray/{}/git/refs",
-            gitea_base_url, repo_name
-        );
+        let api_url = format!("{}/api/v1/repos/{}/git/refs", gitea_base_url, repo_name);
 
         log::debug!("Get refs in gitea using through API call: {}", api_url);
 
@@ -83,10 +91,16 @@ pub mod http_client {
         shasta_root_cert: &[u8],
         repo_url: &str,
         branch_name: &str,
+        site_name: &str,
     ) -> Result<String, crate::error::Error> {
-        let all_ref_vec =
-            get_all_refs_from_repo_url(gitea_base_url, gitea_token, repo_url, shasta_root_cert)
-                .await?;
+        let all_ref_vec = get_all_refs_from_repo_url(
+            gitea_base_url,
+            gitea_token,
+            repo_url,
+            shasta_root_cert,
+            site_name,
+        )
+        .await?;
 
         let ref_details_opt = all_ref_vec.into_iter().find(|ref_details| {
             ref_details["ref"].as_str().unwrap() == format!("refs/heads/{}", branch_name)
