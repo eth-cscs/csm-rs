@@ -7,7 +7,6 @@ use std::{
   fs::{create_dir_all, File},
   io::{Read, Write},
   path::PathBuf,
-  time::Duration,
 };
 
 use termion::color;
