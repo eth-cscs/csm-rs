@@ -14,7 +14,7 @@ publish = true
 
 [dependencies]
 # manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
-manta-backend-dispatcher = "0.1.76"
+manta-backend-dispatcher = "0.1.78"
 strum = { version = "0.27.1", default-features = false }
 strum_macros = "0.27.1"
 chrono = { version = "0.4.41", default-features = false }
@@ -33,7 +33,7 @@ kube = { version = "0.87.2", features = ["ws"] }
 k8s-openapi = { version = "0.20.0", features = ["v1_26"] }
 md5 = { version = "0.7.0", default-features = false }
 uuid = { version = "1.16.0", features = ["fast-rng", "v4"] }
-git2 = { version = "0.18.1", default-features = false }
+git2 = { version = "0.18.1", default-features = false, features = ["vendored-openssl"] }
 dialoguer = { version = "0.10.2", features = ["password"], default-features = false }
 indicatif = { version = "0.17.7", default-features = false }
 # https://github.com/kube-rs/kube-rs/discussions/1012 and https://crates.io/crates/hyper-socks2
