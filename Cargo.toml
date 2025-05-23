@@ -14,7 +14,7 @@ publish = true
 
 [dependencies]
 #manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
-manta-backend-dispatcher = { git = "https://github.com/eth-cscs/manta-backend-dispatcher", ref="feature/power-status" } # Only for development purposes
+manta-backend-dispatcher = { git = "https://github.com/eth-cscs/manta-backend-dispatcher", branch="feature/power-status" } # Only for development purposes
 #manta-backend-dispatcher = "0.1.77"
 strum = { version = "0.27.1", default-features = false }
 strum_macros = "0.27.1"
