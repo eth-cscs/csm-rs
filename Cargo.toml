@@ -18,7 +18,6 @@ publish = true
 manta-backend-dispatcher = "0.1.79"
 #manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
 #manta-backend-dispatcher = "0.1.77"
->>>>>>> feature/power-status
 strum = { version = "0.27.1", default-features = false }
 strum_macros = "0.27.1"
 chrono = { version = "0.4.41", default-features = false }
