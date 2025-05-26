@@ -1,3 +1,4 @@
+
 use std::{collections::HashMap, path::PathBuf, pin::Pin};
 
 use chrono::NaiveDateTime;
@@ -26,7 +27,7 @@ use manta_backend_dispatcher::{
     ims::ImsTrait,
     migrate_backup::MigrateBackupTrait,
     migrate_restore::MigrateRestoreTrait,
-    pcs::PCSTrait,
+    pcs::{ PCSTrait },
   },
   types::{
     bos::session_template::BosSessionTemplate,
@@ -38,6 +39,12 @@ use manta_backend_dispatcher::{
     },
     hsm::inventory::RedfishEndpointArray as FrontEndRedfishEndpointArray,
     ims::Image as FrontEndImage,
+    pcs::{
+        power_status::types::{
+            //PowerStatus as FrontEndPowerStatus,
+            PowerStatusAll as FrontEndPowerStatusAll
+        }
+    },
     BootParameters as FrontEndBootParameters, Component,
     ComponentArrayPostArray as FrontEndComponentArrayPostArray,
     Group as FrontEndGroup,
@@ -60,7 +67,7 @@ use crate::{
     self, component::types::ComponentArrayPostArray, group::types::Member,
   },
   node::console,
-  pcs,
+  pcs::{self},
 };
 
 #[derive(Clone)]
@@ -656,6 +663,36 @@ impl PCSTrait for Csm {
     .await
     .map_err(|e| Error::Message(e.to_string()))
   }
+
+    async fn power_status(
+    &self,
+    auth_token: &str,
+    nodes: &[String],
+    power_state_filter: Option<&str>,
+    management_state_filter: Option<&str>,
+  ) -> Result<FrontEndPowerStatusAll, Error> {
+    let operation = "status";
+
+    // Convert &[String] to Vec<&str> and wrap in Some
+    let nodes_str: Vec<&str> = nodes.iter().map(|s| s.as_str()).collect();
+    let nodes_opt = Some(nodes_str.as_slice());
+
+    pcs::power_status::http_client::get(
+      &self.base_url,
+      auth_token,
+      &self.root_cert,
+      nodes_opt,
+      power_state_filter,
+      management_state_filter,
+    )
+    .await
+    .map(|status|  {
+         println!("return value from async fn power_status : {:?}", status);
+         status.into()
+    })
+    .map_err(|e| Error::Message(e.to_string()))
+  }
+
 }
 
 impl BootParametersTrait for Csm {
