@@ -1,8 +1,8 @@
 pub mod v2 {
     use serde_json::Value;
 
-    use crate::{
-        cfs::configuration::csm_rs::r#struct::{
+    use crate::cfs::configuration::{
+        csm_rs::r#struct::{
             cfs_configuration_request::v2::CfsConfigurationRequest,
             cfs_configuration_response::v2::CfsConfigurationResponse,
         },
@@ -72,7 +72,7 @@ pub mod v2 {
                 .await
                 .map_err(|error| Error::NetError(error))?;
 
-            Err(Error::CsmError(payload))
+            Err(Error::JsonError(payload))
         }
     }
 
@@ -129,7 +129,7 @@ pub mod v2 {
                 .await
                 .map_err(|error| Error::NetError(error))?;
 
-            Err(Error::CsmError(payload))
+            Err(Error::JsonError(payload))
         }
     }
 
@@ -173,7 +173,7 @@ pub mod v2 {
                 .await
                 .map_err(|error| Error::NetError(error))?;
 
-            Err(Error::CsmError(payload))
+            Err(Error::JsonError(payload))
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     bos::{self, template::csm_rs::r#struct::v2::BosSessionTemplate},
     cfs::{
-        self, component::shasta::r#struct::v2::ComponentResponse,
+        self, component::shasta::r#struct::v2::ComponentResponse, configuration::error::Error,
         session::csm_rs::r#struct::v2::CfsSessionGetResponse,
     },
     common, hsm,
@@ -21,7 +21,7 @@ pub async fn create(
     shasta_root_cert: &[u8],
     cfs_configuration_name: &str,
     cfs_configuration: &CfsConfigurationRequest,
-) -> Result<CfsConfigurationResponse, crate::error::Error> {
+) -> Result<CfsConfigurationResponse, Error> {
     cfs::configuration::csm_rs::http_client::put(
         shasta_token,
         shasta_base_url,
@@ -139,7 +139,9 @@ pub async fn filter(
 
     // Get image id, configuration and targets from CFS sessions
     let image_id_cfs_configuration_target_from_cfs_session: Vec<(String, String, Vec<String>)> =
-        cfs::session::csm_rs::utils::get_image_id_cfs_configuration_target_tuple_vec(cfs_session_vec);
+        cfs::session::csm_rs::utils::get_image_id_cfs_configuration_target_tuple_vec(
+            cfs_session_vec,
+        );
 
     // Get desired configuration from CFS components
     let desired_config_vec: Vec<String> = cfs_component_vec

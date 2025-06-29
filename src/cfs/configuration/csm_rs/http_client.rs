@@ -1,4 +1,4 @@
-use crate::{cfs, error::Error};
+use crate::cfs::{self, configuration::error::Error};
 
 use super::r#struct::{
     cfs_configuration_request::v2::CfsConfigurationRequest,
@@ -43,10 +43,9 @@ pub async fn put(
 
     // Check if CFS configuration already exists and throw an error is that is the case
     if cfs_configuration_rslt.is_ok_and(|cfs_configuration_vec| !cfs_configuration_vec.is_empty()) {
-        return Err(Error::Message(format!(
-            "CFS configuration '{}' already exists.",
-            configuration_name
-        )));
+        return Err(Error::ConfigurationAlreadyExistsError(
+            configuration_name.to_string(),
+        ));
     }
 
     log::info!(
