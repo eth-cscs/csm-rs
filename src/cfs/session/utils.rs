@@ -250,6 +250,11 @@ pub fn filter_by_cofiguration(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   cfs_configuration_name: &str,
 ) {
+  log::info!(
+    "Filter CFS sessions by configuration name '{}'",
+    cfs_configuration_name
+  );
+
   cfs_session_vec.retain(|cfs_session| {
     cfs_session.get_configuration_name().as_deref()
       == Some(cfs_configuration_name)

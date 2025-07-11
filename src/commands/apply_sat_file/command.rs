@@ -93,24 +93,6 @@ pub async fn exec(
     duration
   );
 
-  /* // Get configurations from CSM
-  let configuration_vec = cfs::configuration::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      None,
-  )
-  .await?;
-
-  // Get images from CSM
-  let image_vec =
-      ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert).await?;
-
-  // Get IMS recipes from CSM
-  let ims_recipe_vec =
-      ims::recipe::http_client::get(shasta_token, shasta_base_url, shasta_root_cert, None)
-          .await?; */
-
   // VALIDATION
   //
   // Validate 'configurations' section
@@ -261,6 +243,7 @@ pub async fn exec(
         // tag,
         dry_run,
         site_name,
+        overwrite,
       )
       .await?;
 

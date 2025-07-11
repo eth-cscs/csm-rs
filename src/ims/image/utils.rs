@@ -111,6 +111,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
       .to_vec();
   }
 
+  // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
   let mut bos_sessiontemplate_value_vec =
     crate::bos::template::http_client::v2::get(

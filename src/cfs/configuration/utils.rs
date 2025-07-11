@@ -15,9 +15,123 @@ use chrono::NaiveDateTime;
 use globset::Glob;
 use serde_json::Value;
 
-use super::http_client::v3::types::{
-  cfs_configuration::LayerDetails, cfs_configuration_response::Layer,
+use super::http_client::{
+  v2::types::cfs_configuration_request::CfsConfigurationRequest,
+  v3::types::{
+    cfs_configuration::LayerDetails, cfs_configuration_response::Layer,
+  },
 };
+
+pub async fn create_new_configuration(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  configuration: &CfsConfigurationRequest,
+  configuration_name: &str,
+  overwrite: bool,
+) -> Result<CfsConfigurationResponse, Error> {
+  // Check if CFS configuration already exists
+  log::info!("Check CFS configuration '{}' exists", configuration_name);
+
+  let cfs_configuration_vec = crate::cfs::configuration::http_client::v2::get(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    Some(configuration_name),
+  )
+  .await
+  .map_err(|e| Error::Message(e.to_string()))
+  .unwrap_or_default();
+
+  // Check if CFS configuration already exists and throw an error is that is the case
+  if !cfs_configuration_vec.is_empty() {
+    if overwrite {
+      log::info!(
+          "CFS configuration '{}' already exists but 'overwrite' has been enabled",
+          configuration_name
+        );
+      /* log::info!(
+          "CFS configuration '{}' already exists but 'overwrite' has been enabled. Proceed deleting images (if any) and overwrite the CFS configuration",
+          configuration_name
+        );
+
+      let mut session_vec = cfs::session::http_client::v2::get_all(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+      )
+      .await?;
+
+      // Filter CFS sessions by configuration name
+      cfs::session::utils::filter_by_cofiguration(
+        &mut session_vec,
+        configuration_name,
+      );
+
+      // Delete images from IMS
+      for session in session_vec {
+        let session_name = session.name.clone().unwrap();
+        let image_id_vec = session.get_result_id_vec();
+        for image_id in image_id_vec {
+          // Delete image from IMS
+          log::info!(
+            "Delete image '{}' from CFS session '{}'",
+            image_id,
+            session_name
+          );
+          let delete_image_rslt = crate::ims::image::http_client::delete(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            &image_id,
+          )
+          .await
+          .map_err(|e| Error::Message(e.to_string()));
+
+          if let Err(Error::ImageNotFound(_)) = delete_image_rslt {
+            log::info!(
+              "Image '{}' not found in IMS, skipping deletion",
+              image_id
+            );
+          }
+        }
+
+        log::info!("Delete session: {:?}", session_name);
+        let _ = crate::cfs::session::http_client::v2::delete(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          &session_name,
+        )
+        .await;
+      } */
+    } else {
+      log::warn!(
+        "CFS configuration '{}' already exists, cancel the process",
+        configuration_name
+      );
+      return Err(Error::ConfigurationAlreadyExistsError(
+        configuration_name.to_string(),
+      ));
+    }
+  }
+
+  log::info!(
+    "CFS configuration '{}' does not exists, creating new CFS configuration",
+    configuration_name
+  );
+
+  crate::cfs::configuration::http_client::v2::put(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &configuration.clone().into(),
+    configuration_name,
+  )
+  .await
+  .map(|config| config.into())
+  .map_err(|e| Error::Message(e.to_string()))
+}
 
 pub fn filter_3(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,

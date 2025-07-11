@@ -14,7 +14,7 @@ pub async fn get(
   shasta_root_cert: &[u8],
   xnames: &[String],
 ) -> Result<Vec<BootParameters>, Error> {
-  log::info!("Get BSS bootparameters");
+  log::debug!("Get BSS bootparameters");
   let client;
 
   let client_builder = reqwest::Client::builder()

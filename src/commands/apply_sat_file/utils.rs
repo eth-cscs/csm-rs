@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+  collections::{BTreeMap, HashMap},
+  time::{SystemTime, UNIX_EPOCH},
+};
 
 use crate::{
   bos::{
@@ -705,13 +708,14 @@ pub async fn create_cfs_configuration_from_sat_file(
   // tag: &str,
   dry_run: bool,
   site_name: &str,
+  overwrite: bool,
 ) -> Result<CfsConfigurationResponse, Error> {
   log::debug!(
     "Convert CFS configuration in SAT file (yaml):\n{:#?}",
     sat_file_configuration_yaml
   );
 
-  let (cfs_configuration_name, mut cfs_configuration) =
+  let (cfs_configuration_name, cfs_configuration) =
     CfsConfigurationRequest::from_sat_file_serde_yaml(
       shasta_root_cert,
       gitea_base_url,
@@ -739,12 +743,21 @@ pub async fn create_cfs_configuration_from_sat_file(
     // Return mock CFS configuration
     Ok(cfs_configuration)
   } else {
-    cfs::configuration::http_client::v2::put(
+    /* cfs::configuration::http_client::v2::put(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       &mut cfs_configuration,
       &cfs_configuration_name,
+    )
+    .await */
+    cfs::configuration::utils::create_new_configuration(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      &cfs_configuration,
+      &cfs_configuration_name,
+      overwrite,
     )
     .await
   }
@@ -826,6 +839,11 @@ pub async fn import_images_section_in_sat_file(
   dry_run: bool,
   watch_logs: bool,
 ) -> Result<HashMap<String, serde_yaml::Value>, Error> {
+  if image_yaml_vec.is_empty() {
+    log::warn!("No images found in SAT file. Nothing to process.");
+    return Ok(HashMap::new());
+  }
+
   // Get an image to process (the image either has no dependency or it's image dependency has
   // already ben processed)
   let mut next_image_to_process_opt: Option<serde_yaml::Value> =
@@ -1115,8 +1133,13 @@ pub async fn create_image_from_sat_file_serde_yaml(
     log::info!("Creating CFS session");
 
     // Create CFS session
+    let session_name = format!(
+      "{}-{}",
+      configuration_name,
+      chrono::Utc::now().format("%Y%m%d%H%M%S")
+    );
     let cfs_session = CfsSessionPostRequest::new(
-      image_name.clone(),
+      session_name,
       configuration_name,
       None,
       ansible_verbosity_opt,
@@ -1507,13 +1530,17 @@ pub fn validate_sat_file_images_section(
 
     log::info!("Validate 'image' '{}'", image_name);
 
-    // Validate base image
-    log::info!("Validate 'image' '{}' base image", image_name);
-
     if let Some(image_ims_id_to_find) = image_yaml
       .get("ims")
       .and_then(|ims| ims.get("id").and_then(|id| id.as_str()))
     {
+      // Validate base image
+      log::info!(
+        "Validate 'image' '{}' base image '{}'",
+        image_name,
+        image_ims_id_to_find
+      );
+
       // Old format
       log::info!(
                 "Searching image.ims.id (old format - backward compatibility) '{}' in CSM",
@@ -1537,6 +1564,13 @@ pub fn validate_sat_file_images_section(
     } else if image_yaml.get("base").is_some() {
       // New format
       if let Some(image_ref_to_find) = image_yaml["base"].get("image_ref") {
+        // Validate base image
+        log::info!(
+          "Validate 'image' '{}' base image '{}'",
+          image_name,
+          image_ref_to_find.clone().as_str().unwrap()
+        );
+
         // Check there is another image with 'ref_name' that matches this 'image_ref'
         let image_found = image_yaml_vec.iter().any(|image_yaml| {
           image_yaml
@@ -2121,6 +2155,11 @@ pub async fn process_session_template_section_in_sat_file(
     .as_sequence()
     .unwrap_or(&empty_vec);
 
+  if bos_session_template_list_yaml.is_empty() {
+    log::warn!("No 'session_templates' section found in SAT file. Skipping session template processing");
+    return Ok(());
+  }
+
   let mut bos_st_created_vec: Vec<String> = Vec::new();
 
   for bos_sessiontemplate_yaml in bos_session_template_list_yaml {
@@ -2465,37 +2504,6 @@ pub async fn process_session_template_section_in_sat_file(
         )
         .await?;
       }
-
-      /* let bos_sessiontemplate_vec = bos::template::http_client::v2::get(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          Some(&bos_st_name),
-      )
-      .await?;
-
-      let bos_sessiontemplate = bos_sessiontemplate_vec.first().unwrap();
-
-      let _ = if !bos_sessiontemplate.get_target_hsm().is_empty() {
-          // Get list of XNAMES for all HSM groups
-          let mut xnames = Vec::new();
-          for hsm in bos_sessiontemplate.get_target_hsm().iter() {
-              xnames.append(
-                  &mut hsm::group::utils::get_member_vec_from_hsm_group_name(
-                      shasta_token,
-                      shasta_base_url,
-                      shasta_root_cert,
-                      hsm,
-                  )
-                  .await,
-              );
-          }
-
-          xnames
-      } else {
-          // Get list of XNAMES
-          bos_sessiontemplate.get_target_xname()
-      }; */
     }
   }
 
