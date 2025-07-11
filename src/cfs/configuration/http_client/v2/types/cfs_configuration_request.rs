@@ -1,3 +1,9 @@
+use manta_backend_dispatcher::types::cfs::cfs_configuration_request::{
+  AdditionalInventory as FrontEndAdditionalInventory,
+  CfsConfigurationRequest as FrontEndCfsConfigurationRequest,
+  Layer as FrontEndLayer, SpecialParameter as FrontEndSpecialParameter,
+};
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -17,11 +23,51 @@ pub struct Layer {
   #[serde(skip_serializing_if = "Option::is_none")]
   // Either commit or branch is passed
   pub branch: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tag: Option<String>,
+  // #[serde(skip_serializing_if = "Option::is_none")]
+  // pub tag: Option<String>,
   #[serde(rename = "specialParameters")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub special_parameters: Option<Vec<SpecialParameter>>,
+}
+
+impl From<FrontEndLayer> for Layer {
+  fn from(front_end_layer: FrontEndLayer) -> Self {
+    Self {
+      name: front_end_layer.name.unwrap_or_default(),
+      clone_url: front_end_layer.clone_url.unwrap_or_default(),
+      playbook: front_end_layer.playbook,
+      commit: front_end_layer.commit,
+      branch: front_end_layer.branch,
+      // tag: front_end_layer.tag,
+      special_parameters: front_end_layer.special_parameters.map(
+        |special_parameters| {
+          special_parameters
+            .into_iter()
+            .map(|special_parameter| special_parameter.into())
+            .collect()
+        },
+      ),
+    }
+  }
+}
+
+impl Into<FrontEndLayer> for Layer {
+  fn into(self) -> FrontEndLayer {
+    FrontEndLayer {
+      name: Some(self.name),
+      clone_url: Some(self.clone_url),
+      playbook: self.playbook,
+      commit: self.commit,
+      branch: self.branch,
+      source: None, // This field is not used in the backend
+      special_parameters: self.special_parameters.map(|special_parameters| {
+        special_parameters
+          .into_iter()
+          .map(|special_parameter| special_parameter.into())
+          .collect()
+      }),
+    }
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,10 +77,53 @@ pub struct SpecialParameter {
   ims_required_dkms: Option<bool>,
 }
 
+impl From<FrontEndSpecialParameter> for SpecialParameter {
+  fn from(front_end_special_parameter: FrontEndSpecialParameter) -> Self {
+    Self {
+      ims_required_dkms: front_end_special_parameter.ims_required_dkms,
+    }
+  }
+}
+
+impl Into<FrontEndSpecialParameter> for SpecialParameter {
+  fn into(self) -> FrontEndSpecialParameter {
+    FrontEndSpecialParameter {
+      ims_required_dkms: self.ims_required_dkms,
+    }
+  }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CfsConfigurationRequest {
   pub name: String,
   pub layers: Vec<Layer>,
+}
+
+impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
+  fn from(
+    front_end_cfs_configuration_request: FrontEndCfsConfigurationRequest,
+  ) -> Self {
+    Self {
+      name: "".to_string(), // FIXME: add 'name' field to the frontend request and change
+      // this code to `name: front_end_cfs_configuration_response.name,`
+      layers: front_end_cfs_configuration_request
+        .layers
+        .unwrap_or_default()
+        .into_iter()
+        .map(Layer::from)
+        .collect(),
+    }
+  }
+}
+
+impl Into<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
+  fn into(self) -> FrontEndCfsConfigurationRequest {
+    FrontEndCfsConfigurationRequest {
+      description: None,
+      layers: Some(self.layers.into_iter().map(Layer::into).collect()),
+      additional_inventory: None,
+    }
+  }
 }
 
 impl Layer {
@@ -53,7 +142,7 @@ impl Layer {
       name,
       playbook,
       branch,
-      tag,
+      // tag,
       special_parameters,
     }
   }

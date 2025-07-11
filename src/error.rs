@@ -28,4 +28,6 @@ pub enum Error {
   ImageNotFound(String),
   #[error("CSM-RS > Group '{0}' not found")]
   GroupNotFound(String),
+  #[error("ERROR - CFS Configuration already exists: {0}")]
+  ConfigurationAlreadyExistsError(String),
 }

@@ -29,6 +29,7 @@ pub async fn exec(
   do_not_reboot: bool,
   watch_logs: bool,
   debug_on_failure: bool,
+  overwrite: bool,
   dry_run: bool,
 ) -> Result<(), Error> {
   // GET DATA

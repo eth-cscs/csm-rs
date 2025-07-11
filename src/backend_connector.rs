@@ -1435,6 +1435,7 @@ impl CfsTrait for Csm {
     .map_err(|e| Error::Message(e.to_string()))
   }
 
+  /// Create a new CFS configuration
   async fn put_configuration(
     &self,
     shasta_token: &str,
@@ -1442,8 +1443,83 @@ impl CfsTrait for Csm {
     shasta_root_cert: &[u8],
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
+    overwrite: bool,
   ) -> Result<CfsConfigurationResponse, Error> {
-    crate::cfs::configuration::http_client::v3::put(
+    // Check if CFS configuration already exists
+    log::info!("Check CFS configuration '{}' exists", configuration_name);
+
+    let cfs_configuration_vec =
+      crate::cfs::configuration::http_client::v2::get(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        Some(configuration_name),
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
+
+    // Check if CFS configuration already exists and throw an error is that is the case
+    if !cfs_configuration_vec.is_empty() {
+      if overwrite {
+        log::info!(
+          "CFS configuration '{}' already exists, delete images (if any) and overwrite it",
+          configuration_name
+        );
+        let group_available =
+          self.get_group_name_available(shasta_token).await?;
+        let mut image_vec = crate::ims::image::http_client::get(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          None,
+        )
+        .await
+        .map_err(|e| Error::Message(e.to_string()))?;
+
+        let mut image_and_details =
+          crate::ims::image::utils::get_image_cfs_config_name_hsm_group_name(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            &mut image_vec,
+            &group_available,
+            None,
+          )
+          .await
+          .map_err(|e| Error::Message(e.to_string()))?;
+
+        image_and_details
+          .retain(|image_details| image_details.1 == configuration_name);
+
+        for (image, _, _, _) in image_and_details {
+          println!("DEBUG - Delete image: {:?}", image);
+          /* crate::ims::image::http_client::delete(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            image.id.unwrap().as_str(),
+          )
+          .await
+          .map_err(|e| Error::Message(e.to_string()))?; */
+        }
+        std::process::exit(0);
+      } else {
+        log::warn!(
+          "CFS configuration '{}' already exists, cancel the process",
+          configuration_name
+        );
+        return Err(Error::ConfigurationAlreadyExistsError(
+          configuration_name.to_string(),
+        ));
+      }
+    }
+
+    log::info!(
+      "CFS configuration '{}' does not exists, creating new CFS configuration",
+      configuration_name
+    );
+
+    crate::cfs::configuration::http_client::v2::put(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -1620,6 +1696,7 @@ impl SatTrait for Csm {
     do_not_reboot: bool,
     watch_logs: bool,
     debug_on_failure: bool,
+    overwrite: bool,
     dry_run: bool,
   ) -> Result<(), Error> {
     crate::commands::apply_sat_file::command::exec(
@@ -1639,6 +1716,7 @@ impl SatTrait for Csm {
       do_not_reboot,
       watch_logs,
       debug_on_failure,
+      overwrite,
       dry_run,
     )
     .await
@@ -1831,6 +1909,16 @@ impl MigrateBackupTrait for Csm {
   }
 }
 
+/// Returns a tuple like(Image sruct, cfs configuration name, list of target - either hsm group name
+/// or xnames, bool - indicates if image is used to boot a node or not)
+/// This method tries to filter by HSM group which means it will make use of:
+///  - CFS sessions to find which image id was created against which HSM group
+///  - BOS sessiontemplates to find the HSM group related to nodes being rebooted in the past
+///  - Image ids in boot params for nodes in HSM groups we are looking for (This is needed to not miss
+/// images currenly used which name may not have HSM group we are looking for included not CFS
+/// session nor BOS sessiontemplate)
+///  - Image names with HSM group name included (This is a bad practice because this is a free text
+/// prone to human errors)
 impl GetImagesAndDetailsTrait for Csm {
   async fn get_images_and_details(
     &self,
