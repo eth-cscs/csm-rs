@@ -213,11 +213,20 @@ pub async fn filter_2(
     )
   )?;
 
+  let xname_from_groups_vec =
+    hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_name_vec.to_vec(),
+    )
+    .await?;
+
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     hsm_group_name_vec,
-    &Vec::new(),
+    &xname_from_groups_vec,
     // None,
     None,
   );
@@ -363,11 +372,20 @@ pub async fn filter(
     )
   )?;
 
+  let xname_from_groups_vec =
+    hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_name_vec.to_vec(),
+    )
+    .await?;
+
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     hsm_group_name_vec,
-    &Vec::new(),
+    &xname_from_groups_vec,
     // None,
     None,
   );

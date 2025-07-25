@@ -102,11 +102,20 @@ pub async fn exec(
   //
   // Get all BOS session templates
 
+  let xname_from_groups_vec =
+    crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_name_available_vec.to_vec(),
+    )
+    .await?;
+
   // Filter BOS sessiontemplate related to a HSM group
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     &hsm_name_available_vec,
-    &Vec::new(),
+    &xname_from_groups_vec,
     // cfs_configuration_name_opt.map(|elem| elem.as_str()),
     None,
   );

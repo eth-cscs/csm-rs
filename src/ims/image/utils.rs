@@ -111,6 +111,14 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
       .to_vec();
   }
 
+  let xname_vec = crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    hsm_group_name_vec.to_vec(),
+  )
+  .await?;
+
   // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
   let mut bos_sessiontemplate_value_vec =
@@ -125,8 +133,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
     hsm_group_name_vec,
-    &Vec::new(),
-    // None,
+    &xname_vec,
     None,
   );
 
@@ -163,14 +170,6 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   image_id_cfs_configuration_from_cfs_session
     .retain(|(image_id, _cfs_configuration, _hsm_groups)| !image_id.is_empty());
-
-  /* let mut image_id_cfs_configuration_from_cfs_session_vec: Vec<(String, String, Vec<String>)> =
-      crate::cfs::session::utils::get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
-          cfs_session_vec,
-      );
-
-  image_id_cfs_configuration_from_cfs_session_vec
-      .retain(|(image_id, _cfs_confguration, _hsm_groups)| !image_id.is_empty()); */
 
   // Get IMAGES in nodes boot params. This is because CSCS staff deletes the CFS sessions and/or
   // BOS sessiontemplate breaking the history with actual state, therefore I need to go to boot
@@ -216,14 +215,6 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
       cfs_configuration = tuple.clone().1;
       target_group_name_vec = tuple.2.clone();
       target_groups = target_group_name_vec.join(", ");
-    /* } else if let Some(tuple) = image_id_cfs_configuration_from_cfs_session_vec
-        .iter()
-        .find(|tuple| tuple.0.eq(image_id))
-    {
-        // Image details in BOS session template
-        cfs_configuration = tuple.clone().1;
-        target_group_name_vec = tuple.2.clone();
-        target_groups = target_group_name_vec.join(", "); */
     } else if let Some(boot_params) = boot_param_vec
       .iter()
       .find(|boot_params| boot_params.get_boot_image().eq(image_id))
@@ -296,11 +287,20 @@ pub async fn get_image_available_vec(
   )
   .await?;
 
+  let xname_from_group_vec =
+    crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_name_available_vec.to_vec(),
+    )
+    .await?;
+
   // Filter BOS sessiontemplates to the ones the user has access to
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     hsm_name_available_vec,
-    &Vec::new(),
+    &xname_from_group_vec,
     None,
   );
 

@@ -64,6 +64,7 @@ pub async fn get_all(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
 ) -> Result<Vec<BootParameters>, Error> {
+  println!("Get BSS boot parameters 'all available'");
   get(shasta_token, shasta_base_url, shasta_root_cert, &[]).await
 }
 
