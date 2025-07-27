@@ -1,17 +1,15 @@
-use std::path::PathBuf;
-
 use crate::{
-  cfs::{self, session::http_client::v2::types::CfsSessionPostRequest},
-  common::local_git_repo,
+  cfs::{
+    self,
+    configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest,
+    session::http_client::v2::types::CfsSessionPostRequest,
+  },
   error::Error,
   hsm,
   node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,
 };
 
-use dialoguer::{theme::ColorfulTheme, Confirm};
-
 use k8s_openapi::chrono;
-use substring::Substring;
 
 /// Creates a CFS session target dynamic
 /// Returns a tuple like (<cfs configuration name>, <cfs session name>)
@@ -25,7 +23,8 @@ pub async fn exec(
   cfs_conf_sess_name: Option<&String>,
   playbook_yaml_file_name_opt: Option<&String>,
   hsm_group: Option<&String>,
-  repos_paths: Vec<PathBuf>,
+  repo_name_vec: Vec<String>,
+  repo_last_commit_id_vec: Vec<String>,
   ansible_limit: Option<String>,
   ansible_verbosity: Option<String>,
   ansible_passthrough: Option<String>,
@@ -133,7 +132,8 @@ pub async fn exec(
     check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       &cfs_configuration_name,
       playbook_yaml_file_name_opt,
-      repos_paths,
+      repo_name_vec,
+      repo_last_commit_id_vec,
       gitea_token,
       gitea_base_url,
       shasta_token,
@@ -150,105 +150,14 @@ pub async fn exec(
     )
     .await?;
 
-  /* // FIXME: refactor becase this code is duplicated in command `manta apply sat-file` and also in
-  // `manta logs`
-  if watch_logs {
-      log::info!("Fetching logs ...");
-      /* let mut logs_stream = cli::commands::log::get_cfs_session_container_ansible_logs_stream(
-          vault_base_url,
-          vault_secret_path,
-          vault_role_id,
-          &cfs_session.name,
-          None,
-          k8s_api_url,
-      )
-      .await
-      .unwrap(); */
-
-      /* let shasta_k8s_secrets_rslt =
-          fetch_shasta_k8s_secrets(vault_base_url, vault_secret_path, vault_role_id).await;
-
-      let shasta_k8s_secrets = match shasta_k8s_secrets_rslt {
-          Ok(value) => value,
-          Err(e) => {
-              eprintln!("{e}");
-              std::process::exit(1);
-          }
-      }; */
-
-      let shasta_k8s_secrets = match &k8s.authentication {
-          backend_dispatcher::types::K8sAuth::Native {
-              certificate_authority_data,
-              client_certificate_data,
-              client_key_data,
-          } => {
-              serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
-          }
-          backend_dispatcher::types::K8sAuth::Vault {
-              base_url,
-              secret_path,
-              role_id,
-          } => fetch_shasta_k8s_secrets_from_vault(&base_url, &secret_path, &role_id)
-              .await
-              .map_err(|e| Error::Message(e.to_string()))?,
-      };
-
-      let client = kubernetes::get_k8s_client_programmatically(k8s_api_url, shasta_k8s_secrets)
-          .await
-          .unwrap();
-
-      kubernetes::print_cfs_session_logs(client, &cfs_session_name)
-          .await
-          .unwrap();
-      /* // Get CFS session logs
-      let logs_stream_rslt = kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
-          client.clone(),
-          &cfs_session_name,
-      )
-      .await;
-
-      match logs_stream_rslt {
-          Ok(mut logs_stream) => {
-              while let Some(line) = logs_stream.try_next().await.unwrap() {
-                  println!("{}", line);
-              }
-          }
-          Err(error_msg) => log::error!("{}", error_msg),
-      }
-
-      let _ =
-          kubernetes::print_cfs_session_container_ansible_logs_stream(client, &cfs_session_name)
-              .await
-              .unwrap();
-
-      /* while let Some(line) = logs_stream.try_next().await.unwrap() {
-          println!("{}", line);
-      } */ */
-  } */
-  // * End Create CFS session
-
-  /* // Audit
-  let username = jwt_ops::get_name(shasta_token).unwrap();
-  let user_id = jwt_ops::get_preferred_username(shasta_token).unwrap();
-
-  let msg_json = serde_json::json!(
-      { "user": {"id": user_id, "name": username}, "message": "Apply session"});
-
-  let msg_data =
-      serde_json::to_string(&msg_json).expect("Could not serialize audit message data");
-
-  if let Err(e) = kafka_audit.produce_message(msg_data.as_bytes()).await {
-      log::warn!("Failed producing messages: {}", e);
-  }
-  // log::info!(target: "app::audit", "User: {} ({}) ; Operation: Apply session", jwt_ops::get_name(shasta_token).unwrap(), jwt_ops::get_preferred_username(shasta_token).unwrap()); */
-
   Ok((cfs_configuration_name, cfs_session_name))
 }
 
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   cfs_configuration_name: &str,
   playbook_yaml_file_name_opt: Option<&String>,
-  repos: Vec<PathBuf>,
+  repo_name_vec: Vec<String>,
+  repo_last_commit_id_vec: Vec<String>,
   gitea_token: &str,
   gitea_base_url: &str,
   shasta_token: &str,
@@ -386,179 +295,15 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     }
   }
 
-  // Check local repos
-  let mut layers_summary = vec![];
-
-  for (i, repo_path) in repos.iter().enumerate() {
-    // log::debug!("Local repo: {} state: {:?}", repo.path().display(), repo.state());
-    // TODO: check each folder has a real git repo
-    // TODO: check each folder has expected file name manta/shasta expects to find the main ansible playbook
-    // TODO: a repo could param value could be a repo name, a filesystem path pointing to a repo or an url pointing to a git repo???
-    // TODO: format logging on screen so it is more readable
-
-    // Get repo from path
-    let repo = match local_git_repo::get_repo(&repo_path.to_string_lossy()) {
-      Ok(repo) => repo,
-      Err(_) => {
-        eprintln!(
-          "Could not find a git repo in {}",
-          repos[i].to_string_lossy()
-        );
-        std::process::exit(1);
-      }
-    };
-
-    // Get last (most recent) commit
-    let local_last_commit = local_git_repo::get_last_commit(&repo).unwrap();
-
-    log::info!("Checking local repo status ({})", &repo.path().display());
-
-    // Check if all changes in local repo has been commited locally
-    if !local_git_repo::untracked_changed_local_files(&repo).unwrap() {
-      if Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt(
-          "Your local repo has uncommitted changes. Do you want to continue?",
-        )
-        .interact()
-        .unwrap()
-      {
-        println!(
-          "Continue. Checking commit id {} against remote",
-          local_last_commit.id()
-        );
-      } else {
-        println!("Cancelled by user. Aborting.");
-        std::process::exit(0);
-      }
-    }
-
-    /* // Check site.yml file exists inside repo folder
-    if !Path::new(repo.path()).exists() {
-        eprintln!(
-            "site.yaml or 'playbook' file does not exists in {}",
-            repo.path().display()
-        );
-        std::process::exit(1);
-    } */
-
-    // Get repo name
-    let repo_ref_origin = repo.find_remote("origin").unwrap();
-
-    log::info!("Repo ref origin URL: {}", repo_ref_origin.url().unwrap());
-
-    let repo_ref_origin_url = repo_ref_origin.url().unwrap();
-
-    let repo_name = repo_ref_origin_url.substring(
-      repo_ref_origin_url.rfind(|c| c == '/').unwrap() + 1, // repo name should not include URI '/' separator
-      repo_ref_origin_url.len(), // repo_ref_origin_url.rfind(|c| c == '.').unwrap(),
-    );
-
-    let timestamp = local_last_commit.time().seconds();
-    let tm = chrono::DateTime::from_timestamp(timestamp, 0).unwrap();
-
-    log::debug!("\n\nCommit details to apply to CFS layer:\nCommit  {}\nAuthor: {}\nDate:   {}\n\n    {}\n", local_last_commit.id(), local_last_commit.author(), tm, local_last_commit.message().unwrap_or("no commit message"));
-
-    let layer_summary = vec![
-      i.to_string(),
-      repo_name.to_string(),
-      local_git_repo::untracked_changed_local_files(&repo)
-        .unwrap()
-        .to_string(),
-    ];
-
-    layers_summary.push(layer_summary);
-  }
-
-  // Print CFS session/configuration layers summary on screen
-  println!("Please review the following CFS layers:",);
-  for layer_summary in layers_summary {
-    println!(
-      " - Layer-{}; repo name: {}; local changes committed: {}",
-      layer_summary[0], layer_summary[1], layer_summary[2]
-    );
-  }
-
-  if Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt("Please review the layers and its order and confirm if proceed. Do you want to continue?")
-        .interact()
-        .unwrap()
-    {
-        println!("Continue. Creating new CFS configuration and layer(s)");
-    } else {
-        println!("Cancelled by user. Aborting.");
-        std::process::exit(0);
-    }
-
-  log::info!("Creating CFS configuration {}", cfs_configuration_name);
-
-  let mut repo_name_vec = Vec::new();
-  let mut repo_last_commit_id_vec = Vec::new();
-
-  // Get layer names from local repos
-  for repo_path in &repos {
-    // Get repo from path
-    let repo = match local_git_repo::get_repo(&repo_path.to_string_lossy()) {
-      Ok(repo) => repo,
-      Err(_) => {
-        eprintln!(
-          "Could not find a git repo in {}",
-          repo_path.to_string_lossy()
-        );
-        std::process::exit(1);
-      }
-    };
-
-    // Get last (most recent) commit
-    let local_last_commit = local_git_repo::get_last_commit(&repo).unwrap();
-
-    repo_last_commit_id_vec.push(local_last_commit.id().to_string());
-
-    // Get repo name
-    let repo_ref_origin = repo.find_remote("origin").unwrap();
-
-    log::info!("Repo ref origin URL: {}", repo_ref_origin.url().unwrap());
-
-    let repo_ref_origin_url = repo_ref_origin.url().unwrap();
-
-    let repo_name = repo_ref_origin_url
-      .substring(
-        repo_ref_origin_url.rfind(|c| c == '/').unwrap() + 1, // repo name should not include URI '/' separator
-        repo_ref_origin_url.len(), // repo_ref_origin_url.rfind(|c| c == '.').unwrap(),
-      )
-      .trim_end_matches(".git");
-
-    let repo_name = "cray/".to_owned() + repo_name;
-
-    repo_name_vec.push(repo_name);
-  }
-
-  /* let cfs_configuration = crate::common::cfs_configuration_utils::create_from_repos(
-      gitea_token,
-      gitea_base_url,
-      shasta_root_cert,
-      repos,
-      playbook_yaml_file_name_opt,
+  let cfs_configuration = CfsConfigurationRequest::create_from_repos(
+    gitea_token,
+    gitea_base_url,
+    shasta_root_cert,
+    repo_name_vec,
+    repo_last_commit_id_vec,
+    playbook_yaml_file_name_opt,
   )
-  .await; */
-  /* let cfs_configuration = backend
-  .create_configuration_from_repos(
-      gitea_token,
-      gitea_base_url,
-      shasta_root_cert,
-      repo_name_vec,
-      repo_last_commit_id_vec,
-      playbook_yaml_file_name_opt,
-  )
-  .await
-  .map_err(|e| Error::Message(e.to_string()))?; */
-  let cfs_configuration = crate::cfs::configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest::create_from_repos(
-            gitea_token,
-            gitea_base_url,
-            shasta_root_cert,
-            repo_name_vec,
-            repo_last_commit_id_vec,
-            playbook_yaml_file_name_opt,
-        ).await?;
+  .await?;
 
   // Update/PUT CFS configuration
   let cfs_configuration_resp = cfs::configuration::http_client::v3::put(

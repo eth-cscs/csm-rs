@@ -1746,7 +1746,7 @@ impl ImsTrait for Csm {
 }
 
 impl ApplySessionTrait for Csm {
-  async fn i_apply_session(
+  async fn apply_session(
     &self,
     gitea_token: &str,
     gitea_base_url: &str,
@@ -1757,7 +1757,8 @@ impl ApplySessionTrait for Csm {
     cfs_conf_sess_name: Option<&String>,
     playbook_yaml_file_name_opt: Option<&String>,
     hsm_group: Option<&String>,
-    repos_paths: Vec<PathBuf>,
+    repos_name_vec: Vec<String>,
+    repos_last_commit_id_vec: Vec<String>,
     ansible_limit: Option<String>,
     ansible_verbosity: Option<String>,
     ansible_passthrough: Option<String>,
@@ -1765,7 +1766,7 @@ impl ApplySessionTrait for Csm {
     /* kafka_audit: &Kafka,
     k8s: &K8sDetails, */
   ) -> Result<(String, String), Error> {
-    crate::commands::i_apply_session::exec(
+    crate::commands::apply_session::exec(
       gitea_token,
       gitea_base_url,
       shasta_token,
@@ -1775,7 +1776,8 @@ impl ApplySessionTrait for Csm {
       cfs_conf_sess_name,
       playbook_yaml_file_name_opt,
       hsm_group,
-      repos_paths,
+      repos_name_vec,
+      repos_last_commit_id_vec,
       ansible_limit,
       ansible_verbosity,
       ansible_passthrough,
