@@ -1,7 +1,4 @@
-use std::{
-  collections::{BTreeMap, HashMap},
-  time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::{BTreeMap, HashMap};
 
 use crate::{
   bos::{
@@ -246,28 +243,9 @@ impl TryFrom<SessionTemplate> for BosSessionTemplate {
         r#type: None,
         etag: None,
         kernel_parameters: None,
-        /* node_list: boot_set.node_list.map(|node_list| {
-            node_list
-                .split(",")
-                .map(|value| value.to_string())
-                .collect::<Vec<String>>()
-        }),
-        node_roles_groups: boot_set.node_groups.clone().map(|node_roles_groups| {
-            node_roles_groups
-                .split(",")
-                .map(|value| value.to_string())
-                .collect::<Vec<String>>()
-        }),
-        node_groups: boot_set.node_groups.map(|node_group| {
-            node_group
-                .split(",")
-                .map(|value| value.to_string())
-                .collect::<Vec<String>>()
-        }), */
         node_list: boot_set.node_list,
         node_roles_groups: boot_set.node_roles_group,
         node_groups: boot_set.node_groups,
-        // rootfs_provider: Some("cpss3".to_string()),
         rootfs_provider: boot_set.rootfs_provider,
         rootfs_provider_passthrough: boot_set.rootfs_provider_passthrough,
         cfs: Some(b_st_cfs.clone()),
@@ -2145,7 +2123,6 @@ pub async fn process_session_template_section_in_sat_file(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   ref_name_processed_hashmap: HashMap<String, String>,
-  // hsm_group_param_opt: Option<&String>,
   hsm_group_available_vec: &Vec<String>,
   sat_file_yaml: Value,
   do_not_reboot: bool,
@@ -2311,8 +2288,6 @@ pub async fn process_session_template_section_in_sat_file(
           "User type tenant can't user node roles in BOS sessiontemplate. Exit"
             .to_string(),
         ));
-        /* eprintln!("User type tenant can't user node roles in BOS sessiontemplate. Exit");
-        std::process::exit(1); */
       }
 
       let node_groups_opt: Option<Vec<String>> =
@@ -2341,8 +2316,6 @@ pub async fn process_session_template_section_in_sat_file(
       for node_group in node_groups_opt.clone().unwrap_or_default() {
         if !hsm_group_available_vec.contains(&node_group.to_string()) {
           return Err(Error::Message(format!("User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit", node_group)));
-          /* eprintln!("User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit", node_group);
-          std::process::exit(1); */
         }
       }
 
@@ -2380,7 +2353,6 @@ pub async fn process_session_template_section_in_sat_file(
         configuration: Some(bos_session_template_configuration_name.clone()),
       };
 
-      // let rootfs_provider = Some("cpss3".to_string());
       let rootfs_provider = boot_set["rootfs_provider"]
         .as_str()
         .map(|value| value.to_string());
@@ -2396,10 +2368,8 @@ pub async fn process_session_template_section_in_sat_file(
         r#type: Some(ims_image_type.to_string()),
         etag: Some(ims_image_etag.to_string()),
         kernel_parameters: Some(kernel_parameters.to_string()),
-        // network: Some("nmn".to_string()),
         node_list: node_list_opt,
         node_roles_groups: node_roles_groups_opt, // TODO: investigate whether this value can be a list
-        // of nodes and if it is process it properly
         node_groups: node_groups_opt,
         rootfs_provider,
         rootfs_provider_passthrough,

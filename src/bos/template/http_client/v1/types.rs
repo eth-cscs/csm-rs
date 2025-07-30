@@ -175,10 +175,8 @@ impl BosSessionTemplate {
       node_list: None,
       node_roles_groups: None,
       node_groups: Some(vec![hsm_group]),
-      rootfs_provider: Some("cpss3".to_string()),
-      rootfs_provider_passthrough: Some(
-        "dvs:api-gw-service-nmn.local:300:nmn0".to_string(),
-      ),
+      rootfs_provider: None,
+      rootfs_provider_passthrough: None,
     };
 
     let mut boot_set_map = HashMap::<String, BootSet>::new();
