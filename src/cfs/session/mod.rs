@@ -82,6 +82,8 @@ pub async fn post(
   .await
 }
 
+/// Creates a CFS session and waits for it to finish.
+/// Optionally, it can also print the CFS session logs if `watch_logs` is set to true.
 pub async fn post_sync(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -92,6 +94,8 @@ pub async fn post_sync(
   session: &CfsSessionPostRequest,
   watch_logs: bool,
 ) -> Result<CfsSessionGetResponse, Error> {
+  // Create CFS session
+  log::info!("Create CFS session '{}'", session.name);
   let cfs_session: CfsSessionGetResponse = cfs::session::post(
     shasta_token,
     shasta_base_url,
@@ -105,7 +109,7 @@ pub async fn post_sync(
   // FIXME: refactor becase this code is duplicated in command `manta apply sat-file` and also in
   // `manta logs`
   if watch_logs {
-    log::info!("Fetching logs ...");
+    log::info!("Fetching logs form CFS session {} ...", session.name);
     let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
       vault_base_url,
       shasta_token,
