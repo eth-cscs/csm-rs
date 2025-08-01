@@ -181,9 +181,6 @@ pub async fn get_multiple(
         std::process::exit(1); */
       }
     }
-    /* if let Ok(mut cfs_component_vec) = message {
-        component_vec.append(&mut cfs_component_vec);
-    } */
   }
 
   let duration = start.elapsed();
@@ -259,9 +256,6 @@ pub async fn get_parallel(
       Ok(mut cfs_component_vec) => component_vec.append(&mut cfs_component_vec),
       Err(error) => return Err(error),
     }
-    /* if let Ok(mut cfs_component_vec) = message {
-        component_vec.append(&mut cfs_component_vec);
-    } */
   }
 
   let duration = start.elapsed();

@@ -87,15 +87,6 @@ pub async fn get(
     api_url = api_url + "/" + id
   }
 
-  /* client
-  .get(api_url)
-  .bearer_auth(shasta_token)
-  .send()
-  .await?
-  .error_for_status()?
-  .json()
-  .await */
-
   let response = client
     .get(api_url)
     .bearer_auth(shasta_token)
@@ -152,15 +143,6 @@ pub async fn delete(
 
   let api_url =
     shasta_base_url.to_string() + "/bos/v2/sessions/" + bos_session_id;
-
-  /* client
-  .delete(api_url)
-  .bearer_auth(shasta_token)
-  .send()
-  .await?
-  .error_for_status()?
-  .json()
-  .await */
 
   let response = client
     .delete(api_url)

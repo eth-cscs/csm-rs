@@ -279,9 +279,6 @@ pub mod node_power_reset {
           log::error!("Error: {:?}", error);
         }
       }
-      /* if let Ok(node_power_status) = message {
-          nodes_reseted.push(node_power_status);
-      } */
     }
 
     Ok(serde_json::to_value(nodes_reseted).unwrap())

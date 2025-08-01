@@ -89,8 +89,6 @@ pub async fn get_multiple(
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
 
-    // let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
-
     let permit = Arc::clone(&sem).acquire_owned().await;
 
     let node_vec = sub_node_list.to_vec();
@@ -102,7 +100,6 @@ pub async fn get_multiple(
         &shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
-        // &hsm_subgroup_nodes_string,
         &node_vec,
       )
       .await

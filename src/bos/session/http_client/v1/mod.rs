@@ -12,7 +12,6 @@ pub async fn post(
   let payload = json!({
       "operation": operation,
       "templateName": bos_template_name,
-      // "limit": limit
   });
 
   log::info!("Create BOS session v1");
@@ -36,20 +35,6 @@ pub async fn post(
   }
 
   let api_url = format!("{}{}", shasta_base_url, "/bos/v1/session");
-
-  /* client
-  .post(api_url)
-  .bearer_auth(shasta_token)
-  .json(&json!({
-      "operation": operation,
-      "templateName": bos_template_name,
-      "limit": limit
-  }))
-  .send()
-  .await?
-  .error_for_status()?
-  .json()
-  .await */
 
   let response = client
     .post(api_url)

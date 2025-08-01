@@ -130,20 +130,6 @@ impl BootParameters {
       };
 
     boot_image_id_opt.unwrap_or("").to_string()
-
-    /* let mut path_elem_vec = self.kernel.split("/").skip(3);
-
-    let mut image_id: String = path_elem_vec.next().unwrap_or_default().to_string();
-
-    for path_elem in path_elem_vec {
-        if !path_elem.eq("kernel") {
-            image_id = format!("{}/{}", image_id, path_elem);
-        } else {
-            break;
-        }
-    }
-
-    image_id */
   }
 
   /// Update boot image in kernel boot parameters and also in kernel and initrd fields if
@@ -468,10 +454,6 @@ impl BootParameters {
           );
         }
       }
-      /* if *current_key == new_key {
-          *current_value = new_value;
-          changed = true;
-      } */
     }
 
     // Create new kernel params as a string
@@ -489,35 +471,6 @@ impl BootParameters {
 
     changed
   }
-
-  /* /// Delete kernel parameter. If kernel parameter exists, then it will be removed, otherwise
-  /// nothing will be changed
-  /// Input expected the list of kernel param keys separated by space. eg: `console bad_page crashkernel hugepagelist intel_pstate`
-  pub fn delete_kernel_params(&mut self, keys: &str) {
-      let keys: Vec<&str> = keys.split_whitespace().collect();
-
-      let mut params: HashMap<&str, &str> = self
-          .params
-          .split_whitespace()
-          .map(|kernel_param| kernel_param.split_once('=').unwrap_or((kernel_param, "")))
-          .collect();
-
-      for key in keys {
-          params.remove(key);
-      }
-
-      self.params = params
-          .iter()
-          .map(|(key, value)| {
-              if !value.is_empty() {
-                  format!("{key}={value}")
-              } else {
-                  key.to_string()
-              }
-          })
-          .collect::<Vec<String>>()
-          .join(" ");
-  } */
 
   /// Add a kernel parameter:
   ///  - if kernel parameter does not exists, then it will be added,

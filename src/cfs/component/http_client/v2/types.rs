@@ -127,17 +127,6 @@ impl From<FrontEndComponent> for Component {
       state_vec.push(state);
     }
 
-    /* let state_append = if let Some(state) = component.state_append {
-        Some(State {
-            clone_url: state.clone_url,
-            playbook: state.playbook,
-            commit: state.commit,
-            session_name: state.session_name,
-        })
-    } else {
-        None
-    }; */
-
     Component {
       id: component.id,
       state: Some(state_vec),

@@ -1,5 +1,4 @@
 use manta_backend_dispatcher::types::cfs::cfs_configuration_request::{
-  AdditionalInventory as FrontEndAdditionalInventory,
   CfsConfigurationRequest as FrontEndCfsConfigurationRequest,
   Layer as FrontEndLayer, SpecialParameter as FrontEndSpecialParameter,
 };
