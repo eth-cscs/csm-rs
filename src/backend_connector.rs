@@ -30,6 +30,8 @@ use manta_backend_dispatcher::{
   },
   types::{
     bos::session_template::BosSessionTemplate,
+    bss::BootParameters,
+    bss::BootParameters as FrontEndBootParameters,
     cfs::{
       cfs_configuration_details::LayerDetails,
       cfs_configuration_request::CfsConfigurationRequest,
@@ -38,12 +40,8 @@ use manta_backend_dispatcher::{
     },
     hsm::inventory::RedfishEndpointArray as FrontEndRedfishEndpointArray,
     ims::Image as FrontEndImage,
-    pcs::power_status::types::{
-      //PowerStatus as FrontEndPowerStatus,
-      PowerStatusAll as FrontEndPowerStatusAll,
-    },
-    BootParameters as FrontEndBootParameters, Component,
-    ComponentArrayPostArray as FrontEndComponentArrayPostArray,
+    pcs::power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
+    Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
     Group as FrontEndGroup,
     HWInventoryByLocationList as FrontEndHWInventoryByLocationList, K8sAuth,
     K8sDetails, NodeMetadataArray,
@@ -54,8 +52,7 @@ use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
-  bos,
-  bss::{self},
+  bos, bss,
   common::{
     authentication, kubernetes,
     vault::http_client::fetch_shasta_k8s_secrets_from_vault,
@@ -1351,6 +1348,53 @@ impl CfsTrait for Csm {
     )
   }
 
+  async fn delete_and_cancel_session(
+    &self,
+    shasta_token: &str,
+    shasta_base_url: &str,
+    shasta_root_cert: &[u8],
+    group_available_vec: &[manta_backend_dispatcher::types::Group],
+    cfs_session: &manta_backend_dispatcher::types::cfs::session::CfsSessionGetResponse,
+    cfs_component_vec: &[manta_backend_dispatcher::types::cfs::component::Component],
+    bss_bootparameters_vec: &[BootParameters],
+    dry_run: bool,
+  ) -> Result<(), Error> {
+    let group_available_vec: Vec<crate::hsm::group::types::Group> =
+      group_available_vec
+        .iter()
+        .map(|group| group.clone().into())
+        .collect();
+
+    let cfs_session: crate::cfs::session::http_client::v2::types::CfsSessionGetResponse =
+        cfs_session.clone().into();
+
+    let cfs_component_vec: Vec<
+      crate::cfs::component::http_client::v2::types::Component,
+    > = cfs_component_vec
+      .iter()
+      .map(|component| component.clone().into())
+      .collect();
+
+    let bss_bootparameters_vec: Vec<crate::bss::types::BootParameters> =
+      bss_bootparameters_vec
+        .iter()
+        .map(|bp| bp.clone().into())
+        .collect();
+
+    crate::commands::delete_and_cancel_session::command::exec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      group_available_vec,
+      &cfs_session,
+      &cfs_component_vec,
+      &bss_bootparameters_vec,
+      dry_run,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
+  }
+
   async fn create_configuration_from_repos(
     &self,
     gitea_token: &str,
@@ -2014,29 +2058,6 @@ impl ClusterTemplateTrait for Csm {
 }
 
 impl CommandsTrait for Csm {
-  async fn i_delete_and_cancel_session(
-    &self,
-    shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
-    target_hsm_group_vec: Vec<String>,
-    cfs_session_name: &str,
-    dry_run: bool,
-    assume_yes: bool,
-  ) -> Result<(), Error> {
-    crate::commands::i_delete_and_cancel_session::command::exec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      target_hsm_group_vec,
-      cfs_session_name,
-      dry_run,
-      assume_yes,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
-  }
-
   async fn i_delete_data_related_to_cfs_configuration(
     &self,
     shasta_token: &str,

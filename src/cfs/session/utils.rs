@@ -168,6 +168,7 @@ pub async fn filter_by_hsm(
   Ok(())
 }
 
+// FIXME: make this function to return a Result<(), Error> instead of ()
 pub async fn filter_by_xname(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -439,23 +440,20 @@ pub async fn wait_cfs_session_to_finish(
 }
 
 pub async fn get_list_xnames_related_to_session(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
+  group_available_vec: Vec<Group>,
   cfs_session: CfsSessionGetResponse,
 ) -> Result<Vec<String>, Error> {
-  let target_group_xname_vec =
-    if let Some(target_hsm_vec) = cfs_session.get_target_hsm() {
-      hsm::group::utils::get_member_vec_from_hsm_name_vec(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        target_hsm_vec,
-      )
-      .await?
-    } else {
-      vec![]
-    };
+  let target_group_xname_vec: Vec<String> = if let Some(target_hsm_vec) =
+    cfs_session.get_target_hsm()
+  {
+    group_available_vec
+      .into_iter()
+      .filter(|group_available| target_hsm_vec.contains(&group_available.label))
+      .flat_map(|group_available| group_available.get_members())
+      .collect()
+  } else {
+    vec![]
+  };
 
   let target_xname_vec =
     if let Some(target_xname) = cfs_session.get_target_xname() {

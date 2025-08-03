@@ -1,4 +1,4 @@
-use manta_backend_dispatcher::types::BootParameters as FrontEndBootParameters;
+use manta_backend_dispatcher::types::bss::BootParameters as FrontEndBootParameters;
 
 use std::collections::HashMap;
 

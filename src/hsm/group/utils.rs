@@ -783,6 +783,7 @@ pub async fn get_hsm_group_from_xname(
 }
 
 /// Returns the list of HSM group names related to a list of nodes
+// FIXME: Make this function return a Result<Vec<String>, Error> instead of Vec<String>
 pub async fn get_hsm_group_name_vec_from_xname_vec(
   shasta_token: &str,
   shasta_base_url: &str,

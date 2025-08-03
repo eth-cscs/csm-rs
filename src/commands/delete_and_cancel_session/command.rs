@@ -3,10 +3,16 @@ use std::time::Instant;
 use crate::{
   bss::{self, types::BootParameters},
   cfs::{
-    self, component::http_client::v2::types::Component,
-    session::utils::get_list_xnames_related_to_session,
+    self,
+    component::http_client::v2::types::Component,
+    session::{
+      http_client::v2::types::CfsSessionGetResponse,
+      utils::get_list_xnames_related_to_session,
+    },
   },
+  common::jwt_ops::get_roles,
   error::Error,
+  hsm::group::types::Group,
   ims,
 };
 use dialoguer::{theme::ColorfulTheme, Confirm};
@@ -15,14 +21,20 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_group_available_vec: Vec<String>,
-  cfs_session_name: &str,
+  group_available_vec: Vec<Group>,
+  cfs_session: &CfsSessionGetResponse,
+  cfs_component_vec: &[Component],
+  bos_bootparameters_vec: &[BootParameters],
   dry_run: bool,
-  assume_yes: bool,
 ) -> Result<(), Error> {
-  log::info!("Deleting session '{}'", cfs_session_name);
+  let cfs_session_name = cfs_session
+    .name
+    .as_ref()
+    .ok_or_else(|| Error::Message("CFS session name is missing".to_string()))?;
 
-  // Get collectives (CFS configuration, CFS session, BOS session template, IMS image and CFS component)
+  log::debug!("Deleting session '{}'", cfs_session_name);
+
+  /* // Get collectives (CFS configuration, CFS session, BOS session template, IMS image and CFS component)
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
   let (mut cfs_session_vec, cfs_component_vec, bss_bootparameters_vec) = tokio::try_join!(
@@ -42,7 +54,7 @@ pub async fn exec(
   log::info!(
     "Time elapsed to fetch information from backend: {:?}",
     duration
-  );
+  ); */
 
   // Validate:
   // - Check CFS session belongs to a cluster available to the user
@@ -56,7 +68,7 @@ pub async fn exec(
 
   // Check CFS session belongs to a cluster the user has access to (filter sessions by HSM
   // group)
-  cfs::session::utils::filter_by_hsm(
+  /* cfs::session::utils::filter_by_hsm(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -78,15 +90,13 @@ pub async fn exec(
         "CFS session '{}' not found. Exit",
         cfs_session_name
       ))
-    })?;
+    })?; */
 
   // Get xnames related to CFS session to delete:
   // - xnames belonging to HSM group related to CFS session
   // - xnames in CFS session
   let xname_vec = get_list_xnames_related_to_session(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
+    group_available_vec,
     cfs_session.clone(),
   )
   .await?;
@@ -113,30 +123,12 @@ pub async fn exec(
       .as_u64()
       .unwrap();
 
-    if !assume_yes {
-      // Ask user for confirmation
-      let user_msg = format!(
-        "Session '{}' will get canceled:\nDo you want to continue?",
-        cfs_session_name,
-      );
-      if Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt(user_msg)
-        .interact()
-        .unwrap()
-      {
-        log::info!("Continue",);
-      } else {
-        println!("Cancelled by user. Aborting.");
-        return Ok(());
-      }
-    }
-
     cancel_session(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       xname_vec,
-      Some(cfs_component_vec),
+      Some(cfs_component_vec.to_vec()),
       retry_policy,
       dry_run,
     )
@@ -145,23 +137,23 @@ pub async fn exec(
     // The CFS session is not of type 'target dynamic' (runtime CFS batcher)
     let image_created_by_cfs_session_vec = cfs_session.get_result_id_vec();
     if !image_created_by_cfs_session_vec.is_empty() {
-      if !assume_yes {
-        // Ask user for confirmation
-        let user_msg = format!(
-                    "Images listed below which will get deleted:\n{}\nDo you want to continue?",
-                    image_created_by_cfs_session_vec.join("\n"),
-                );
-        if Confirm::with_theme(&ColorfulTheme::default())
-          .with_prompt(user_msg)
-          .interact()
-          .unwrap()
-        {
-          log::info!("Continue",);
-        } else {
-          println!("Cancelled by user. Aborting.");
-          return Ok(());
-        }
-      }
+      // if !assume_yes {
+      //   // Ask user for confirmation
+      //   let user_msg = format!(
+      //               "Images listed below which will get deleted:\n{}\nDo you want to continue?",
+      //               image_created_by_cfs_session_vec.join("\n"),
+      //           );
+      //   if Confirm::with_theme(&ColorfulTheme::default())
+      //     .with_prompt(user_msg)
+      //     .interact()
+      //     .unwrap()
+      //   {
+      //     log::info!("Continue",);
+      //   } else {
+      //     println!("Cancelled by user. Aborting.");
+      //     return Ok(());
+      //   }
+      // }
 
       // Delete images
       delete_images(
@@ -169,7 +161,7 @@ pub async fn exec(
         shasta_base_url,
         shasta_root_cert,
         &image_created_by_cfs_session_vec,
-        &bss_bootparameters_vec,
+        &bos_bootparameters_vec,
         dry_run,
       )
       .await?;
