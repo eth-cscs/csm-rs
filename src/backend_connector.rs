@@ -1089,7 +1089,8 @@ impl CfsTrait for Csm {
       None,
       true,
     )
-    .await;
+    .await
+    .map_err(|e| Error::Message(e.to_string()))?;
 
     if session_vec.is_empty() {
       return Err(Error::Message(format!(
@@ -1232,7 +1233,8 @@ impl CfsTrait for Csm {
         limit_number_opt,
         true,
       )
-      .await;
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
     }
 
     if cfs_session_vec.is_empty() {
@@ -1541,7 +1543,8 @@ impl CfsTrait for Csm {
       None,
       true,
     )
-    .await;
+    .await
+    .map_err(|e| Error::Message(e.to_string()))?;
 
     // Convert to manta session
     let border_session_vec = local_cfs_session_vec
