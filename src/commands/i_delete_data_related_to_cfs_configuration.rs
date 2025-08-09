@@ -1,6 +1,5 @@
 use core::time;
 use std::collections::HashMap;
-use std::io::{self, Write};
 use std::time::Instant;
 
 use chrono::NaiveDateTime;
@@ -26,15 +25,6 @@ pub async fn exec(
   until_opt: Option<NaiveDateTime>,
   assume_yes: bool,
 ) -> Result<(), Error> {
-  /* let xname_vec = crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      hsm_name_available_vec.to_vec(),
-  )
-  .await
-  .unwrap(); */
-
   // COLLECT SITE WIDE DATA FOR VALIDATION
   //
   let start = Instant::now();
@@ -78,17 +68,16 @@ pub async fn exec(
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  cfs::configuration::utils::filter_3(
+  if let Err(e) = cfs::configuration::utils::filter_3(
     &mut cfs_configuration_vec,
     configuration_name_pattern.map(|elem| elem.as_str()),
     None,
     since_opt,
     until_opt,
-  )
-  .unwrap_or_else(|e| {
-    eprintln!("ERROR - {}", e);
-    std::process::exit(1);
-  });
+  ) {
+    log::error!("Delete CFS configuraion and derivatives - {}", e);
+    return Err(e);
+  };
 
   // Get list CFS configuration names
   let mut cfs_configuration_name_vec = cfs_configuration_vec
@@ -155,7 +144,7 @@ pub async fn exec(
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
 
   // Filter CFS sessions related to a HSM group
-  cfs::session::utils::filter_by_hsm(
+  if let Err(e) = cfs::session::utils::filter_by_hsm(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -165,10 +154,10 @@ pub async fn exec(
     keep_generic_sessions,
   )
   .await
-  .unwrap_or_else(|e| {
-    eprintln!("ERROR - {}", e);
-    std::process::exit(1);
-  });
+  {
+    log::error!("ERROR - {}", e);
+    return Err(e);
+  };
 
   // Filter CFS sessions containing /configuration/name field
   cfs_session_vec.retain(|cfs_session| {
@@ -417,10 +406,12 @@ pub async fn exec(
   {
     // There are CFS configuraions or Images currently used by nodes. Better to be safe and
     // stop the process
-    eprintln!(
-      "Either images or configurations used by other clusters/nodes. Exit"
+    log::error!(
+      "User trying to delete configurations or images used by other clusters/nodes"
     );
-    std::process::exit(1);
+    return Err(
+      Error::ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed,
+    );
   } else {
     // We are safe to delete, none of the data selected for deletion is currently used as
     // neither configure nor boot the nodes
@@ -455,31 +446,23 @@ pub async fn exec(
         .collect();
   }
 
-  // EXIT IF THERE IS NO DATA TO DELETE
+  // Return ERROR IF THERE IS NO DATA TO DELETE
   if cfs_configuration_name_vec.is_empty()
     && image_id_vec.is_empty()
     && cfs_session_cfs_configuration_image_id_tuple_filtered_vec.is_empty()
     && bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec
       .is_empty()
   {
-    print!("Nothing to delete.");
     if configuration_name_opt.is_some() {
-      print!(
-        " Could not find information related to CFS configuration '{}'",
+      // We can't decide if CFS configuration and derivatives can be deleted.
+      log::error!(
+        "Delete CFS configuration - Not enough information to proceed. Could not find information related to CFS configuration '{}'",
         configuration_name_opt.unwrap()
       );
+      return Err(Error::ConfiguratioDerivativesNotFound(
+        configuration_name_opt.unwrap().clone(),
+      ));
     }
-    if since_opt.is_some() && until_opt.is_some() {
-      print!(
-        " Could not find information between dates {} and {}",
-        since_opt.unwrap(),
-        until_opt.unwrap()
-      );
-    }
-    print!(" in HSM '{:?}'. Exit", hsm_name_available_vec);
-    io::stdout().flush().unwrap();
-
-    std::process::exit(0);
   }
 
   // PRINT SUMMARY/DATA TO DELETE

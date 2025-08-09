@@ -110,7 +110,7 @@ pub async fn create_new_configuration(
         "CFS configuration '{}' already exists, cancel the process",
         configuration_name
       );
-      return Err(Error::ConfigurationAlreadyExistsError(
+      return Err(Error::ConfigurationAlreadyExists(
         configuration_name.to_string(),
       ));
     }

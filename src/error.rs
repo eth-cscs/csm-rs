@@ -28,6 +28,10 @@ pub enum Error {
   ImageNotFound(String),
   #[error("CSM-RS > Group '{0}' not found")]
   GroupNotFound(String),
+  #[error("ERROR - No derivatives found for CFS Configuration: {0}")]
+  ConfigurationDerivativesNotFound(String),
   #[error("ERROR - CFS Configuration already exists: {0}")]
-  ConfigurationAlreadyExistsError(String),
+  ConfigurationAlreadyExists(String),
+  #[error("ERROR - CFS Configuration used as a runtime configuration for a cluster and/or used to build an image used to boot node(s)")]
+  ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed,
 }
