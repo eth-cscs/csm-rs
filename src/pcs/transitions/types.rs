@@ -1,7 +1,6 @@
 use manta_backend_dispatcher::types::pcs::transitions::types::{
-    Operation as FrontEndOperation,
-    Location as FrontEndLocation,
-    Transition as FrontEndTransition,
+  Location as FrontEndLocation, Operation as FrontEndOperation,
+  Transition as FrontEndTransition,
 };
 
 use serde::{Deserialize, Serialize};
@@ -17,20 +16,20 @@ pub struct Location {
 }
 
 impl From<FrontEndLocation> for Location {
-    fn from(value: FrontEndLocation) -> Self {
-        Location {
-            xname: value.xname,
-            deputy_key: value.deputy_key,
-        }
+  fn from(value: FrontEndLocation) -> Self {
+    Location {
+      xname: value.xname,
+      deputy_key: value.deputy_key,
     }
+  }
 }
 impl Into<FrontEndLocation> for Location {
-    fn into(self) -> FrontEndLocation {
-        FrontEndLocation {
-            xname: self.xname,
-            deputy_key: self.deputy_key,
-        }
+  fn into(self) -> FrontEndLocation {
+    FrontEndLocation {
+      xname: self.xname,
+      deputy_key: self.deputy_key,
     }
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -86,32 +85,31 @@ impl Operation {
     }
 } */
 impl From<FrontEndOperation> for Operation {
-    fn from(value: FrontEndOperation) -> Self {
-        match value {
-            FrontEndOperation::On => Operation::On,
-            FrontEndOperation::Off => Operation::Off,
-            FrontEndOperation::SoftOff => Operation::SoftOff,
-            FrontEndOperation::SoftRestart => Operation::SoftRestart,
-            FrontEndOperation::HardRestart => Operation::HardRestart,
-            FrontEndOperation::Init => Operation::Init,
-            FrontEndOperation::ForceOff => Operation::ForceOff,
-        }
+  fn from(value: FrontEndOperation) -> Self {
+    match value {
+      FrontEndOperation::On => Operation::On,
+      FrontEndOperation::Off => Operation::Off,
+      FrontEndOperation::SoftOff => Operation::SoftOff,
+      FrontEndOperation::SoftRestart => Operation::SoftRestart,
+      FrontEndOperation::HardRestart => Operation::HardRestart,
+      FrontEndOperation::Init => Operation::Init,
+      FrontEndOperation::ForceOff => Operation::ForceOff,
     }
+  }
 }
 impl Into<FrontEndOperation> for Operation {
-    fn into(self) -> FrontEndOperation {
-        match self {
-            Operation::On => FrontEndOperation::On,
-            Operation::Off => FrontEndOperation::Off,
-            Operation::SoftOff => FrontEndOperation::SoftOff,
-            Operation::SoftRestart => FrontEndOperation::SoftRestart,
-            Operation::HardRestart => FrontEndOperation::HardRestart,
-            Operation::Init => FrontEndOperation::Init,
-            Operation::ForceOff => FrontEndOperation::ForceOff,
-        }
+  fn into(self) -> FrontEndOperation {
+    match self {
+      Operation::On => FrontEndOperation::On,
+      Operation::Off => FrontEndOperation::Off,
+      Operation::SoftOff => FrontEndOperation::SoftOff,
+      Operation::SoftRestart => FrontEndOperation::SoftRestart,
+      Operation::HardRestart => FrontEndOperation::HardRestart,
+      Operation::Init => FrontEndOperation::Init,
+      Operation::ForceOff => FrontEndOperation::ForceOff,
     }
+  }
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transition {
@@ -123,21 +121,24 @@ pub struct Transition {
 }
 
 impl From<FrontEndTransition> for Transition {
-    fn from(value: FrontEndTransition) -> Self {
-        Transition {
-            operation: Operation::from(value.operation),
-            task_deadline_minutes: value.task_deadline_minutes,
-            location: value.location.into_iter().map(|v| Location::from(v)).collect()
-        }
+  fn from(value: FrontEndTransition) -> Self {
+    Transition {
+      operation: Operation::from(value.operation),
+      task_deadline_minutes: value.task_deadline_minutes,
+      location: value
+        .location
+        .into_iter()
+        .map(|v| Location::from(v))
+        .collect(),
     }
+  }
 }
 impl Into<FrontEndTransition> for Transition {
-    fn into(self) -> FrontEndTransition {
-        FrontEndTransition {
-            operation: self.operation.into(),
-            task_deadline_minutes: self.task_deadline_minutes,
-            location: self.location.into_iter().map(|v| v.into()).collect()
-        }
+  fn into(self) -> FrontEndTransition {
+    FrontEndTransition {
+      operation: self.operation.into(),
+      task_deadline_minutes: self.task_deadline_minutes,
+      location: self.location.into_iter().map(|v| v.into()).collect(),
     }
+  }
 }
-
