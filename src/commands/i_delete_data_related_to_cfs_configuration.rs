@@ -82,8 +82,8 @@ pub async fn exec(
   // Get list CFS configuration names
   let mut cfs_configuration_name_vec = cfs_configuration_vec
     .iter()
-    .map(|configuration_value| configuration_value.name.clone())
-    .collect::<Vec<String>>();
+    .map(|configuration_value| configuration_value.name.as_ref())
+    .collect::<Vec<&str>>();
 
   let xname_from_groups_vec =
     crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
@@ -148,43 +148,37 @@ pub async fn exec(
   cfs_configuration_name_vec =
     cfs_configuration_name_from_bos_sessiontemplate_value_iter
       .chain(cfs_configuration_name_from_cfs_sessions)
-      .collect::<Vec<String>>();
+      .collect::<Vec<&str>>();
   cfs_configuration_name_vec.sort();
   cfs_configuration_name_vec.dedup();
 
   // Get list of CFS configuration serde values related to CFS sessions and BOS
   // sessiontemplates
-  cfs_configuration_vec.retain(|cfs_configuration_value| {
-    cfs_configuration_name_vec.contains(&cfs_configuration_value.name)
+  cfs_configuration_vec.retain(|cfs_configuration| {
+    cfs_configuration_name_vec.contains(&cfs_configuration.name.as_ref())
   });
 
   // Get image ids from CFS sessions related to CFS configuration to delete
   let mut image_id_vec =
-    cfs::session::utils::get_image_id_from_cfs_session_vec(&cfs_session_vec);
+    cfs::session::utils::images_id_from_cfs_session(&cfs_session_vec)
+      .collect::<Vec<&str>>();
 
   log::info!("Image ids to delete: {:?}", image_id_vec);
 
   // Get list of CFS session name, CFS configuration name and image id for CFS sessions which
   // created an image
   let cfs_session_cfs_configuration_image_id_tuple_vec: Vec<(
-    String,
-    String,
-    String,
+    &str,
+    &str,
+    &str,
   )> = cfs_session_vec
     .iter()
-    .filter(|cfs_session| cfs_session.get_first_result_id().is_some())
+    .filter(|cfs_session| cfs_session.first_result_id().is_some())
     .map(|cfs_session| {
       (
-        cfs_session.name.clone().unwrap(),
-        cfs_session
-          .get_configuration_name()
-          .as_ref()
-          .unwrap()
-          .clone(),
-        cfs_session
-          .get_first_result_id()
-          .unwrap_or("".to_string())
-          .clone(),
+        cfs_session.name.as_deref().unwrap(),
+        cfs_session.get_configuration_name().unwrap_or_default(),
+        cfs_session.first_result_id().unwrap(),
       )
     })
     .collect();
@@ -196,34 +190,13 @@ pub async fn exec(
     &str,
   )> = Vec::new();
 
-  for bos_sessiontemplate_value in &bos_sessiontemplate_vec {
+  for bos_sessiontemplate in &bos_sessiontemplate_vec {
     let bos_sessiontemplate_name: &str =
-      bos_sessiontemplate_value.name.as_ref().unwrap();
-    let cfs_configuration_name: &String = bos_sessiontemplate_value
-      .cfs
-      .as_ref()
-      .unwrap()
-      .configuration
-      .as_ref()
-      .unwrap();
+      bos_sessiontemplate.name.as_deref().unwrap_or_default();
+    let cfs_configuration_name: &str =
+      bos_sessiontemplate.get_configuration().unwrap_or_default();
 
-    for boot_set_prop in bos_sessiontemplate_value
-      .boot_sets
-      .as_ref()
-      .unwrap()
-      .values()
-    {
-      let image_id = if let Some(image_path_value) = boot_set_prop.path.as_ref()
-      {
-        image_path_value
-          .strip_prefix("s3://boot-images/")
-          .unwrap()
-          .strip_suffix("/manifest.json")
-          .unwrap()
-      } else {
-        ""
-      };
-
+    for image_id in bos_sessiontemplate.images_id() {
       bos_sessiontemplate_cfs_configuration_image_id_tuple_vec.push((
         bos_sessiontemplate_name,
         cfs_configuration_name,
@@ -312,9 +285,9 @@ pub async fn exec(
   });
 
   let cfs_session_cfs_configuration_image_id_tuple_filtered_vec: Vec<(
-    String,
-    String,
-    String,
+    &str,
+    &str,
+    &str,
   )>;
   let bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec: Vec<
     (&str, &str, &str),
@@ -338,22 +311,20 @@ pub async fn exec(
     // neither configure nor boot the nodes
     cfs_configuration_name_vec.retain(|cfs_configuration_name| {
       !cfs_configuration_name_used_to_configure_nodes_vec
-        .contains(&cfs_configuration_name.as_str())
+        .contains(&cfs_configuration_name)
     });
 
-    image_id_vec.retain(|image_id| {
-      !image_id_used_to_boot_nodes_vec.contains(&image_id.as_str())
-    });
+    image_id_vec
+      .retain(|image_id| !image_id_used_to_boot_nodes_vec.contains(&image_id));
 
     cfs_session_cfs_configuration_image_id_tuple_filtered_vec =
       cfs_session_cfs_configuration_image_id_tuple_vec
-        .iter()
+        .into_iter()
         .filter(|(_, cfs_configuration_name, image_id)| {
           !cfs_configuration_name_used_to_configure_nodes_vec
-            .contains(&cfs_configuration_name.as_str())
-            && !image_id_used_to_boot_nodes_vec.contains(&image_id.as_str())
+            .contains(&cfs_configuration_name)
+            && !image_id_used_to_boot_nodes_vec.contains(&image_id)
         })
-        .cloned()
         .collect();
 
     bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec =
@@ -397,8 +368,14 @@ pub async fn exec(
   for cfs_session in &cfs_session_vec {
     cfs_session_table.add_row(vec![
       cfs_session.name.as_ref().unwrap_or(&"".to_string()),
-      &cfs_session.get_configuration_name().unwrap_or_default(),
-      &cfs_session.get_first_result_id().unwrap_or_default(),
+      &cfs_session
+        .get_configuration_name()
+        .unwrap_or_default()
+        .to_string(),
+      &cfs_session
+        .first_result_id()
+        .unwrap_or_default()
+        .to_string(),
     ]);
   }
 
@@ -474,24 +451,16 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    cfs_configuration_name_vec
-      .iter()
-      .map(|cfs_config| cfs_config.as_str())
-      .collect(),
-    image_id_vec
-      .iter()
-      .map(|image_id| image_id.as_str())
-      .collect(),
-    // &cfs_components,
+    cfs_configuration_name_vec,
+    image_id_vec,
     cfs_session_cfs_configuration_image_id_tuple_filtered_vec
-      .iter()
-      .map(|(session, _, _)| session.as_str())
+      .into_iter()
+      .map(|(session, _, _)| session)
       .collect(),
     bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec
       .into_iter()
       .map(|(sessiontemplate, _, _)| sessiontemplate)
       .collect(),
-    // &boot_param_vec,
   )
   .await;
 

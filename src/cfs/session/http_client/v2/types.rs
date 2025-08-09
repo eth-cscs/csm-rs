@@ -68,6 +68,7 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns list of result_ids
+  #[deprecated(note = "Use results_id instead")]
   pub fn get_result_id_vec(&self) -> Vec<String> {
     if let Some(status) = &self.status {
       status
@@ -84,10 +85,28 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns list of result_ids
+  pub fn results_id(&self) -> impl Iterator<Item = &str> {
+    self.status.iter().flat_map(|status| {
+      status
+        .artifacts
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|artifact| artifact.result_id.as_deref())
+    })
+  }
+
+  /// Returns list of result_ids
+  #[deprecated(note = "Use first_result_id instead")]
   pub fn get_first_result_id(&self) -> Option<String> {
     CfsSessionGetResponse::get_result_id_vec(&self)
       .first()
       .cloned()
+  }
+
+  /// Returns list of result_ids
+  pub fn first_result_id(&self) -> Option<&str> {
+    CfsSessionGetResponse::results_id(&self).next()
   }
 
   /// Returns list of HSM groups targeted
@@ -129,11 +148,11 @@ impl CfsSessionGetResponse {
       .and_then(|target| target.definition.clone())
   }
 
-  pub fn get_configuration_name(&self) -> Option<String> {
+  pub fn get_configuration_name(&self) -> Option<&str> {
     self
       .configuration
       .as_ref()
-      .and_then(|configuration| configuration.name.clone())
+      .and_then(|configuration| configuration.name.as_deref())
   }
 
   pub fn is_success(&self) -> bool {

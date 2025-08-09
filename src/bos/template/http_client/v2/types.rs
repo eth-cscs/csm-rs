@@ -257,8 +257,11 @@ impl BosSessionTemplate {
       .collect()
   }
 
-  pub fn get_configuration(&self) -> Option<String> {
-    self.cfs.as_ref().and_then(|cfs| cfs.configuration.clone())
+  pub fn get_configuration(&self) -> Option<&str> {
+    self
+      .cfs
+      .as_ref()
+      .and_then(|cfs| cfs.configuration.as_deref())
   }
 
   pub fn get_path_vec(&self) -> Vec<String> {
@@ -272,6 +275,7 @@ impl BosSessionTemplate {
   }
 
   /// Returns all images related to this BOS sessiontemplate
+  #[deprecated(note = "please use `images_id` instead")]
   pub fn get_image_vec(&self) -> Vec<String> {
     // FIXME: Try to use a function in mesa boot parameters to get the image id from a
     // CSM/S3 URI instead of calling
@@ -291,6 +295,24 @@ impl BosSessionTemplate {
           .to_string()
       })
       .collect()
+  }
+
+  /// Returns all images path related to this BOS sessiontemplate
+  pub fn images_path(&self) -> impl Iterator<Item = &str> {
+    self
+      .boot_sets
+      .iter()
+      .flatten()
+      .filter_map(|(_, boot_param)| boot_param.path.as_deref())
+  }
+
+  /// Returns all images id related to this BOS sessiontemplate
+  pub fn images_id(&self) -> impl Iterator<Item = &str> {
+    self.images_path().map(|path| {
+      path
+        .trim_start_matches("s3://boot-images/")
+        .trim_end_matches("/manifest.json")
+    })
   }
 
   pub fn new_for_hsm_group(

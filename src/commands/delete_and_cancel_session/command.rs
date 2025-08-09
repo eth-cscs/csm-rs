@@ -1,7 +1,6 @@
-use std::time::Instant;
 
 use crate::{
-  bss::{self, types::BootParameters},
+  bss::types::BootParameters,
   cfs::{
     self,
     component::http_client::v2::types::Component,
@@ -10,12 +9,10 @@ use crate::{
       utils::get_list_xnames_related_to_session,
     },
   },
-  common::jwt_ops::get_roles,
   error::Error,
   hsm::group::types::Group,
   ims,
 };
-use dialoguer::{theme::ColorfulTheme, Confirm};
 
 pub async fn exec(
   shasta_token: &str,
