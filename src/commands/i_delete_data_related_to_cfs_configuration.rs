@@ -85,12 +85,6 @@ pub async fn exec(
     .map(|configuration_value| configuration_value.name.clone())
     .collect::<Vec<String>>();
 
-  // Check images related to CFS configurations to delete are not used to boot nodes. For
-  // this we need to get images from both CFS session and BOS sessiontemplate because CSCS staff
-  // deletes all CFS sessions every now and then
-  //
-  // Get all BOS session templates
-
   let xname_from_groups_vec =
     crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
@@ -124,40 +118,19 @@ pub async fn exec(
   // Check images related to CFS configurations to delete are not used to boot nodes. For
   // this we need to get images from both CFS session and BOS sessiontemplate because CSCS staff
   // deletes all CFS sessions every now and then
-  //
-  // Get all CFS sessions
-  /* let mut cfs_session_vec = cfs::session::get_and_sort(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      None,
-      None,
-      None,
-      None,
-      None,
-  )
-  .await
-  .unwrap(); */
 
   // Filter CFS sessions related to a HSM group
   // NOTE: Admins (pa-admin) are the only ones who can delete generic sessions
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
 
   // Filter CFS sessions related to a HSM group
-  if let Err(e) = cfs::session::utils::filter_by_hsm(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
+  cfs::session::utils::filter(
     &mut cfs_session_vec,
-    &hsm_name_available_vec,
+    hsm_name_available_vec.to_vec(),
+    xname_from_groups_vec,
     None,
     keep_generic_sessions,
-  )
-  .await
-  {
-    log::error!("ERROR - {}", e);
-    return Err(e);
-  };
+  )?;
 
   // Filter CFS sessions containing /configuration/name field
   cfs_session_vec.retain(|cfs_session| {
@@ -188,58 +161,6 @@ pub async fn exec(
   // Get image ids from CFS sessions related to CFS configuration to delete
   let mut image_id_vec =
     cfs::session::utils::get_image_id_from_cfs_session_vec(&cfs_session_vec);
-
-  /* // Get image ids from BOS session template related to CFS configuration to delete
-  // NOTE: This assumes runtime configuration and boot image configuration are the same
-  // NOTE: DON'T DELETE IMAGES FROM BOS SESSIONTEMPLATE BASED ON CONFGURATION NAME SINCE BOOT
-  // IMAGE MAY HABE BEEN CREATED USING A DIFFERENT CONFIGURATION
-  let image_id_from_bos_sessiontemplate_vec =
-      bos::template::shasta::utils::get_image_id_from_bos_sessiontemplate_vec(
-          &bos_sessiontemplate_value_vec,
-      ); */
-
-  /* // Combine image ids from CFS session and BOS session template
-  let mut image_id_vec: Vec<&str> = [
-      image_id_from_cfs_session_vec
-          .iter()
-          .map(|elem| elem.as_str())
-          .collect::<Vec<&str>>(),
-      image_id_from_bos_sessiontemplate_vec
-          .iter()
-          .map(|elem| elem.as_str())
-          .collect::<Vec<&str>>(),
-  ]
-  .concat(); */
-
-  /* // Filter list of image ids by removing the ones that does not exists. This is because we
-  // currently image id list contains the values from CFS session and BOS sessiontemplate
-  // which does not means the image still exists (the image perse could have been deleted
-  // previously and the CFS session and BOS sessiontemplate not being cleared)
-  let mut image_id_filtered_vec: Vec<&str> = Vec::new();
-  for image_id in image_id_vec {
-      if !ims::image::http_client::get(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          // &hsm_name_available_vec,
-          Some(&image_id),
-      )
-      .await
-      .unwrap_or(vec![])
-      .is_empty()
-      {
-          log::info!("Artifact for image ID {} exists", image_id);
-          image_id_filtered_vec.push(&image_id);
-      } else {
-          log::info!("Artifact for image ID {} does NOT exists", image_id);
-          image_id_filtered_vec.push(image_id.clone().as_str());
-      }
-  }
-
-  log::info!(
-              "Image id related to CFS sessions and/or BOS sessiontemplate related to CFS configurations filtered by user input: {:?}",
-              image_id_vec
-          ); */
 
   log::info!("Image ids to delete: {:?}", image_id_vec);
 

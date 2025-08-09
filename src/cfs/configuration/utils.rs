@@ -335,31 +335,27 @@ pub async fn filter(
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   log::info!("Filter CFS configurations");
-  // Fetch CFS components and filter by HSM group members
-  let cfs_component_vec: Vec<Component> = if !hsm_group_name_vec.is_empty() {
-    let hsm_group_members_vec =
-      hsm::group::utils::get_member_vec_from_hsm_name_vec(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        hsm_group_name_vec.to_vec(),
-      )
-      .await?;
+  // Get HSM Group members the user has access to
+  let hsm_group_members_vec =
+    hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_name_vec.to_vec(),
+    )
+    .await?;
 
-    // Note: nodes can be configured calling the component APi directly (bypassing BOS
-    // session API)
+  // Get CFS components the user has access to, all CFS sessions, BOS session template
+  // Fetch "CFS components" the user has access to (filter by HSM group members)
+  // Note: nodes can be configured calling the "CFS Component API" directly (bypassing BOS
+  // session API)
+  let (cfs_component_vec, mut cfs_session_vec, mut bos_sessiontemplate_vec) = tokio::try_join!(
     cfs::component::http_client::v2::get_parallel(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       &hsm_group_members_vec,
-    )
-    .await?
-  } else {
-    Vec::new()
-  };
-
-  let (mut cfs_session_vec, mut bos_sessiontemplate_vec) = tokio::try_join!(
+    ),
     crate::cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
@@ -372,20 +368,11 @@ pub async fn filter(
     )
   )?;
 
-  let xname_from_groups_vec =
-    hsm::group::utils::get_member_vec_from_hsm_name_vec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      hsm_group_name_vec.to_vec(),
-    )
-    .await?;
-
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     hsm_group_name_vec,
-    &xname_from_groups_vec,
+    &hsm_group_members_vec,
     // None,
     None,
   );
@@ -491,6 +478,8 @@ pub async fn get_and_filter(
   hsm_group_name_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
+  // Get list of configurations.
+  // Returns list with only one element if "configuration name" provided
   let mut cfs_configuration_vec: Vec<CfsConfigurationResponse> =
     cfs::configuration::http_client::v2::get(
       shasta_token,
