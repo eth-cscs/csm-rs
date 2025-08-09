@@ -459,7 +459,7 @@ pub async fn exec(
         "Delete CFS configuration - Not enough information to proceed. Could not find information related to CFS configuration '{}'",
         configuration_name_opt.unwrap()
       );
-      return Err(Error::ConfiguratioDerivativesNotFound(
+      return Err(Error::ConfigurationDerivativesNotFound(
         configuration_name_opt.unwrap().clone(),
       ));
     }
