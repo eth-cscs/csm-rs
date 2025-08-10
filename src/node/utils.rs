@@ -16,7 +16,7 @@ pub async fn validate_target_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_group_members_opt: &Vec<String>,
+  hsm_group_members_opt: &[String],
 ) -> Result<Vec<String>, Error> {
   let hsm_groups_user_has_access = hsm::group::utils::get_group_name_available(
     shasta_token,
@@ -37,7 +37,7 @@ pub async fn validate_target_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_groups_user_has_access.clone(),
+      &hsm_groups_user_has_access,
     )
     .await
     .unwrap();
@@ -145,7 +145,7 @@ pub async fn validate_xnames_format_and_membership_agaisnt_multiple_hsm(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   xnames: &[&str],
-  hsm_group_name_vec_opt: Option<Vec<String>>,
+  hsm_group_name_vec_opt: Option<&[String]>,
 ) -> bool {
   let hsm_group_members: Vec<String> =
     if let Some(hsm_group_name) = hsm_group_name_vec_opt.clone() {

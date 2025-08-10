@@ -80,17 +80,17 @@ pub async fn exec(
   };
 
   // Get list CFS configuration names
-  let mut cfs_configuration_name_vec = cfs_configuration_vec
+  let mut cfs_configuration_name_vec: Vec<&str> = cfs_configuration_vec
     .iter()
-    .map(|configuration_value| configuration_value.name.as_ref())
-    .collect::<Vec<&str>>();
+    .map(|configuration| configuration.name.as_ref())
+    .collect();
 
   let xname_from_groups_vec =
     crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_name_available_vec.to_vec(),
+      hsm_name_available_vec,
     )
     .await?;
 
@@ -99,7 +99,6 @@ pub async fn exec(
     &mut bos_sessiontemplate_vec,
     &hsm_name_available_vec,
     &xname_from_groups_vec,
-    // cfs_configuration_name_opt.map(|elem| elem.as_str()),
     None,
   );
 
@@ -135,14 +134,13 @@ pub async fn exec(
   // Filter CFS sessions containing /configuration/name field
   cfs_session_vec.retain(|cfs_session| {
     cfs_configuration_name_vec
-      .contains(&cfs_session.get_configuration_name().unwrap_or_default())
+      .contains(&cfs_session.configuration_namen().unwrap_or_default())
   });
 
   // Get CFS configurations related with CFS sessions
-  let cfs_configuration_name_from_cfs_sessions =
-    cfs_session_vec.iter().map(|cfs_session| {
-      cfs_session.get_configuration_name().unwrap_or_default()
-    });
+  let cfs_configuration_name_from_cfs_sessions = cfs_session_vec
+    .iter()
+    .map(|cfs_session| cfs_session.configuration_namen().unwrap_or_default());
 
   // Get list of CFS configuration names related to CFS sessions and BOS sessiontemplates
   cfs_configuration_name_vec =
@@ -176,9 +174,9 @@ pub async fn exec(
     .filter(|cfs_session| cfs_session.first_result_id().is_some())
     .map(|cfs_session| {
       (
-        cfs_session.name.as_deref().unwrap(),
-        cfs_session.get_configuration_name().unwrap_or_default(),
-        cfs_session.first_result_id().unwrap(),
+        cfs_session.name().unwrap_or_default(),
+        cfs_session.configuration_namen().unwrap_or_default(),
+        cfs_session.first_result_id().unwrap_or_default(),
       )
     })
     .collect();
@@ -369,7 +367,7 @@ pub async fn exec(
     cfs_session_table.add_row(vec![
       cfs_session.name.as_ref().unwrap_or(&"".to_string()),
       &cfs_session
-        .get_configuration_name()
+        .configuration_namen()
         .unwrap_or_default()
         .to_string(),
       &cfs_session

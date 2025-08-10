@@ -218,7 +218,7 @@ pub async fn filter_2(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_group_name_vec.to_vec(),
+      hsm_group_name_vec,
     )
     .await?;
 
@@ -341,7 +341,7 @@ pub async fn filter(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_group_name_vec.to_vec(),
+      hsm_group_name_vec,
     )
     .await?;
 

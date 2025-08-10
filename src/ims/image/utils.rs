@@ -115,7 +115,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    hsm_group_name_vec.to_vec(),
+    hsm_group_name_vec,
   )
   .await?;
 
@@ -178,7 +178,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    hsm_group_name_vec.to_vec(),
+    hsm_group_name_vec,
   )
   .await?;
 
@@ -292,7 +292,7 @@ pub async fn get_image_available_vec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_name_available_vec.to_vec(),
+      hsm_name_available_vec,
     )
     .await?;
 

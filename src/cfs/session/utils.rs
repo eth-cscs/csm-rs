@@ -127,7 +127,7 @@ pub async fn filter_by_hsm(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_group_name_vec.to_vec(),
+      &hsm_group_name_vec,
     )
     .await?;
 
@@ -231,8 +231,7 @@ pub fn filter_by_cofiguration(
   );
 
   cfs_session_vec.retain(|cfs_session| {
-    cfs_session.get_configuration_name().as_deref()
-      == Some(cfs_configuration_name)
+    cfs_session.configuration_namen().as_deref() == Some(cfs_configuration_name)
   });
 }
 
@@ -285,7 +284,7 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
       .or_else(|| cfs_session.get_target_xname())
       .unwrap_or_default();
 
-    let cfs_configuration = cfs_session.get_configuration_name().unwrap();
+    let cfs_configuration = cfs_session.configuration_namen().unwrap();
 
     image_id_cfs_configuration_target_from_cfs_session.push((
       result_id.to_string(),
@@ -316,7 +315,7 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
         .or_else(|| cfs_session.get_target_xname())
         .unwrap_or_default();
 
-      let cfs_configuration = cfs_session.get_configuration_name().unwrap();
+      let cfs_configuration = cfs_session.configuration_namen().unwrap();
 
       image_id_cfs_configuration_target_from_cfs_session.push((
         result_id.to_string(),

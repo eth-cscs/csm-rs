@@ -141,7 +141,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
-      hsm_group_name_vec,
+      &hsm_group_name_vec,
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))

@@ -171,7 +171,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            vec![target_hsm_group_name.to_string()],
+            &[target_hsm_group_name.to_string()],
           )
           .await?;
         /* hsm::group::utils::get_member_vec_from_hsm_group_name(

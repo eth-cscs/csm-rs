@@ -57,6 +57,10 @@ impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
 }
 
 impl CfsSessionGetResponse {
+  pub fn name(&self) -> Option<&str> {
+    self.name.as_deref()
+  }
+
   /// Get start time
   pub fn get_start_time(&self) -> Option<String> {
     self.status.as_ref().and_then(|status| {
@@ -148,7 +152,7 @@ impl CfsSessionGetResponse {
       .and_then(|target| target.definition.clone())
   }
 
-  pub fn get_configuration_name(&self) -> Option<&str> {
+  pub fn configuration_namen(&self) -> Option<&str> {
     self
       .configuration
       .as_ref()
