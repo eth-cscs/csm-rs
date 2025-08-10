@@ -34,7 +34,6 @@ pub async fn exec(
     mut cfs_configuration_vec,
     mut cfs_session_vec,
     mut bos_sessiontemplate_vec,
-    // image_vec,
     bss_bootparameters_vec,
   ) = tokio::try_join!(
     cfs::component::http_client::v2::get_all(

@@ -50,61 +50,6 @@ pub async fn create_new_configuration(
           "CFS configuration '{}' already exists but 'overwrite' has been enabled",
           configuration_name
         );
-      /* log::info!(
-          "CFS configuration '{}' already exists but 'overwrite' has been enabled. Proceed deleting images (if any) and overwrite the CFS configuration",
-          configuration_name
-        );
-
-      let mut session_vec = cfs::session::http_client::v2::get_all(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-      )
-      .await?;
-
-      // Filter CFS sessions by configuration name
-      cfs::session::utils::filter_by_cofiguration(
-        &mut session_vec,
-        configuration_name,
-      );
-
-      // Delete images from IMS
-      for session in session_vec {
-        let session_name = session.name.clone().unwrap();
-        let image_id_vec = session.get_result_id_vec();
-        for image_id in image_id_vec {
-          // Delete image from IMS
-          log::info!(
-            "Delete image '{}' from CFS session '{}'",
-            image_id,
-            session_name
-          );
-          let delete_image_rslt = crate::ims::image::http_client::delete(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            &image_id,
-          )
-          .await
-          .map_err(|e| Error::Message(e.to_string()));
-
-          if let Err(Error::ImageNotFound(_)) = delete_image_rslt {
-            log::info!(
-              "Image '{}' not found in IMS, skipping deletion",
-              image_id
-            );
-          }
-        }
-
-        log::info!("Delete session: {:?}", session_name);
-        let _ = crate::cfs::session::http_client::v2::delete(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          &session_name,
-        )
-        .await;
-      } */
     } else {
       log::warn!(
         "CFS configuration '{}' already exists, cancel the process",
@@ -154,22 +99,6 @@ pub fn filter_3(
     });
   }
 
-  // Sort by last updated date in ASC order
-  cfs_configuration_vec.sort_by(|cfs_configuration_1, cfs_configuration_2| {
-    cfs_configuration_1
-      .last_updated
-      .cmp(&cfs_configuration_2.last_updated)
-  });
-
-  if let Some(limit_number) = limit_number_opt {
-    // Limiting the number of results to return to client
-
-    *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
-      .len()
-      .saturating_sub(*limit_number as usize)..]
-      .to_vec();
-  }
-
   // Filter CFS configurations based on pattern matching
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)
@@ -180,6 +109,21 @@ pub fn filter_3(
     });
   }
 
+  // Sort by last updated date in ASC order
+  cfs_configuration_vec.sort_by(|cfs_configuration_1, cfs_configuration_2| {
+    cfs_configuration_1
+      .last_updated
+      .cmp(&cfs_configuration_2.last_updated)
+  });
+
+  // Limiting the number of results to return to client
+  if let Some(limit_number) = limit_number_opt {
+    *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
+      .len()
+      .saturating_sub(*limit_number as usize)..]
+      .to_vec();
+  }
+
   Ok(cfs_configuration_vec.to_vec())
 }
 
@@ -188,31 +132,21 @@ pub fn filter_3(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
-pub async fn filter_2(
+pub async fn filter(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  cfs_component_vec: Vec<Component>,
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
   configuration_name_pattern_opt: Option<&str>,
   hsm_group_name_vec: &[String],
+  since_opt: Option<NaiveDateTime>,
+  until_opt: Option<NaiveDateTime>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   log::info!("Filter CFS configurations");
 
-  let (mut cfs_session_vec, mut bos_sessiontemplate_vec) = tokio::try_join!(
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-    ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-    )
-  )?;
-
+  // COLLECT SITE WIDE DATA FOR VALIDATION
+  //
   let xname_from_groups_vec =
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
@@ -222,12 +156,30 @@ pub async fn filter_2(
     )
     .await?;
 
+  let (mut cfs_session_vec, mut bos_sessiontemplate_vec, cfs_component_vec) = tokio::try_join!(
+    cfs::session::http_client::v2::get_all(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+    ),
+    bos::template::http_client::v2::get_all(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+    ),
+    cfs::component::http_client::v2::get_parallel(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      &xname_from_groups_vec,
+    ),
+  )?;
+
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     hsm_group_name_vec,
     &xname_from_groups_vec,
-    // None,
     None,
   );
 
@@ -283,6 +235,8 @@ pub async fn filter_2(
   .concat();
 
   // Filter CFS configurations
+  //
+  // Filter CFS configurations based on HSM group names
   cfs_configuration_vec.retain(|cfs_configuration| {
     hsm_group_name_vec
       .iter()
@@ -291,21 +245,24 @@ pub async fn filter_2(
         .contains(&cfs_configuration.name)
   });
 
+  // Filter CFS configurations based on user input (date range or configuration name)
+  if let (Some(since), Some(until)) = (since_opt, until_opt) {
+    cfs_configuration_vec.retain(|cfs_configuration| {
+      let date =
+        chrono::DateTime::parse_from_rfc3339(&cfs_configuration.last_updated)
+          .unwrap()
+          .naive_utc();
+
+      since <= date && date < until
+    });
+  }
+
   // Sort by last updated date in ASC order
   cfs_configuration_vec.sort_by(|cfs_configuration_1, cfs_configuration_2| {
     cfs_configuration_1
       .last_updated
       .cmp(&cfs_configuration_2.last_updated)
   });
-
-  if let Some(limit_number) = limit_number_opt {
-    // Limiting the number of results to return to client
-
-    *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
-      .len()
-      .saturating_sub(*limit_number as usize)..]
-      .to_vec();
-  }
 
   // Filter CFS configurations based on mattern matching
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
@@ -317,10 +274,18 @@ pub async fn filter_2(
     });
   }
 
+  // Limiting the number of results to return to client
+  if let Some(limit_number) = limit_number_opt {
+    *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
+      .len()
+      .saturating_sub(*limit_number as usize)..]
+      .to_vec();
+  }
+
   Ok(cfs_configuration_vec.to_vec())
 }
 
-/// Filter the list of CFS configurations provided. This operation is very expensive since it is
+/* /// Filter the list of CFS configurations provided. This operation is very expensive since it is
 /// filtering by HSM group which means it needs to link CFS configurations with CFS sessions and
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
@@ -373,7 +338,6 @@ pub async fn filter(
     &mut bos_sessiontemplate_vec,
     hsm_group_name_vec,
     &hsm_group_members_vec,
-    // None,
     None,
   );
 
@@ -429,6 +393,8 @@ pub async fn filter(
   .concat();
 
   // Filter CFS configurations
+  //
+  // Filter CFS configurations based on HSM group names
   cfs_configuration_vec.retain(|cfs_configuration| {
     hsm_group_name_vec
       .iter()
@@ -444,9 +410,8 @@ pub async fn filter(
       .cmp(&cfs_configuration_2.last_updated)
   });
 
+  // Limit the number of results to return to client
   if let Some(limit_number) = limit_number_opt {
-    // Limiting the number of results to return to client
-
     *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
       .len()
       .saturating_sub(*limit_number as usize)..]
@@ -464,7 +429,7 @@ pub async fn filter(
   }
 
   Ok(cfs_configuration_vec.to_vec())
-}
+} */
 
 /// If filtering by HSM group, then configuration name must include HSM group name (It assumms each configuration
 /// is built for a specific cluster based on ansible vars used by the CFS session). The reason
@@ -476,6 +441,8 @@ pub async fn get_and_filter(
   configuration_name: Option<&str>,
   configuration_name_pattern: Option<&str>,
   hsm_group_name_vec: &[String],
+  since_opt: Option<NaiveDateTime>,
+  until_opt: Option<NaiveDateTime>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   // Get list of configurations.
@@ -498,6 +465,8 @@ pub async fn get_and_filter(
       &mut cfs_configuration_vec,
       configuration_name_pattern,
       hsm_group_name_vec,
+      since_opt,
+      until_opt,
       limit_number_opt,
     )
     .await?;
@@ -689,10 +658,7 @@ pub async fn get_configuration_layer_details(
       ref_value.pointer("/object/type").unwrap().as_str().unwrap();
     let mut r#ref = ref_value["ref"].as_str().unwrap().split("/").skip(1);
 
-    // let commit_sha_value: Value;
-
     let ref_1 = r#ref.next();
-    // let ref_2 = r#ref.next();
     let ref_2 = r#ref.collect::<Vec<_>>().join("/");
 
     if ref_type == "commit" {
@@ -704,33 +670,10 @@ pub async fn get_configuration_layer_details(
         // lightweight tag
         tag_name_vec.push(tag_name_aux);
       }
-
-      // commit_sha = ref_value["url"].as_str().unwrap();
     } else {
       // annotated tag
       tag_name_vec.push(ref_2);
-
-      /* commit_sha_value = gitea::http_client::get_commit_from_tag(
-          ref_value["url"].as_str().unwrap(),
-          &tag_name,
-          gitea_token,
-          shasta_root_cert,
-      )
-      .await
-      .unwrap(); */
-
-      /* commit_sha = commit_sha_value
-      .pointer("/commit/sha")
-      .unwrap()
-      .as_str()
-      .unwrap(); */
     }
-
-    /* // check if layer commit is the most recent
-    if commit_sha.eq(&layer.commit.clone().unwrap()) {
-        // CFS layer commit is the same as the HEAD of the branch
-        most_recent_commit = true;
-    } */
   }
 
   if let Some(cfs_config_layer_branch) = &layer.branch {
@@ -747,7 +690,6 @@ pub async fn get_configuration_layer_details(
         .trim_end_matches(".git");
 
       gitea::http_client::get_commit_details_from_external_url(
-        // &layer.clone_url,
         repo_name,
         commit_id,
         gitea_token,
@@ -781,6 +723,5 @@ pub async fn get_configuration_layer_details(
     &branch_name_vec.join(","),
     &tag_name_vec.join(","),
     &layer.playbook,
-    // most_recent_commit,
   ))
 }

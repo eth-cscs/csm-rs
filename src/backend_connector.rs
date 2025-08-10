@@ -1445,6 +1445,8 @@ impl CfsTrait for Csm {
     configuration_name: Option<&str>,
     configuration_name_pattern: Option<&str>,
     hsm_group_name_vec: &[String],
+    since_opt: Option<NaiveDateTime>,
+    until_opt: Option<NaiveDateTime>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     crate::cfs::configuration::utils::get_and_filter(
@@ -1454,6 +1456,8 @@ impl CfsTrait for Csm {
       configuration_name,
       configuration_name_pattern,
       hsm_group_name_vec,
+      since_opt,
+      until_opt,
       limit_number_opt,
     )
     .await
