@@ -27,6 +27,15 @@ pub async fn exec(
 ) -> Result<(), Error> {
   // COLLECT SITE WIDE DATA FOR VALIDATION
   //
+  let xname_from_groups_vec =
+    crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_name_available_vec,
+    )
+    .await?;
+
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
   let (
@@ -67,31 +76,19 @@ pub async fn exec(
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  if let Err(e) = cfs::configuration::utils::filter_3(
+  cfs::configuration::utils::filter_3(
     &mut cfs_configuration_vec,
     configuration_name_pattern.map(|elem| elem.as_str()),
     None,
     since_opt,
     until_opt,
-  ) {
-    log::error!("Delete CFS configuraion and derivatives - {}", e);
-    return Err(e);
-  };
+  )?;
 
   // Get list CFS configuration names
   let mut cfs_configuration_name_vec: Vec<&str> = cfs_configuration_vec
     .iter()
     .map(|configuration| configuration.name.as_ref())
     .collect();
-
-  let xname_from_groups_vec =
-    crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      hsm_name_available_vec,
-    )
-    .await?;
 
   // Filter BOS sessiontemplate related to a HSM group
   bos::template::utils::filter(
@@ -252,8 +249,8 @@ pub async fn exec(
       nodes_using_cfs_configuration_as_dessired_configuration_vec.sort();
 
       eprintln!(
-                    "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
-                    cfs_configuration_name, cfs_configuration_name, nodes_using_cfs_configuration_as_dessired_configuration_vec.join(", "));
+        "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
+        cfs_configuration_name, cfs_configuration_name, nodes_using_cfs_configuration_as_dessired_configuration_vec.join(", "));
     }
 
     image_id_vec.dedup();
