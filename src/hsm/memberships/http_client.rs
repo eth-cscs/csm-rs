@@ -56,7 +56,7 @@ pub async fn get_xname(
   shasta_root_cert: &[u8],
   xname: &str,
 ) -> Result<Membership, Error> {
-  log::info!("Get membership of node '{}'", xname);
+  log::debug!("Get membership of node '{}'", xname);
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 

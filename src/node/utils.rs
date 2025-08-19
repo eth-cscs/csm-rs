@@ -312,11 +312,11 @@ pub async fn get_node_details(
       )
       .unwrap()
     } else {
-      log::warn!(
+      /* log::warn!(
         "No configuration found for node '{}' related to image id '{}'",
         xname,
         image_id_in_kernel_params
-      );
+      ); */
       "Not found".to_string()
     };
 

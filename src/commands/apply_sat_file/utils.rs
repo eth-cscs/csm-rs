@@ -2157,31 +2157,45 @@ pub async fn process_session_template_section_in_sat_file(
             &ref_name_processed_hashmap,
           )?;
         if dry_run {
-          let dry_run_mock_image = if is_image_id {
-            ims::image::http_client::types::Image {
-              id: Some(image_reference.to_string()),
-              created: None,
-              name: "dryrun_image".to_string(),
-              link: Some(Link {
-                path: "dryrun_path".to_string(),
-                etag: Some("dryrun_etag".to_string()),
-                r#type: "dryrun_type".to_string(),
-              }),
-              arch: None,
-            }
-          } else {
-            ims::image::http_client::types::Image {
-              id: None,
-              created: None,
-              name: image_reference.to_string(),
-              link: Some(Link {
-                path: "dryrun_path".to_string(),
-                etag: Some("dryrun_etag".to_string()),
-                r#type: "dryrun_type".to_string(),
-              }),
-              arch: None,
-            }
-          };
+          let dry_run_mock_image =
+            get_image_details_from_bos_sessiontemplate_yaml(
+              shasta_token,
+              shasta_base_url,
+              shasta_root_cert,
+              &hsm_group_available_vec,
+              &image_reference,
+              is_image_id,
+            )
+            .await
+            .unwrap_or_else(|_| {
+              let dry_run_mock_image = if is_image_id {
+                ims::image::http_client::types::Image {
+                  id: Some(image_reference.to_string()),
+                  created: None,
+                  name: "dryrun_image".to_string(),
+                  link: Some(Link {
+                    path: "dryrun_path".to_string(),
+                    etag: Some("dryrun_etag".to_string()),
+                    r#type: "dryrun_type".to_string(),
+                  }),
+                  arch: None,
+                }
+              } else {
+                ims::image::http_client::types::Image {
+                  id: None,
+                  created: None,
+                  name: image_reference.to_string(),
+                  link: Some(Link {
+                    path: "dryrun_path".to_string(),
+                    etag: Some("dryrun_etag".to_string()),
+                    r#type: "dryrun_type".to_string(),
+                  }),
+                  arch: None,
+                }
+              };
+
+              dry_run_mock_image
+            });
 
           println!(
             "Dry run mode: Generate mock Image\n{}",
