@@ -1,7 +1,7 @@
 use crate::{
   bos::{self, template::http_client::v2::types::BosSessionTemplate},
   cfs::{
-    self, component::http_client::v2::types::Component,
+    self,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
     session::http_client::v2::types::CfsSessionGetResponse,
   },

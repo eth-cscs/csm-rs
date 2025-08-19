@@ -11,7 +11,10 @@ pub async fn post(
   shasta_root_cert: &[u8],
   bos_session: BosSession,
 ) -> Result<Value, Error> {
-  log::info!("Create BOS session");
+  log::info!(
+    "Create BOS session '{}'",
+    bos_session.name.as_deref().unwrap_or("unknown")
+  );
   log::debug!("Create BOS session request:\n{:#?}", bos_session);
 
   let client;
@@ -41,6 +44,10 @@ pub async fn post(
     .map_err(|error| Error::NetError(error))?;
 
   if response.status().is_success() {
+    log::info!(
+      "BOS session '{}' created successfully",
+      bos_session.name.as_deref().unwrap_or("unknown")
+    );
     Ok(
       response
         .json()
