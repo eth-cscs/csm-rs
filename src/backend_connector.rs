@@ -29,7 +29,7 @@ use manta_backend_dispatcher::{
     pcs::PCSTrait,
   },
   types::{
-    bos::session_template::BosSessionTemplate,
+    bos::{session::BosSession, session_template::BosSessionTemplate},
     bss::BootParameters,
     bss::BootParameters as FrontEndBootParameters,
     cfs::{
@@ -1935,7 +1935,7 @@ impl ClusterSessionTrait for Csm {
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     bos_session: manta_backend_dispatcher::types::bos::session::BosSession,
-  ) -> Result<Value, Error> {
+  ) -> Result<BosSession, Error> {
     bos::session::http_client::v2::post(
       shasta_token,
       shasta_base_url,
@@ -1943,6 +1943,7 @@ impl ClusterSessionTrait for Csm {
       bos_session.into(),
     )
     .await
+    .map(|bos_session| bos_session.into())
     .map_err(|e| Error::Message(e.to_string()))
   }
 }
