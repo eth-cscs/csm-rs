@@ -20,7 +20,7 @@ pub async fn exec(
   shasta_root_cert: &[u8],
   hsm_name_available_vec: &[String],
   configuration_name_opt: Option<&String>,
-  configuration_name_pattern: Option<&String>,
+  configuration_name_pattern_opt: Option<&String>,
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
   assume_yes: bool,
@@ -76,13 +76,30 @@ pub async fn exec(
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  cfs::configuration::utils::filter_3(
+  /* cfs::configuration::utils::filter_3(
     &mut cfs_configuration_vec,
-    configuration_name_pattern.map(|elem| elem.as_str()),
+    configuration_name_pattern_opt.map(|elem| elem.as_str()),
     None,
     since_opt,
     until_opt,
-  )?;
+  )?; */
+
+  cfs::configuration::utils::filter(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &mut cfs_configuration_vec,
+    &xname_from_groups_vec,
+    &mut cfs_session_vec,
+    &mut bos_sessiontemplate_vec,
+    &cfs_component_vec,
+    configuration_name_pattern_opt.map(|elem| elem.as_str()),
+    hsm_name_available_vec,
+    since_opt,
+    until_opt,
+    None,
+  )
+  .await?;
 
   // Get list CFS configuration names
   let mut cfs_configuration_name_vec: Vec<&str> = cfs_configuration_vec
@@ -91,12 +108,14 @@ pub async fn exec(
     .collect();
 
   // Filter BOS sessiontemplate related to a HSM group
-  bos::template::utils::filter(
+  // NOTE: I don't need to filter by xname because BOS sessiontemplate because configuration filter
+  // does the same upon the same data
+  /* bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     &hsm_name_available_vec,
     &xname_from_groups_vec,
     None,
-  );
+  ); */
 
   // Filter BOS sessiontemplate containing /configuration/name field
   bos_sessiontemplate_vec.retain(|bos_sessiontemplate| {
@@ -121,8 +140,8 @@ pub async fn exec(
   // Filter CFS sessions related to a HSM group
   cfs::session::utils::filter(
     &mut cfs_session_vec,
-    hsm_name_available_vec.to_vec(),
-    xname_from_groups_vec,
+    &hsm_name_available_vec.to_vec(),
+    &xname_from_groups_vec,
     None,
     keep_generic_sessions,
   )?;

@@ -34,9 +34,10 @@ pub async fn get_details(
   for hsm_group in hsm_group_value_vec {
     let hsm_group_name = hsm_group.label.as_str();
 
-    let hsm_group_members: String =
-      crate::hsm::group::utils::get_member_vec_from_hsm_group(&hsm_group)
-        .join(",");
+    let xname_vec =
+      crate::hsm::group::utils::get_member_vec_from_hsm_group(&hsm_group);
+
+    let hsm_group_members: String = xname_vec.join(",");
 
     // Get all CFS sessions
     let mut cfs_session_vec = crate::cfs::session::get_and_sort(
@@ -51,16 +52,13 @@ pub async fn get_details(
     )
     .await?;
 
-    crate::cfs::session::utils::filter_by_hsm(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+    crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       &[hsm_group_name.to_string()],
+      &xname_vec,
       None,
       true,
-    )
-    .await?;
+    )?;
 
     let most_recent_cfs_session;
     let cfs_configuration;

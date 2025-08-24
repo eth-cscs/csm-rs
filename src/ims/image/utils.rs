@@ -152,16 +152,13 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   )
   .await?;
 
-  crate::cfs::session::utils::filter_by_hsm(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
+  crate::cfs::session::utils::filter(
     &mut cfs_session_vec,
     hsm_group_name_vec,
+    &xname_vec,
     None,
     common::jwt_ops::is_user_admin(shasta_token),
-  )
-  .await?;
+  )?;
 
   let mut image_id_cfs_configuration_from_cfs_session: Vec<(String, String, Vec<String>)> =
         crate::cfs::session::utils::get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
@@ -318,23 +315,20 @@ pub async fn get_image_available_vec(
   .await?;
 
   // Filter CFS sessions to the ones the user has access to
-  crate::cfs::session::utils::filter_by_hsm(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
+  crate::cfs::session::utils::filter(
     &mut cfs_session_vec,
     hsm_name_available_vec,
+    &xname_from_group_vec,
     None,
     true,
-  )
-  .await?;
+  )?;
 
   let mut image_id_cfs_configuration_from_bos_sessiontemplate: Vec<(
         String,
         String,
         Vec<String>,
     )> = crate::bos::template::utils::get_image_id_cfs_configuration_target_tuple_vec(
-        bos_sessiontemplate_vec,
+        &mut bos_sessiontemplate_vec,
     );
 
   image_id_cfs_configuration_from_bos_sessiontemplate

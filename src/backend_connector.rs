@@ -1090,7 +1090,6 @@ impl CfsTrait for Csm {
     auth_token: &str,
     site_name: &str,
     xname: &str,
-    // k8s_api_url: &str,
     k8s: &K8sDetails,
   ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
     let mut session_vec = crate::cfs::session::http_client::v2::get(
@@ -1106,16 +1105,13 @@ impl CfsTrait for Csm {
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
 
-    crate::cfs::session::utils::filter_by_xname(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
+    crate::cfs::session::utils::filter(
       &mut session_vec,
-      &[xname],
+      &[],
+      &[xname.to_string()],
       None,
       true,
     )
-    .await
     .map_err(|e| Error::Message(e.to_string()))?;
 
     if session_vec.is_empty() {
@@ -1233,23 +1229,26 @@ impl CfsTrait for Csm {
     .await
     .unwrap();
 
+    let xname_vec: Vec<String> = xname_vec_opt
+      .unwrap_or_default()
+      .into_iter()
+      .map(|s| s.to_string())
+      .collect();
+
     if let Some(hsm_group_name_vec) = hsm_group_name_vec_opt {
       if !hsm_group_name_vec.is_empty() {
-        crate::cfs::session::utils::filter_by_hsm(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
+        crate::cfs::session::utils::filter(
           &mut cfs_session_vec,
           &hsm_group_name_vec,
+          &xname_vec,
           limit_number_opt,
           true,
         )
-        .await
         .map_err(|e| Error::Message(e.to_string()))?;
       }
     }
 
-    if let Some(xname_vec) = xname_vec_opt {
+    /* if let Some(xname_vec) = xname_vec_opt {
       crate::cfs::session::utils::filter_by_xname(
         shasta_token,
         shasta_base_url,
@@ -1261,7 +1260,7 @@ impl CfsTrait for Csm {
       )
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
-    }
+    } */
 
     if cfs_session_vec.is_empty() {
       return Err(Error::Message("No CFS session found".to_string()));
@@ -1564,16 +1563,16 @@ impl CfsTrait for Csm {
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
 
-    crate::cfs::session::utils::filter_by_xname(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+    crate::cfs::session::utils::filter(
       &mut local_cfs_session_vec,
-      xname_vec,
+      &[],
+      &xname_vec
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>(),
       None,
       true,
     )
-    .await
     .map_err(|e| Error::Message(e.to_string()))?;
 
     // Convert to manta session

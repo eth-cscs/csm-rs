@@ -106,7 +106,7 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
   }
 }
 
-/// Filter CFS sessions related to a list of HSM group names, how this works is, it will
+/* /// Filter CFS sessions related to a list of HSM group names, how this works is, it will
 /// get the list of nodes within those HSM groups and filter all CFS sessions in the system
 /// using either the HSM group names or nodes as target.
 /// NOTE: Please make sure the user has access to the HSM groups he is asking for before
@@ -175,12 +175,12 @@ pub async fn filter_by_xname(
     limit_number_opt,
     keep_generic_sessions,
   )
-}
+} */
 
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
-  hsm_group_name_available_vec: Vec<String>,
-  xname_available_vec: Vec<String>,
+  hsm_group_name_available_vec: &[String],
+  xname_available_vec: &[String],
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
@@ -220,6 +220,7 @@ pub fn filter(
 
   Ok(())
 }
+
 /// Filter CFS sessions to the ones related to a CFS configuration
 pub fn filter_by_cofiguration(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
@@ -268,7 +269,7 @@ pub fn get_cfs_configuration_name(
 /// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
 /// sessions
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
-  cfs_session_vec: Vec<CfsSessionGetResponse>,
+  cfs_session_vec: &Vec<CfsSessionGetResponse>,
 ) -> Vec<(String, String, Vec<String>)> {
   let mut image_id_cfs_configuration_target_from_cfs_session: Vec<(
     String,

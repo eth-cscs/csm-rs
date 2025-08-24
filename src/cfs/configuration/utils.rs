@@ -137,10 +137,10 @@ pub async fn filter(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
-  xname_from_groups_vec: Vec<String>,
-  mut cfs_session_vec: Vec<CfsSessionGetResponse>,
-  mut bos_sessiontemplate_vec: Vec<BosSessionTemplate>,
-  cfs_component_vec: Vec<Component>,
+  xname_from_groups_vec: &Vec<String>,
+  cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
+  bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
+  cfs_component_vec: &Vec<Component>,
   configuration_name_pattern_opt: Option<&str>,
   hsm_group_name_vec: &[String],
   since_opt: Option<NaiveDateTime>,
@@ -151,23 +151,20 @@ pub async fn filter(
 
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
-    &mut bos_sessiontemplate_vec,
+    bos_sessiontemplate_vec,
     hsm_group_name_vec,
     &xname_from_groups_vec,
     None,
   );
 
   // Filter CFS sessions based on HSM groups
-  cfs::session::utils::filter_by_hsm(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    &mut cfs_session_vec,
+  cfs::session::utils::filter(
+    cfs_session_vec,
     hsm_group_name_vec,
+    xname_from_groups_vec,
     None,
     true,
-  )
-  .await?;
+  )?;
 
   // Get boot image id and desired configuration from BOS sessiontemplates
   let image_id_cfs_configuration_target_from_bos_sessiontemplate: Vec<(
@@ -190,7 +187,7 @@ pub async fn filter(
   // Get desired configuration from CFS components
   let desired_config_vec: Vec<String> = cfs_component_vec
     .into_iter()
-    .map(|cfs_component| cfs_component.desired_config.unwrap())
+    .map(|cfs_component| cfs_component.desired_config.clone().unwrap())
     .collect();
 
   // Merge CFS configurations in list of filtered CFS sessions and BOS sessiontemplates and
@@ -594,8 +591,8 @@ pub async fn get_and_filter(
 
   let (
     mut cfs_configuration_vec,
-    cfs_session_vec,
-    bos_sessiontemplate_vec,
+    mut cfs_session_vec,
+    mut bos_sessiontemplate_vec,
     cfs_component_vec,
   ) = tokio::try_join!(
     cfs::configuration::http_client::v2::get(
@@ -629,10 +626,10 @@ pub async fn get_and_filter(
       shasta_base_url,
       shasta_root_cert,
       &mut cfs_configuration_vec,
-      xname_from_groups_vec,
-      cfs_session_vec,
-      bos_sessiontemplate_vec,
-      cfs_component_vec,
+      &xname_from_groups_vec,
+      &mut cfs_session_vec,
+      &mut bos_sessiontemplate_vec,
+      &cfs_component_vec,
       configuration_name_pattern,
       hsm_group_name_vec,
       since_opt,

@@ -52,7 +52,7 @@ pub async fn filter_by_configuration(
 }
 
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
-  bos_sessiontemplate_value_vec: Vec<BosSessionTemplate>,
+  bos_sessiontemplate_value_vec: &Vec<BosSessionTemplate>,
 ) -> Vec<(String, String, Vec<String>)> {
   let mut image_id_cfs_configuration_from_bos_sessiontemplate: Vec<(
     String,
