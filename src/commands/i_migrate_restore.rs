@@ -16,7 +16,6 @@ use crate::ims::image::{
 use crate::ims::s3_client::BAR_FORMAT;
 use crate::{bos, cfs, ims};
 use chrono::Local;
-use dialoguer::Confirm;
 use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
 use md5::Digest;
@@ -58,6 +57,10 @@ pub async fn exec(
   hsm_file: Option<&String>,
   ims_file: Option<&String>,
   image_dir: Option<&String>,
+  overwrite_group: bool,
+  overwrite_configuration: bool,
+  overwrite_image: bool,
+  overwrite_template: bool,
 ) -> Result<(), Error> {
   if !PathBuf::from(&bos_file.unwrap()).exists() {
     return Err(Error::Message(format!(
@@ -141,6 +144,7 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     &ims_image_name,
+    overwrite_image,
   )
   .await;
 
@@ -181,6 +185,7 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     &backup_hsm_file,
+    overwrite_group,
   )
   .await;
   println!("Ok");
@@ -193,6 +198,7 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     &backup_cfs_file,
+    overwrite_configuration,
   )
   .await;
 
@@ -204,6 +210,7 @@ pub async fn exec(
     shasta_root_cert,
     &backup_bos_file,
     &ims_image_id,
+    overwrite_template,
   )
   .await;
 
@@ -220,6 +227,7 @@ async fn create_bos_sessiontemplate(
   shasta_root_cert: &[u8],
   bos_file: &String,
   ims_image_id: &String,
+  overwrite: bool,
 ) {
   let file_content = File::open(bos_file)
     .expect(&format!("Unable to read BOS JSON file '{}'", bos_file));
@@ -251,13 +259,7 @@ async fn create_bos_sessiontemplate(
   log::debug!("BOS sessiontemplate filtered: {:#?}", vector);
 
   if !vector.is_empty() {
-    println!("There already exists a BOS sessiontemplate with name '{}'. It can be replaced, but it's dangerous.", &bos_sessiontemplate_name);
-    let confirmation = Confirm::new()
-      .with_prompt("Do you want to overwrite it?")
-      .interact()
-      .unwrap();
-
-    if !confirmation {
+    if !overwrite {
       println!("Looks like you do not want to continue, bailing out.");
       std::process::exit(2)
     } else {
@@ -329,6 +331,7 @@ async fn create_cfs_config(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   cfs_file: &String,
+  overwrite: bool,
 ) {
   let file_content = File::open(cfs_file)
     .expect(&format!("Unable to read CFS JSON file '{}'", cfs_file));
@@ -357,13 +360,7 @@ async fn create_cfs_config(
   });
 
   if !cfs_config_vec.is_empty() {
-    println!("There already exists a CFS configuration with name {}. It can be replaced, but it's dangerous as it can trigger automated node reconfiguration.", &cfs_config_name);
-    let confirmation = Confirm::new()
-      .with_prompt("Do you want to overwrite it?")
-      .interact()
-      .unwrap();
-
-    if !confirmation {
+    if !overwrite {
       println!("Looks like you do not want to continue, bailing out.");
       std::process::exit(2)
     }
@@ -758,6 +755,7 @@ async fn ims_register_image(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   ims_image_name: &String,
+  overwrite: bool,
 ) -> anyhow::Result<String> {
   let ims_record = Image {
     name: ims_image_name.clone().to_string(),
@@ -778,14 +776,7 @@ async fn ims_register_image(
   .await?;
 
   if !list_images_with_same_name.is_empty() {
-    println!("There is already at least one record for image name {} in IMS do you want to create a new one (the previous one will not be deleted).", &ims_image_name);
-    println!("Current IMS record(s): {:?}", &list_images_with_same_name);
-    let confirmation = Confirm::new()
-      .with_prompt("Do you want to create a new record?")
-      .interact()
-      .unwrap();
-
-    if !confirmation {
+    if !overwrite {
       println!("Looks like you do not want to continue, bailing out.");
       std::process::exit(2)
     }
@@ -821,6 +812,7 @@ pub async fn create_hsm_group_from_file(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   hsm_file: &String,
+  overwrite: bool,
 ) {
   // Parse HSM group file
   // The file looks like this: [{"gele":["x1001c7s1b1n1","x1001c7s1b0n0","x1001c7s1b1n0","x1001c7s1b0n1"]}]
@@ -855,14 +847,7 @@ pub async fn create_hsm_group_from_file(
       }
       Err(error) => {
         if error.to_string().to_lowercase().contains("409") {
-          println!("The HSM group {} already exists, it is possible to recreate it, but is a dangerous operation", &group.label);
-          log::error!("Error message {}", error);
-          let confirmation = Confirm::new()
-            .with_prompt("Do you want to recreate it?")
-            .interact()
-            .unwrap();
-
-          if confirmation {
+          if overwrite {
             println!("Looks like you want to continue");
             // match backend.delete_group(shasta_token, &group.label).await {
             match delete_group(

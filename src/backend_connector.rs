@@ -1878,6 +1878,10 @@ impl MigrateRestoreTrait for Csm {
     hsm_file: Option<&String>,
     ims_file: Option<&String>,
     image_dir: Option<&String>,
+    overwrite_group: bool,
+    overwrite_configuration: bool,
+    overwrite_image: bool,
+    overwrite_template: bool,
   ) -> Result<(), Error> {
     crate::commands::i_migrate_restore::exec(
       shasta_token,
@@ -1888,6 +1892,10 @@ impl MigrateRestoreTrait for Csm {
       hsm_file,
       ims_file,
       image_dir,
+      overwrite_group,
+      overwrite_configuration,
+      overwrite_image,
+      overwrite_template,
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))
