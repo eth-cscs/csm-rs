@@ -247,7 +247,7 @@ pub fn find_cfs_session_related_to_image_id(
     .iter()
     .find(|cfs_session| {
       cfs_session
-        .get_first_result_id()
+        .first_result_id()
         .is_some_and(|result_id| result_id == image_id)
     })
     .cloned()
@@ -309,7 +309,7 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
   )> = Vec::new();
 
   cfs_session_vec.iter().for_each(|cfs_session| {
-    if let Some(result_id) = cfs_session.get_first_result_id() {
+    if let Some(result_id) = cfs_session.first_result_id() {
       let target: Vec<String> = cfs_session
         .get_target_hsm()
         .or_else(|| cfs_session.get_target_xname())
@@ -343,7 +343,8 @@ pub fn get_image_id_from_cfs_session_vec(
 ) -> Vec<String> {
   let mut image_id_vec: Vec<String> = cfs_session_vec
     .iter()
-    .flat_map(|cfs_session| cfs_session.get_result_id_vec())
+    .flat_map(|cfs_session| cfs_session.results_id())
+    .map(|s| s.to_string())
     .collect();
 
   image_id_vec.sort();

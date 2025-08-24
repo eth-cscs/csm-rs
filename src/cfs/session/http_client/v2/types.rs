@@ -100,13 +100,13 @@ impl CfsSessionGetResponse {
     })
   }
 
-  /// Returns list of result_ids
+  /* /// Returns list of result_ids
   #[deprecated(note = "Use first_result_id instead")]
   pub fn get_first_result_id(&self) -> Option<String> {
     CfsSessionGetResponse::get_result_id_vec(&self)
       .first()
       .cloned()
-  }
+  } */
 
   /// Returns list of result_ids
   pub fn first_result_id(&self) -> Option<&str> {

@@ -132,7 +132,7 @@ impl Layer {
     name: String,
     playbook: String,
     branch: Option<String>,
-    tag: Option<String>,
+    _tag: Option<String>,
     special_parameters: Option<Vec<SpecialParameter>>,
   ) -> Self {
     Self {

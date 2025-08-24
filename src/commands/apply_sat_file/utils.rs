@@ -1162,10 +1162,10 @@ pub async fn create_image_from_sat_file_serde_yaml(
         )));
       }
 
-      let image_id = cfs_session.get_first_result_id().unwrap();
+      let image_id = cfs_session.first_result_id().unwrap_or_default();
       println!("Image '{}' ({}) created", image_name, image_id);
 
-      Ok(image_id)
+      Ok(image_id.to_string())
     } else {
       println!(
         "Dry run mode: Create CFS session:\n{}",

@@ -802,8 +802,6 @@ impl PCSTrait for Csm {
     power_state_filter: Option<&str>,
     management_state_filter: Option<&str>,
   ) -> Result<FrontEndPowerStatusAll, Error> {
-    let operation = "status";
-
     // Convert &[String] to Vec<&str> and wrap in Some
     let nodes_str: Vec<&str> = nodes.iter().map(|s| s.as_str()).collect();
     let nodes_opt = Some(nodes_str.as_slice());

@@ -1,4 +1,3 @@
-
 use crate::{
   bss::types::BootParameters,
   cfs::{
@@ -132,7 +131,8 @@ pub async fn exec(
     .await?;
   } else if cfs_session_target_definition == "image" {
     // The CFS session is not of type 'target dynamic' (runtime CFS batcher)
-    let image_created_by_cfs_session_vec = cfs_session.get_result_id_vec();
+    let image_created_by_cfs_session_vec: Vec<&str> =
+      cfs_session.results_id().collect();
     if !image_created_by_cfs_session_vec.is_empty() {
       // if !assume_yes {
       //   // Ask user for confirmation
@@ -190,7 +190,7 @@ async fn delete_images(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  image_created_by_cfs_session_vec: &[String],
+  image_created_by_cfs_session_vec: &[&str],
   bss_bootparameters_vec_opt: &[BootParameters],
   dry_run: bool,
 ) -> Result<(), Error> {

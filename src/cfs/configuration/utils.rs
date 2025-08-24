@@ -490,7 +490,7 @@ pub async fn get_derivatives(
   Error,
 > {
   // List of image ids from CFS sessions and BOS sessiontemplates related to CFS configuration
-  let mut image_id_vec: Vec<String> = Vec::new();
+  let mut image_id_vec: Vec<&str> = Vec::new();
 
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
     cfs::session::http_client::v2::get_all(
@@ -519,9 +519,8 @@ pub async fn get_derivatives(
   // Filter BOS sessiontemplate
   bos_sessiontemplate_vec.retain(|bos_sessiontemplate| {
     bos_sessiontemplate
-      .get_image_vec()
-      .iter()
-      .any(|image_id_aux| image_id_vec.contains(image_id_aux))
+      .images_id()
+      .any(|image_id_aux| image_id_vec.contains(&image_id_aux))
       || bos_sessiontemplate.get_configuration().unwrap_or_default()
         == configuration_name
   });
@@ -530,19 +529,20 @@ pub async fn get_derivatives(
   image_id_vec.extend(
     cfs_session_vec
       .iter()
-      .flat_map(|cfs_session| cfs_session.get_result_id_vec().into_iter()),
+      .flat_map(|cfs_session| cfs_session.results_id()),
   );
 
   // Add boot images from BOS sessiontemplate to image_id_vec
   image_id_vec.extend(
     bos_sessiontemplate_vec
       .iter()
-      .flat_map(|bos_sessiontemplate| bos_sessiontemplate.get_image_vec()),
+      .flat_map(|bos_sessiontemplate| bos_sessiontemplate.images_id()),
   );
 
   // Filter images
-  ims_image_vec
-    .retain(|image| image_id_vec.contains(image.id.as_ref().unwrap()));
+  ims_image_vec.retain(|image| {
+    image_id_vec.contains(&image.id.as_deref().unwrap_or_default())
+  });
 
   Ok((
     Some(cfs_session_vec),
