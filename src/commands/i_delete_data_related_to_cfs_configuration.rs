@@ -74,6 +74,8 @@ pub async fn exec(
     duration
   );
 
+  let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
+
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
   /* cfs::configuration::utils::filter_3(
@@ -85,9 +87,6 @@ pub async fn exec(
   )?; */
 
   cfs::configuration::utils::filter(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
     &mut cfs_configuration_vec,
     &xname_from_groups_vec,
     &mut cfs_session_vec,
@@ -98,8 +97,8 @@ pub async fn exec(
     since_opt,
     until_opt,
     None,
-  )
-  .await?;
+    keep_generic_sessions,
+  )?;
 
   // Get list CFS configuration names
   let mut cfs_configuration_name_vec: Vec<&str> = cfs_configuration_vec
@@ -135,16 +134,18 @@ pub async fn exec(
 
   // Filter CFS sessions related to a HSM group
   // NOTE: Admins (pa-admin) are the only ones who can delete generic sessions
-  let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
+  // let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
 
   // Filter CFS sessions related to a HSM group
-  cfs::session::utils::filter(
+  // NOTE: I don't need to filter sessions again because configuration filter
+  // does the same upon the same data
+  /* cfs::session::utils::filter(
     &mut cfs_session_vec,
     &hsm_name_available_vec.to_vec(),
     &xname_from_groups_vec,
     None,
     keep_generic_sessions,
-  )?;
+  )?; */
 
   // Filter CFS sessions containing /configuration/name field
   cfs_session_vec.retain(|cfs_session| {

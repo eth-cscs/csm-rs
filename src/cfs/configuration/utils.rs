@@ -132,10 +132,7 @@ pub fn filter_3(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
-pub async fn filter(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
+pub fn filter(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
   xname_from_groups_vec: &Vec<String>,
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
@@ -146,6 +143,7 @@ pub async fn filter(
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
   limit_number_opt: Option<&u8>,
+  keep_generic_sessions: bool,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   log::info!("Filter CFS configurations");
 
@@ -163,7 +161,7 @@ pub async fn filter(
     hsm_group_name_vec,
     xname_from_groups_vec,
     None,
-    true,
+    keep_generic_sessions,
   )?;
 
   // Get boot image id and desired configuration from BOS sessiontemplates
@@ -619,25 +617,22 @@ pub async fn get_and_filter(
     ),
   )?;
 
-  if !common::jwt_ops::is_user_admin(shasta_token) {
-    // Filter CFS configurations if user is not admin
-    cfs::configuration::utils::filter(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      &mut cfs_configuration_vec,
-      &xname_from_groups_vec,
-      &mut cfs_session_vec,
-      &mut bos_sessiontemplate_vec,
-      &cfs_component_vec,
-      configuration_name_pattern,
-      hsm_group_name_vec,
-      since_opt,
-      until_opt,
-      limit_number_opt,
-    )
-    .await?;
-  }
+  let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
+
+  // Filter CFS configurations if user is not admin
+  cfs::configuration::utils::filter(
+    &mut cfs_configuration_vec,
+    &xname_from_groups_vec,
+    &mut cfs_session_vec,
+    &mut bos_sessiontemplate_vec,
+    &cfs_component_vec,
+    configuration_name_pattern,
+    hsm_group_name_vec,
+    since_opt,
+    until_opt,
+    limit_number_opt,
+    keep_generic_sessions,
+  )?;
 
   Ok(cfs_configuration_vec)
 }
