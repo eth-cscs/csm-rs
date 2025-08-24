@@ -1,7 +1,7 @@
 use directories::ProjectDirs;
 use serde_json::Value;
 
-use dialoguer::{Input, Password};
+// use dialoguer::{Input, Password};
 use std::{
   collections::HashMap,
   fs::{create_dir_all, File},
@@ -13,7 +13,7 @@ use termion::color;
 
 use crate::error::Error;
 
-/// docs --> https://cray-hpe.github.io/docs-csm/en-12/operations/security_and_authentication/api_authorization/
+/* /// docs --> https://cray-hpe.github.io/docs-csm/en-12/operations/security_and_authentication/api_authorization/
 ///      --> https://cray-hpe.github.io/docs-csm/en-12/operations/security_and_authentication/retrieve_an_authentication_token/
 pub async fn get_api_token(
   shasta_base_url: &str,
@@ -33,7 +33,7 @@ pub async fn get_api_token(
     log::info!(
             "Authentication token found in env var 'MANTA_CSM_TOKEN'. Check if it is still valid"
         );
-    match test_client_api(shasta_base_url, &shasta_token, shasta_root_cert)
+    match validate_api_token(shasta_base_url, &shasta_token, shasta_root_cert)
       .await
     {
       Ok(_) => return Ok(shasta_token),
@@ -72,8 +72,9 @@ pub async fn get_api_token(
     String::new()
   };
 
-  while !test_client_api(shasta_base_url, &shasta_token, shasta_root_cert)
-    .await?
+  while validate_api_token(shasta_base_url, &shasta_token, shasta_root_cert)
+    .await
+    .is_err()
     && attempts < 3
   {
     println!(
@@ -113,9 +114,9 @@ pub async fn get_api_token(
   } else {
     Err(Error::Message("Authentication unsucessful".to_string())) // Black magic conversion from Err(Box::new("my error msg")) which does not
   }
-}
+} */
 
-pub fn get_token_from_local_file(
+/* pub fn get_token_from_local_file(
   path: &std::ffi::OsStr,
 ) -> Result<String, Error> {
   let mut shasta_token = String::new();
@@ -124,13 +125,13 @@ pub fn get_token_from_local_file(
     .read_to_string(&mut shasta_token)?;
 
   Ok(shasta_token.to_string())
-}
+} */
 
-pub async fn test_client_api(
+pub async fn validate_api_token(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
-) -> Result<bool, Error> {
+) -> Result<(), Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
@@ -153,17 +154,10 @@ pub async fn test_client_api(
   let resp_rslt = client.get(api_url).bearer_auth(shasta_token).send().await;
 
   match resp_rslt {
-    Ok(resp) => {
-      if resp.status().is_success() {
-        log::info!("Shasta token is valid");
-        return Ok(true);
-      } else {
-        let payload = resp.text().await?;
-        log::error!("Token is not valid - {}", payload);
-        return Ok(false);
-      }
+    Ok(_) => {
+      return Ok(());
     }
-    Err(error) => Err(Error::NetError(error)),
+    Err(error) => Err(Error::Message(format!("Token is not valid: {}", error))),
   }
 }
 

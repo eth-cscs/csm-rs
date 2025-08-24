@@ -1,10 +1,11 @@
+use crate::commands::i_migrate_restore;
 use crate::error::Error;
 use crate::{bos, cfs, hsm, ims};
 use humansize::DECIMAL;
 use std::fs::File;
 use std::path::Path;
 
-use crate::commands::migrate_restore;
+// use crate::commands::i_migrate_restore;
 
 pub async fn exec(
   shasta_token: &str,
@@ -287,9 +288,10 @@ pub async fn exec(
             println!("\tCFS file: {}", &cfs_file_path.to_string_lossy());
             println!("\tHSM file: {}", &hsm_file_path.to_string_lossy());
             println!("\tIMS file: {}", &ims_file_path.to_string_lossy());
-            let ims_image_name = migrate_restore::get_image_name_from_ims_file(
-              &ims_file_path.clone().to_string_lossy().to_string(),
-            );
+            let ims_image_name =
+              i_migrate_restore::get_image_name_from_ims_file(
+                &ims_file_path.clone().to_string_lossy().to_string(),
+              );
             println!("\tImage name: {}", ims_image_name);
             for file in files2download {
               let dest = String::from(destination.unwrap());

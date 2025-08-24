@@ -6,12 +6,12 @@ use futures_channel::mpsc::Sender;
 use hostlist_parser::parse;
 use kube::api::{AttachedProcess, TerminalSize};
 use manta_backend_dispatcher::{
-  contracts::BackendTrait,
   error::Error,
   interfaces::{
     apply_hw_cluster_pin::ApplyHwClusterPin,
     apply_sat_file::SatTrait,
     apply_session::ApplySessionTrait,
+    authentication::AuthenticationTrait,
     bos::{ClusterSessionTrait, ClusterTemplateTrait},
     bss::BootParametersTrait,
     cfs::CfsTrait,
@@ -54,7 +54,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::{
   bos, bss,
   common::{
-    authentication, kubernetes,
+    authentication::{self, get_token_from_shasta_endpoint},
+    kubernetes,
     vault::http_client::fetch_shasta_k8s_secrets_from_vault,
   },
   hsm::{
@@ -595,6 +596,142 @@ impl ComponentTrait for Csm {
     .await
     .map_err(|e| Error::Message(e.to_string()))
   }
+
+  /// Get list of xnames from NIDs
+  /// The list of NIDs can be:
+  ///     - comma separated list of NIDs (eg: nid000001,nid000002,nid000003)
+  ///     - regex (eg: nid00000.*)
+  ///     - hostlist (eg: nid0000[01-15])
+  async fn nid_to_xname(
+    &self,
+    shasta_token: &str,
+    user_input_nid: &str,
+    is_regex: bool,
+  ) -> Result<Vec<String>, Error> {
+    if is_regex {
+      log::debug!("Regex found, getting xnames from NIDs");
+      // Get list of regex
+      let regex_vec: Vec<Regex> = user_input_nid
+        .split(",")
+        .map(|regex_str| Regex::new(regex_str.trim()))
+        .collect::<Result<Vec<Regex>, regex::Error>>()
+        .map_err(|e| Error::Message(e.to_string()))?;
+
+      // Get all HSM components (list of xnames + nids)
+      let hsm_component_vec = hsm::component::http_client::get_all_nodes(
+        &self.base_url,
+        &self.root_cert,
+        shasta_token,
+        Some("true"),
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?
+      .components
+      .unwrap_or_default();
+
+      let mut xname_vec: Vec<String> = vec![];
+
+      // Get list of xnames the user is asking for
+      for hsm_component in hsm_component_vec {
+        let nid_long = format!(
+          "nid{:06}",
+          &hsm_component
+            .nid
+            .ok_or_else(|| Error::Message("No NID found".to_string()))?
+        );
+        for regex in &regex_vec {
+          if regex.is_match(&nid_long) {
+            log::debug!(
+              "Nid '{}' IS included in regex '{}'",
+              nid_long,
+              regex.as_str()
+            );
+            xname_vec.push(
+              hsm_component
+                .id
+                .clone()
+                .ok_or_else(|| Error::Message("No XName found".to_string()))?,
+            );
+          }
+        }
+      }
+
+      return Ok(xname_vec);
+    } else {
+      log::debug!(
+        "No regex found, getting xnames from list of NIDs or NIDs hostlist"
+      );
+      let nid_hostlist_expanded_vec = parse(user_input_nid).map_err(|e| {
+        Error::Message(format!(
+          "Could not parse list of nodes as a hostlist. Reason:\n{}Exit",
+          e
+        ))
+      })?;
+
+      log::debug!("hostlist: {}", user_input_nid);
+      log::debug!("hostlist expanded: {:?}", nid_hostlist_expanded_vec);
+
+      let mut nid_short_vec = Vec::new();
+
+      for nid_long in nid_hostlist_expanded_vec {
+        let nid_short_elem = nid_long
+          .strip_prefix("nid")
+          .ok_or_else(|| {
+            Error::Message(format!(
+              "Nid '{}' not valid, 'nid' prefix missing",
+              nid_long
+            ))
+          })?
+          .trim_start_matches("0");
+
+        nid_short_vec.push(nid_short_elem.to_string());
+      }
+
+      let nid_short = nid_short_vec.join(",");
+
+      log::debug!("short NID list: {}", nid_short);
+
+      let hsm_components = hsm::component::http_client::get(
+        &self.base_url,
+        &self.root_cert,
+        shasta_token,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(&nid_short),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some("true"),
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
+
+      // Get list of xnames from HSM components
+      let xname_vec: Vec<String> = hsm_components
+        .components
+        .unwrap_or_default()
+        .iter()
+        .map(|component| component.id.clone().unwrap())
+        .collect();
+
+      log::debug!("xname list:\n{:#?}", xname_vec);
+
+      return Ok(xname_vec);
+    };
+  }
 }
 
 impl PCSTrait for Csm {
@@ -830,13 +967,12 @@ impl RedfishEndpointTrait for Csm {
   }
 }
 
-impl BackendTrait for Csm {
-  fn test_backend_trait(&self) -> String {
-    println!("in mesa backend");
-    "in mesa backend".to_string()
-  }
-
-  async fn get_api_token(&self, site_name: &str) -> Result<String, Error> {
+impl AuthenticationTrait for Csm {
+  async fn get_api_token(
+    &self,
+    username: &str,
+    password: &str,
+  ) -> Result<String, Error> {
     // FIXME: this is not nice but authentication/authorization will potentially move out to an
     // external crate since this is type of logic is external to each site ...
     let base_url = self
@@ -846,150 +982,42 @@ impl BackendTrait for Csm {
 
     let keycloak_base_url = base_url.to_string() + "/keycloak";
 
-    authentication::get_api_token(
+    /* authentication::get_api_token(
       &self.base_url,
       &self.root_cert,
       &keycloak_base_url,
       site_name,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(|e| Error::Message(e.to_string())) */
+
+    let token = get_token_from_shasta_endpoint(
+      &keycloak_base_url,
+      &self.root_cert,
+      username,
+      password,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))?;
+
+    self.validate_api_token(&token).await?;
+
+    Ok(token)
   }
 
-  /// Get list of xnames from NIDs
-  /// The list of NIDs can be:
-  ///     - comma separated list of NIDs (eg: nid000001,nid000002,nid000003)
-  ///     - regex (eg: nid00000.*)
-  ///     - hostlist (eg: nid0000[01-15])
-  async fn nid_to_xname(
-    &self,
-    shasta_token: &str,
-    user_input_nid: &str,
-    is_regex: bool,
-  ) -> Result<Vec<String>, Error> {
-    if is_regex {
-      log::debug!("Regex found, getting xnames from NIDs");
-      // Get list of regex
-      let regex_vec: Vec<Regex> = user_input_nid
-        .split(",")
-        .map(|regex_str| Regex::new(regex_str.trim()))
-        .collect::<Result<Vec<Regex>, regex::Error>>()
-        .map_err(|e| Error::Message(e.to_string()))?;
+  async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
+    // FIXME: this is not nice but authentication/authorization will potentially move out to an
+    // external crate since this is type of logic is external to each site ...
+    /* let base_url = self
+    .base_url
+    .strip_suffix("/apis")
+    .unwrap_or(&self.base_url);*/
 
-      // Get all HSM components (list of xnames + nids)
-      let hsm_component_vec = hsm::component::http_client::get_all_nodes(
-        &self.base_url,
-        &self.root_cert,
-        shasta_token,
-        Some("true"),
-      )
+    // let keycloak_base_url = base_url.to_string() + "/keycloak";
+
+    authentication::validate_api_token(&self.base_url, token, &self.root_cert)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?
-      .components
-      .unwrap_or_default();
-
-      let mut xname_vec: Vec<String> = vec![];
-
-      // Get list of xnames the user is asking for
-      for hsm_component in hsm_component_vec {
-        let nid_long = format!(
-          "nid{:06}",
-          &hsm_component
-            .nid
-            .ok_or_else(|| Error::Message("No NID found".to_string()))?
-        );
-        for regex in &regex_vec {
-          if regex.is_match(&nid_long) {
-            log::debug!(
-              "Nid '{}' IS included in regex '{}'",
-              nid_long,
-              regex.as_str()
-            );
-            xname_vec.push(
-              hsm_component
-                .id
-                .clone()
-                .ok_or_else(|| Error::Message("No XName found".to_string()))?,
-            );
-          }
-        }
-      }
-
-      return Ok(xname_vec);
-    } else {
-      log::debug!(
-        "No regex found, getting xnames from list of NIDs or NIDs hostlist"
-      );
-      let nid_hostlist_expanded_vec = parse(user_input_nid).map_err(|e| {
-        Error::Message(format!(
-          "Could not parse list of nodes as a hostlist. Reason:\n{}Exit",
-          e
-        ))
-      })?;
-
-      log::debug!("hostlist: {}", user_input_nid);
-      log::debug!("hostlist expanded: {:?}", nid_hostlist_expanded_vec);
-
-      let mut nid_short_vec = Vec::new();
-
-      for nid_long in nid_hostlist_expanded_vec {
-        let nid_short_elem = nid_long
-          .strip_prefix("nid")
-          .ok_or_else(|| {
-            Error::Message(format!(
-              "Nid '{}' not valid, 'nid' prefix missing",
-              nid_long
-            ))
-          })?
-          .trim_start_matches("0");
-
-        nid_short_vec.push(nid_short_elem.to_string());
-      }
-
-      let nid_short = nid_short_vec.join(",");
-
-      log::debug!("short NID list: {}", nid_short);
-
-      let hsm_components = hsm::component::http_client::get(
-        &self.base_url,
-        &self.root_cert,
-        shasta_token,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(&nid_short),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some("true"),
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
-
-      // Get list of xnames from HSM components
-      let xname_vec: Vec<String> = hsm_components
-        .components
-        .unwrap_or_default()
-        .iter()
-        .map(|component| component.id.clone().unwrap())
-        .collect();
-
-      log::debug!("xname list:\n{:#?}", xname_vec);
-
-      return Ok(xname_vec);
-    };
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }
 
@@ -1853,7 +1881,7 @@ impl MigrateRestoreTrait for Csm {
     ims_file: Option<&String>,
     image_dir: Option<&String>,
   ) -> Result<(), Error> {
-    crate::commands::migrate_restore::exec(
+    crate::commands::i_migrate_restore::exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
