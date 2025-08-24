@@ -1,7 +1,7 @@
 use crate::{
   bos::{self, template::http_client::v2::types::BosSessionTemplate},
   cfs::{
-    self,
+    self, component::http_client::v2::types::Component,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
     session::http_client::v2::types::CfsSessionGetResponse,
   },
@@ -132,6 +132,139 @@ pub fn filter_3(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
+pub async fn filter(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
+  xname_from_groups_vec: Vec<String>,
+  mut cfs_session_vec: Vec<CfsSessionGetResponse>,
+  mut bos_sessiontemplate_vec: Vec<BosSessionTemplate>,
+  cfs_component_vec: Vec<Component>,
+  configuration_name_pattern_opt: Option<&str>,
+  hsm_group_name_vec: &[String],
+  since_opt: Option<NaiveDateTime>,
+  until_opt: Option<NaiveDateTime>,
+  limit_number_opt: Option<&u8>,
+) -> Result<Vec<CfsConfigurationResponse>, Error> {
+  log::info!("Filter CFS configurations");
+
+  // Filter BOS sessiontemplates based on HSM groups
+  bos::template::utils::filter(
+    &mut bos_sessiontemplate_vec,
+    hsm_group_name_vec,
+    &xname_from_groups_vec,
+    None,
+  );
+
+  // Filter CFS sessions based on HSM groups
+  cfs::session::utils::filter_by_hsm(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &mut cfs_session_vec,
+    hsm_group_name_vec,
+    None,
+    true,
+  )
+  .await?;
+
+  // Get boot image id and desired configuration from BOS sessiontemplates
+  let image_id_cfs_configuration_target_from_bos_sessiontemplate: Vec<(
+    String,
+    String,
+    Vec<String>,
+  )> = bos::template::utils::get_image_id_cfs_configuration_target_tuple_vec(
+    bos_sessiontemplate_vec,
+  );
+
+  // Get image id, configuration and targets from CFS sessions
+  let image_id_cfs_configuration_target_from_cfs_session: Vec<(
+    String,
+    String,
+    Vec<String>,
+  )> = cfs::session::utils::get_image_id_cfs_configuration_target_tuple_vec(
+    cfs_session_vec,
+  );
+
+  // Get desired configuration from CFS components
+  let desired_config_vec: Vec<String> = cfs_component_vec
+    .into_iter()
+    .map(|cfs_component| cfs_component.desired_config.unwrap())
+    .collect();
+
+  // Merge CFS configurations in list of filtered CFS sessions and BOS sessiontemplates and
+  // desired configurations in CFS components
+  let cfs_configuration_in_cfs_session_and_bos_sessiontemplate: Vec<String> = [
+    image_id_cfs_configuration_target_from_bos_sessiontemplate
+      .into_iter()
+      .map(|(_, config, _)| config)
+      .collect(),
+    image_id_cfs_configuration_target_from_cfs_session
+      .into_iter()
+      .map(|(_, config, _)| config)
+      .collect(),
+    desired_config_vec,
+  ]
+  .concat();
+
+  // Filter CFS configurations
+  //
+  // Filter CFS configurations based on HSM group names
+  cfs_configuration_vec.retain(|cfs_configuration| {
+    hsm_group_name_vec
+      .iter()
+      .any(|hsm_group| cfs_configuration.name.contains(hsm_group))
+      || cfs_configuration_in_cfs_session_and_bos_sessiontemplate
+        .contains(&cfs_configuration.name)
+  });
+
+  // Filter CFS configurations based on user input (date range or configuration name)
+  if let (Some(since), Some(until)) = (since_opt, until_opt) {
+    cfs_configuration_vec.retain(|cfs_configuration| {
+      let date =
+        chrono::DateTime::parse_from_rfc3339(&cfs_configuration.last_updated)
+          .unwrap()
+          .naive_utc();
+
+      since <= date && date < until
+    });
+  }
+
+  // Sort by last updated date in ASC order
+  cfs_configuration_vec.sort_by(|cfs_configuration_1, cfs_configuration_2| {
+    cfs_configuration_1
+      .last_updated
+      .cmp(&cfs_configuration_2.last_updated)
+  });
+
+  // Filter CFS configurations based on mattern matching
+  if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
+    let glob = Glob::new(configuration_name_pattern)
+      .unwrap()
+      .compile_matcher();
+    cfs_configuration_vec.retain(|cfs_configuration| {
+      glob.is_match(cfs_configuration.name.clone())
+    });
+  }
+
+  // Limiting the number of results to return to client
+  if let Some(limit_number) = limit_number_opt {
+    *cfs_configuration_vec = cfs_configuration_vec[cfs_configuration_vec
+      .len()
+      .saturating_sub(*limit_number as usize)..]
+      .to_vec();
+  }
+
+  Ok(cfs_configuration_vec.to_vec())
+}
+
+/* /// Filter the list of CFS configurations provided. This operation is very expensive since it is
+/// filtering by HSM group which means it needs to link CFS configurations with CFS sessions and
+/// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
+/// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
+/// filtering from.
+#[deprecated(note = "please use `filter_2` instead")]
 pub async fn filter(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -283,7 +416,7 @@ pub async fn filter(
   }
 
   Ok(cfs_configuration_vec.to_vec())
-}
+} */
 
 /* /// Filter the list of CFS configurations provided. This operation is very expensive since it is
 /// filtering by HSM group which means it needs to link CFS configurations with CFS sessions and
@@ -447,14 +580,47 @@ pub async fn get_and_filter(
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   // Get list of configurations.
   // Returns list with only one element if "configuration name" provided
-  let mut cfs_configuration_vec: Vec<CfsConfigurationResponse> =
+
+  // COLLECT SITE WIDE DATA FOR VALIDATION
+  //
+  let xname_from_groups_vec =
+    hsm::group::utils::get_member_vec_from_hsm_name_vec(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_name_vec,
+    )
+    .await?;
+
+  let (
+    mut cfs_configuration_vec,
+    cfs_session_vec,
+    bos_sessiontemplate_vec,
+    cfs_component_vec,
+  ) = tokio::try_join!(
     cfs::configuration::http_client::v2::get(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       configuration_name,
-    )
-    .await?;
+    ),
+    cfs::session::http_client::v2::get_all(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+    ),
+    bos::template::http_client::v2::get_all(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+    ),
+    cfs::component::http_client::v2::get_parallel(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      &xname_from_groups_vec,
+    ),
+  )?;
 
   if !common::jwt_ops::is_user_admin(shasta_token) {
     // Filter CFS configurations if user is not admin
@@ -463,6 +629,10 @@ pub async fn get_and_filter(
       shasta_base_url,
       shasta_root_cert,
       &mut cfs_configuration_vec,
+      xname_from_groups_vec,
+      cfs_session_vec,
+      bos_sessiontemplate_vec,
+      cfs_component_vec,
       configuration_name_pattern,
       hsm_group_name_vec,
       since_opt,
