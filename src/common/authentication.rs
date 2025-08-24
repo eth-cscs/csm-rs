@@ -1,15 +1,8 @@
-use directories::ProjectDirs;
 use serde_json::Value;
 
 // use dialoguer::{Input, Password};
-use std::{
-  collections::HashMap,
-  fs::{create_dir_all, File},
-  io::{Read, Write},
-  path::PathBuf,
-};
+use std::collections::HashMap;
 
-use termion::color;
 
 use crate::error::Error;
 
