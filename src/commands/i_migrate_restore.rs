@@ -15,7 +15,6 @@ use crate::ims::image::{
 };
 use crate::ims::s3_client::BAR_FORMAT;
 use crate::{bos, cfs, ims};
-// use backend_dispatcher::types::Group;
 use chrono::Local;
 use dialoguer::Confirm;
 use humansize::DECIMAL;
@@ -29,14 +28,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::error::Error;
-
-// As per https://cray-hpe.github.io/docs-csm/en-13/operations/image_management/import_external_image_to_ims/
-/* #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Link {
-    pub path: String,
-    #[serde(rename = "type", default = "default_link_type")]
-    pub r#type: String,
-} */
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Artifact {
@@ -53,10 +44,6 @@ struct ImageManifest {
   pub version: String,
   pub artifacts: Vec<Artifact>,
 }
-// This is ridiculous
-// fn default_link_type() -> String {
-//     "s3".to_string()
-// }
 
 fn default_version() -> String {
   "1.0".to_string()
@@ -71,52 +58,7 @@ pub async fn exec(
   hsm_file: Option<&String>,
   ims_file: Option<&String>,
   image_dir: Option<&String>,
-  /* prehook: Option<&String>,
-  posthook: Option<&String>, */
 ) -> Result<(), Error> {
-  /* log::info!(
-      "Migrate_restore \n Pre-hook: {}\n Post-hook: {}\n BOS_file: {}\n CFS_file: {}\n IMS_file: {}\n HSM_file: {}",
-      &prehook.unwrap_or(&"none".to_string()),
-      &posthook.unwrap_or(&"none".to_string()),
-      bos_file.unwrap(),
-      cfs_file.unwrap(),
-      ims_file.unwrap(),
-      hsm_file.unwrap()
-  );
-  println!(
-      "Migrate_restore\n Prehook: {}\n Posthook: {}\n BOS_file: {}\n CFS_file: {}\n IMS_file: {}\n HSM_file: {}",
-      &prehook.unwrap_or(&"none".to_string()),
-      &posthook.unwrap_or(&"none".to_string()),
-      bos_file.unwrap(),
-      cfs_file.unwrap(),
-      ims_file.unwrap(),
-      hsm_file.unwrap()
-  ); */
-  /* if prehook.is_some() {
-      match crate::common::hooks::check_hook_perms(prehook).await {
-          Ok(_) => log::debug!("Pre-hook script exists and is executable."),
-          Err(e) => {
-              return Err(Error::Message(format!(
-                  "{}. File: {}",
-                  e,
-                  &prehook.unwrap()
-              )));
-          }
-      };
-  }
-  if posthook.is_some() {
-      match crate::common::hooks::check_hook_perms(posthook).await {
-          Ok(_) => log::debug!("Post-hook script exists and is executable."),
-          Err(e) => {
-              return Err(Error::Message(format!(
-                  "{}. File: {}",
-                  e,
-                  &posthook.unwrap()
-              )));
-          }
-      };
-  } */
-  // println!("Migrate restore of the following image:\n\tBOS file: {}\n\tCFS file: {}\n\tIMS file: {}\n\tHSM file: {}", &bos_file.unwrap(), &cfs_file.unwrap(), &ims_file.unwrap(), &hsm_file.unwrap() );
   if !PathBuf::from(&bos_file.unwrap()).exists() {
     return Err(Error::Message(format!(
       "Error, file {} does not exist or cannot be open.",
@@ -187,17 +129,6 @@ pub async fn exec(
     }
   }
 
-  /* println!();
-  if prehook.is_some() {
-      println!("Running the pre-hook {}", &prehook.unwrap());
-      match crate::common::hooks::run_hook(prehook).await {
-          Ok(_code) => log::debug!("Pre-hook script completed ok. RT={}", _code),
-          Err(_error) => {
-              return Err(Error::Message(format!("{}", _error)));
-          }
-      };
-  } */
-
   println!("Calculating image artifact checksum...");
   calculate_image_checksums(&mut ims_image_manifest, &vec_backup_image_files);
 
@@ -232,8 +163,6 @@ pub async fn exec(
     &vec_backup_image_files,
   )
   .await;
-  // println!();
-  // println!("Image manifest: {:?}", ims_image_manifest);
   println!("\nUpdating IMS image record with the new location in s3...");
   log::debug!("Updating image record with location of the newly generated manifest.json data");
   ims_update_image_add_manifest(
@@ -277,16 +206,6 @@ pub async fn exec(
     &ims_image_id,
   )
   .await;
-
-  /* if posthook.is_some() {
-      println!("Running the post-hook {}", &posthook.unwrap());
-      match crate::common::hooks::run_hook(posthook).await {
-          Ok(code) => log::debug!("Post-hook script completed ok. RT={}", code),
-          Err(e) => {
-              return Err(Error::Message(format!("{}", e)));
-          }
-      };
-  } */
 
   println!("\nDone, the image bundle, HSM group, CFS configuration and BOS sessiontemplate have been restored.");
 
@@ -369,10 +288,9 @@ async fn create_bos_sessiontemplate(
     serde_json::from_reader(BufReader::new(file_content))
       .expect("BOS JSON file does not have correct format.");
 
-  // This is as ugly as it can be
-  // println!("Path: {}", bos_sessiontemplate.clone().boot_sets.clone().unwrap().compute.clone().unwrap().path.clone().unwrap().to_string());
   let path_modified =
     format!("s3://boot-images/{}/manifest.json", ims_image_id);
+
   bos_sessiontemplate
     .boot_sets
     .as_mut()
@@ -467,6 +385,7 @@ async fn create_cfs_config(
       ),
     };
   }
+
   // At this point we're sure there's either no CFS config with that name
   // or that the user wants to overwrite it, so let's do it
 
@@ -501,6 +420,7 @@ async fn create_cfs_config(
         ),
     }
 }
+
 /// Add the image manifest field to an IMS image record
 /// the manifest field will be: s3://boot-images/{ims_image_id}/manifest.json
 async fn ims_update_image_add_manifest(
@@ -539,16 +459,6 @@ async fn ims_update_image_add_manifest(
     }),
   };
 
-  // arch is not on CSM 1.3
-  // {
-  //   "link": {
-  //     "path": "s3://boot-images/1fb58f4e-ad23-489b-89b7-95868fca7ee6/manifest.json",
-  //     "etag": "f04af5f34635ae7c507322985e60c00c-131",
-  //     "type": "s3"
-  //   },
-  //   "arch": "aarch64"
-  // }
-
   let ims_link = Link {
     etag: None,
     path: format!(
@@ -562,7 +472,6 @@ async fn ims_update_image_add_manifest(
     arch: None,
   };
 
-  // println!("New IMS link {:?}", &rec);
   match patch(
     shasta_token,
     shasta_base_url,
@@ -715,6 +624,7 @@ async fn s3_upload_image_artifacts(
       }
     }
   }
+
   log::debug!("Writing the new manifest.json file with the correct new ID");
   let new_manifest_file_name = String::from("new-manifest.json");
   let new_manifest_file_path = Path::new(vec_image_files.first().unwrap())
@@ -747,6 +657,7 @@ async fn s3_upload_image_artifacts(
     Err(error) => panic!("Unable to upload file to s3. Error {}", error),
   };
 }
+
 /// Return the md5sum of a file
 fn file_md5sum(filename: PathBuf) -> Digest {
   log::debug!("File {:?}...", &filename);
@@ -774,15 +685,10 @@ fn file_md5sum(filename: PathBuf) -> Digest {
     let part_len = part.len();
     buf.consume(part_len);
     bar.inc(part_len as u64);
-    // println!("Consumed {} out of {}; step {}/{}",
-    //          humansize::format_size(part_len, DECIMAL),
-    //          humansize::format_size(len, DECIMAL),
-    //          i, len as usize/buf_len);
   }
   let digest = context.compute();
   bar.finish();
 
-  // println!("{:x}\t{:?}", digest, &filename);
   digest
 }
 /// Calculates the md5sum of all the files in the `vec_backup_image_files` vector and updates
@@ -810,7 +716,6 @@ fn calculate_image_checksums(
     let mut fp = PathBuf::new();
     fp.push(file);
     let digest = file_md5sum(fp);
-    // println!("{:x}\t{:?}", digest, file);
 
     if file.contains("kernel") {
       artifact = Artifact {
@@ -906,18 +811,6 @@ pub fn get_image_name_from_ims_file(ims_file: &String) -> String {
   let ims_json: serde_json::Value = serde_json::from_str(&ims_data)
     .expect("HSM JSON file does not have correct format.");
 
-  // The file looks like this, we only want the field "name"
-  // {
-  //   "created": "2023-10-13T19:13:46.558252+00:00",
-  //   "id": "58a205ff-d98a-46ad-a32d-87657c90814e",
-  //   "link": {
-  //     "etag": "d1f2a80c4725dc0d42b809dabcc065d8",
-  //     "path": "s3://boot-images/58a205ff-d98a-46ad-a32d-87657c90814e/manifest.json",
-  //     "type": "s3"
-  //   },
-  //   "name": "gele-cos-3.2.2"
-  // }
-  //
   ims_json[0]["name"].clone().to_string().replace('"', "")
 }
 
@@ -954,7 +847,6 @@ pub async fn create_hsm_group_from_file(
     )
     .await
     {
-      /* match backend.add_group(shasta_token, group.clone()).await { */
       Ok(group) => {
         println!(
           "The HSM group {} has been created successfully.",
