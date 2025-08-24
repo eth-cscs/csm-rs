@@ -1883,7 +1883,7 @@ impl MigrateRestoreTrait for Csm {
     overwrite_image: bool,
     overwrite_template: bool,
   ) -> Result<(), Error> {
-    crate::commands::i_migrate_restore::exec(
+    crate::commands::migrate_restore::exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
