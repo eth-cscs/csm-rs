@@ -135,7 +135,7 @@ impl GroupTrait for Csm {
   async fn get_member_vec_from_group_name_vec(
     &self,
     auth_token: &str,
-    hsm_group_name_vec: Vec<String>,
+    hsm_group_name_vec: &[&str],
   ) -> Result<Vec<String>, Error> {
     // FIXME: try to merge functions get_member_vec_from_hsm_name_vec_2 and get_member_vec_from_hsm_name_vec
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
@@ -1128,13 +1128,11 @@ impl CfsTrait for Csm {
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       None,
-      (
-        &hsm_group_name_vec
-          .iter()
-          .map(|g| g.as_str())
-          .collect::<Vec<&str>>(),
-        &xname_vec,
-      ),
+      &hsm_group_name_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+      &xname_vec,
       limit_number_opt,
       true,
     )
@@ -1282,9 +1280,9 @@ impl CfsTrait for Csm {
     gitea_token: &str,
     gitea_base_url: &str,
     shasta_root_cert: &[u8],
-    repo_name_vec: Vec<String>,
-    local_git_commit_vec: Vec<String>,
-    playbook_file_name_opt: Option<&String>,
+    repo_name_vec: &[&str],
+    local_git_commit_vec: &[&str],
+    playbook_file_name_opt: Option<&str>,
   ) -> Result<CfsConfigurationRequest, Error> {
     Ok(crate::cfs::configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest::create_from_repos(
             gitea_token,
@@ -1324,7 +1322,7 @@ impl CfsTrait for Csm {
     shasta_root_cert: &[u8],
     configuration_name: Option<&str>,
     configuration_name_pattern: Option<&str>,
-    hsm_group_name_vec: &[String],
+    hsm_group_name_vec: &[&str],
     since_opt: Option<NaiveDateTime>,
     until_opt: Option<NaiveDateTime>,
     limit_number_opt: Option<&u8>,
@@ -1543,9 +1541,9 @@ impl SatTrait for Csm {
     k8s_api_url: &str,
     shasta_k8s_secrets: serde_json::Value,
     sat_template_file_yaml: serde_yaml::Value,
-    hsm_group_available_vec: &Vec<String>,
+    hsm_group_available_vec: &[&str],
     ansible_verbosity_opt: Option<u8>,
-    ansible_passthrough_opt: Option<&String>,
+    ansible_passthrough_opt: Option<&str>,
     gitea_base_url: &str,
     gitea_token: &str,
     do_not_reboot: bool,
@@ -1682,14 +1680,14 @@ impl ApplySessionTrait for Csm {
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     // k8s_api_url: &str,
-    cfs_conf_sess_name: Option<&String>,
-    playbook_yaml_file_name_opt: Option<&String>,
-    hsm_group: Option<&String>,
-    repos_name_vec: Vec<String>,
-    repos_last_commit_id_vec: Vec<String>,
-    ansible_limit: Option<String>,
-    ansible_verbosity: Option<String>,
-    ansible_passthrough: Option<String>,
+    cfs_conf_sess_name: Option<&str>,
+    playbook_yaml_file_name_opt: Option<&str>,
+    hsm_group: Option<&str>,
+    repos_name_vec: &[&str],
+    repos_last_commit_id_vec: &[&str],
+    ansible_limit: Option<&str>,
+    ansible_verbosity: Option<&str>,
+    ansible_passthrough: Option<&str>,
     // watch_logs: bool,
     /* kafka_audit: &Kafka,
     k8s: &K8sDetails, */
@@ -1790,8 +1788,8 @@ impl GetImagesAndDetailsTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_group_name_vec: &[String],
-    id_opt: Option<&String>,
+    hsm_group_name_vec: &[&str],
+    id_opt: Option<&str>,
     limit_number: Option<&u8>,
   ) -> Result<Vec<(FrontEndImage, String, String, bool)>, Error> {
     crate::commands::get_images_and_details::get_images_and_details(
@@ -1862,16 +1860,16 @@ impl ClusterTemplateTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_group_name_vec: &Vec<String>,
-    hsm_member_vec: &[String],
-    bos_sessiontemplate_name_opt: Option<&String>,
+    hsm_group_name_vec: &[&str],
+    hsm_member_vec: &[&str],
+    bos_sessiontemplate_name_opt: Option<&str>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
     let mut bos_sessiontemplate_vec = bos::template::http_client::v2::get(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      bos_sessiontemplate_name_opt.map(|value| value.as_str()),
+      bos_sessiontemplate_name_opt.map(|value| value),
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
@@ -1957,8 +1955,8 @@ impl CommandsTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_name_available_vec: Vec<String>,
-    configuration_name_pattern: Option<&String>,
+    hsm_name_available_vec: &[&str],
+    configuration_name_pattern: Option<&str>,
     since_opt: Option<NaiveDateTime>,
     until_opt: Option<NaiveDateTime>,
     assume_yes: bool,

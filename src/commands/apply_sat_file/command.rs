@@ -21,9 +21,9 @@ pub async fn exec(
   k8s_api_url: &str,
   shasta_k8s_secrets: serde_json::Value,
   sat_template_file_yaml: serde_yaml::Value,
-  hsm_group_available_vec: &Vec<String>,
+  hsm_group_available_vec: &[&str],
   ansible_verbosity_opt: Option<u8>,
-  ansible_passthrough_opt: Option<&String>,
+  ansible_passthrough_opt: Option<&str>,
   gitea_base_url: &str,
   gitea_token: &str,
   do_not_reboot: bool,
@@ -171,7 +171,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            &[target_hsm_group_name.to_string()],
+            &[target_hsm_group_name],
           )
           .await?;
         /* hsm::group::utils::get_member_vec_from_hsm_group_name(
@@ -273,7 +273,7 @@ pub async fn exec(
       // vault_role_id,
       k8s_api_url,
       &mut ref_name_processed_hashmap,
-      image_yaml_vec_opt.unwrap_or(&Vec::new()).to_vec(),
+      &image_yaml_vec_opt.unwrap_or(&Vec::new()).to_vec(),
       &cray_product_catalog,
       ansible_verbosity_opt,
       ansible_passthrough_opt,

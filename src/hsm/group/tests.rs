@@ -45,8 +45,14 @@ fn test_validate_groups_tenant() {
   ];
 
   assert!(hsm::group::hacks::validate_groups(
-    cfs_session_groups.as_slice(),
-    auth_token_groups.as_slice()
+    &cfs_session_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>(),
+    &auth_token_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>()
   )
   .is_empty());
 }
@@ -72,8 +78,14 @@ fn test_validate_groups_tenant_fail() {
   assert_eq!(
     vec!["unwanted".to_string()],
     hsm::group::hacks::validate_groups(
-      cfs_session_groups.as_slice(),
-      auth_token_groups.as_slice()
+      &cfs_session_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &auth_token_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
     )
   );
 }
@@ -97,8 +109,14 @@ fn test_validate_groups_admin() {
   ];
 
   assert!(hsm::group::hacks::validate_groups(
-    cfs_session_groups.as_slice(),
-    auth_token_groups.as_slice()
+    &cfs_session_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>(),
+    &auth_token_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>()
   )
   .is_empty());
 }
@@ -123,8 +141,14 @@ fn test_validate_groups_admin_2() {
   ];
 
   assert!(hsm::group::hacks::validate_groups(
-    cfs_session_groups.as_slice(),
-    auth_token_groups.as_slice()
+    &cfs_session_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>(),
+    &auth_token_groups
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>()
   )
   .is_empty());
 }

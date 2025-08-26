@@ -59,10 +59,11 @@ pub fn filter_system_hsm_groups(
 }
 
 /// Removes unwanted roles thay may appear in keycloak auth/jwt token roles
-pub fn filter_keycloak_roles(keycloak_roles: Vec<String>) -> Vec<String> {
+pub fn filter_keycloak_roles(keycloak_roles: &[&str]) -> Vec<String> {
   keycloak_roles
-    .into_iter()
-    .filter(|role| !KEYCLOAK_ROLES_TO_IGNORE.contains(&role.as_str()))
+    .iter()
+    .filter(|role| !KEYCLOAK_ROLES_TO_IGNORE.contains(&role))
+    .map(|role| role.to_string())
     .collect()
 }
 
@@ -81,15 +82,13 @@ pub fn filter_system_hsm_group_names(
     .collect()
 }
 
-pub fn filter_roles_and_subroles(
-  hsm_group_name_vec: Vec<String>,
-) -> Vec<String> {
+pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
   hsm_group_name_vec
-    .into_iter()
+    .iter()
     .filter(|hsm_group_name| {
-      !ROLES.contains(&hsm_group_name.as_str())
-        && !SUBROLES.contains(&hsm_group_name.as_str())
+      !ROLES.contains(&hsm_group_name) && !SUBROLES.contains(&hsm_group_name)
     })
+    .map(|hsm_group_name| hsm_group_name.to_string())
     .collect()
 }
 
@@ -97,12 +96,18 @@ pub fn filter_roles_and_subroles(
 /// This function validates groups in CFS session against user auth token
 /// Returns the list of groups in the CFS session the user does not have access to
 pub fn validate_groups_auth_token(
-  cfs_group_names: &[String],
+  cfs_group_names: &[&str],
   shasta_token: &str,
 ) -> Vec<String> {
   let keycloak_roles = common::jwt_ops::get_roles(shasta_token);
 
-  validate_groups(cfs_group_names, &keycloak_roles)
+  validate_groups(
+    cfs_group_names,
+    &keycloak_roles
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>(),
+  )
 }
 
 /// Check user has access to all groups in CFS session
@@ -110,21 +115,24 @@ pub fn validate_groups_auth_token(
 /// access to
 /// Returns the list of groups in the CFS session the user does not have access to
 pub fn validate_groups(
-  cfs_group_names: &[String],
-  keycloak_roles: &[String],
+  cfs_group_names: &[&str],
+  keycloak_roles: &[&str],
 ) -> Vec<String> {
-  if keycloak_roles.contains(&PA_ADMIN.to_string()) {
+  if keycloak_roles.contains(&PA_ADMIN) {
     // Admins have access to all groups
     vec![]
   } else {
     // User is not admin. Check if groups in CFS session are in user auth token
     // Remove unwanted roles from keycloak auth token
     let groups_and_roles_in_auth_token =
-      hsm::group::hacks::filter_keycloak_roles(keycloak_roles.to_vec());
+      hsm::group::hacks::filter_keycloak_roles(keycloak_roles);
     // Remove "roles" and "subroles" from auth token
     let site_wide_and_cluster_groups_in_auth_token =
       hsm::group::hacks::filter_roles_and_subroles(
-        groups_and_roles_in_auth_token.to_vec(),
+        &groups_and_roles_in_auth_token
+          .iter()
+          .map(String::as_str)
+          .collect::<Vec<&str>>(),
       );
     // Remove "site wide" (eg: alps, realps, alpsm, alpsb, etc.) from CFS session groups
     //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
@@ -134,7 +142,7 @@ pub fn validate_groups(
 
     // Remove 'roles' and 'subroles' from CFS session groups
     let groups_without_roles_subroles =
-      hsm::group::hacks::filter_roles_and_subroles(cfs_group_names.to_vec());
+      hsm::group::hacks::filter_roles_and_subroles(cfs_group_names);
     // Remove 'system wide' groups from CFS session groups
     //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
     //wide operations instead of using roles

@@ -810,10 +810,10 @@ pub async fn import_images_section_in_sat_file(
   // vault_role_id: &str,
   k8s_api_url: &str,
   ref_name_processed_hashmap: &mut HashMap<String, String>,
-  image_yaml_vec: Vec<serde_yaml::Value>,
+  image_yaml_vec: &[serde_yaml::Value],
   cray_product_catalog: &BTreeMap<String, String>,
   ansible_verbosity_opt: Option<u8>,
-  ansible_passthrough_opt: Option<&String>,
+  ansible_passthrough_opt: Option<&str>,
   debug_on_failure: bool, // tag: &str,
   dry_run: bool,
   watch_logs: bool,
@@ -889,7 +889,7 @@ pub async fn create_image_from_sat_file_serde_yaml(
   image_yaml: &serde_yaml::Value, // NOTE: image may be an IMS job or a CFS session
   cray_product_catalog: &BTreeMap<String, String>,
   ansible_verbosity_opt: Option<u8>,
-  ansible_passthrough_opt: Option<&String>,
+  ansible_passthrough_opt: Option<&str>,
   ref_name_image_id_hashmap: &HashMap<String, String>,
   _debug_on_failure: bool,
   dry_run: bool,
@@ -919,12 +919,15 @@ pub async fn create_image_from_sat_file_serde_yaml(
   // configuration = configuration.replace("__DATE__", tag);
 
   // Get HSM groups related to CFS session in SAT file
-  let groups_name: Vec<String> = image_yaml["configuration_group_names"]
+  let groups_name: Vec<&str> = image_yaml["configuration_group_names"]
     .as_sequence()
-    .unwrap_or(&Vec::new())
-    .iter()
-    .map(|group_name| group_name.as_str().unwrap().to_string())
-    .collect();
+    .and_then(|group_name_vec| {
+      group_name_vec
+        .iter()
+        .map(|group_name| group_name.as_str())
+        .collect::<Option<Vec<&str>>>()
+    })
+    .unwrap_or(vec![]);
 
   // VALIDATION: make sure grups in SAT.images "CFS session" are valid
   // NOTE: this is temporary until we get rid off "group" names as ansible folder names
@@ -1119,13 +1122,13 @@ pub async fn create_image_from_sat_file_serde_yaml(
     );
     let cfs_session = CfsSessionPostRequest::new(
       session_name,
-      configuration_name,
+      &configuration_name,
       None,
       ansible_verbosity_opt,
-      ansible_passthrough_opt.cloned(),
+      ansible_passthrough_opt,
       true,
-      Some(groups_name.to_vec()),
-      Some(base_image_id),
+      Some(&groups_name),
+      Some(&base_image_id),
     );
 
     if !dry_run {
@@ -1495,7 +1498,7 @@ pub fn filter_product_catalog_images(
 pub fn validate_sat_file_images_section(
   image_yaml_vec: &Vec<Value>,
   configuration_yaml_vec: &Vec<Value>,
-  hsm_group_available_vec: &[String],
+  hsm_group_available_vec: &[&str],
   cray_product_catalog: &BTreeMap<String, String>,
   image_vec: Vec<ims::image::http_client::types::Image>,
   configuration_vec: Vec<CfsConfigurationResponse>,
@@ -1806,7 +1809,7 @@ pub fn validate_sat_file_images_section(
               && !hsm_group.eq_ignore_ascii_case("Application_UAN")
           })
         {
-          if !hsm_group_available_vec.contains(&hsm_group.to_string()) {
+          if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
             return Err(Error::Message(format!
                         (
                         "HSM group '{}' in image '{}' not allowed, List of HSM groups available:\n{:?}. Exit",
@@ -1858,7 +1861,7 @@ pub async fn validate_sat_file_session_template_section(
   image_yaml_vec_opt: Option<&Vec<Value>>,
   configuration_yaml_vec_opt: Option<&Vec<Value>>,
   session_template_yaml_vec_opt: Option<&Vec<Value>>,
-  hsm_group_available_vec: &Vec<String>,
+  hsm_group_available_vec: &[&str],
 ) -> Result<(), Error> {
   // Validate 'session_template' section in SAT file
   log::info!("Validate 'session_template' section in SAT file");
@@ -1903,7 +1906,7 @@ pub async fn validate_sat_file_session_template_section(
       };
 
     for hsm_group in bos_session_template_hsm_groups {
-      if !hsm_group_available_vec.contains(&hsm_group.to_string()) {
+      if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
         return Err(Error::Message(format!(
                     "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
                     hsm_group,
@@ -2123,7 +2126,7 @@ pub async fn process_session_template_section_in_sat_file(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   ref_name_processed_hashmap: HashMap<String, String>,
-  hsm_group_available_vec: &Vec<String>,
+  hsm_group_available_vec: &[&str],
   sat_file_yaml: Value,
   do_not_reboot: bool,
   dry_run: bool,
@@ -2328,7 +2331,7 @@ pub async fn process_session_template_section_in_sat_file(
       // Validate/check HSM groups in YAML file session_templates.bos_parameters.boot_sets.<parameter>.node_groups matches with
       // Check hsm groups in SAT file includes the hsm_group_param
       for node_group in node_groups_opt.clone().unwrap_or_default() {
-        if !hsm_group_available_vec.contains(&node_group.to_string()) {
+        if !hsm_group_available_vec.contains(&node_group.as_str()) {
           return Err(Error::Message(format!("User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit", node_group)));
         }
       }
@@ -2354,7 +2357,7 @@ pub async fn process_session_template_section_in_sat_file(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
-          &node_list,
+          &node_list.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
         )
         .await?;
       }
@@ -2574,7 +2577,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_group_available_vec: &[String],
+  hsm_group_available_vec: &[&str],
   image_reference: &str,
   is_image_id: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {

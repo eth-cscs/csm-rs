@@ -433,9 +433,9 @@ impl CfsConfigurationRequest {
     gitea_base_url: &str,
     shasta_root_cert: &[u8],
     // repos: Vec<PathBuf>,
-    repo_name_vec: Vec<String>,
-    local_git_commit_vec: Vec<String>,
-    playbook_file_name_opt: Option<&String>,
+    repo_name_vec: &[&str],
+    local_git_commit_vec: &[&str],
+    playbook_file_name_opt: Option<&str>,
   ) -> Result<CfsConfigurationRequest, Error> {
     // Create CFS configuration
     let mut cfs_configuration = CfsConfigurationRequest::new();

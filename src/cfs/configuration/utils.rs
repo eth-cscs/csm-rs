@@ -134,12 +134,12 @@ pub async fn create_new_configuration(
 /// filtering from.
 pub fn filter(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
-  xname_from_groups_vec: &Vec<String>,
+  xname_from_groups_vec: &[&str],
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   cfs_component_vec: &Vec<Component>,
   configuration_name_pattern_opt: Option<&str>,
-  hsm_group_name_vec: &[String],
+  hsm_group_name_vec: &[&str],
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
   limit_number_opt: Option<&u8>,
@@ -160,16 +160,8 @@ pub fn filter(
   cfs::session::utils::filter(
     cfs_session_vec,
     configuration_name_pattern_opt,
-    (
-      &hsm_group_name_vec
-        .iter()
-        .map(|g| g.as_str())
-        .collect::<Vec<&str>>(),
-      &xname_from_groups_vec
-        .iter()
-        .map(|g| g.as_str())
-        .collect::<Vec<&str>>(),
-    ),
+    hsm_group_name_vec,
+    xname_from_groups_vec,
     None,
     keep_generic_sessions,
   )?;
@@ -578,7 +570,7 @@ pub async fn get_and_filter(
   shasta_root_cert: &[u8],
   configuration_name: Option<&str>,
   configuration_name_pattern: Option<&str>,
-  hsm_group_name_vec: &[String],
+  hsm_group_name_vec: &[&str],
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
   limit_number_opt: Option<&u8>,
@@ -632,7 +624,10 @@ pub async fn get_and_filter(
   // Filter CFS configurations if user is not admin
   cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
-    &xname_from_groups_vec,
+    &xname_from_groups_vec
+      .iter()
+      .map(|x| x.as_str())
+      .collect::<Vec<&str>>(),
     &mut cfs_session_vec,
     &mut bos_sessiontemplate_vec,
     &cfs_component_vec,

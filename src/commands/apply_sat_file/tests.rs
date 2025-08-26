@@ -313,7 +313,7 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
 
   let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     id: Some("my-image-id".to_string()),
@@ -369,7 +369,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     id: Some("my-base-image-id".to_string()),
@@ -419,7 +419,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
 
   let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     id: Some("my-base-image-id".to_string()),
@@ -482,7 +482,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
 
   let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     id: Some("fake".to_string()),
@@ -542,7 +542,7 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![];
 
@@ -595,7 +595,7 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![];
 
@@ -655,7 +655,7 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![];
 
@@ -715,7 +715,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     name: "my-ims-image-name".to_string(),
@@ -774,7 +774,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     name: "my-ims-image-name".to_string(),
@@ -832,7 +832,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
     )
     .unwrap();
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     name: "my-ims-image-name".to_string(),
@@ -880,7 +880,7 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
 
   let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
 
-  let hsm_group_available_vec = &["tenant-a".to_string()];
+  let hsm_group_available_vec = &["tenant-a"];
 
   let image_vec_in_csm = vec![Image {
     name: "my-ims-image-name".to_string(),

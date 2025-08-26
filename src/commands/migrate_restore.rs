@@ -430,7 +430,7 @@ async fn ims_update_image_add_manifest(
   match get_fuzzy(shasta_token,
                          shasta_base_url,
                          shasta_root_cert,
-                         &["".to_string()], // hsm_group_name
+                         &[""], // hsm_group_name
                          Some(ims_image_name.clone().as_str()),
                          None).await {
         Ok(_vector) => {
@@ -769,7 +769,7 @@ async fn ims_register_image(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    &["".to_string()], // hsm_group_name
+    &[""], // hsm_group_name
     Some(ims_image_name.clone().as_str()),
     None,
   )

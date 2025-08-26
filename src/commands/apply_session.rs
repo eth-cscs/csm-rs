@@ -20,14 +20,14 @@ pub async fn exec(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   // k8s_api_url: &str,
-  cfs_conf_sess_name: Option<&String>,
-  playbook_yaml_file_name_opt: Option<&String>,
-  hsm_group: Option<&String>,
-  repo_name_vec: Vec<String>,
-  repo_last_commit_id_vec: Vec<String>,
-  ansible_limit: Option<String>,
-  ansible_verbosity: Option<String>,
-  ansible_passthrough: Option<String>,
+  cfs_conf_sess_name: Option<&str>,
+  playbook_yaml_file_name_opt: Option<&str>,
+  hsm_group: Option<&str>,
+  repo_name_vec: &[&str],
+  repo_last_commit_id_vec: &[&str],
+  ansible_limit: Option<&str>,
+  ansible_verbosity: Option<&str>,
+  ansible_passthrough: Option<&str>,
   // watch_logs: bool,
   /* kafka_audit: &backend_dispatcher::types::kafka::Kafka,
   k8s: &backend_dispatcher::types::K8sDetails, */
@@ -139,13 +139,8 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      Some(xname_list.into_iter().collect::<Vec<_>>().join(",")), // Convert Hashset to String with comma separator, need to convert to Vec first following https://stackoverflow.com/a/47582249/1918003
-      Some(
-        ansible_verbosity
-          .unwrap_or("3".to_string())
-          .parse::<u8>()
-          .unwrap_or(0),
-      ),
+      Some(&xname_list.join(",")), // Convert Hashset to String with comma separator, need to convert to Vec first following https://stackoverflow.com/a/47582249/1918003
+      Some(ansible_verbosity.map(|s| s.parse::<u8>().unwrap_or(2))).unwrap(),
       ansible_passthrough,
     )
     .await?;
@@ -155,17 +150,17 @@ pub async fn exec(
 
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   cfs_configuration_name: &str,
-  playbook_yaml_file_name_opt: Option<&String>,
-  repo_name_vec: Vec<String>,
-  repo_last_commit_id_vec: Vec<String>,
+  playbook_yaml_file_name_opt: Option<&str>,
+  repo_name_vec: &[&str],
+  repo_last_commit_id_vec: &[&str],
   gitea_token: &str,
   gitea_base_url: &str,
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  limit: Option<String>,
+  limit: Option<&str>,
   ansible_verbosity: Option<u8>,
-  ansible_passthrough: Option<String>,
+  ansible_passthrough: Option<&str>,
 ) -> Result<String, Error> {
   // Get ALL sessions
   let cfs_sessions = cfs::session::get_and_sort(
@@ -229,7 +224,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // NOTE: nodes can be a list of xnames or hsm group name
 
   // Convert limit (String with list of target nodes for new CFS session) into list of String
-  let limit_value = limit.clone().unwrap_or("".to_string());
+  let limit_value = limit.clone().unwrap_or("");
   let nodes_list: Vec<&str> =
     limit_value.split(',').map(|node| node.trim()).collect();
 
@@ -331,7 +326,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
 
   let session = CfsSessionPostRequest::new(
     cfs_session_name,
-    cfs_configuration_name.clone(),
+    cfs_configuration_name,
     limit,
     ansible_verbosity,
     ansible_passthrough,

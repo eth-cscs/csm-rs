@@ -17,15 +17,15 @@ pub async fn get_images_and_details(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_group_name_vec: &[String],
-  id_opt: Option<&String>,
+  hsm_group_name_vec: &[&str],
+  id_opt: Option<&str>,
   limit_number: Option<&u8>,
 ) -> Result<Vec<(Image, String, String, bool)>, Error> {
   let mut image_vec: Vec<Image> = image::http_client::get(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    id_opt.map(|elem| elem.as_str()),
+    id_opt,
   )
   .await
   .unwrap();

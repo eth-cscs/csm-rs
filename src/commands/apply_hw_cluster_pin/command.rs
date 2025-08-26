@@ -142,7 +142,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      &[target_hsm_group_name.to_string()],
+      &[target_hsm_group_name],
     )
     .await?;
   /* hsm::group::utils::get_member_vec_from_hsm_group_name(
@@ -193,7 +193,7 @@ pub async fn exec(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
-            &[parent_hsm_group_name.to_string()],
+            &[parent_hsm_group_name],
         )
         .await?;
 

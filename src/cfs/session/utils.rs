@@ -90,7 +90,12 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
 
   if let (Some(mut target_group_vec), true) = (target_group_vec_opt, is_image) {
     // Remove roles and subroles from the list of HSM groups
-    target_group_vec = filter_roles_and_subroles(target_group_vec);
+    target_group_vec = filter_roles_and_subroles(
+      &target_group_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+    );
 
     // Remove system wide HSM groups from the list of HSM groups
     target_group_vec = filter_system_hsm_group_names(target_group_vec);
@@ -181,9 +186,9 @@ pub async fn filter_by_xname(
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
-  target: (&[&str], &[&str]),
-  /* hsm_group_name_available_vec: &[String],
-  xname_available_vec: &[String], */
+  // target: (&[&str], &[&str]),
+  hsm_group_name_available_vec: &[&str],
+  xname_available_vec: &[&str],
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
@@ -203,9 +208,6 @@ pub fn filter(
 
   // Checks either target.groups contains hsm_group_name or ansible.limit is a subset of
   // hsm_group.members.ids
-  let (hsm_group_name_available_vec, xname_available_vec) =
-    (target.0, target.1);
-
   cfs_session_vec.retain(|cfs_session| {
     cfs_session.get_target_hsm().is_some_and(|target_hsm_vec| {
       (keep_generic_sessions && is_session_image_generic(cfs_session))

@@ -419,23 +419,23 @@ impl Into<FrontEndTarget> for Target {
 impl CfsSessionPostRequest {
   pub fn new(
     name: String,
-    configuration_name: String,
-    ansible_limit: Option<String>,
+    configuration_name: &str,
+    ansible_limit: Option<&str>,
     ansible_verbosity: Option<u8>,
-    ansible_passthrough: Option<String>,
+    ansible_passthrough: Option<&str>,
     is_target_definition_image: bool,
-    groups_name: Option<Vec<String>>,
-    base_image_id: Option<String>,
+    groups_name: Option<&[&str]>,
+    base_image_id: Option<&str>,
   ) -> Self {
     // This code is fine... the fact that I put Self behind a variable is ok, since image param
     // is not a default param, then doing things differently is not an issue. I checked with
     // other Rust developers in their discord https://discord.com/channels/442252698964721669/448238009733742612/1081686300182188207
     let mut cfs_session = Self {
       name,
-      configuration_name,
-      ansible_limit,
+      configuration_name: configuration_name.to_string(),
+      ansible_limit: ansible_limit.map(|s| s.to_string()),
       ansible_verbosity,
-      ansible_passthrough,
+      ansible_passthrough: ansible_passthrough.map(|s| s.to_string()),
       ..Default::default()
     };
 
@@ -444,7 +444,7 @@ impl CfsSessionPostRequest {
         .unwrap()
         .into_iter()
         .map(|group_name| Group {
-          name: group_name,
+          name: group_name.to_string(),
           members: vec![base_image_id.as_ref().unwrap().to_string()],
         })
         .collect();

@@ -33,8 +33,13 @@ pub async fn get_group_name_available(
     // remove keycloak roles not related with HSM groups
     /* realm_access_role_vec
     .retain(|role| !role.eq("offline_access") && !role.eq("uma_authorization")); */
-    let realm_access_role_vec =
-      hsm::group::hacks::filter_keycloak_roles(realm_access_role_vec);
+    let realm_access_role_vec = hsm::group::hacks::filter_keycloak_roles(
+      realm_access_role_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+        .as_slice(),
+    );
 
     // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
     // the roles to check if a user has access to individual compute nodes
@@ -510,7 +515,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_vec: &[String],
+  hsm_name_vec: &[&str],
 ) -> Result<Vec<String>, Error> {
   log::info!("Get xnames from HSM groups");
   log::debug!("Get xnames from HSM groups: {:?}", hsm_name_vec);
