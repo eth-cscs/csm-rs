@@ -229,7 +229,7 @@ pub async fn migrate_hsm_members(
   shasta_root_cert: &[u8],
   target_hsm_group_name: &str,
   parent_hsm_group_name: &str,
-  new_target_hsm_members: Vec<&str>,
+  new_target_hsm_members: &[&str],
   nodryrun: bool,
 ) -> Result<(Vec<String>, Vec<String>), Error> {
   // Check nodes are valid xnames and they belong to parent HSM group
@@ -237,7 +237,7 @@ pub async fn migrate_hsm_members(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    new_target_hsm_members.as_slice(),
+    new_target_hsm_members,
     Some(&parent_hsm_group_name.to_string()),
   )
   .await
@@ -344,8 +344,8 @@ pub async fn update_hsm_group_members(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   hsm_group_name: &str,
-  old_target_hsm_group_members: &Vec<String>,
-  new_target_hsm_group_members: &Vec<String>,
+  old_target_hsm_group_members: &[&str],
+  new_target_hsm_group_members: &[&str],
 ) -> Result<(), Error> {
   // Delete members
   for old_member in old_target_hsm_group_members {
@@ -418,7 +418,7 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_vec: Vec<&str>,
+  hsm_name_vec: &[&str],
 ) -> Result<HashMap<String, Vec<String>>, Error> {
   let hsm_group_vec =
     http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
@@ -426,7 +426,7 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
 
   Ok(filter_by_hsm_group_name_and_convert_to_map(
     hsm_name_vec,
-    hsm_group_vec,
+    &hsm_group_vec.iter().collect::<Vec<&Group>>(),
   ))
 }
 
@@ -451,16 +451,20 @@ pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
 /// Given a list of HsmGroup struct and a list of Hsm group names, it will filter out those
 /// not in the Hsm group names and convert from HsmGroup struct to HashMap
 pub fn filter_by_hsm_group_name_and_convert_to_map(
-  hsm_name_vec: Vec<&str>,
-  hsm_group_vec: Vec<Group>,
+  hsm_name_vec: &[&str],
+  hsm_group_vec: &[&Group],
 ) -> HashMap<String, Vec<String>> {
   let mut hsm_group_map: HashMap<String, Vec<String>> = HashMap::new();
 
   for hsm_group in hsm_group_vec {
     if hsm_name_vec.contains(&hsm_group.label.as_str()) {
-      hsm_group_map
-        .entry(hsm_group.label)
-        .or_insert(hsm_group.members.and_then(|members| members.ids).unwrap());
+      hsm_group_map.entry(hsm_group.label.clone()).or_insert(
+        hsm_group
+          .members
+          .clone()
+          .and_then(|members| members.ids)
+          .unwrap(),
+      );
     }
   }
 

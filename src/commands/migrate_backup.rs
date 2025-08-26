@@ -11,8 +11,8 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  bos: Option<&String>,
-  destination: Option<&String>,
+  bos: Option<&str>,
+  destination: Option<&str>,
   /* prehook: Option<&String>,
   posthook: Option<&String>, */
 ) -> Result<(), Error> {
@@ -74,7 +74,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    bos.map(|value| value.as_str()),
+    bos,
   )
   .await
   .unwrap();

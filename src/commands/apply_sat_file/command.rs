@@ -204,8 +204,14 @@ pub async fn exec(
             shasta_base_url,
             shasta_root_cert,
             target_hsm_group_name,
-            &hsm_group_members_vec,
-            &new_target_hsm_group_members_vec,
+            &hsm_group_members_vec
+              .iter()
+              .map(String::as_str)
+              .collect::<Vec<&str>>(),
+            &new_target_hsm_group_members_vec
+              .iter()
+              .map(String::as_str)
+              .collect::<Vec<&str>>(),
           )
           .await?;
           /* let _ = hsm::group::utils::update_hsm_group_members(

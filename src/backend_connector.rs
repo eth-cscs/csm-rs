@@ -151,7 +151,7 @@ impl GroupTrait for Csm {
   async fn get_group_map_and_filter_by_group_vec(
     &self,
     auth_token: &str,
-    hsm_name_vec: Vec<&str>,
+    hsm_name_vec: &[&str],
   ) -> Result<HashMap<String, Vec<String>>, Error> {
     hsm::group::utils::get_hsm_map_and_filter_by_hsm_name_vec(
       auth_token,
@@ -275,7 +275,7 @@ impl GroupTrait for Csm {
   async fn get_hsm_map_and_filter_by_hsm_name_vec(
     &self,
     shasta_token: &str,
-    hsm_name_vec: Vec<&str>,
+    hsm_name_vec: &[&str],
   ) -> Result<HashMap<String, Vec<String>>, Error> {
     hsm::group::utils::get_hsm_map_and_filter_by_hsm_name_vec(
       shasta_token,
@@ -312,7 +312,7 @@ impl GroupTrait for Csm {
     &self,
     auth_token: &str,
     group_label: &str,
-    new_members: Vec<&str>,
+    new_members: &[&str],
   ) -> Result<Vec<String>, Error> {
     let mut sol: Vec<String> = Vec::new();
 
@@ -352,8 +352,8 @@ impl GroupTrait for Csm {
     &self,
     auth_token: &str,
     group_name: &str,
-    members_to_remove: &Vec<String>,
-    members_to_add: &Vec<String>,
+    members_to_remove: &[&str],
+    members_to_add: &[&str],
   ) -> Result<(), Error> {
     hsm::group::utils::update_hsm_group_members(
       auth_token,
@@ -373,7 +373,7 @@ impl GroupTrait for Csm {
     shasta_token: &str,
     target_hsm_group_name: &str,
     parent_hsm_group_name: &str,
-    new_target_hsm_members: Vec<&str>,
+    new_target_hsm_members: &[&str],
   ) -> Result<(Vec<String>, Vec<String>), Error> {
     hsm::group::utils::migrate_hsm_members(
       shasta_token,
@@ -1722,11 +1722,11 @@ impl MigrateRestoreTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    bos_file: Option<&String>,
-    cfs_file: Option<&String>,
-    hsm_file: Option<&String>,
-    ims_file: Option<&String>,
-    image_dir: Option<&String>,
+    bos_file: Option<&str>,
+    cfs_file: Option<&str>,
+    hsm_file: Option<&str>,
+    ims_file: Option<&str>,
+    image_dir: Option<&str>,
     overwrite_group: bool,
     overwrite_configuration: bool,
     overwrite_image: bool,
@@ -1757,8 +1757,8 @@ impl MigrateBackupTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    bos: Option<&String>,
-    destination: Option<&String>,
+    bos: Option<&str>,
+    destination: Option<&str>,
   ) -> Result<(), Error> {
     crate::commands::migrate_backup::exec(
       shasta_token,

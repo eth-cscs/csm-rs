@@ -318,8 +318,14 @@ pub async fn exec(
       shasta_base_url,
       shasta_root_cert,
       target_hsm_group_name,
-      &target_hsm_group_member_vec,
-      &target_hsm_node_vec,
+      &target_hsm_group_member_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &target_hsm_node_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
     )
     .await;
   }
@@ -350,8 +356,14 @@ pub async fn exec(
       shasta_base_url,
       shasta_root_cert,
       parent_hsm_group_name,
-      &parent_hsm_group_member_vec,
-      &parent_hsm_node_vec,
+      &parent_hsm_group_member_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &parent_hsm_node_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
     )
     .await;
     if parent_group_will_be_empty {
