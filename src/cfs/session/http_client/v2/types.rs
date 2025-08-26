@@ -152,7 +152,7 @@ impl CfsSessionGetResponse {
       .and_then(|target| target.definition.clone())
   }
 
-  pub fn configuration_namen(&self) -> Option<&str> {
+  pub fn configuration_name(&self) -> Option<&str> {
     self
       .configuration
       .as_ref()

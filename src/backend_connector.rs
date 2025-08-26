@@ -1022,116 +1022,6 @@ impl AuthenticationTrait for Csm {
 impl CfsTrait for Csm {
   type T = Pin<Box<dyn AsyncBufRead + Send>>;
 
-  async fn get_session_logs_stream(
-    &self,
-    shasta_token: &str,
-    site_name: &str,
-    cfs_session_name: &str,
-    // k8s_api_url: &str,
-    k8s: &K8sDetails,
-  ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
-    let shasta_k8s_secrets = match &k8s.authentication {
-      K8sAuth::Native {
-        certificate_authority_data,
-        client_certificate_data,
-        client_key_data,
-      } => {
-        serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
-      }
-      K8sAuth::Vault { base_url } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name)
-          .await
-          .map_err(|e| Error::Message(format!("{e}")))?
-      }
-    };
-
-    let client = kubernetes::get_k8s_client_programmatically(
-      &k8s.api_url,
-      shasta_k8s_secrets,
-    )
-    .await
-    .map_err(|e| Error::Message(format!("{e}")))?;
-
-    let log_stream_git_clone =
-      kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
-        client.clone(),
-        cfs_session_name,
-      )
-      .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
-
-    let log_stream_inventory =
-      kubernetes::get_cfs_session_container_inventory_logs_stream(
-        client.clone(),
-        cfs_session_name,
-      )
-      .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
-
-    let log_stream_ansible =
-      kubernetes::get_cfs_session_container_ansible_logs_stream(
-        client,
-        cfs_session_name,
-      )
-      .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
-
-    // NOTE: here is where we convert from impl AsyncBufRead to Pin<Box<dyn AsyncBufRead>>
-    // through dynamic dispatch
-    Ok(Box::pin(
-      log_stream_git_clone
-        .chain(log_stream_inventory)
-        .chain(log_stream_ansible),
-    ))
-  }
-
-  async fn get_session_logs_stream_by_xname(
-    &self,
-    auth_token: &str,
-    site_name: &str,
-    xname: &str,
-    k8s: &K8sDetails,
-  ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
-    let mut session_vec = crate::cfs::session::http_client::v2::get(
-      auth_token,
-      self.base_url.as_str(),
-      self.root_cert.as_slice(),
-      None,
-      None,
-      None,
-      None,
-      None,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
-
-    crate::cfs::session::utils::filter(
-      &mut session_vec,
-      &[],
-      &[xname.to_string()],
-      None,
-      true,
-    )
-    .map_err(|e| Error::Message(e.to_string()))?;
-
-    if session_vec.is_empty() {
-      return Err(Error::Message(format!(
-        "No CFS session found for xname '{}'",
-        xname
-      )));
-    }
-
-    self
-      .get_session_logs_stream(
-        auth_token,
-        site_name,
-        session_vec.first().unwrap().name.as_ref().unwrap().as_str(),
-        // k8s_api_url,
-        k8s,
-      )
-      .await
-  }
-
   async fn get_cfs_health(&self) -> Result<(), Error> {
     crate::cfs::health::test_connectivity_to_backend(self.base_url.as_str())
       .await
@@ -1207,8 +1097,8 @@ impl CfsTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_group_name_vec_opt: Option<Vec<String>>,
-    xname_vec_opt: Option<Vec<&str>>,
+    hsm_group_name_vec: Vec<String>,
+    xname_vec: Vec<&str>,
     min_age_opt: Option<&String>,
     max_age_opt: Option<&String>,
     status_opt: Option<&String>,
@@ -1229,24 +1119,26 @@ impl CfsTrait for Csm {
     .await
     .unwrap();
 
-    let xname_vec: Vec<String> = xname_vec_opt
-      .unwrap_or_default()
-      .into_iter()
-      .map(|s| s.to_string())
-      .collect();
+    /* let xname_vec: Vec<String> = xname_vec_opt
+    .unwrap_or_default()
+    .into_iter()
+    .map(|s| s.to_string())
+    .collect(); */
 
-    if let Some(hsm_group_name_vec) = hsm_group_name_vec_opt {
-      if !hsm_group_name_vec.is_empty() {
-        crate::cfs::session::utils::filter(
-          &mut cfs_session_vec,
-          &hsm_group_name_vec,
-          &xname_vec,
-          limit_number_opt,
-          true,
-        )
-        .map_err(|e| Error::Message(e.to_string()))?;
-      }
-    }
+    crate::cfs::session::utils::filter(
+      &mut cfs_session_vec,
+      None,
+      (
+        &hsm_group_name_vec
+          .iter()
+          .map(|g| g.as_str())
+          .collect::<Vec<&str>>(),
+        &xname_vec,
+      ),
+      limit_number_opt,
+      true,
+    )
+    .map_err(|e| Error::Message(e.to_string()))?;
 
     /* if let Some(xname_vec) = xname_vec_opt {
       crate::cfs::session::utils::filter_by_xname(
@@ -1269,35 +1161,10 @@ impl CfsTrait for Csm {
     for cfs_session in cfs_session_vec.iter_mut() {
       log::debug!("CFS session:\n{:#?}", cfs_session);
 
-      if cfs_session
-        .target
-        .as_ref()
-        .unwrap()
-        .definition
-        .as_ref()
-        .unwrap()
-        .eq("image")
-        && cfs_session
-          .status
-          .as_ref()
-          .unwrap()
-          .session
-          .as_ref()
-          .unwrap()
-          .succeeded
-          .as_ref()
-          .unwrap()
-          .eq("true")
-      {
+      if cfs_session.is_target_def_image() && cfs_session.is_success() {
         log::info!(
           "Find image ID related to CFS configuration {} in CFS session {}",
-          cfs_session
-            .configuration
-            .as_ref()
-            .unwrap()
-            .name
-            .as_ref()
-            .unwrap(),
+          cfs_session.configuration_name().unwrap(),
           cfs_session.name.as_ref().unwrap()
         );
 
@@ -1313,19 +1180,7 @@ impl CfsTrait for Csm {
           })
           .is_some()
         {
-          let cfs_session_image_id = cfs_session
-            .status
-            .as_ref()
-            .unwrap()
-            .artifacts
-            .as_ref()
-            .unwrap()
-            .first()
-            .unwrap()
-            .result_id
-            .as_ref();
-
-          let image_id = cfs_session_image_id.map(|elem| elem.as_str());
+          let image_id = cfs_session.first_result_id();
 
           let new_image_vec_rslt: Result<
             Vec<crate::ims::image::http_client::types::Image>,
@@ -1533,7 +1388,7 @@ impl CfsTrait for Csm {
     .map_err(|e| Error::Message(e.to_string()))
   }
 
-  /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
+  /* /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
   async fn get_sessions_by_xname(
     &self,
     shasta_token: &str,
@@ -1565,11 +1420,8 @@ impl CfsTrait for Csm {
 
     crate::cfs::session::utils::filter(
       &mut local_cfs_session_vec,
-      &[],
-      &xname_vec
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>(),
+      None,
+      (&[], &xname_vec),
       None,
       true,
     )
@@ -1582,7 +1434,7 @@ impl CfsTrait for Csm {
       .collect::<Vec<CfsSessionGetResponse>>();
 
     Ok(border_session_vec)
-  }
+  } */
 
   async fn update_runtime_configuration(
     &self,
@@ -2026,6 +1878,7 @@ impl ClusterTemplateTrait for Csm {
 
     bos::template::utils::filter(
       &mut bos_sessiontemplate_vec,
+      None,
       hsm_group_name_vec,
       hsm_member_vec,
       limit_number_opt,
@@ -2105,7 +1958,6 @@ impl CommandsTrait for Csm {
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     hsm_name_available_vec: Vec<String>,
-    configuration_name_opt: Option<&String>,
     configuration_name_pattern: Option<&String>,
     since_opt: Option<NaiveDateTime>,
     until_opt: Option<NaiveDateTime>,
@@ -2116,7 +1968,6 @@ impl CommandsTrait for Csm {
       shasta_base_url,
       shasta_root_cert,
       &hsm_name_available_vec,
-      configuration_name_opt,
       configuration_name_pattern,
       since_opt,
       until_opt,

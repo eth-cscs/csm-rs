@@ -1,13 +1,28 @@
 use crate::bos::template::http_client::v2::types::BosSessionTemplate;
+use globset::Glob;
 
 pub fn filter(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
+  configuration_name_pattern_opt: Option<&str>,
   target_hsm_group_name_vec: &[String],
   xname_vec: &[String],
   // cfs_configuration_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
 ) -> Vec<BosSessionTemplate> {
   log::info!("Filter BOS sessiontemplates");
+
+  if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
+    let glob = Glob::new(configuration_name_pattern)
+      .unwrap()
+      .compile_matcher();
+
+    bos_sessiontemplate_vec.retain(|sessiontemplate| {
+      sessiontemplate
+        .configuration_name()
+        .is_some_and(|configuration_name| glob.is_match(configuration_name))
+    });
+  };
+
   // Filter by list of HSM group or xnames as target
   if !target_hsm_group_name_vec.is_empty() || !xname_vec.is_empty() {
     bos_sessiontemplate_vec.retain(|bos_sessiontemplate| {

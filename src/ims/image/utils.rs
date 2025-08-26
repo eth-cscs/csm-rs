@@ -132,6 +132,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
+    None,
     hsm_group_name_vec,
     &xname_vec,
     None,
@@ -154,8 +155,14 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   crate::cfs::session::utils::filter(
     &mut cfs_session_vec,
-    hsm_group_name_vec,
-    &xname_vec,
+    None,
+    (
+      &hsm_group_name_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+      &xname_vec.iter().map(|g| g.as_str()).collect::<Vec<&str>>(),
+    ),
     None,
     common::jwt_ops::is_user_admin(shasta_token),
   )?;
@@ -296,6 +303,7 @@ pub async fn get_image_available_vec(
   // Filter BOS sessiontemplates to the ones the user has access to
   bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
+    None,
     hsm_name_available_vec,
     &xname_from_group_vec,
     None,
@@ -317,8 +325,17 @@ pub async fn get_image_available_vec(
   // Filter CFS sessions to the ones the user has access to
   crate::cfs::session::utils::filter(
     &mut cfs_session_vec,
-    hsm_name_available_vec,
-    &xname_from_group_vec,
+    None,
+    (
+      &hsm_name_available_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+      &xname_from_group_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+    ),
     None,
     true,
   )?;

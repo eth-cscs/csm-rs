@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Instant};
 
 use serde_json::Value;
 use tokio::sync::Semaphore;
-use types::{Component, ComponentVec};
+use types::Component;
 
 use crate::error::Error;
 
@@ -289,7 +289,7 @@ pub async fn get_query(
     client_builder.build()?
   };
 
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/components";
+  let api_url = shasta_base_url.to_owned() + "/cfs/v2/components";
 
   let response = client
     .get(api_url)
@@ -308,7 +308,6 @@ pub async fn get_query(
     response
       .json()
       .await
-      .map(|component_vec: ComponentVec| component_vec.components)
       .map_err(|error| Error::NetError(error))
   } else {
     let payload = response

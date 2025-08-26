@@ -19,7 +19,7 @@ pub async fn exec(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   hsm_name_available_vec: &[String],
-  configuration_name_opt: Option<&String>,
+  // configuration_name_opt: Option<&String>,
   configuration_name_pattern_opt: Option<&String>,
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
@@ -41,8 +41,8 @@ pub async fn exec(
   let (
     cfs_component_vec,
     mut cfs_configuration_vec,
-    mut cfs_session_vec,
-    mut bos_sessiontemplate_vec,
+    cfs_session_vec,
+    bos_sessiontemplate_vec,
     bss_bootparameters_vec,
   ) = tokio::try_join!(
     cfs::component::http_client::v2::get_all(
@@ -74,23 +74,32 @@ pub async fn exec(
     duration
   );
 
+  let mut cfs_session_to_delete_vec = cfs_session_vec.clone();
+  let mut bos_sessiontemplate_to_delete_vec = bos_sessiontemplate_vec.clone();
+
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  /* cfs::configuration::utils::filter_3(
+  cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
+    &xname_from_groups_vec,
+    &mut Vec::new(),
+    &mut Vec::new(),
+    &Vec::new(),
     configuration_name_pattern_opt.map(|elem| elem.as_str()),
-    None,
+    hsm_name_available_vec,
     since_opt,
     until_opt,
-  )?; */
+    None,
+    keep_generic_sessions,
+  )?;
 
   cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
     &xname_from_groups_vec,
-    &mut cfs_session_vec,
-    &mut bos_sessiontemplate_vec,
+    &mut cfs_session_to_delete_vec,
+    &mut bos_sessiontemplate_to_delete_vec,
     &cfs_component_vec,
     configuration_name_pattern_opt.map(|elem| elem.as_str()),
     hsm_name_available_vec,
@@ -100,69 +109,25 @@ pub async fn exec(
     keep_generic_sessions,
   )?;
 
-  // Get list CFS configuration names
-  let mut cfs_configuration_name_vec: Vec<&str> = cfs_configuration_vec
-    .iter()
-    .map(|configuration| configuration.name.as_ref())
-    .collect();
-
-  // Filter BOS sessiontemplate related to a HSM group
-  // NOTE: I don't need to filter by xname because BOS sessiontemplate because configuration filter
-  // does the same upon the same data
-  /* bos::template::utils::filter(
-    &mut bos_sessiontemplate_vec,
-    &hsm_name_available_vec,
-    &xname_from_groups_vec,
-    None,
-  ); */
-
-  // Filter BOS sessiontemplate containing /configuration/name field
-  bos_sessiontemplate_vec.retain(|bos_sessiontemplate| {
-    cfs_configuration_name_vec
-      .contains(&bos_sessiontemplate.get_configuration().unwrap_or_default())
-  });
-
   // Get CFS configurations related with BOS sessiontemplate
   let cfs_configuration_name_from_bos_sessiontemplate_value_iter =
-    bos_sessiontemplate_vec.iter().map(|bos_sessiontemplate| {
-      bos_sessiontemplate.get_configuration().unwrap_or_default()
-    });
-
-  // Check images related to CFS configurations to delete are not used to boot nodes. For
-  // this we need to get images from both CFS session and BOS sessiontemplate because CSCS staff
-  // deletes all CFS sessions every now and then
-
-  // Filter CFS sessions related to a HSM group
-  // NOTE: Admins (pa-admin) are the only ones who can delete generic sessions
-  // let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
-
-  // Filter CFS sessions related to a HSM group
-  // NOTE: I don't need to filter sessions again because configuration filter
-  // does the same upon the same data
-  /* cfs::session::utils::filter(
-    &mut cfs_session_vec,
-    &hsm_name_available_vec.to_vec(),
-    &xname_from_groups_vec,
-    None,
-    keep_generic_sessions,
-  )?; */
-
-  // Filter CFS sessions containing /configuration/name field
-  cfs_session_vec.retain(|cfs_session| {
-    cfs_configuration_name_vec
-      .contains(&cfs_session.configuration_namen().unwrap_or_default())
-  });
+    bos_sessiontemplate_to_delete_vec
+      .iter()
+      .map(|bos_sessiontemplate| {
+        bos_sessiontemplate.get_configuration().unwrap_or_default()
+      });
 
   // Get CFS configurations related with CFS sessions
-  let cfs_configuration_name_from_cfs_sessions = cfs_session_vec
+  let cfs_configuration_name_from_cfs_sessions = cfs_session_to_delete_vec
     .iter()
-    .map(|cfs_session| cfs_session.configuration_namen().unwrap_or_default());
+    .map(|cfs_session| cfs_session.configuration_name().unwrap_or_default());
 
   // Get list of CFS configuration names related to CFS sessions and BOS sessiontemplates
-  cfs_configuration_name_vec =
+  let mut cfs_configuration_name_vec =
     cfs_configuration_name_from_bos_sessiontemplate_value_iter
       .chain(cfs_configuration_name_from_cfs_sessions)
       .collect::<Vec<&str>>();
+
   cfs_configuration_name_vec.sort();
   cfs_configuration_name_vec.dedup();
 
@@ -174,7 +139,7 @@ pub async fn exec(
 
   // Get image ids from CFS sessions related to CFS configuration to delete
   let mut image_id_vec =
-    cfs::session::utils::images_id_from_cfs_session(&cfs_session_vec)
+    cfs::session::utils::images_id_from_cfs_session(&cfs_session_to_delete_vec)
       .collect::<Vec<&str>>();
 
   log::info!("Image ids to delete: {:?}", image_id_vec);
@@ -185,13 +150,13 @@ pub async fn exec(
     &str,
     &str,
     &str,
-  )> = cfs_session_vec
+  )> = cfs_session_to_delete_vec
     .iter()
     .filter(|cfs_session| cfs_session.first_result_id().is_some())
     .map(|cfs_session| {
       (
         cfs_session.name().unwrap_or_default(),
-        cfs_session.configuration_namen().unwrap_or_default(),
+        cfs_session.configuration_name().unwrap_or_default(),
         cfs_session.first_result_id().unwrap_or_default(),
       )
     })
@@ -204,9 +169,10 @@ pub async fn exec(
     &str,
   )> = Vec::new();
 
-  for bos_sessiontemplate in &bos_sessiontemplate_vec {
+  for bos_sessiontemplate in &bos_sessiontemplate_to_delete_vec {
     let bos_sessiontemplate_name: &str =
       bos_sessiontemplate.name.as_deref().unwrap_or_default();
+
     let cfs_configuration_name: &str =
       bos_sessiontemplate.get_configuration().unwrap_or_default();
 
@@ -353,22 +319,19 @@ pub async fn exec(
   }
 
   // Return ERROR IF THERE IS NO DATA TO DELETE
-  if cfs_configuration_name_vec.is_empty()
-    && image_id_vec.is_empty()
+  if image_id_vec.is_empty()
     && cfs_session_cfs_configuration_image_id_tuple_filtered_vec.is_empty()
     && bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec
       .is_empty()
   {
-    if configuration_name_opt.is_some() {
-      // We can't decide if CFS configuration and derivatives can be deleted.
-      log::error!(
-        "Delete CFS configuration - Not enough information to proceed. Could not find information related to CFS configuration '{}'",
-        configuration_name_opt.unwrap()
+    // We can't decide if CFS configuration and derivatives can be deleted.
+    log::error!(
+        "Delete configuration - Not enough information to proceed. Could not find information related to CFS configurations '{}'",
+        cfs_configuration_name_vec.join(", ")
       );
-      return Err(Error::ConfigurationDerivativesNotFound(
-        configuration_name_opt.unwrap().clone(),
-      ));
-    }
+    return Err(Error::ConfigurationDerivativesNotFound(
+      cfs_configuration_name_vec.join(", "),
+    ));
   }
 
   // PRINT SUMMARY/DATA TO DELETE
@@ -383,7 +346,7 @@ pub async fn exec(
     cfs_session_table.add_row(vec![
       cfs_session.name.as_ref().unwrap_or(&"".to_string()),
       &cfs_session
-        .configuration_namen()
+        .configuration_name()
         .unwrap_or_default()
         .to_string(),
       &cfs_session

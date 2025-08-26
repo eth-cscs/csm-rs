@@ -225,6 +225,13 @@ impl Into<FrontEndBosSessionTemplate> for BosSessionTemplate {
 }
 
 impl BosSessionTemplate {
+  pub fn configuration_name(&self) -> Option<&str> {
+    self
+      .cfs
+      .as_ref()
+      .and_then(|cfs| cfs.configuration.as_deref())
+  }
+
   pub fn get_target(&self) -> Vec<String> {
     let target_hsm = self.get_target_hsm();
     let target_xname = self.get_target_xname();

@@ -81,6 +81,7 @@ pub async fn exec(
 
   bos::template::utils::filter(
     &mut bos_templates,
+    None,
     &Vec::new(),
     &Vec::new(),
     // None,

@@ -54,8 +54,11 @@ pub async fn get_details(
 
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
-      &[hsm_group_name.to_string()],
-      &xname_vec,
+      None,
+      (
+        &[hsm_group_name],
+        &xname_vec.iter().map(|x| x.as_str()).collect::<Vec<&str>>(),
+      ),
       None,
       true,
     )?;

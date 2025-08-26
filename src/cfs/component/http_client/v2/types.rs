@@ -179,32 +179,3 @@ pub struct Filter {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tags: Option<HashMap<String, String>>,
 }
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentVec {
-  pub components: Vec<Component>,
-}
-
-impl From<FrontEndComponentVec> for ComponentVec {
-  fn from(component_vec: FrontEndComponentVec) -> Self {
-    Self {
-      components: component_vec
-        .components
-        .into_iter()
-        .map(|component| component.into())
-        .collect(),
-    }
-  }
-}
-
-impl Into<FrontEndComponentVec> for ComponentVec {
-  fn into(self) -> FrontEndComponentVec {
-    FrontEndComponentVec {
-      components: self
-        .components
-        .into_iter()
-        .map(|component| component.into())
-        .collect(),
-    }
-  }
-}

@@ -12,6 +12,7 @@ use crate::{
 use std::io::{self, Write};
 
 use super::http_client::v2::types::CfsSessionGetResponse;
+use globset::Glob;
 
 // Check if a session is related to a group the user has access to
 pub fn check_cfs_session_against_groups_available(
@@ -179,14 +180,32 @@ pub async fn filter_by_xname(
 
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
-  hsm_group_name_available_vec: &[String],
-  xname_available_vec: &[String],
+  configuration_name_pattern_opt: Option<&str>,
+  target: (&[&str], &[&str]),
+  /* hsm_group_name_available_vec: &[String],
+  xname_available_vec: &[String], */
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
   log::info!("Filter CFS sessions by groups");
+
+  if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
+    let glob = Glob::new(configuration_name_pattern)
+      .unwrap()
+      .compile_matcher();
+
+    cfs_session_vec.retain(|cfs_session| {
+      cfs_session
+        .configuration_name()
+        .is_some_and(|configuration_name| glob.is_match(configuration_name))
+    });
+  };
+
   // Checks either target.groups contains hsm_group_name or ansible.limit is a subset of
   // hsm_group.members.ids
+  let (hsm_group_name_available_vec, xname_available_vec) =
+    (target.0, target.1);
+
   cfs_session_vec.retain(|cfs_session| {
     cfs_session.get_target_hsm().is_some_and(|target_hsm_vec| {
       (keep_generic_sessions && is_session_image_generic(cfs_session))
@@ -198,9 +217,9 @@ pub fn filter(
     }) || cfs_session
       .get_target_xname()
       .is_some_and(|target_xname_vec| {
-        target_xname_vec
-          .iter()
-          .any(|target_xname| xname_available_vec.contains(target_xname))
+        target_xname_vec.iter().any(|target_xname| {
+          xname_available_vec.contains(&target_xname.as_str())
+        })
       })
   });
 
@@ -232,7 +251,7 @@ pub fn filter_by_cofiguration(
   );
 
   cfs_session_vec.retain(|cfs_session| {
-    cfs_session.configuration_namen().as_deref() == Some(cfs_configuration_name)
+    cfs_session.configuration_name().as_deref() == Some(cfs_configuration_name)
   });
 }
 
@@ -285,7 +304,7 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
       .or_else(|| cfs_session.get_target_xname())
       .unwrap_or_default();
 
-    let cfs_configuration = cfs_session.configuration_namen().unwrap();
+    let cfs_configuration = cfs_session.configuration_name().unwrap();
 
     image_id_cfs_configuration_target_from_cfs_session.push((
       result_id.to_string(),
@@ -316,7 +335,7 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
         .or_else(|| cfs_session.get_target_xname())
         .unwrap_or_default();
 
-      let cfs_configuration = cfs_session.configuration_namen().unwrap();
+      let cfs_configuration = cfs_session.configuration_name().unwrap();
 
       image_id_cfs_configuration_target_from_cfs_session.push((
         result_id.to_string(),

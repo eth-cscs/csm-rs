@@ -78,7 +78,7 @@ pub async fn create_new_configuration(
   .map_err(|e| Error::Message(e.to_string()))
 }
 
-pub fn filter_3(
+/* pub fn filter_3(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
   configuration_name_pattern_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
@@ -125,7 +125,7 @@ pub fn filter_3(
   }
 
   Ok(cfs_configuration_vec.to_vec())
-}
+} */
 
 /// Filter the list of CFS configurations provided. This operation is very expensive since it is
 /// filtering by HSM group which means it needs to link CFS configurations with CFS sessions and
@@ -150,6 +150,7 @@ pub fn filter(
   // Filter BOS sessiontemplates based on HSM groups
   bos::template::utils::filter(
     bos_sessiontemplate_vec,
+    configuration_name_pattern_opt,
     hsm_group_name_vec,
     &xname_from_groups_vec,
     None,
@@ -158,8 +159,17 @@ pub fn filter(
   // Filter CFS sessions based on HSM groups
   cfs::session::utils::filter(
     cfs_session_vec,
-    hsm_group_name_vec,
-    xname_from_groups_vec,
+    configuration_name_pattern_opt,
+    (
+      &hsm_group_name_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+      &xname_from_groups_vec
+        .iter()
+        .map(|g| g.as_str())
+        .collect::<Vec<&str>>(),
+    ),
     None,
     keep_generic_sessions,
   )?;
