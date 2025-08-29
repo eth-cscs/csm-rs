@@ -65,7 +65,6 @@ pub async fn exec(
       shasta_base_url,
       shasta_root_cert
     ),
-    // ims::image::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert),
     bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
   )?;
   let duration = start.elapsed();
@@ -348,7 +347,7 @@ pub async fn exec(
 
   cfs_session_table.set_header(vec!["Name", "Configuration", "Image ID"]);
 
-  for cfs_session in &cfs_session_vec {
+  for cfs_session in &cfs_session_to_delete_vec {
     cfs_session_table.add_row(vec![
       cfs_session.name.as_ref().unwrap_or(&"".to_string()),
       &cfs_session
@@ -430,7 +429,7 @@ pub async fn exec(
 
   // DELETE DATA
   //
-  delete(
+  /* delete(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -445,7 +444,7 @@ pub async fn exec(
       .map(|(sessiontemplate, _, _)| sessiontemplate)
       .collect(),
   )
-  .await;
+  .await; */
 
   Ok(())
 }
