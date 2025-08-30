@@ -117,12 +117,9 @@ pub async fn post_sync(
     )
     .await?;
 
-    let client = kubernetes::get_k8s_client_programmatically(
-      k8s_api_url,
-      shasta_k8s_secrets,
-    )
-    .await
-    .unwrap();
+    let client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
+      .await
+      .unwrap();
 
     let _ = print_cfs_session_logs(client, &cfs_session_name).await;
   }

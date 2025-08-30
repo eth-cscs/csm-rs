@@ -1386,6 +1386,66 @@ impl CfsTrait for Csm {
     .map_err(|e| Error::Message(e.to_string()))
   }
 
+  async fn get_session_logs_stream(
+    &self,
+    shasta_token: &str,
+    site_name: &str,
+    cfs_session_name: &str,
+    // k8s_api_url: &str,
+    k8s: &K8sDetails,
+  ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
+    let shasta_k8s_secrets = match &k8s.authentication {
+      K8sAuth::Native {
+        certificate_authority_data,
+        client_certificate_data,
+        client_key_data,
+      } => {
+        serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
+      }
+      K8sAuth::Vault { base_url } => {
+        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name)
+          .await
+          .map_err(|e| Error::Message(format!("{e}")))?
+      }
+    };
+
+    let client = kubernetes::get_client(&k8s.api_url, shasta_k8s_secrets)
+      .await
+      .map_err(|e| Error::Message(format!("{e}")))?;
+
+    let log_stream_git_clone =
+      kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
+        client.clone(),
+        cfs_session_name,
+      )
+      .await
+      .map_err(|e| Error::Message(format!("{e}")))?;
+
+    let log_stream_inventory =
+      kubernetes::get_cfs_session_container_inventory_logs_stream(
+        client.clone(),
+        cfs_session_name,
+      )
+      .await
+      .map_err(|e| Error::Message(format!("{e}")))?;
+
+    let log_stream_ansible =
+      kubernetes::get_cfs_session_container_ansible_logs_stream(
+        client,
+        cfs_session_name,
+      )
+      .await
+      .map_err(|e| Error::Message(format!("{e}")))?;
+
+    // NOTE: here is where we convert from impl AsyncBufRead to Pin<Box<dyn AsyncBufRead>>
+    // through dynamic dispatch
+    Ok(Box::pin(
+      log_stream_git_clone
+        .chain(log_stream_inventory)
+        .chain(log_stream_ansible),
+    ))
+  }
+
   /* /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
   async fn get_sessions_by_xname(
     &self,

@@ -52,12 +52,9 @@ pub async fn exec(
     sat_template_file_yaml["session_templates"].as_sequence();
 
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
-  let kube_client = kubernetes::get_k8s_client_programmatically(
-    k8s_api_url,
-    shasta_k8s_secrets,
-  )
-  .await
-  .unwrap();
+  let kube_client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
+    .await
+    .unwrap();
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =

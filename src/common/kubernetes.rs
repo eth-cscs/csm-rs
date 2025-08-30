@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use futures::{AsyncBufRead, AsyncBufReadExt, StreamExt, TryStreamExt};
 
-use hyper::Uri;
+use hyper::Uri as hyper_uri;
 use hyper_socks2::SocksConnector;
 use k8s_openapi::api::core::v1::{ConfigMap, Container, Pod};
 use kube::api::DeleteParams;
@@ -18,13 +18,14 @@ use kube::{
   Api,
 };
 
-use secrecy::SecretString;
+use secrecy::{Secret, SecretBox, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use termion::color;
 
 use crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault;
 use crate::error::Error;
+use http::Uri;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum K8sAuth {
@@ -46,7 +47,7 @@ pub struct K8sDetails {
   pub authentication: K8sAuth,
 }
 
-pub async fn get_k8s_client_programmatically(
+pub async fn get_client(
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
 ) -> Result<kube::Client, Error> {
@@ -125,190 +126,24 @@ pub async fn get_k8s_client_programmatically(
     user: Some(String::from("kubernetes-admin")),
   };
 
-  let config =
+  let mut config =
     kube::Config::from_custom_kubeconfig(kube_config, &kube_config_options)
       .await
       .map_err(|e| Error::K8sError(e.to_string()))?;
 
-  // OPTION 1 --> Native TLS - WORKING
-  /* let client = if std::env::var("SOCKS5").is_ok() {
-      log::debug!("SOCKS5 enabled");
-      let connector = {
-          let mut http = hyper::client::HttpConnector::new();
-          http.enforce_http(false);
-          let proxy = hyper_socks2::SocksConnector {
-              proxy_addr: std::env::var("SOCKS5").unwrap().parse::<Uri>().unwrap(),
-              auth: None,
-              connector: http,
-          };
-          let mut native_tls_builder = native_tls::TlsConnector::builder();
-          native_tls_builder.danger_accept_invalid_certs(true);
-          native_tls_builder.danger_accept_invalid_hostnames(true);
-          native_tls_builder.use_sni(false);
-
-          let tls = tokio_native_tls::TlsConnector::from(config.native_tls_connector()?);
-          hyper_tls::HttpsConnector::from((proxy, tls))
-      };
-
-      let service = tower::ServiceBuilder::new()
-          .layer(config.base_uri_layer())
-          .option_layer(config.auth_layer()?)
-          .service(hyper::Client::builder().build(connector));
-
-      kube::Client::new(service, config.default_namespace)
-  } else {
-      let https = config.openssl_https_connector()?;
-      let service = tower::ServiceBuilder::new()
-          .layer(config.base_uri_layer())
-          .service(hyper::Client::builder().build(https));
-      kube::Client::new(service, config.default_namespace)
-  }; */
-
-  // OPTION 2 --> rustls - Not working. Probably failing hyper client
-  /* let client = if std::env::var("SOCKS5").is_ok() {
-      log::debug!("SOCKS5 enabled");
-      // let https = config.rustls_https_connector()?;
-      let rustls_config = std::sync::Arc::new(config.rustls_client_config()?);
-      println!("rustls_config:\n{:#?}", config.rustls_client_config());
-      let mut http_connector = hyper::client::HttpConnector::new();
-      http_connector.enforce_http(false);
-      let socks_http_connector = SocksConnector {
-          proxy_addr: std::env::var("SOCKS5").unwrap().parse::<Uri>().unwrap(), // scheme is required by HttpConnector
-          auth: None,
-          connector: http_connector.clone(),
-      };
-      // let socks = socks_http_connector.clone().with_tls()?;
-      let https_socks_http_connector = hyper_rustls::HttpsConnector::from((
-          socks_http_connector.clone(),
-          rustls_config.clone(),
-      ));
-
-      println!(
-          "https_socks_http_connector:\n{:#?}",
-          https_socks_http_connector
-      );
-      // let https_http_connector = hyper_rustls::HttpsConnector::from((http_connector, rustls_config));
-      let service = tower::ServiceBuilder::new()
-          .layer(config.base_uri_layer())
-          .service(hyper::Client::builder().build(https_socks_http_connector));
-      kube::Client::new(service, config.default_namespace)
-  } else {
-      let https = config.openssl_https_connector()?;
-      let service = tower::ServiceBuilder::new()
-          .layer(config.base_uri_layer())
-          .service(hyper::Client::builder().build(https));
-      kube::Client::new(service, config.default_namespace)
-  }; */
-
-  let client = if std::env::var("SOCKS5").is_ok() {
+  let client = if let Ok(socks5_address) = std::env::var("SOCKS5") {
     log::debug!("SOCKS5 enabled");
-    let mut http_connector = hyper::client::HttpConnector::new();
-    http_connector.enforce_http(false);
-    let socks_http_connector = SocksConnector {
-      proxy_addr: std::env::var("SOCKS5").unwrap().parse::<Uri>().unwrap(), // scheme is required by HttpConnector
-      auth: None,
-      connector: http_connector.clone(),
-    };
+    let socks5_proxy_uri = socks5_address.parse::<Uri>().map_err(|_| {
+      Error::Message("Could not parse socks5_proxy".to_string())
+    })?;
 
-    // HttpsConnector following https://github.com/rustls/hyper-rustls/blob/main/examples/client.rs
-    // Get CA root cert
-    let mut ca_root_cert_pem_decoded: &[u8] = &base64::decode(
-            shasta_k8s_secrets
-                .get("certificate-authority-data")
-                .ok_or_else(|| {
-                    Error::K8sError(
-                        "ERROR - field 'certificate-authority-data' missing in Vault secrets"
-                            .to_string(),
-                    )
-                })?
-                .as_str()
-                .unwrap(),
-        )
-        .map_err(|e| Error::K8sError(e.to_string()))?;
+    config.proxy_url = Some(socks5_proxy_uri);
 
-    let ca_root_cert = rustls_pemfile::certs(&mut ca_root_cert_pem_decoded)?;
-
-    // Import CA cert into rustls ROOT certificate store
-    let mut root_cert_store = tokio_rustls::rustls::RootCertStore::empty();
-
-    root_cert_store.add_parsable_certificates(&ca_root_cert);
-
-    // Prepare client authentication https://github.com/rustls/rustls/blob/0018e7586c2dc689eb9e1ba8e0283c0f24b9fe8c/examples/src/bin/tlsclient-mio.rs#L414-L426
-    // Get client cert
-    let mut client_cert_pem_decoded: &[u8] = &base64::decode(
-      shasta_k8s_secrets["client-certificate-data"]
-        .as_str()
-        .unwrap(),
-    )
-    .map_err(|e| Error::K8sError(e.to_string()))?;
-
-    let client_certs = rustls_pemfile::certs(&mut client_cert_pem_decoded)
-      .unwrap()
-      .iter()
-      .map(|cert| tokio_rustls::rustls::Certificate(cert.clone()))
-      .collect();
-
-    // Get client key
-    let mut client_key_decoded: &[u8] = &base64::decode(
-            shasta_k8s_secrets
-                .get("client-key-data")
-                .ok_or_else(|| {
-                    Error::K8sError(
-                        "ERROR - field 'certificate-authority-data' missing in Vault secrets"
-                            .to_string(),
-                    )
-                })?
-                .as_str()
-                .unwrap(),
-        )
-        .map_err(|e| Error::K8sError(e.to_string()))?;
-
-    let client_key = match rustls_pemfile::read_one(&mut client_key_decoded)? {
-      Some(rustls_pemfile::Item::RSAKey(key)) => {
-        tokio_rustls::rustls::PrivateKey(key)
-      }
-      Some(rustls_pemfile::Item::PKCS8Key(key)) => {
-        tokio_rustls::rustls::PrivateKey(key)
-      }
-      Some(rustls_pemfile::Item::ECKey(key)) => {
-        tokio_rustls::rustls::PrivateKey(key)
-      }
-      _ => tokio_rustls::rustls::PrivateKey(Vec::new()),
-    };
-
-    // Create HTTPS connector
-    let rustls_config = tokio_rustls::rustls::ClientConfig::builder()
-      .with_safe_defaults()
-      .with_root_certificates(root_cert_store)
-      // .with_no_client_auth();
-      .with_client_auth_cert(client_certs, client_key)
-      .map_err(|e| Error::K8sError(e.to_string()))?;
-
-    let rustls_config = std::sync::Arc::new(rustls_config);
-
-    let args = (socks_http_connector, rustls_config);
-    let https_socks_http_connector = hyper_rustls::HttpsConnector::from(args);
-
-    /* let https_socks_http_connector = socks_http_connector
-    .with_rustls_root_cert_store(root_cert_store); */
-
-    // Create HTTPS client
-    let hyper_client =
-      hyper::Client::builder().build(https_socks_http_connector);
-
-    let service = tower::ServiceBuilder::new()
-      .layer(config.base_uri_layer())
-      .service(hyper_client);
-
-    kube::Client::new(service, config.default_namespace)
+    kube::Client::try_from(config)
+      .map_err(|e| Error::K8sError(e.to_string()))?
   } else {
-    let https = config
-      .rustls_https_connector()
-      .map_err(|e| Error::K8sError(e.to_string()))?;
-    let service = tower::ServiceBuilder::new()
-      .layer(config.base_uri_layer())
-      .service(hyper::Client::builder().build(https));
-    kube::Client::new(service, config.default_namespace)
+    kube::Client::try_from(config)
+      .map_err(|e| Error::K8sError(e.to_string()))?
   };
 
   Ok(client)
@@ -1238,8 +1073,7 @@ pub async fn delete_session_pod(
   )
   .await?;
 
-  let client =
-    get_k8s_client_programmatically(k8s_api_url, shasta_k8s_secrets).await?;
+  let client = get_client(k8s_api_url, shasta_k8s_secrets).await?;
 
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, "services");
 
