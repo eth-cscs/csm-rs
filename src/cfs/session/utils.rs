@@ -1,13 +1,10 @@
 use crate::{
   cfs,
   error::Error,
-  hsm::{
-    self,
-    group::{
+  hsm::group::{
       hacks::{filter_roles_and_subroles, filter_system_hsm_group_names},
       types::Group,
     },
-  },
 };
 use std::io::{self, Write};
 

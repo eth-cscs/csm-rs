@@ -127,6 +127,7 @@ pub mod http_client {
     // secret_path: &str,
     site_name: &str,
   ) -> Result<Value, Error> {
+    log::info!("Fetching k8s secrets from vault");
     let vault_token =
       auth_oidc_jwt(vault_base_url, shasta_token, site_name).await?;
 

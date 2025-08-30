@@ -1,16 +1,12 @@
 use core::time;
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 use futures::{AsyncBufRead, AsyncBufReadExt, StreamExt, TryStreamExt};
 
-use hyper::Uri as hyper_uri;
-use hyper_socks2::SocksConnector;
 use k8s_openapi::api::core::v1::{ConfigMap, Container, Pod};
 use kube::api::DeleteParams;
 use kube::{
   api::{AttachParams, AttachedProcess},
-  client::ConfigExt,
   config::{
     AuthInfo, Cluster, Context, KubeConfigOptions, Kubeconfig, NamedAuthInfo,
     NamedCluster, NamedContext,
@@ -18,7 +14,6 @@ use kube::{
   Api,
 };
 
-use secrecy::{Secret, SecretBox, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use termion::color;
@@ -26,6 +21,8 @@ use termion::color;
 use crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault;
 use crate::error::Error;
 use http::Uri;
+use kube::runtime::reflector;
+use secrecy::SecretBox;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum K8sAuth {
@@ -58,7 +55,10 @@ pub async fn get_client(
   let client_certificate_data = shasta_k8s_secrets["client-certificate-data"]
     .as_str()
     .unwrap();
-  let client_key_data = shasta_k8s_secrets["client-key-data"].as_str().unwrap();
+  let client_key_data = shasta_k8s_secrets["client-key-data"]
+    .as_str()
+    .map(|s| s.to_string())
+    .unwrap();
 
   let shasta_cluster = Cluster {
     server: Some(k8s_api_url.to_string()),
@@ -70,12 +70,22 @@ pub async fn get_client(
     certificate_authority_data: Some(String::from(certificate_authority_data)),
     proxy_url: None,
     extensions: None,
+    disable_compression: None,
   };
 
   let shasta_named_cluster = NamedCluster {
     name: String::from("shasta"),
     cluster: Some(shasta_cluster),
   };
+
+  /* let socks5_proxy_url = if let Ok(socks5_address) = std::env::var("SOCKS5") {
+    log::debug!("SOCKS5 enabled");
+    socks5_address
+      .parse::<Uri>()
+      .map_err(|_| Error::Message("Could not parse socks5_proxy".to_string()))?
+  }
+
+  shasta_named_cluster */
 
   let shasta_auth_info = AuthInfo {
     username: None,
@@ -85,7 +95,7 @@ pub async fn get_client(
     client_certificate: None,
     client_certificate_data: Some(String::from(client_certificate_data)),
     client_key: None,
-    client_key_data: Some(SecretString::from_str(client_key_data).unwrap()),
+    client_key_data: Some(SecretBox::try_from(client_key_data).unwrap()),
     impersonate: None,
     impersonate_groups: None,
     auth_provider: None,
@@ -99,7 +109,7 @@ pub async fn get_client(
 
   let shasta_context = Context {
     cluster: String::from("shasta"),
-    user: String::from("kubernetes-admin"),
+    user: Some(String::from("kubernetes-admin")),
     namespace: None,
     extensions: None,
   };
@@ -132,7 +142,7 @@ pub async fn get_client(
       .map_err(|e| Error::K8sError(e.to_string()))?;
 
   let client = if let Ok(socks5_address) = std::env::var("SOCKS5") {
-    log::debug!("SOCKS5 enabled");
+    log::info!("K8s SOCKS5 enabled");
     let socks5_proxy_uri = socks5_address.parse::<Uri>().map_err(|_| {
       Error::Message("Could not parse socks5_proxy".to_string())
     })?;
@@ -276,6 +286,8 @@ pub async fn get_init_container_logs_stream(
   // Get logs for 'git-clone' init container
 
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
+
+  let (reader, writer) = reflector::store::<Pod>();
 
   let params = kube::api::ListParams::default()
     .limit(1)

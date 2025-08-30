@@ -1,5 +1,5 @@
 use manta_backend_dispatcher::types::cfs::component::{
-  Component as FrontEndComponent, ComponentVec as FrontEndComponentVec,
+  Component as FrontEndComponent,
   State as FrontEndState,
 };
 
