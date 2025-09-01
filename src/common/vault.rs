@@ -11,8 +11,20 @@ pub mod http_client {
   ) -> Result<String, Error> {
     let role = "manta";
 
-    // rest client create new cfs sessions
-    let client = reqwest::Client::builder().build()?;
+    let client;
+
+    let client_builder = reqwest::Client::builder();
+
+    // Build client
+    if std::env::var("SOCKS5").is_ok() {
+      // socks5 proxy
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
+
+      // rest client to authenticate
+      client = client_builder.proxy(socks5proxy).build()?;
+    } else {
+      client = client_builder.build()?;
+    }
 
     let api_url =
       format!("{}/v1/auth/jwt-manta-{}/login", vault_base_url, site_name);
@@ -72,8 +84,20 @@ pub mod http_client {
     vault_base_url: &str,
     secret_path: &str,
   ) -> Result<Value, Error> {
-    // rest client create new cfs sessions
-    let client = reqwest::Client::builder().build()?;
+    let client;
+
+    let client_builder = reqwest::Client::builder();
+
+    // Build client
+    if std::env::var("SOCKS5").is_ok() {
+      // socks5 proxy
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
+
+      // rest client to authenticate
+      client = client_builder.proxy(socks5proxy).build()?;
+    } else {
+      client = client_builder.build()?;
+    }
 
     let api_url = vault_base_url.to_owned() + secret_path;
 
