@@ -4,7 +4,7 @@ use crate::{
   cfs::configuration::http_client::v2::types::cfs_configuration_response::{
     CfsConfigurationResponse, Layer,
   },
-  commands::apply_sat_file::utils::{
+  commands::i_apply_sat_file::utils::{
     get_image_name_or_ref_name_to_process,
     get_next_image_in_sat_file_to_process, validate_sat_file_images_section,
   },

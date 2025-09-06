@@ -5,13 +5,17 @@ use crate::{
     self,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   },
-  commands::{apply_hw_cluster_pin, apply_sat_file::utils},
+  commands::{apply_hw_cluster_pin, i_apply_sat_file::utils},
   common::kubernetes::{self},
   error::Error,
   hsm::group::utils::update_hsm_group_members,
   ims,
 };
 
+#[deprecated(
+  since = "v0.86.2",
+  note = "this function prints cfs session logs to stdout"
+)]
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -266,7 +270,7 @@ pub async fn exec(
   let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
   let cfs_session_created_hashmap: HashMap<String, serde_yaml::Value> =
-    utils::import_images_section_in_sat_file(
+    utils::i_import_images_section_in_sat_file(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,

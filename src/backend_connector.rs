@@ -1612,7 +1612,7 @@ impl SatTrait for Csm {
     overwrite: bool,
     dry_run: bool,
   ) -> Result<(), Error> {
-    crate::commands::apply_sat_file::command::exec(
+    crate::commands::i_apply_sat_file::command::exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,

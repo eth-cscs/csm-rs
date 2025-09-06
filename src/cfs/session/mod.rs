@@ -6,7 +6,7 @@ use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 use crate::{
   common::{
-    kubernetes::{self, print_cfs_session_logs},
+    kubernetes::{self, i_print_cfs_session_logs},
     vault::http_client::fetch_shasta_k8s_secrets_from_vault,
   },
   error::Error,
@@ -84,7 +84,11 @@ pub async fn post(
 
 /// Creates a CFS session and waits for it to finish.
 /// Optionally, it can also print the CFS session logs if `watch_logs` is set to true.
-pub async fn post_sync(
+#[deprecated(
+  since = "v0.42.3-beta.71",
+  note = "this function prints CFS logs to stdout"
+)]
+pub async fn i_post_sync(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
@@ -121,7 +125,7 @@ pub async fn post_sync(
       .await
       .unwrap();
 
-    let _ = print_cfs_session_logs(client, &cfs_session_name).await;
+    let _ = i_print_cfs_session_logs(client, &cfs_session_name).await;
   }
 
   // User does not want the CFS logs but we still need to wayt the CFS session to

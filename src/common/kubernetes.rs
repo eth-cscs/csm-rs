@@ -161,9 +161,9 @@ pub async fn get_client(
 
 #[deprecated(
   since = "v0.42.3-beta.71",
-  note = "please use migrate this functionality to cli client since writting output to filesystem is not a good practice in library"
+  note = "this function prints CFS logs to stdout"
 )]
-pub async fn print_cfs_session_logs(
+pub async fn i_print_cfs_session_logs(
   client: kube::Client,
   cfs_session_name: &str,
 ) -> Result<(), Error> {

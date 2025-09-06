@@ -800,7 +800,11 @@ pub fn get_image_name_or_ref_name_to_process(
   }
 }
 
-pub async fn import_images_section_in_sat_file(
+#[deprecated(
+  since = "v0.86.2",
+  note = "this function prints cfs session logs to stdout"
+)]
+pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
@@ -840,7 +844,7 @@ pub async fn import_images_section_in_sat_file(
     HashMap::new();
 
   while let Some(image_yaml) = &next_image_to_process_opt {
-    let image_id = create_image_from_sat_file_serde_yaml(
+    let image_id = i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -879,7 +883,11 @@ pub async fn import_images_section_in_sat_file(
   Ok(image_processed_hashmap)
 }
 
-pub async fn create_image_from_sat_file_serde_yaml(
+#[deprecated(
+  since = "v0.86.2",
+  note = "this function prints cfs session logs to stdout"
+)]
+pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
@@ -1132,7 +1140,7 @@ pub async fn create_image_from_sat_file_serde_yaml(
     );
 
     if !dry_run {
-      let cfs_session_rslt = cfs::session::post_sync(
+      let cfs_session_rslt = cfs::session::i_post_sync(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
