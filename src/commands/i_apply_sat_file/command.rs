@@ -32,6 +32,7 @@ pub async fn exec(
   gitea_token: &str,
   do_not_reboot: bool,
   watch_logs: bool,
+  timestamps: bool,
   debug_on_failure: bool,
   overwrite: bool,
   dry_run: bool,
@@ -287,6 +288,7 @@ pub async fn exec(
       debug_on_failure,
       dry_run,
       watch_logs,
+      timestamps,
     )
     .await?;
 

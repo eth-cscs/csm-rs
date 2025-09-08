@@ -97,6 +97,7 @@ pub async fn i_post_sync(
   k8s_api_url: &str,
   session: &CfsSessionPostRequest,
   watch_logs: bool,
+  timestamps: bool,
 ) -> Result<CfsSessionGetResponse, Error> {
   // Create CFS session
   log::info!("Create CFS session '{}'", session.name);
@@ -125,7 +126,8 @@ pub async fn i_post_sync(
       .await
       .unwrap();
 
-    let _ = i_print_cfs_session_logs(client, &cfs_session_name).await;
+    let _ =
+      i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await;
   }
 
   // User does not want the CFS logs but we still need to wayt the CFS session to

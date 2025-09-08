@@ -166,10 +166,12 @@ pub async fn get_client(
 pub async fn i_print_cfs_session_logs(
   client: kube::Client,
   cfs_session_name: &str,
+  timestamps: bool,
 ) -> Result<(), Error> {
   let logs_stream = get_cfs_session_init_container_git_clone_logs_stream(
     client.clone(),
     cfs_session_name,
+    timestamps,
   )
   .await?;
 
@@ -184,6 +186,7 @@ pub async fn i_print_cfs_session_logs(
   let mut logs_stream = get_cfs_session_container_inventory_logs_stream(
     client.clone(),
     cfs_session_name,
+    timestamps,
   )
   .await?
   .lines();
@@ -195,6 +198,7 @@ pub async fn i_print_cfs_session_logs(
   let mut logs_stream = get_cfs_session_container_ansible_logs_stream(
     client.clone(),
     cfs_session_name,
+    timestamps,
   )
   .await?
   .lines();
@@ -237,6 +241,7 @@ pub async fn try_get_configmap(
 pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
   cfs_session_name: &str,
+  timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   get_init_container_logs_stream(
     client,
@@ -244,6 +249,7 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
     "git-clone",
     "services",
     format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
   )
   .await
 }
@@ -251,6 +257,7 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
 pub async fn get_cfs_session_container_inventory_logs_stream(
   client: kube::Client,
   cfs_session_name: &str,
+  timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
@@ -258,6 +265,7 @@ pub async fn get_cfs_session_container_inventory_logs_stream(
     "inventory",
     "services",
     format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
   )
   .await
 }
@@ -265,6 +273,7 @@ pub async fn get_cfs_session_container_inventory_logs_stream(
 pub async fn get_cfs_session_container_ansible_logs_stream(
   client: kube::Client,
   cfs_session_name: &str,
+  timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
@@ -272,6 +281,7 @@ pub async fn get_cfs_session_container_ansible_logs_stream(
     "ansible",
     "services",
     format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
   )
   .await
 }
@@ -282,12 +292,11 @@ pub async fn get_init_container_logs_stream(
   init_container_name: &str,
   namespace: &str,
   label_selector: &str,
+  timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   // Get logs for 'git-clone' init container
 
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
-
-  let (reader, writer) = reflector::store::<Pod>();
 
   let params = kube::api::ListParams::default()
     .limit(1)
@@ -395,11 +404,11 @@ pub async fn get_init_container_logs_stream(
       init_container_status
     );
     println!(
-            "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
-            git_clone_container.name,
-            i + 1,
-            max
-        );
+      "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
+      git_clone_container.name,
+      i + 1,
+      max
+    );
 
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
@@ -460,7 +469,14 @@ pub async fn get_init_container_logs_stream(
       &kube::api::LogParams {
         follow: true,
         container: Some(init_container_name.to_string()),
-        ..kube::api::LogParams::default()
+        // ..kube::api::LogParams::default(),
+        limit_bytes: None,
+        pretty: true,
+        previous: false,
+        since_seconds: None,
+        since_time: None,
+        tail_lines: None,
+        timestamps,
       },
     )
     .await
@@ -473,6 +489,7 @@ pub async fn get_container_logs_stream(
   container_name: &str,
   namespace: &str,
   label_selector: &str,
+  timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
 
@@ -585,7 +602,14 @@ pub async fn get_container_logs_stream(
         &kube::api::LogParams {
           follow: true,
           container: Some(container_name.to_string()),
-          ..kube::api::LogParams::default()
+          limit_bytes: None,
+          pretty: true,
+          previous: false,
+          since_seconds: None,
+          since_time: None,
+          tail_lines: None,
+          timestamps,
+          // ..kube::api::LogParams::default()
         },
       )
       .await

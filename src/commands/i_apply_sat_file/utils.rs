@@ -821,6 +821,7 @@ pub async fn i_import_images_section_in_sat_file(
   debug_on_failure: bool, // tag: &str,
   dry_run: bool,
   watch_logs: bool,
+  timestamps: bool,
 ) -> Result<HashMap<String, serde_yaml::Value>, Error> {
   if image_yaml_vec.is_empty() {
     log::warn!("No images found in SAT file. Nothing to process.");
@@ -861,6 +862,7 @@ pub async fn i_import_images_section_in_sat_file(
       debug_on_failure,
       dry_run,
       watch_logs,
+      timestamps,
     )
     .await?;
 
@@ -902,6 +904,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   _debug_on_failure: bool,
   dry_run: bool,
   watch_logs: bool,
+  timestamps: bool,
 ) -> Result<String, Error> {
   // Collect CFS session details from SAT file
   // Get CFS session name from SAT file
@@ -1151,6 +1154,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
         k8s_api_url,
         &cfs_session,
         watch_logs,
+        timestamps,
       )
       .await;
 

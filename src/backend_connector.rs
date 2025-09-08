@@ -1391,7 +1391,7 @@ impl CfsTrait for Csm {
     shasta_token: &str,
     site_name: &str,
     cfs_session_name: &str,
-    // k8s_api_url: &str,
+    timestamps: bool,
     k8s: &K8sDetails,
   ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
     let shasta_k8s_secrets = match &k8s.authentication {
@@ -1417,6 +1417,7 @@ impl CfsTrait for Csm {
       kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
         client.clone(),
         cfs_session_name,
+        timestamps,
       )
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
@@ -1425,6 +1426,7 @@ impl CfsTrait for Csm {
       kubernetes::get_cfs_session_container_inventory_logs_stream(
         client.clone(),
         cfs_session_name,
+        timestamps,
       )
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
@@ -1433,6 +1435,7 @@ impl CfsTrait for Csm {
       kubernetes::get_cfs_session_container_ansible_logs_stream(
         client,
         cfs_session_name,
+        timestamps,
       )
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
@@ -1608,6 +1611,7 @@ impl SatTrait for Csm {
     gitea_token: &str,
     do_not_reboot: bool,
     watch_logs: bool,
+    timestamps: bool,
     debug_on_failure: bool,
     overwrite: bool,
     dry_run: bool,
@@ -1628,6 +1632,7 @@ impl SatTrait for Csm {
       gitea_token,
       do_not_reboot,
       watch_logs,
+      timestamps,
       debug_on_failure,
       overwrite,
       dry_run,
