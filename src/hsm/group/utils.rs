@@ -25,7 +25,7 @@ pub async fn get_group_name_available(
 
   // Get HSM groups/Keycloak roles the user has access to from JWT token
   let realm_access_role_vec =
-    crate::common::jwt_ops::get_roles(shasta_auth_token);
+    crate::common::jwt_ops::get_roles(shasta_auth_token)?;
 
   if !realm_access_role_vec.contains(&ADMIN_ROLE_NAME.to_string()) {
     log::debug!("User is not admin, getting HSM groups available from JWT");

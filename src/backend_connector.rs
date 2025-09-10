@@ -1004,15 +1004,6 @@ impl AuthenticationTrait for Csm {
   }
 
   async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
-    // FIXME: this is not nice but authentication/authorization will potentially move out to an
-    // external crate since this is type of logic is external to each site ...
-    /* let base_url = self
-    .base_url
-    .strip_suffix("/apis")
-    .unwrap_or(&self.base_url);*/
-
-    // let keycloak_base_url = base_url.to_string() + "/keycloak";
-
     authentication::validate_api_token(&self.base_url, token, &self.root_cert)
       .await
       .map_err(|e| Error::Message(e.to_string()))

@@ -943,7 +943,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   // VALIDATION: make sure grups in SAT.images "CFS session" are valid
   // NOTE: this is temporary until we get rid off "group" names as ansible folder names
   let invalid_groups: Vec<String> =
-    hsm::group::hacks::validate_groups_auth_token(&groups_name, shasta_token);
+    hsm::group::hacks::validate_groups_auth_token(&groups_name, shasta_token)?;
 
   if !invalid_groups.is_empty() {
     log::debug!("CFS session group validation - failed");

@@ -98,16 +98,16 @@ pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
 pub fn validate_groups_auth_token(
   cfs_group_names: &[&str],
   shasta_token: &str,
-) -> Vec<String> {
-  let keycloak_roles = common::jwt_ops::get_roles(shasta_token);
+) -> Result<Vec<String>, Error> {
+  let keycloak_roles = common::jwt_ops::get_roles(shasta_token)?;
 
-  validate_groups(
+  Ok(validate_groups(
     cfs_group_names,
     &keycloak_roles
       .iter()
       .map(String::as_str)
       .collect::<Vec<&str>>(),
-  )
+  ))
 }
 
 /// Check user has access to all groups in CFS session

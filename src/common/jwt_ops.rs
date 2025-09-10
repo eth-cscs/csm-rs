@@ -61,23 +61,24 @@ pub fn get_preferred_username(token: &str) -> Result<String, Error> {
 
 /// Returns the list of available HSM groups in JWT user token. The list is filtered and system HSM
 /// groups (eg alps, alpsm, alpse, etc)
-pub fn get_roles(token: &str) -> Vec<String> {
+pub fn get_roles(token: &str) -> Result<Vec<String>, Error> {
   // If JWT does not have `/realm_access/roles` claim, then we will assume, user is admin
-  get_claims_from_jwt_token(token)
-    .unwrap()
-    .pointer("/realm_access/roles")
-    .unwrap_or(&serde_json::json!([]))
-    .as_array()
-    .cloned()
-    .unwrap_or_default()
-    .iter()
-    .map(|role_value| role_value.as_str().unwrap().to_string())
-    .collect()
+  Ok(
+    get_claims_from_jwt_token(token)?
+      .pointer("/realm_access/roles")
+      .unwrap_or(&serde_json::json!([]))
+      .as_array()
+      .cloned()
+      .unwrap_or_default()
+      .iter()
+      .map(|role_value| role_value.as_str().unwrap().to_string())
+      .collect(),
+  )
 }
 
 /// This function will return true if the user is an admin, otherwise false
 pub fn is_user_admin(shasta_token: &str) -> bool {
-  let roles = get_roles(shasta_token);
+  let roles_rslt = get_roles(shasta_token);
 
-  roles.contains(&"pa_admin".to_string())
+  roles_rslt.is_ok_and(|roles| roles.contains(&"pa_admin".to_string()))
 }

@@ -31,8 +31,8 @@ pub async fn validate_api_token(
   let resp_rslt = client.get(api_url).bearer_auth(shasta_token).send().await;
 
   match resp_rslt {
-    Ok(_) => {
-      return Ok(());
+    Ok(resp) => {
+      return Ok(resp.error_for_status().map(|_| ())?);
     }
     Err(error) => Err(Error::Message(format!("Token is not valid: {}", error))),
   }
