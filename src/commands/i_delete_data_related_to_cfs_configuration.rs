@@ -19,7 +19,6 @@ pub async fn exec(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   hsm_name_available_vec: &[&str],
-  // configuration_name_opt: Option<&String>,
   configuration_name_pattern_opt: Option<&str>,
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
@@ -80,7 +79,7 @@ pub async fn exec(
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  cfs::configuration::utils::filter(
+  /* cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
     &xname_from_groups_vec
       .iter()
@@ -95,7 +94,7 @@ pub async fn exec(
     until_opt,
     None,
     keep_generic_sessions,
-  )?;
+  )?; */
 
   cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,

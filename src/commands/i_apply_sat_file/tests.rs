@@ -321,6 +321,7 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
     name: "my-image-name".to_string(),
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -377,6 +378,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
     name: "my-base-image-name".to_string(),
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -427,6 +429,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
     name: "my-base-image-name".to_string(),
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![CfsConfigurationResponse {
@@ -438,7 +441,6 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
       name: "my-layer-name".to_string(),
       playbook: "my-playbook".to_string(),
       branch: None,
-      // source: None,
     }],
     additional_inventory: None,
   }];
@@ -490,6 +492,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
     name: "my-image-name".to_string(),
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -723,6 +726,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
     created: None,
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -782,6 +786,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
     created: None,
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -840,6 +845,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
     created: None,
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];
@@ -888,6 +894,7 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
     created: None,
     link: None,
     arch: None,
+    metadata: None,
   }];
 
   let configuration_vec_in_csm = vec![];

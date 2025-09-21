@@ -2194,6 +2194,7 @@ pub async fn process_session_template_section_in_sat_file(
                     r#type: "dryrun_type".to_string(),
                   }),
                   arch: None,
+                  metadata: None,
                 }
               } else {
                 ims::image::http_client::types::Image {
@@ -2206,6 +2207,7 @@ pub async fn process_session_template_section_in_sat_file(
                     r#type: "dryrun_type".to_string(),
                   }),
                   arch: None,
+                  metadata: None,
                 }
               };
 

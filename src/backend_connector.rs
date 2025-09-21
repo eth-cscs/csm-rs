@@ -39,7 +39,7 @@ use manta_backend_dispatcher::{
       session::{CfsSessionGetResponse, CfsSessionPostRequest},
     },
     hsm::inventory::RedfishEndpointArray as FrontEndRedfishEndpointArray,
-    ims::Image as FrontEndImage,
+    ims::{Image as FrontEndImage, PatchImage},
     pcs::power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
     Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
     Group as FrontEndGroup,
@@ -1666,14 +1666,12 @@ impl ImsTrait for Csm {
   async fn get_images(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     image_id_opt: Option<&str>,
   ) -> Result<Vec<FrontEndImage>, Error> {
     crate::ims::image::http_client::get(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       image_id_opt,
     )
     .await
@@ -1705,6 +1703,25 @@ impl ImsTrait for Csm {
       image_vec.iter().map(|image| image.clone().into()).collect();
 
     crate::ims::image::utils::filter(&mut image_aux_vec);
+
+    Ok(())
+  }
+
+  async fn update_image(
+    &self,
+    shasta_token: &str,
+    image_id: &str,
+    image: &PatchImage,
+  ) -> Result<(), Error> {
+    let _ = crate::ims::image::http_client::patch(
+      shasta_token,
+      self.base_url.as_str(),
+      self.root_cert.as_slice(),
+      &image_id.to_string(),
+      &image.clone().into(),
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()));
 
     Ok(())
   }

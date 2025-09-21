@@ -1,8 +1,10 @@
 use manta_backend_dispatcher::types::ims::{
   Image as FrontEndImage,
   ImsImageRecord2Update as FrontEndImsImageRecord2Update, Link as FrontEndLink,
+  PatchImage as FrontEndPatchImage, PatchMetadata as FrontEndPatchMetadata,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ImsImageRecord2Update {
@@ -70,6 +72,8 @@ pub struct Image {
   pub link: Option<Link>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub arch: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub metadata: Option<HashMap<String, String>>,
 }
 
 impl From<FrontEndImage> for Image {
@@ -80,6 +84,7 @@ impl From<FrontEndImage> for Image {
       name: frontend_image.name,
       link: frontend_image.link.map(|link| link.into()),
       arch: frontend_image.arch,
+      metadata: frontend_image.metadata.map(|metadata| metadata.into()),
     }
   }
 }
@@ -92,6 +97,88 @@ impl Into<FrontEndImage> for Image {
       name: self.name,
       link: self.link.map(|link| link.into()),
       arch: self.arch,
+      metadata: self.metadata.map(|metadata| metadata.into()),
+    }
+  }
+}
+
+pub struct PatchMetadata {
+  pub operation: String,
+  pub key: String,
+  pub value: String,
+}
+
+impl From<FrontEndPatchMetadata> for PatchMetadata {
+  fn from(frontend_patch_metadata: FrontEndPatchMetadata) -> Self {
+    Self {
+      operation: frontend_patch_metadata.operation,
+      key: frontend_patch_metadata.key,
+      value: frontend_patch_metadata.value,
+    }
+  }
+}
+
+impl Into<FrontEndPatchMetadata> for PatchMetadata {
+  fn into(self) -> FrontEndPatchMetadata {
+    FrontEndPatchMetadata {
+      operation: self.operation,
+      key: self.key,
+      value: self.value,
+    }
+  }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct PatchImage {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub link: Option<Link>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub arch: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub metadata: Option<HashMap<String, String>>,
+}
+
+impl From<FrontEndPatchImage> for PatchImage {
+  fn from(frontend_patch_image: FrontEndPatchImage) -> Self {
+    Self {
+      link: frontend_patch_image.link.map(|link| link.into()),
+      arch: frontend_patch_image.arch,
+      metadata: frontend_patch_image
+        .metadata
+        .map(|metadata| metadata.into()),
+    }
+  }
+}
+
+impl Into<FrontEndPatchImage> for PatchImage {
+  fn into(self) -> FrontEndPatchImage {
+    FrontEndPatchImage {
+      link: self.link.map(|link| link.into()),
+      arch: self.arch,
+      metadata: self.metadata.map(|metadata| metadata.into()),
+    }
+  }
+}
+
+impl From<Image> for PatchImage {
+  fn from(patch_image: Image) -> Self {
+    Self {
+      link: patch_image.link.map(|link| link.into()),
+      arch: patch_image.arch,
+      metadata: patch_image.metadata.map(|metadata| metadata.into()),
+    }
+  }
+}
+
+impl Into<Image> for PatchImage {
+  fn into(self) -> Image {
+    Image {
+      id: None,
+      created: None,
+      name: String::default(),
+      link: self.link.map(|link| link.into()),
+      arch: self.arch,
+      metadata: self.metadata.map(|metadata| metadata.into()),
     }
   }
 }

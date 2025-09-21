@@ -27,6 +27,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::error::Error;
+use crate::ims::image::http_client::types::PatchImage;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Artifact {
@@ -454,6 +455,7 @@ async fn ims_update_image_add_manifest(
       ),
       r#type: "s3".to_string(),
     }),
+    metadata: None,
   };
 
   let ims_link = Link {
@@ -464,9 +466,10 @@ async fn ims_update_image_add_manifest(
     ),
     r#type: "s3".to_string(),
   };
-  let rec = ImsImageRecord2Update {
-    link: ims_link,
+  let rec = PatchImage {
+    link: Some(ims_link),
     arch: None,
+    metadata: None,
   };
 
   match patch(
@@ -478,7 +481,7 @@ async fn ims_update_image_add_manifest(
   )
   .await
   {
-    Ok(_returned) => log::debug!("Returned json: {}", _returned),
+    Ok(()) => log::debug!("Image updated"),
     Err(e) => panic!(
       "Error, unable to modify the record of the image. Err msg: {}",
       e
@@ -763,6 +766,7 @@ async fn ims_register_image(
     created: None,
     link: None,
     arch: None,
+    metadata: None,
   };
 
   let list_images_with_same_name = get_by_name(

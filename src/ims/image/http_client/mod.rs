@@ -2,7 +2,7 @@ pub mod types;
 
 use serde_json::Value;
 
-use types::{Image, ImsImageRecord2Update};
+use types::{Image, PatchImage};
 
 use crate::error::Error;
 
@@ -196,8 +196,8 @@ pub async fn patch(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   ims_image_id: &String,
-  ims_link: &ImsImageRecord2Update,
-) -> Result<Value, Error> {
+  ims_link: &PatchImage,
+) -> Result<(), Error> {
   let client;
 
   let client_builder = reqwest::Client::builder()
@@ -228,5 +228,7 @@ pub async fn patch(
     .map_err(Error::NetError)?
     .json::<Value>()
     .await
-    .map_err(Error::NetError)
+    .map_err(Error::NetError)?;
+
+  Ok(())
 }
