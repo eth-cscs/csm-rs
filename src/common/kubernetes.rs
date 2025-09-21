@@ -21,7 +21,6 @@ use termion::color;
 use crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault;
 use crate::error::Error;
 use http::Uri;
-use kube::runtime::reflector;
 use secrecy::SecretBox;
 
 #[derive(Serialize, Deserialize, Debug)]

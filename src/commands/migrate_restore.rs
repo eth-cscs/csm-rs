@@ -8,7 +8,7 @@ use crate::hsm::group::types::Group;
 use crate::ims::image::{
   http_client::{
     patch,
-    types::{Image, ImsImageRecord2Update, Link},
+    types::{Image, Link},
   },
   utils::get_by_name,
   utils::get_fuzzy,
