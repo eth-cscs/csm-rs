@@ -1126,11 +1126,8 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     log::info!("Creating CFS session");
 
     // Create CFS session
-    let session_name = format!(
-      "{}-{}",
-      configuration_name,
-      chrono::Utc::now().format("%Y%m%d%H%M%S")
-    );
+    let session_name = image_name.clone();
+
     let cfs_session = CfsSessionPostRequest::new(
       session_name,
       &configuration_name,

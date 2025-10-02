@@ -2,9 +2,9 @@ use crate::{
   cfs,
   error::Error,
   hsm::group::{
-      hacks::{filter_roles_and_subroles, filter_system_hsm_group_names},
-      types::Group,
-    },
+    hacks::{filter_roles_and_subroles, filter_system_hsm_group_names},
+    types::Group,
+  },
 };
 use std::io::{self, Write};
 
@@ -183,9 +183,9 @@ pub async fn filter_by_xname(
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
-  // target: (&[&str], &[&str]),
   hsm_group_name_available_vec: &[&str],
   xname_available_vec: &[&str],
+  type_opt: Option<&String>,
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
@@ -221,6 +221,11 @@ pub fn filter(
         })
       })
   });
+
+  if type_opt.is_some() {
+    cfs_session_vec
+      .retain(|cfs_session| cfs_session.get_target_def() == type_opt.cloned());
+  }
 
   // Sort CFS sessions by start time order ASC
   cfs_session_vec.sort_by(|a, b| {

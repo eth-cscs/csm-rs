@@ -161,6 +161,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     hsm_group_name_vec,
     &xname_vec,
     None,
+    None,
     common::jwt_ops::is_user_admin(shasta_token),
   )?;
 
@@ -331,6 +332,7 @@ pub async fn get_image_available_vec(
       .iter()
       .map(|g| g.as_str())
       .collect::<Vec<&str>>(),
+    None,
     None,
     true,
   )?;

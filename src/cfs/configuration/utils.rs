@@ -163,6 +163,7 @@ pub fn filter(
     hsm_group_name_vec,
     xname_from_groups_vec,
     None,
+    None,
     keep_generic_sessions,
   )?;
 

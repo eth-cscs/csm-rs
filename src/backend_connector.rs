@@ -1092,6 +1092,7 @@ impl CfsTrait for Csm {
     xname_vec: Vec<&str>,
     min_age_opt: Option<&String>,
     max_age_opt: Option<&String>,
+    type_opt: Option<&String>,
     status_opt: Option<&String>,
     cfs_session_name_opt: Option<&String>,
     limit_number_opt: Option<&u8>,
@@ -1124,6 +1125,7 @@ impl CfsTrait for Csm {
         .map(|g| g.as_str())
         .collect::<Vec<&str>>(),
       &xname_vec,
+      type_opt,
       limit_number_opt,
       true,
     )

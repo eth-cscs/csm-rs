@@ -58,6 +58,7 @@ pub async fn get_details(
       &[hsm_group_name],
       &xname_vec.iter().map(|x| x.as_str()).collect::<Vec<&str>>(),
       None,
+      None,
       true,
     )?;
 

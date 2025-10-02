@@ -39,26 +39,9 @@ pub async fn get_and_sort(
 
   // Sort CFS sessions by start time order ASC
   cfs_session_vec.sort_by(|a, b| {
-    a.status
-      .as_ref()
+    a.get_start_time()
       .unwrap()
-      .session
-      .as_ref()
-      .unwrap()
-      .start_time
-      .as_ref()
-      .unwrap()
-      .cmp(
-        b.status
-          .as_ref()
-          .unwrap()
-          .session
-          .as_ref()
-          .unwrap()
-          .start_time
-          .as_ref()
-          .unwrap(),
-      )
+      .cmp(&b.get_start_time().unwrap())
   });
 
   Ok(cfs_session_vec)
