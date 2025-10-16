@@ -167,22 +167,42 @@ pub async fn i_print_cfs_session_logs(
   cfs_session_name: &str,
   timestamps: bool,
 ) -> Result<(), Error> {
-  let logs_stream = get_cfs_session_init_container_git_clone_logs_stream(
+  let max_attempts = 3;
+
+  let namespace = "services";
+
+  let mut attempt = 0;
+
+  let container_name = "git-clone";
+
+  let mut result = i_print_init_container_logs(
     client.clone(),
     cfs_session_name,
+    container_name,
+    namespace,
     timestamps,
   )
-  .await?;
+  .await;
 
-  let mut lines = logs_stream.lines();
+  while result.is_err() && attempt < max_attempts {
+    attempt += 1;
 
-  while let Some(line) = lines.try_next().await.unwrap() {
-    println!("{}", line);
+    println!(
+      "Could not get logs for init container 'git-clone'. Trying again. Attempt {} of {}",
+      attempt + 1,
+      max_attempts
+    );
+    result = i_print_init_container_logs(
+      client.clone(),
+      cfs_session_name,
+      container_name,
+      namespace,
+      timestamps,
+    )
+    .await;
   }
 
-  // let _ = print_cfs_session_container_ansible_logs_stream(client, cfs_session_name).await;
-
-  let mut logs_stream = get_cfs_session_container_inventory_logs_stream(
+  /* let mut logs_stream = get_cfs_session_init_container_git_clone_logs_stream(
     client.clone(),
     cfs_session_name,
     timestamps,
@@ -190,11 +210,43 @@ pub async fn i_print_cfs_session_logs(
   .await?
   .lines();
 
-  while let Some(line) = logs_stream.try_next().await.unwrap() {
+  while let Some(line) = logs_stream.try_next().await? {
     println!("{}", line);
+  } */
+
+  let mut attempt = 0;
+
+  let container_name = "inventory";
+
+  let mut result = i_print_init_container_logs(
+    client.clone(),
+    cfs_session_name,
+    container_name,
+    namespace,
+    timestamps,
+  )
+  .await;
+
+  while result.is_err() && attempt < max_attempts {
+    attempt += 1;
+
+    println!(
+      "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
+      container_name,
+      attempt + 1,
+      max_attempts
+    );
+    result = i_print_init_container_logs(
+      client.clone(),
+      cfs_session_name,
+      container_name,
+      namespace,
+      timestamps,
+    )
+    .await;
   }
 
-  let mut logs_stream = get_cfs_session_container_ansible_logs_stream(
+  /* let mut logs_stream = get_cfs_session_container_inventory_logs_stream(
     client.clone(),
     cfs_session_name,
     timestamps,
@@ -202,9 +254,93 @@ pub async fn i_print_cfs_session_logs(
   .await?
   .lines();
 
-  while let Some(line) = logs_stream.try_next().await.unwrap() {
+  while let Some(line) = logs_stream.try_next().await? {
     println!("{}", line);
+  } */
+
+  let attempt = 0;
+
+  let container_name = "ansible";
+
+  let mut result = i_print_init_container_logs(
+    client.clone(),
+    cfs_session_name,
+    container_name,
+    namespace,
+    timestamps,
+  )
+  .await;
+
+  while result.is_err() && attempt < max_attempts {
+    println!(
+      "Could not get logs for container '{}'. Trying again. Attempt {} of {}",
+      container_name,
+      attempt + 1,
+      max_attempts
+    );
+    result = i_print_init_container_logs(
+      client.clone(),
+      cfs_session_name,
+      container_name,
+      namespace,
+      timestamps,
+    )
+    .await;
   }
+
+  /* let mut logs_stream = get_cfs_session_container_ansible_logs_stream(
+    client.clone(),
+    cfs_session_name,
+    timestamps,
+  )
+  .await?
+  .lines();
+
+  while let Some(line) = logs_stream.try_next().await? {
+    println!("{}", line);
+  } */
+
+  let attempt = 0;
+
+  let container_name = "teardown";
+
+  let mut result = i_print_init_container_logs(
+    client.clone(),
+    cfs_session_name,
+    container_name,
+    namespace,
+    timestamps,
+  )
+  .await;
+
+  while result.is_err() && attempt < max_attempts {
+    println!(
+      "Could not get logs for container '{}'. Trying again. Attempt {} of {}",
+      container_name,
+      attempt + 1,
+      max_attempts
+    );
+    result = i_print_init_container_logs(
+      client.clone(),
+      cfs_session_name,
+      container_name,
+      namespace,
+      timestamps,
+    )
+    .await;
+  }
+
+  /* let mut logs_stream = get_cfs_session_container_teardown_logs_stream(
+    client.clone(),
+    cfs_session_name,
+    timestamps,
+  )
+  .await?
+  .lines();
+
+  while let Some(line) = logs_stream.try_next().await? {
+    println!("{}", line);
+  } */
 
   Ok(())
 }
@@ -237,6 +373,31 @@ pub async fn try_get_configmap(
   })
 }
 
+pub async fn i_print_init_container_logs(
+  client: kube::Client,
+  cfs_session_name: &str,
+  init_container_name: &str,
+  namespace: &str,
+  timestamps: bool,
+) -> Result<(), Error> {
+  let mut log_stream = get_init_container_logs_stream(
+    client,
+    cfs_session_name,
+    init_container_name,
+    namespace,
+    format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
+  )
+  .await?
+  .lines();
+
+  while let Some(line) = log_stream.try_next().await? {
+    println!("{}", line);
+  }
+
+  Ok(())
+}
+
 pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
   cfs_session_name: &str,
@@ -251,6 +412,31 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
     timestamps,
   )
   .await
+}
+
+pub async fn i_print_container_logs(
+  client: kube::Client,
+  cfs_session_name: &str,
+  init_container_name: &str,
+  namespace: &str,
+  timestamps: bool,
+) -> Result<(), Error> {
+  let mut log_stream = get_container_logs_stream(
+    client,
+    cfs_session_name,
+    init_container_name,
+    namespace,
+    format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
+  )
+  .await?
+  .lines();
+
+  while let Some(line) = log_stream.try_next().await? {
+    println!("{}", line);
+  }
+
+  Ok(())
 }
 
 pub async fn get_cfs_session_container_inventory_logs_stream(
@@ -278,6 +464,22 @@ pub async fn get_cfs_session_container_ansible_logs_stream(
     client,
     cfs_session_name,
     "ansible",
+    "services",
+    format!("cfsession={}", cfs_session_name).as_str(),
+    timestamps,
+  )
+  .await
+}
+
+pub async fn get_cfs_session_container_teardown_logs_stream(
+  client: kube::Client,
+  cfs_session_name: &str,
+  timestamps: bool,
+) -> Result<impl AsyncBufRead, Error> {
+  get_container_logs_stream(
+    client,
+    cfs_session_name,
+    "teardown",
     "services",
     format!("cfsession={}", cfs_session_name).as_str(),
     timestamps,
@@ -615,7 +817,7 @@ pub async fn get_container_logs_stream(
       .map_err(|e| Error::K8sError(format!("{e}")))
   } else {
     return Err(Error::Message(format!(
-            "Container ({}) status is not running nor terminated. Aborting operation.\nContainer status:\n{:#?}",
+            "Container ({}) status is neither running nor terminated. Aborting operation.\nContainer status:\n{:#?}",
             ansible_container.name, ansible_container
         )));
   }
