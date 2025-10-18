@@ -495,8 +495,6 @@ pub async fn get_init_container_logs_stream(
   label_selector: &str,
   timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
-  // Get logs for 'git-clone' init container
-
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
 
   let params = kube::api::ListParams::default()

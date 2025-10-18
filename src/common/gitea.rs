@@ -3,6 +3,35 @@ pub mod http_client {
   use crate::error::Error;
   use serde_json::Value;
 
+  pub fn get_repo_name_from_url(repo_url: &str) -> Result<String, Error> {
+    dbg!(&repo_url);
+    if repo_url.starts_with("https://api-gw-service-nmn.local") {
+      let gitea_internal_base_url =
+        "https://api-gw-service-nmn.local/vcs/cray/";
+
+      return Ok(
+        repo_url
+          .trim_start_matches(gitea_internal_base_url)
+          .trim_end_matches(".git")
+          .to_string(),
+      );
+    } else if repo_url.starts_with("https://vcs.cmn.alps.cscs.ch") {
+      let gitea_external_base_url = "https://vcs.cmn.alps.cscs.ch/vcs/cray/";
+
+      return Ok(
+        repo_url
+          .trim_start_matches(gitea_external_base_url)
+          .trim_end_matches(".git")
+          .to_string(),
+      );
+    } else {
+      return Err(Error::Message(
+        "repo url provided does not match gitea internal or external URL"
+          .to_string(),
+      ));
+    };
+  }
+
   /// Get all refs for a repository
   /// Used when getting repo details
   pub async fn get_all_refs_from_repo_url(
@@ -11,13 +40,10 @@ pub mod http_client {
     repo_url: &str,
     shasta_root_cert: &[u8],
   ) -> Result<Vec<Value>, Error> {
-    let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/cray/";
+    let repo_name = get_repo_name_from_url(repo_url)?;
 
-    let repo_name = repo_url
-      .trim_start_matches(gitea_internal_base_url)
-      .trim_end_matches(".git");
-
-    get_all_refs(gitea_base_url, gitea_token, repo_name, shasta_root_cert).await
+    get_all_refs(gitea_base_url, gitea_token, &repo_name, shasta_root_cert)
+      .await
   }
 
   /// Get all refs for a repository
