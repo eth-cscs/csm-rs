@@ -19,8 +19,9 @@ use manta_backend_dispatcher::{
     console::ConsoleTrait,
     get_images_and_details::GetImagesAndDetailsTrait,
     hsm::{
-      component::ComponentTrait, group::GroupTrait,
-      hardware_inventory::HardwareInventory,
+      component::ComponentTrait,
+      component_ethernet_interface::ComponentEthernetInterfaceTrait,
+      group::GroupTrait, hardware_inventory::HardwareInventory,
       redfish_endpoint::RedfishEndpointTrait,
     },
     ims::ImsTrait,
@@ -38,7 +39,10 @@ use manta_backend_dispatcher::{
       cfs_configuration_response::{CfsConfigurationResponse, Layer},
       session::{CfsSessionGetResponse, CfsSessionPostRequest},
     },
-    hsm::inventory::RedfishEndpointArray as FrontEndRedfishEndpointArray,
+    hsm::inventory::{
+      ComponentEthernetInterface, IpAddressMapping,
+      RedfishEndpointArray as FrontEndRedfishEndpointArray,
+    },
     ims::{Image as FrontEndImage, PatchImage},
     pcs::power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
     Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
@@ -902,6 +906,85 @@ impl BootParametersTrait for Csm {
         .to_string(),
     ))
   }
+}
+
+impl ComponentEthernetInterfaceTrait for Csm {
+  async fn get_all_component_ethernet_interfaces(
+    &self,
+    _auth_token: &str,
+  ) -> Result<Vec<ComponentEthernetInterface>, Error> {
+    Err(Error::Message(
+      "Get all ethernet interfaces command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
+  async fn get_component_ethernet_interface(
+    &self,
+    _auth_token: &str,
+    _eth_interface_id: &str,
+  ) -> Result<ComponentEthernetInterface, Error> {
+    Err(Error::Message(
+      "Get ethernet interfaces command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
+  async fn update_component_ethernet_interface(
+    &self,
+    _auth_token: &str,
+    _eth_interface_id: &str,
+    _description: Option<&str>,
+    _ip_address_mapping: (&str, &str),
+  ) -> Result<Value, Error> {
+    Err(Error::Message(
+      "Update ethernet interface command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
+  async fn delete_all_component_ethernet_interfaces(
+    &self,
+    _auth_token: &str,
+  ) -> Result<Value, Error> {
+    Err(Error::Message(
+      "Delete all ethernet interface command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
+  async fn delete_component_ethernet_interface(
+    &self,
+    _auth_token: &str,
+    _eth_interface_id: &str,
+  ) -> Result<Value, Error> {
+    Err(Error::Message(
+      "Delete ethernet interface command not implemented for this backend"
+        .to_string(),
+    ))
+  }
+
+  /* async fn get_ip_addresses(
+    &self,
+    _auth_token: &str,
+    _eth_interface_id: &str,
+  ) -> Result<Vec<IpAddressMapping>, Error> {
+    Err(Error::Message(
+      "Get IP addresses command not implemented for this backend".to_string(),
+    ))
+  }
+
+  async fn delete_ip_address(
+    &self,
+    _auth_token: &str,
+    _group_label: &str,
+    _eth_interface_id: &str,
+    _ip_address: &str,
+  ) -> Result<Value, Error> {
+    Err(Error::Message(
+      "Delete IP address command not implemented for this backend".to_string(),
+    ))
+  } */
 }
 
 impl RedfishEndpointTrait for Csm {
