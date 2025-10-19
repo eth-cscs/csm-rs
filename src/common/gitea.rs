@@ -4,7 +4,6 @@ pub mod http_client {
   use serde_json::Value;
 
   pub fn get_repo_name_from_url(repo_url: &str) -> Result<String, Error> {
-    dbg!(&repo_url);
     if repo_url.starts_with("https://api-gw-service-nmn.local") {
       let gitea_internal_base_url =
         "https://api-gw-service-nmn.local/vcs/cray/";
