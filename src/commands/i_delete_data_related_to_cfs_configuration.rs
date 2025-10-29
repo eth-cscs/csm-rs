@@ -428,7 +428,7 @@ pub async fn exec(
 
   // DELETE DATA
   //
-  /* delete(
+  delete(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -443,7 +443,7 @@ pub async fn exec(
       .map(|(sessiontemplate, _, _)| sessiontemplate)
       .collect(),
   )
-  .await; */
+  .await;
 
   Ok(())
 }
