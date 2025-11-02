@@ -32,7 +32,7 @@ pub async fn validate_target_hsm_members(
   )
   .await; */
 
-  let all_xnames_user_has_access =
+  let xnames_user_has_access =
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
       shasta_base_url,
@@ -53,9 +53,10 @@ pub async fn validate_target_hsm_members(
   .await; */
 
   // Check user has access to all xnames he is requesting
-  if hsm_group_members_opt.iter().all(|hsm_member| {
-    all_xnames_user_has_access.contains(&hsm_member.to_string())
-  }) {
+  if hsm_group_members_opt
+    .iter()
+    .all(|hsm_member| xnames_user_has_access.contains(&hsm_member.to_string()))
+  {
     Ok(
       hsm_group_members_opt
         .iter()

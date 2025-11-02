@@ -2180,7 +2180,9 @@ pub async fn process_session_template_section_in_sat_file(
             )
             .await
             .unwrap_or_else(|_| {
+              // In dry run mode, generate a mock image
               let dry_run_mock_image = if is_image_id {
+                // Image reference is an image ID
                 ims::image::http_client::types::Image {
                   id: Some(image_reference.to_string()),
                   created: None,
@@ -2194,6 +2196,7 @@ pub async fn process_session_template_section_in_sat_file(
                   metadata: None,
                 }
               } else {
+                // Image reference is an image name
                 ims::image::http_client::types::Image {
                   id: None,
                   created: None,
@@ -2334,10 +2337,9 @@ pub async fn process_session_template_section_in_sat_file(
 
       //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
       //wide operations instead of using roles
-      let node_groups_opt =
-        Some(hsm::group::hacks::filter_system_hsm_group_names(
-          node_groups_opt.unwrap_or_default(),
-        ));
+      let node_groups_opt = node_groups_opt.map(|node_groups| {
+        hsm::group::hacks::filter_system_hsm_group_names(node_groups)
+      });
 
       // Validate/check HSM groups in YAML file session_templates.bos_parameters.boot_sets.<parameter>.node_groups matches with
       // Check hsm groups in SAT file includes the hsm_group_param
@@ -2397,7 +2399,7 @@ pub async fn process_session_template_section_in_sat_file(
         etag: Some(ims_image_etag.to_string()),
         kernel_parameters: Some(kernel_parameters.to_string()),
         node_list: node_list_opt,
-        node_roles_groups: node_roles_groups_opt, // TODO: investigate whether this value can be a list
+        node_roles_groups: node_roles_groups_opt,
         node_groups: node_groups_opt,
         rootfs_provider,
         rootfs_provider_passthrough,
