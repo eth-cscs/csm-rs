@@ -23,6 +23,15 @@ pub mod http_client {
           .trim_end_matches(".git")
           .to_string(),
       );
+    } else if repo_url.starts_with("https://api.cmn.alps.cscs.ch") {
+      let gitea_external_base_url = "https://api.cmn.alps.cscs.ch/vcs/cray/";
+
+      return Ok(
+        repo_url
+          .trim_start_matches(gitea_external_base_url)
+          .trim_end_matches(".git")
+          .to_string(),
+      );
     } else {
       return Err(Error::Message(
         "repo url provided does not match gitea internal or external URL"
