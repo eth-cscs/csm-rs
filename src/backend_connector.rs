@@ -1197,6 +1197,13 @@ impl CfsTrait for Csm {
     limit_number_opt: Option<&u8>,
     is_succeded_opt: Option<bool>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
+    if !hsm_group_name_vec.is_empty() && !xname_vec.is_empty() {
+      eprintln!(
+        "ERROR - Cannot filter by both HSM group names and xnames simultaneously"
+      );
+      std::process::exit(1);
+    }
+
     let mut hsm_group_available_vec = hsm::group::utils::get_group_available(
       shasta_token,
       shasta_base_url,
@@ -1246,20 +1253,12 @@ impl CfsTrait for Csm {
         std::process::exit(1);
       }
 
-      let mut member_available_vec = hsm_group_available_vec
-        .iter()
-        .flat_map(|g| g.get_members())
-        .collect::<Vec<String>>();
-
-      member_available_vec.sort();
-      member_available_vec.dedup();
-
       (
         hsm_group_available_vec
           .into_iter()
           .map(|group| group.label)
           .collect(),
-        member_available_vec,
+        xname_vec.into_iter().map(|s| s.to_string()).collect(),
       )
     } else {
       // all HSM groups available
