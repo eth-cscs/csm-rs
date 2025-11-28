@@ -29,33 +29,18 @@ pub static SUBROLES: [&str; 8] = [
   "UserDefined",
 ];
 
-pub fn filter_system_hsm_groups(
-  hsm_group_vec_rslt: Result<Vec<Group>, Error>,
-) -> Result<Vec<Group>, Error> {
+/// Removes 'system wide' HSM groups from the provided HSM group vector
+pub fn filter_system_hsm_groups(hsm_group_vec: Vec<Group>) -> Vec<Group> {
   //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
   //wide operations instead of using roles
-  let hsm_group_vec_filtered_rslt: Result<Vec<Group>, Error> =
-    hsm_group_vec_rslt.and_then(|hsm_group_vec| {
-      Ok(
-        hsm_group_vec
-          .iter()
-          .filter(|hsm_group| {
-            let label = hsm_group.label.as_str();
-            !SYSTEM_WIDE_HSM_GROUPS.contains(&label)
-          })
-          .cloned()
-          .collect::<Vec<Group>>(),
-      )
-    });
-
-  if let Ok([]) = hsm_group_vec_filtered_rslt.as_deref() {
-    Err(Error::Message(format!(
-      "HSM groups '{}' not allowed.",
-      SYSTEM_WIDE_HSM_GROUPS.join(", ")
-    )))
-  } else {
-    hsm_group_vec_filtered_rslt
-  }
+  hsm_group_vec
+    .iter()
+    .filter(|hsm_group| {
+      let label = hsm_group.label.as_str();
+      !SYSTEM_WIDE_HSM_GROUPS.contains(&label)
+    })
+    .cloned()
+    .collect::<Vec<Group>>()
 }
 
 /// Removes unwanted roles thay may appear in keycloak auth/jwt token roles
@@ -82,6 +67,7 @@ pub fn filter_system_hsm_group_names(
     .collect()
 }
 
+/// Removes 'roles' and 'subroles' from the provided HSM group name vector
 pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
   hsm_group_name_vec
     .iter()

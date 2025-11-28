@@ -190,6 +190,11 @@ pub fn filter(
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
   log::info!("Filter CFS sessions by groups");
+  log::info!(
+    "HSM groups to filter from: {:?}",
+    hsm_group_name_available_vec
+  );
+  log::info!("Xnames to filter from: {:?}", xname_available_vec);
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)

@@ -14,6 +14,48 @@ use super::{
   types::Member,
 };
 
+pub async fn get_group_available(
+  shasta_auth_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+) -> Result<Vec<Group>, Error> {
+  const ADMIN_ROLE_NAME: &str = "pa_admin";
+
+  let mut group_vec = hsm::group::http_client::get_all(
+    shasta_auth_token,
+    shasta_base_url,
+    shasta_root_cert,
+  )
+  .await
+  .map_err(|e| Error::Message(e.to_string()))?;
+
+  // Get HSM groups/Keycloak roles the user has access to from JWT token
+  let realm_access_role_vec =
+    crate::common::jwt_ops::get_roles(shasta_auth_token)?;
+
+  if !realm_access_role_vec.contains(&ADMIN_ROLE_NAME.to_string()) {
+    let available_groups_name = get_group_name_available(
+      shasta_auth_token,
+      shasta_base_url,
+      shasta_root_cert,
+    )
+    .await?;
+
+    group_vec.retain(|group| available_groups_name.contains(&group.label));
+
+    // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
+    // the roles to check if a user has access to individual compute nodes
+    //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
+    //wide operations instead of using roles
+    let realm_access_role_filtered_vec =
+      hsm::group::hacks::filter_system_hsm_groups(group_vec.clone());
+
+    Ok(realm_access_role_filtered_vec)
+  } else {
+    Ok(group_vec)
+  }
+}
+
 pub async fn get_group_name_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,

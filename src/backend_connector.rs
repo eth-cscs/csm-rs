@@ -59,7 +59,7 @@ use crate::{
   bos, bss,
   common::{
     authentication::{self, get_token_from_shasta_endpoint},
-    kubernetes,
+    jwt_ops, kubernetes,
     vault::http_client::fetch_shasta_k8s_secrets_from_vault,
   },
   hsm::{
@@ -89,7 +89,7 @@ impl GroupTrait for Csm {
     &self,
     auth_token: &str,
   ) -> Result<Vec<FrontEndGroup>, Error> {
-    let mut group_vec = self
+    /* let mut group_vec = self
       .get_all_groups(auth_token)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -99,7 +99,23 @@ impl GroupTrait for Csm {
 
     group_vec.retain(|group| available_groups_name.contains(&group.label));
 
-    Ok(group_vec)
+    Ok(group_vec) */
+
+    let mut hsm_group_vec = hsm::group::utils::get_group_available(
+      auth_token,
+      &self.base_url,
+      &self.root_cert,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))?;
+
+    // Convert all HSM groups from mesa to infra
+    let hsm_group_backend_vec = hsm_group_vec
+      .into_iter()
+      .map(hsm::group::types::Group::into)
+      .collect();
+
+    Ok(hsm_group_backend_vec)
   }
 
   async fn get_group_name_available(
@@ -1181,6 +1197,87 @@ impl CfsTrait for Csm {
     limit_number_opt: Option<&u8>,
     is_succeded_opt: Option<bool>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
+    let mut hsm_group_available_vec = hsm::group::utils::get_group_available(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))?;
+
+    let (hsm_group_name_vec, xname_vec) = if !hsm_group_name_vec.is_empty() {
+      // Filter HSM groups based on argument
+      hsm_group_available_vec
+        .retain(|group| hsm_group_name_vec.contains(&group.label));
+
+      if hsm_group_available_vec.is_empty() {
+        eprintln!("ERROR - None of the requested HSM groups are available");
+        std::process::exit(1);
+      };
+
+      let mut member_available_vec = hsm_group_available_vec
+        .iter()
+        .flat_map(|g| g.get_members())
+        .collect::<Vec<String>>();
+
+      member_available_vec.sort();
+      member_available_vec.dedup();
+
+      (
+        hsm_group_available_vec
+          .into_iter()
+          .map(|group| group.label)
+          .collect::<Vec<String>>(),
+        member_available_vec,
+      )
+    } else if !xname_vec.is_empty() {
+      // Filter members available in the target HSM groups
+      hsm_group_available_vec.retain(|group| {
+        group
+          .get_members()
+          .iter()
+          .any(|member| xname_vec.contains(&member.as_str()))
+      });
+
+      if hsm_group_available_vec.is_empty() {
+        eprintln!(
+              "ERROR - None of the requested xnames are available in the target HSM groups"
+            );
+        std::process::exit(1);
+      }
+
+      let mut member_available_vec = hsm_group_available_vec
+        .iter()
+        .flat_map(|g| g.get_members())
+        .collect::<Vec<String>>();
+
+      member_available_vec.sort();
+      member_available_vec.dedup();
+
+      (
+        hsm_group_available_vec
+          .into_iter()
+          .map(|group| group.label)
+          .collect(),
+        member_available_vec,
+      )
+    } else {
+      // all HSM groups available
+      // all members available
+      let member_available_vec = hsm_group_available_vec
+        .iter()
+        .flat_map(|g| g.get_members())
+        .collect::<Vec<String>>();
+
+      (
+        hsm_group_available_vec
+          .into_iter()
+          .map(|group| group.label)
+          .collect(),
+        member_available_vec,
+      )
+    };
+
     let mut cfs_session_vec = crate::cfs::session::get_and_sort(
       shasta_token,
       shasta_base_url,
@@ -1203,14 +1300,18 @@ impl CfsTrait for Csm {
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       None,
+      /* &hsm_group_name_vec
+      .iter()
+      .map(|g| g.as_str())
+      .collect::<Vec<&str>>(), */
       &hsm_group_name_vec
         .iter()
-        .map(|g| g.as_str())
+        .map(|s| s.as_str())
         .collect::<Vec<&str>>(),
-      &xname_vec,
+      &xname_vec.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
       type_opt,
       limit_number_opt,
-      true,
+      jwt_ops::is_user_admin(shasta_token),
     )
     .map_err(|e| Error::Message(e.to_string()))?;
 
