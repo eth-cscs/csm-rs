@@ -210,8 +210,6 @@ pub fn filter(
 
   // Checks either target.groups contains hsm_group_name or ansible.limit is a subset of
   // hsm_group.members.ids
-  dbg!(&hsm_group_name_available_vec);
-  dbg!(&xname_available_vec);
   cfs_session_vec.retain(|cfs_session| {
     cfs_session.get_target_hsm().is_some_and(|target_hsm_vec| {
       (keep_generic_sessions && is_session_image_generic(cfs_session))
