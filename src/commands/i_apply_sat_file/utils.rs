@@ -2137,7 +2137,7 @@ pub async fn process_session_template_section_in_sat_file(
   ref_name_processed_hashmap: HashMap<String, String>,
   hsm_group_available_vec: &[&str],
   sat_file_yaml: Value,
-  do_not_reboot: bool,
+  reboot: bool,
   dry_run: bool,
 ) -> Result<(), Error> {
   let empty_vec = Vec::new();
@@ -2470,9 +2470,7 @@ pub async fn process_session_template_section_in_sat_file(
   // Create BOS session. Note: reboot operation shuts down the nodes and they may not start
   // up... hence we will split the reboot into 2 operations shutdown and start
 
-  if do_not_reboot {
-    log::info!("Reboot canceled by user");
-  } else {
+  if reboot {
     log::info!("Rebooting");
 
     for bos_st_name in bos_st_created_vec {

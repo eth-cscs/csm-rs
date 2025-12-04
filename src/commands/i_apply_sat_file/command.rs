@@ -30,7 +30,7 @@ pub async fn exec(
   ansible_passthrough_opt: Option<&str>,
   gitea_base_url: &str,
   gitea_token: &str,
-  do_not_reboot: bool,
+  reboot: bool,
   watch_logs: bool,
   timestamps: bool,
   debug_on_failure: bool,
@@ -309,7 +309,7 @@ pub async fn exec(
     hsm_group_available_vec,
     sat_template_file_yaml,
     // &tag,
-    do_not_reboot,
+    reboot,
     dry_run,
   )
   .await?;
