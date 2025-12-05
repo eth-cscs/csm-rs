@@ -1288,13 +1288,7 @@ impl CfsTrait for Csm {
       is_succeded_opt,
     )
     .await
-    .unwrap();
-
-    /* let xname_vec: Vec<String> = xname_vec_opt
-    .unwrap_or_default()
-    .into_iter()
-    .map(|s| s.to_string())
-    .collect(); */
+    .map_err(|e| Error::Message(e.to_string()))?;
 
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
@@ -1313,20 +1307,6 @@ impl CfsTrait for Csm {
       jwt_ops::is_user_admin(shasta_token),
     )
     .map_err(|e| Error::Message(e.to_string()))?;
-
-    /* if let Some(xname_vec) = xname_vec_opt {
-      crate::cfs::session::utils::filter_by_xname(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        &mut cfs_session_vec,
-        xname_vec.as_slice(),
-        limit_number_opt,
-        true,
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
-    } */
 
     if cfs_session_vec.is_empty() {
       return Err(Error::Message("No CFS session found".to_string()));
