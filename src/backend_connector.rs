@@ -1210,7 +1210,11 @@ impl CfsTrait for Csm {
       shasta_root_cert,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    // .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(|e: crate::error::Error| {
+      let manta_error: manta_backend_dispatcher::error::Error = e.into();
+      manta_error
+    })?;
 
     let (hsm_group_name_vec, xname_vec) = if !hsm_group_name_vec.is_empty() {
       // Filter HSM groups based on argument
@@ -1288,15 +1292,15 @@ impl CfsTrait for Csm {
       is_succeded_opt,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    // .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(|e: crate::error::Error| {
+      let manta_error: manta_backend_dispatcher::error::Error = e.into();
+      manta_error
+    })?;
 
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       None,
-      /* &hsm_group_name_vec
-      .iter()
-      .map(|g| g.as_str())
-      .collect::<Vec<&str>>(), */
       &hsm_group_name_vec
         .iter()
         .map(|s| s.as_str())
@@ -1306,7 +1310,11 @@ impl CfsTrait for Csm {
       limit_number_opt,
       jwt_ops::is_user_admin(shasta_token),
     )
-    .map_err(|e| Error::Message(e.to_string()))?;
+    // .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(|e: crate::error::Error| {
+      let manta_error: manta_backend_dispatcher::error::Error = e.into();
+      manta_error
+    })?;
 
     if cfs_session_vec.is_empty() {
       return Err(Error::Message("No CFS session found".to_string()));
@@ -1516,7 +1524,7 @@ impl CfsTrait for Csm {
     )
     .await
     .map(|layer_details| layer_details.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(|e| e.into())
   }
 
   /// Create a new CFS configuration

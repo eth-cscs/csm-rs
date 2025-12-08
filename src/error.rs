@@ -1,5 +1,6 @@
 use std::io;
 
+use manta_backend_dispatcher::error::Error as MantaError;
 use serde_json::Value;
 
 #[derive(thiserror::Error, Debug)]
@@ -18,7 +19,7 @@ pub enum Error {
     payload: String, // NOTE: CSM/OCHAMI Apis either returns plain text or a json therefore, we
                      // will just return a String
   },
-  #[error("CSM-RS > CSM: {0}")]
+  #[error("CSM-RS > CSM: {}", .0.get("detail").and_then(|detail| detail.as_str()).unwrap_or("Unknown error"))]
   CsmError(Value),
   #[error("CSM-RS > Console: {0}")]
   ConsoleError(String),
@@ -34,4 +35,33 @@ pub enum Error {
   ConfigurationAlreadyExists(String),
   #[error("ERROR - CFS Configuration used as a runtime configuration for a cluster and/or used to build an image used to boot node(s)")]
   ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed,
+}
+
+// Convert Error to manta_backend_dispatcher::error::Error
+impl Into<MantaError> for crate::error::Error {
+  fn into(self) -> MantaError {
+    match self {
+      Error::IoError(e) => MantaError::IoError(e),
+      Error::SerdeError(e) => MantaError::SerdeError(e),
+      Error::NetError(e) => MantaError::NetError(e),
+      Error::RequestError { response, payload } => {
+        MantaError::RequestError { response, payload }
+      }
+      Error::CsmError(e) => MantaError::CsmError(e),
+      /* Error::CsmError(v) => {
+        if v.get("title")
+          == Some(&Value::String("Session not found.".to_string()))
+        {
+          MantaError::SessionNotFound
+        } else if v.get("title")
+          == Some(&Value::String("Configuration not found.".to_string()))
+        {
+          MantaError::ConfigurationNotFound
+        } else {
+          MantaError::CsmError(v)
+        }
+      } */
+      _ => MantaError::Message(self.to_string()),
+    }
+  }
 }

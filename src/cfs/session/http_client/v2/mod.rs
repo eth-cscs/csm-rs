@@ -68,29 +68,28 @@ pub async fn get(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    // Make sure we return a vec if user requesting a single value
+  let status = response.status();
+  let bytes = response.bytes().await.map_err(Error::NetError)?;
+
+  if status.is_success() {
     if session_name_opt.is_some() {
-      let payload = response
-        .json::<CfsSessionGetResponse>()
-        .await
-        .map_err(|error| Error::NetError(error))?;
-
+      let payload = serde_json::from_slice::<CfsSessionGetResponse>(&bytes)
+        .map_err(Error::SerdeError)?;
       Ok(vec![payload])
     } else {
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))
+      let payload =
+        serde_json::from_slice(&bytes).map_err(Error::SerdeError)?;
+      Ok(payload)
     }
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
+    if let Ok(json) = serde_json::from_slice::<Value>(&bytes) {
+      Err(Error::CsmError(json))
+    } else {
+      let text = String::from_utf8_lossy(&bytes).to_string();
+      Err(Error::Message(text))
+    }
   }
 }
 
