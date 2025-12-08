@@ -47,20 +47,20 @@ impl Into<MantaError> for crate::error::Error {
       Error::RequestError { response, payload } => {
         MantaError::RequestError { response, payload }
       }
-      Error::CsmError(e) => MantaError::CsmError(e),
-      /* Error::CsmError(v) => {
-        if v.get("title")
+      // Error::CsmError(e) => MantaError::CsmError(e),
+      Error::CsmError(serde_value) => {
+        if serde_value.get("title")
           == Some(&Value::String("Session not found.".to_string()))
         {
           MantaError::SessionNotFound
-        } else if v.get("title")
+        } else if serde_value.get("title")
           == Some(&Value::String("Configuration not found.".to_string()))
         {
           MantaError::ConfigurationNotFound
         } else {
-          MantaError::CsmError(v)
+          MantaError::CsmError(serde_value)
         }
-      } */
+      }
       _ => MantaError::Message(self.to_string()),
     }
   }
