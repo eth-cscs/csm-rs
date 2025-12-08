@@ -40,7 +40,7 @@ use manta_backend_dispatcher::{
       session::{CfsSessionGetResponse, CfsSessionPostRequest},
     },
     hsm::inventory::{
-      ComponentEthernetInterface, IpAddressMapping,
+      ComponentEthernetInterface,
       RedfishEndpointArray as FrontEndRedfishEndpointArray,
     },
     ims::{Image as FrontEndImage, PatchImage},
@@ -101,7 +101,7 @@ impl GroupTrait for Csm {
 
     Ok(group_vec) */
 
-    let mut hsm_group_vec = hsm::group::utils::get_group_available(
+    let hsm_group_vec = hsm::group::utils::get_group_available(
       auth_token,
       &self.base_url,
       &self.root_cert,
