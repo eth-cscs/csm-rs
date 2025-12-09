@@ -53,7 +53,29 @@ pub async fn get(
     .await
     .map_err(|error| Error::NetError(error))?;
 
-  if response.status().is_success() {
+  let status = response.status();
+  let bytes = response.bytes().await.map_err(Error::NetError)?;
+
+  if status.is_success() {
+    if configuration_name_opt.is_some() {
+      let payload = serde_json::from_slice::<CfsConfigurationResponse>(&bytes)
+        .map_err(Error::SerdeError)?;
+      Ok(vec![payload])
+    } else {
+      let payload =
+        serde_json::from_slice(&bytes).map_err(Error::SerdeError)?;
+      Ok(payload)
+    }
+  } else {
+    if let Ok(json) = serde_json::from_slice::<Value>(&bytes) {
+      Err(Error::CsmError(json))
+    } else {
+      let payload = String::from_utf8_lossy(&bytes).to_string();
+      Err(Error::Message(payload))
+    }
+  }
+
+  /* if response.status().is_success() {
     // Make sure we return a vec if user requesting a single value
     if configuration_name_opt.is_some() {
       let payload = response
@@ -75,7 +97,7 @@ pub async fn get(
       .map_err(|error| Error::NetError(error))?;
 
     Err(Error::CsmError(payload))
-  }
+  } */
 }
 
 pub async fn get_all(

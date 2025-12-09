@@ -54,7 +54,7 @@ impl Into<MantaError> for crate::error::Error {
         {
           MantaError::SessionNotFound
         } else if serde_value.get("title")
-          == Some(&Value::String("Configuration not found.".to_string()))
+          == Some(&Value::String("Configuration not found".to_string()))
         {
           MantaError::ConfigurationNotFound
         } else {

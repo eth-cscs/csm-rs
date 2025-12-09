@@ -1504,7 +1504,11 @@ impl CfsTrait for Csm {
     )
     .await
     .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
-    .map_err(|e| Error::Message(e.to_string()))
+    // .map_err(|e| Error::Message(e.to_string()))
+    .map_err(|e: crate::error::Error| {
+      let manta_error: manta_backend_dispatcher::error::Error = e.into();
+      manta_error
+    })
   }
 
   async fn get_configuration_layer_details(
