@@ -3,18 +3,21 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use chrono::NaiveDateTime;
-use comfy_table::Table;
-use dialoguer::{theme::ColorfulTheme, Confirm};
 
 use crate::{
   bos::{self},
   bss::{self, types::BootParameters},
-  cfs, common,
+  cfs::{
+    self,
+    configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
+    session::http_client::v2::types::CfsSessionGetResponse,
+  },
+  common,
   error::Error,
   ims,
 };
 
-pub async fn exec(
+pub async fn get_data_to_delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
@@ -22,8 +25,17 @@ pub async fn exec(
   configuration_name_pattern_opt: Option<&str>,
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
-  assume_yes: bool,
-) -> Result<(), Error> {
+) -> Result<
+  (
+    Vec<CfsSessionGetResponse>,
+    Vec<(String, String, String)>,
+    Vec<String>,
+    Vec<String>,
+    Vec<(String, String, String)>,
+    Vec<CfsConfigurationResponse>,
+  ),
+  Error,
+> {
   // COLLECT SITE WIDE DATA FOR VALIDATION
   //
   let xname_from_groups_vec =
@@ -127,10 +139,11 @@ pub async fn exec(
     .map(|cfs_session| cfs_session.configuration_name().unwrap_or_default());
 
   // Get list of CFS configuration names related to CFS sessions and BOS sessiontemplates
-  let mut cfs_configuration_name_vec =
+  let mut cfs_configuration_name_vec: Vec<String> =
     cfs_configuration_name_from_bos_sessiontemplate_value_iter
       .chain(cfs_configuration_name_from_cfs_sessions)
-      .collect::<Vec<&str>>();
+      .map(|s| s.to_string())
+      .collect();
 
   cfs_configuration_name_vec.sort();
   cfs_configuration_name_vec.dedup();
@@ -138,39 +151,46 @@ pub async fn exec(
   // Get list of CFS configuration serde values related to CFS sessions and BOS
   // sessiontemplates
   cfs_configuration_vec.retain(|cfs_configuration| {
-    cfs_configuration_name_vec.contains(&cfs_configuration.name.as_ref())
+    cfs_configuration_name_vec.contains(&cfs_configuration.name)
   });
 
   // Get image ids from CFS sessions related to CFS configuration to delete
-  let mut image_id_vec =
+  let mut image_id_vec: Vec<String> =
     cfs::session::utils::images_id_from_cfs_session(&cfs_session_to_delete_vec)
-      .collect::<Vec<&str>>();
+      .map(|s| s.to_string())
+      .collect();
 
   log::info!("Image ids to delete: {:?}", image_id_vec);
 
   // Get list of CFS session name, CFS configuration name and image id for CFS sessions which
   // created an image
   let cfs_session_cfs_configuration_image_id_tuple_vec: Vec<(
-    &str,
-    &str,
-    &str,
+    String,
+    String,
+    String,
   )> = cfs_session_to_delete_vec
     .iter()
     .filter(|cfs_session| cfs_session.first_result_id().is_some())
     .map(|cfs_session| {
       (
-        cfs_session.name().unwrap_or_default(),
-        cfs_session.configuration_name().unwrap_or_default(),
-        cfs_session.first_result_id().unwrap_or_default(),
+        cfs_session.name().unwrap_or_default().to_string(),
+        cfs_session
+          .configuration_name()
+          .unwrap_or_default()
+          .to_string(),
+        cfs_session
+          .first_result_id()
+          .unwrap_or_default()
+          .to_string(),
       )
     })
     .collect();
 
   // Get list of BOS sessiontemplate name, CFS configuration name and image ids for compute nodes
   let mut bos_sessiontemplate_cfs_configuration_image_id_tuple_vec: Vec<(
-    &str,
-    &str,
-    &str,
+    String,
+    String,
+    String,
   )> = Vec::new();
 
   for bos_sessiontemplate in &bos_sessiontemplate_to_delete_vec {
@@ -182,9 +202,9 @@ pub async fn exec(
 
     for image_id in bos_sessiontemplate.images_id() {
       bos_sessiontemplate_cfs_configuration_image_id_tuple_vec.push((
-        bos_sessiontemplate_name,
-        cfs_configuration_name,
-        image_id,
+        bos_sessiontemplate_name.to_string(),
+        cfs_configuration_name.to_string(),
+        image_id.to_string(),
       ));
     }
   }
@@ -212,9 +232,9 @@ pub async fn exec(
 
   // VALIDATION
   //
-  let mut cfs_configuration_name_used_to_configure_nodes_vec: Vec<&str> =
+  let mut cfs_configuration_name_used_to_configure_nodes_vec: Vec<String> =
     Vec::new();
-  let mut image_id_used_to_boot_nodes_vec: Vec<&str> = Vec::new();
+  let mut image_id_used_to_boot_nodes_vec: Vec<String> = Vec::new();
 
   // We can't allow any data deletion operation which can jeopardize the system stability,
   // therefore we will filter the list of the CFS configurations and Images used to configure or boot nodes
@@ -234,7 +254,7 @@ pub async fn exec(
 
     if !nodes_using_cfs_configuration_as_dessired_configuration_vec.is_empty() {
       cfs_configuration_name_used_to_configure_nodes_vec
-        .push(cfs_configuration_name);
+        .push(cfs_configuration_name.to_string());
 
       nodes_using_cfs_configuration_as_dessired_configuration_vec.sort();
 
@@ -250,7 +270,7 @@ pub async fn exec(
         get_node_vec_booting_image(image_id, &bss_bootparameters_vec);
 
       if !node_vec.is_empty() {
-        image_id_used_to_boot_nodes_vec.push(image_id);
+        image_id_used_to_boot_nodes_vec.push(image_id.to_string());
         eprintln!(
           "Image '{}' used to boot nodes: {}",
           image_id,
@@ -265,16 +285,16 @@ pub async fn exec(
   // force the deletion operation)
   cfs_configuration_vec.retain(|cfs_configuration_value| {
     !cfs_configuration_name_used_to_configure_nodes_vec
-      .contains(&cfs_configuration_value.name.as_str())
+      .contains(&cfs_configuration_value.name)
   });
 
   let cfs_session_cfs_configuration_image_id_tuple_filtered_vec: Vec<(
-    &str,
-    &str,
-    &str,
+    String,
+    String,
+    String,
   )>;
   let bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec: Vec<
-    (&str, &str, &str),
+    (String, String, String),
   >;
 
   // EVALUATE IF NEED TO CONTINUE.
@@ -295,19 +315,20 @@ pub async fn exec(
     // neither configure nor boot the nodes
     cfs_configuration_name_vec.retain(|cfs_configuration_name| {
       !cfs_configuration_name_used_to_configure_nodes_vec
-        .contains(&cfs_configuration_name)
+        .contains(&cfs_configuration_name.to_string())
     });
 
-    image_id_vec
-      .retain(|image_id| !image_id_used_to_boot_nodes_vec.contains(&image_id));
+    image_id_vec.retain(|image_id| {
+      !image_id_used_to_boot_nodes_vec.contains(&image_id.to_string())
+    });
 
     cfs_session_cfs_configuration_image_id_tuple_filtered_vec =
       cfs_session_cfs_configuration_image_id_tuple_vec
         .into_iter()
         .filter(|(_, cfs_configuration_name, image_id)| {
           !cfs_configuration_name_used_to_configure_nodes_vec
-            .contains(&cfs_configuration_name)
-            && !image_id_used_to_boot_nodes_vec.contains(&image_id)
+            .contains(&cfs_configuration_name.to_string())
+            && !image_id_used_to_boot_nodes_vec.contains(&image_id.to_string())
         })
         .collect();
 
@@ -338,114 +359,14 @@ pub async fn exec(
     ));
   }
 
-  // PRINT SUMMARY/DATA TO DELETE
-  //
-  println!("CFS sessions to delete:");
-
-  let mut cfs_session_table = Table::new();
-
-  cfs_session_table.set_header(vec!["Name", "Configuration", "Image ID"]);
-
-  for cfs_session in &cfs_session_to_delete_vec {
-    cfs_session_table.add_row(vec![
-      cfs_session.name.as_ref().unwrap_or(&"".to_string()),
-      &cfs_session
-        .configuration_name()
-        .unwrap_or_default()
-        .to_string(),
-      &cfs_session
-        .first_result_id()
-        .unwrap_or_default()
-        .to_string(),
-    ]);
-  }
-
-  println!("{cfs_session_table}");
-
-  println!("BOS sessiontemplates to delete:");
-
-  let mut bos_sessiontemplate_table = Table::new();
-
-  bos_sessiontemplate_table.set_header(vec![
-    "Name",
-    "Configuration",
-    "Image ID",
-  ]);
-
-  for bos_sessiontemplate_tuple in
-    &bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec
-  {
-    bos_sessiontemplate_table.add_row(vec![
-      bos_sessiontemplate_tuple.0,
-      bos_sessiontemplate_tuple.1,
-      bos_sessiontemplate_tuple.2,
-    ]);
-  }
-
-  println!("{bos_sessiontemplate_table}");
-
-  println!("CFS configurations to delete:");
-
-  let mut cfs_configuration_table = Table::new();
-
-  cfs_configuration_table.set_header(vec!["Name", "Last Update"]);
-
-  for cfs_configuration_value in cfs_configuration_vec {
-    cfs_configuration_table.add_row(vec![
-      cfs_configuration_value.name,
-      cfs_configuration_value.last_updated,
-    ]);
-  }
-
-  println!("{cfs_configuration_table}");
-
-  println!("Images to delete:");
-
-  let mut image_id_table = Table::new();
-
-  image_id_table.set_header(vec!["Image ID"]);
-
-  for image_id in &image_id_vec {
-    image_id_table.add_row(vec![image_id]);
-  }
-
-  println!("{image_id_table}");
-
-  // ASK USER FOR CONFIRMATION
-  //
-  if !assume_yes {
-    if Confirm::with_theme(&ColorfulTheme::default())
-      .with_prompt("Please revew the data above and confirm to delete:")
-      .interact()
-      .unwrap()
-    {
-      println!("Continue");
-    } else {
-      println!("Cancelled by user. Aborting.");
-      std::process::exit(0);
-    }
-  }
-
-  // DELETE DATA
-  //
-  delete(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    cfs_configuration_name_vec,
+  Ok((
+    cfs_session_to_delete_vec,
+    bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec,
     image_id_vec,
-    cfs_session_cfs_configuration_image_id_tuple_filtered_vec
-      .into_iter()
-      .map(|(session, _, _)| session)
-      .collect(),
-    bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec
-      .into_iter()
-      .map(|(sessiontemplate, _, _)| sessiontemplate)
-      .collect(),
-  )
-  .await;
-
-  Ok(())
+    cfs_configuration_name_vec,
+    cfs_session_cfs_configuration_image_id_tuple_filtered_vec,
+    cfs_configuration_vec,
+  ))
 }
 
 /// Deletes CFS configuration, CFS session, BOS sessiontemplate, BOS session and images related to
@@ -456,11 +377,11 @@ pub async fn delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  cfs_configuration_name_vec: Vec<&str>,
-  image_id_vec: Vec<&str>,
-  cfs_session_name_vec: Vec<&str>,
-  bos_sessiontemplate_name_vec: Vec<&str>,
-) {
+  cfs_configuration_name_vec: &[String],
+  image_id_vec: &[String],
+  cfs_session_name_vec: &[String],
+  bos_sessiontemplate_name_vec: &[String],
+) -> Result<(), Error> {
   // DELETE DATA
   //
   // DELETE IMAGES
@@ -470,7 +391,7 @@ pub async fn delete(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      image_id,
+      &image_id,
     )
     .await;
 
@@ -490,25 +411,21 @@ pub async fn delete(
     shasta_root_cert,
     None,
   )
-  .await
-  .unwrap();
+  .await?;
 
   // Match BOS SESSIONS with the BOS SESSIONTEMPLATE RELATED
   for bos_session in bos_session_vec {
     let bos_session_id = &bos_session.name.unwrap();
     log::info!("Deleting BOS sesion '{}'", bos_session_id);
 
-    if bos_sessiontemplate_name_vec
-      .contains(&bos_session.template_name.as_str())
-    {
+    if bos_sessiontemplate_name_vec.contains(&bos_session.template_name) {
       bos::session::http_client::v2::delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
         &bos_session_id,
       )
-      .await
-      .unwrap();
+      .await?;
 
       println!(
         "BOS session deleted: {}",
@@ -531,7 +448,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
-        cfs_session_name,
+        &cfs_session_name,
       )
       .await;
 
@@ -566,7 +483,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
-        bos_sessiontemplate_name,
+        &bos_sessiontemplate_name,
       )
       .await;
 
@@ -619,6 +536,8 @@ pub async fn delete(
       }
     }
   }
+
+  Ok(())
 }
 
 /// Given a list of boot params, this function returns the list of hosts booting an image_id
