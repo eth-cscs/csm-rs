@@ -906,8 +906,92 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   watch_logs: bool,
   timestamps: bool,
 ) -> Result<String, Error> {
+  // Get CFS session from SAT file image yaml
+  let cfs_session = get_session_from_image_yaml(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    image_yaml.clone(),
+    ref_name_image_id_hashmap,
+    cray_product_catalog,
+    ansible_verbosity_opt,
+    ansible_passthrough_opt,
+    dry_run,
+  )
+  .await?;
+
+  let image_name = image_yaml["name"].as_str().unwrap().to_string();
+
+  // Create CFS session to build image
+  if !dry_run {
+    let cfs_session_rslt = cfs::session::i_post_sync(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      vault_base_url,
+      site_name,
+      // vault_secret_path,
+      // vault_role_id,
+      k8s_api_url,
+      &cfs_session,
+      watch_logs,
+      timestamps,
+    )
+    .await;
+
+    let cfs_session = match cfs_session_rslt {
+      Ok(cfs_session) => cfs_session,
+      Err(e) => {
+        return Err(Error::Message(format!(
+          "Could not create Image. Reason:\n{}",
+          e
+        )));
+        /* eprintln!("ERROR - Could not create Image. Reason:\n{}", e);
+        std::process::exit(1); */
+      }
+    };
+
+    if !cfs_session.is_success() {
+      return Err(Error::Message(format!(
+        "CFS session '{}' failed. Exit",
+        cfs_session.name.unwrap()
+      )));
+    }
+
+    let image_id = cfs_session.first_result_id().unwrap_or_default();
+    println!("Image '{}' ({}) created", image_name, image_id);
+
+    Ok(image_id.to_string())
+  } else {
+    println!(
+      "Dry run mode: Create CFS session:\n{}",
+      serde_json::to_string_pretty(&cfs_session)?
+    );
+
+    let image_id = Uuid::new_v4().to_string();
+
+    println!(
+      "Dry run mode: Image '{}' ({}) created",
+      image_name, image_id
+    );
+
+    Ok(image_id)
+  }
+}
+
+async fn get_session_from_image_yaml(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  image_yaml: Value,
+  ref_name_image_id_hashmap: &HashMap<String, String>,
+  cray_product_catalog: &BTreeMap<String, String>,
+  ansible_verbosity_opt: Option<u8>,
+  ansible_passthrough_opt: Option<&str>,
+  dry_run: bool,
+) -> Result<CfsSessionPostRequest, Error> {
   // Collect CFS session details from SAT file
-  // Get CFS session name from SAT file
+  // Get CFS image name from SAT file
   let image_name = image_yaml["name"].as_str().unwrap().to_string();
   // let image_name = image_yaml["name"]
   //     .as_str()
@@ -921,13 +1005,8 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   );
 
   // Get CFS configuration related to CFS session in SAT file
-  let configuration_name: String = image_yaml["configuration"]
-    .as_str()
-    .unwrap_or_default()
-    .to_string();
-
-  // Rename session's configuration name
-  // configuration = configuration.replace("__DATE__", tag);
+  let configuration_name: String =
+    image_yaml["configuration"].as_str().unwrap().to_string();
 
   // Get HSM groups related to CFS session in SAT file
   let groups_name: Vec<&str> = image_yaml["configuration_group_names"]
@@ -956,244 +1035,36 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     log::debug!("CFS session group validation - passed");
   }
 
-  let base_image_id: String;
+  let base_image_id = get_base_image_id_from_sat_file_image_yaml(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &image_yaml,
+    ref_name_image_id_hashmap,
+    cray_product_catalog,
+    &image_name,
+    dry_run,
+  )
+  .await?;
 
-  // Get/process base image
-  if let Some(sat_file_image_ims_value_yaml) = image_yaml.get("ims") {
-    // ----------- BASE IMAGE - BACKWARD COMPATIBILITY WITH PREVIOUS SAT FILE
-    log::info!("SAT file - 'image.ims' job ('images' section in SAT file is outdated - switching to backward compatibility)");
+  // Create a CFS session
+  log::info!("Creating CFS session");
 
-    base_image_id =
-      process_sat_file_image_old_version(sat_file_image_ims_value_yaml)
-        .unwrap();
-  } else if let Some(sat_file_image_base_value_yaml) = image_yaml.get("base") {
-    if let Some(sat_file_image_base_image_ref_value_yaml) =
-      sat_file_image_base_value_yaml.get("image_ref")
-    {
-      log::info!("SAT file - 'image.base.image_ref' job");
+  // Create CFS session
+  let session_name = image_name.clone();
 
-      base_image_id = process_sat_file_image_ref_name(
-        sat_file_image_base_image_ref_value_yaml,
-        ref_name_image_id_hashmap,
-      )
-      .unwrap();
-    } else if let Some(sat_file_image_base_ims_value_yaml) =
-      sat_file_image_base_value_yaml.get("ims")
-    {
-      log::info!("SAT file - 'image.base.ims' job");
-      let ims_job_type =
-        sat_file_image_base_ims_value_yaml["type"].as_str().unwrap();
-      if ims_job_type == "recipe" {
-        log::info!("SAT file - 'image.base.ims' job of type 'recipe'");
+  let cfs_session = CfsSessionPostRequest::new(
+    session_name,
+    &configuration_name,
+    None,
+    ansible_verbosity_opt,
+    ansible_passthrough_opt,
+    true,
+    Some(&groups_name),
+    Some(&base_image_id),
+  );
 
-        base_image_id = process_sat_file_image_ims_type_recipe(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          sat_file_image_base_ims_value_yaml,
-          &image_name,
-          dry_run,
-        )
-        .await
-        .unwrap();
-      } else if ims_job_type == "image" {
-        log::info!("SAT file - 'image.base.ims' job of type 'image'");
-
-        base_image_id = sat_file_image_base_ims_value_yaml["id"]
-          .as_str()
-          .unwrap()
-          .to_string();
-      } else {
-        return Err(Error::Message(
-          "Can't process SAT file 'images.base.ims' is missing. Exit"
-            .to_string(),
-        ));
-      }
-
-    // ----------- BASE IMAGE - CRAY PRODUCT CATALOG
-    } else if let Some(sat_file_image_base_product_value_yaml) =
-      sat_file_image_base_value_yaml.get("product")
-    {
-      log::info!("SAT file - 'image.base.product' job");
-      // Base image created from a cray product
-      let product_name = sat_file_image_base_product_value_yaml["name"]
-        .as_str()
-        .unwrap();
-
-      let product_version = sat_file_image_base_product_value_yaml["version"]
-        .as_str()
-        .unwrap();
-
-      let product_type = sat_file_image_base_product_value_yaml["type"]
-        .as_str()
-        .unwrap()
-        .to_string()
-        + "s";
-
-      // We assume the SAT file has been alredy validated therefore taking some risks in
-      // getting the details from the Cray product catalog
-      let product_image_map = &serde_yaml::from_str::<serde_json::Value>(
-        &cray_product_catalog[product_name],
-      )
-      .unwrap()[product_version][product_type.clone()]
-      .as_object()
-      .unwrap()
-      .clone();
-
-      let image_id = if let Some(filter) =
-        sat_file_image_base_product_value_yaml.get("filter")
-      {
-        filter_product_catalog_images(
-          filter,
-          product_image_map.clone(),
-          &image_name,
-        )
-        .unwrap()
-      } else {
-        // There is no 'image.product.filter' value defined in SAT file. Check Cray
-        // product catalog only has 1 image. Othewise fail
-        log::info!("No 'image.product.filter' defined in SAT file. Checking Cray product catalog only/must have 1 image");
-        product_image_map
-          .values()
-          .next()
-          .and_then(|value| value.get("id"))
-          .unwrap()
-          .as_str()
-          .unwrap()
-          .to_string()
-      };
-
-      // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE RECIPE
-      base_image_id = if product_type == "recipes" {
-        // Create base image from an IMS job (the 'id' field in
-        // images[].base.product.id is the id of the IMS recipe used to
-        // build the new base image)
-
-        log::info!("SAT file - 'image.base.product' job based on IMS recipes");
-
-        let product_recipe_id = image_id.clone();
-
-        process_sat_file_image_product_type_ims_recipe(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          &product_recipe_id,
-          &image_name,
-          dry_run,
-        )
-        .await
-        .unwrap()
-
-        // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE IMAGE
-      } else if product_type == "images" {
-        // Base image already created and its id is available in the Cray
-        // product catalog
-
-        log::info!("SAT file - 'image.base.product' job based on IMS images");
-
-        log::info!("Getting base image id from Cray product catalog");
-
-        let product_image_id = image_id;
-
-        product_image_id
-      } else {
-        return Err(Error::Message(
-                    "Can't process SAT file, field 'images.base.product.type' must be either 'images' or 'recipes'. Exit".to_string(),
-                ));
-      }
-    } else {
-      return Err(Error::Message(
-        "Can't process SAT file 'images.base.product' is missing. Exit"
-          .to_string(),
-      ));
-    }
-  } else {
-    return Err(Error::Message(
-      "Can't process SAT file 'images.base' is missing. Exit".to_string(),
-    ));
-  }
-
-  if configuration_name.is_empty() {
-    log::info!("No CFS session needs to be created since there is no CFS configuration assigned to this image");
-    println!(
-      "Image '{}' imported image_id '{}'",
-      image_name, base_image_id
-    );
-
-    Ok(base_image_id)
-  } else {
-    // Create a CFS session
-    log::info!("Creating CFS session");
-
-    // Create CFS session
-    let session_name = image_name.clone();
-
-    let cfs_session = CfsSessionPostRequest::new(
-      session_name,
-      &configuration_name,
-      None,
-      ansible_verbosity_opt,
-      ansible_passthrough_opt,
-      true,
-      Some(&groups_name),
-      Some(&base_image_id),
-    );
-
-    if !dry_run {
-      let cfs_session_rslt = cfs::session::i_post_sync(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        vault_base_url,
-        site_name,
-        // vault_secret_path,
-        // vault_role_id,
-        k8s_api_url,
-        &cfs_session,
-        watch_logs,
-        timestamps,
-      )
-      .await;
-
-      let cfs_session = match cfs_session_rslt {
-        Ok(cfs_session) => cfs_session,
-        Err(e) => {
-          return Err(Error::Message(format!(
-            "Could not create Image. Reason:\n{}",
-            e
-          )));
-          /* eprintln!("ERROR - Could not create Image. Reason:\n{}", e);
-          std::process::exit(1); */
-        }
-      };
-
-      if !cfs_session.is_success() {
-        return Err(Error::Message(format!(
-          "CFS session '{}' failed. Exit",
-          cfs_session.name.unwrap()
-        )));
-      }
-
-      let image_id = cfs_session.first_result_id().unwrap_or_default();
-      println!("Image '{}' ({}) created", image_name, image_id);
-
-      Ok(image_id.to_string())
-    } else {
-      println!(
-        "Dry run mode: Create CFS session:\n{}",
-        serde_json::to_string_pretty(&cfs_session)?
-      );
-
-      let image_id = Uuid::new_v4().to_string();
-
-      println!(
-        "Dry run mode: Image '{}' ({}) created",
-        image_name, image_id
-      );
-
-      Ok(image_id)
-    }
-  }
+  return Ok(cfs_session);
 }
 
 async fn process_sat_file_image_product_type_ims_recipe(
@@ -2153,9 +2024,9 @@ pub async fn process_session_template_section_in_sat_file(
   let mut bos_st_created_vec: Vec<String> = Vec::new();
 
   for bos_sessiontemplate_yaml in bos_session_template_list_yaml {
-    let _bos_sessiontemplate: BosSessionTemplate =
-      serde_yaml::from_value(bos_sessiontemplate_yaml.clone())
-        .map_err(|e| Error::Message(e.to_string()))?;
+    /* let bos_sessiontemplate: BosSessionTemplate =
+    serde_yaml::from_value(bos_sessiontemplate_yaml.clone())
+      .map_err(|e| Error::Message(e.to_string()))?; */
 
     // Get boot image details in BOS sessiontemplate. This is needed to create the BOS
     // sessiontemplate BootSets
@@ -2700,4 +2571,174 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   } else {
       return Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()));
   } */
+}
+
+async fn get_base_image_id_from_sat_file_image_yaml(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  image_yaml: &Value,
+  ref_name_image_id_hashmap: &HashMap<String, String>,
+  cray_product_catalog: &BTreeMap<String, String>,
+  image_name: &String,
+  dry_run: bool,
+) -> Result<String, Error> {
+  let base_image_id: String;
+
+  // Get/process base image
+  if let Some(sat_file_image_ims_value_yaml) = image_yaml.get("ims") {
+    // ----------- BASE IMAGE - BACKWARD COMPATIBILITY WITH PREVIOUS SAT FILE
+    log::info!("SAT file - 'image.ims' job ('images' section in SAT file is outdated - switching to backward compatibility)");
+
+    base_image_id =
+      process_sat_file_image_old_version(sat_file_image_ims_value_yaml)
+        .unwrap();
+  } else if let Some(sat_file_image_base_value_yaml) = image_yaml.get("base") {
+    if let Some(sat_file_image_base_image_ref_value_yaml) =
+      sat_file_image_base_value_yaml.get("image_ref")
+    {
+      log::info!("SAT file - 'image.base.image_ref' job");
+
+      base_image_id = process_sat_file_image_ref_name(
+        sat_file_image_base_image_ref_value_yaml,
+        ref_name_image_id_hashmap,
+      )
+      .unwrap();
+    } else if let Some(sat_file_image_base_ims_value_yaml) =
+      sat_file_image_base_value_yaml.get("ims")
+    {
+      log::info!("SAT file - 'image.base.ims' job");
+      let ims_job_type =
+        sat_file_image_base_ims_value_yaml["type"].as_str().unwrap();
+      if ims_job_type == "recipe" {
+        log::info!("SAT file - 'image.base.ims' job of type 'recipe'");
+
+        base_image_id = process_sat_file_image_ims_type_recipe(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          sat_file_image_base_ims_value_yaml,
+          image_name,
+          dry_run,
+        )
+        .await
+        .unwrap();
+      } else if ims_job_type == "image" {
+        log::info!("SAT file - 'image.base.ims' job of type 'image'");
+
+        base_image_id = sat_file_image_base_ims_value_yaml["id"]
+          .as_str()
+          .unwrap()
+          .to_string();
+      } else {
+        return Err(Error::Message(
+          "Can't process SAT file 'images.base.ims' is missing. Exit"
+            .to_string(),
+        ));
+      }
+
+    // ----------- BASE IMAGE - CRAY PRODUCT CATALOG
+    } else if let Some(sat_file_image_base_product_value_yaml) =
+      sat_file_image_base_value_yaml.get("product")
+    {
+      log::info!("SAT file - 'image.base.product' job");
+      // Base image created from a cray product
+      let product_name = sat_file_image_base_product_value_yaml["name"]
+        .as_str()
+        .unwrap();
+
+      let product_version = sat_file_image_base_product_value_yaml["version"]
+        .as_str()
+        .unwrap();
+
+      let product_type = sat_file_image_base_product_value_yaml["type"]
+        .as_str()
+        .unwrap()
+        .to_string()
+        + "s";
+
+      // We assume the SAT file has been alredy validated therefore taking some risks in
+      // getting the details from the Cray product catalog
+      let product_image_map = &serde_yaml::from_str::<serde_json::Value>(
+        &cray_product_catalog[product_name],
+      )
+      .unwrap()[product_version][product_type.clone()]
+      .as_object()
+      .unwrap()
+      .clone();
+
+      let image_id = if let Some(filter) =
+        sat_file_image_base_product_value_yaml.get("filter")
+      {
+        filter_product_catalog_images(
+          filter,
+          product_image_map.clone(),
+          &image_name,
+        )
+        .unwrap()
+      } else {
+        // There is no 'image.product.filter' value defined in SAT file. Check Cray
+        // product catalog only has 1 image. Othewise fail
+        log::info!("No 'image.product.filter' defined in SAT file. Checking Cray product catalog only/must have 1 image");
+        product_image_map
+          .values()
+          .next()
+          .and_then(|value| value.get("id"))
+          .unwrap()
+          .as_str()
+          .unwrap()
+          .to_string()
+      };
+
+      // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE RECIPE
+      base_image_id = if product_type == "recipes" {
+        // Create base image from an IMS job (the 'id' field in
+        // images[].base.product.id is the id of the IMS recipe used to
+        // build the new base image)
+
+        log::info!("SAT file - 'image.base.product' job based on IMS recipes");
+
+        let product_recipe_id = image_id.clone();
+
+        process_sat_file_image_product_type_ims_recipe(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          &product_recipe_id,
+          &image_name,
+          dry_run,
+        )
+        .await
+        .unwrap()
+
+        // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE IMAGE
+      } else if product_type == "images" {
+        // Base image already created and its id is available in the Cray
+        // product catalog
+
+        log::info!("SAT file - 'image.base.product' job based on IMS images");
+
+        log::info!("Getting base image id from Cray product catalog");
+
+        let product_image_id = image_id;
+
+        product_image_id
+      } else {
+        return Err(Error::Message(
+                    "Can't process SAT file, field 'images.base.product.type' must be either 'images' or 'recipes'. Exit".to_string(),
+                ));
+      }
+    } else {
+      return Err(Error::Message(
+        "Can't process SAT file 'images.base.product' is missing. Exit"
+          .to_string(),
+      ));
+    }
+  } else {
+    return Err(Error::Message(
+      "Can't process SAT file 'images.base' is missing. Exit".to_string(),
+    ));
+  }
+
+  Ok(base_image_id)
 }
