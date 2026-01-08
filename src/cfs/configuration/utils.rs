@@ -734,14 +734,13 @@ pub async fn get_configuration_layer_details(
   let mut tag_name_vec: Vec<String> = Vec::new();
   let commit_sha;
 
-  let repo_ref_vec_rslt =
-    gitea::http_client::get_all_refs_from_repo_name_from_repo_url(
-      gitea_base_url,
-      gitea_token,
-      &layer.clone_url,
-      shasta_root_cert,
-    )
-    .await;
+  let repo_ref_vec_rslt = gitea::http_client::get_all_refs_from_repo_url(
+    gitea_base_url,
+    gitea_token,
+    &layer.clone_url,
+    shasta_root_cert,
+  )
+  .await;
 
   let repo_ref_vec = match repo_ref_vec_rslt {
     Ok(value) => value,
