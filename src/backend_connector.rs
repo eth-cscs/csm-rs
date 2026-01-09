@@ -1581,7 +1581,7 @@ impl CfsTrait for Csm {
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
 
-    let log_stream_git_clone =
+    let (log_stream_git_clone, exit_code) =
       kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
         client.clone(),
         cfs_session_name,
@@ -1589,6 +1589,15 @@ impl CfsTrait for Csm {
       )
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
+
+    if exit_code != 0 {
+      log::error!(
+        "CFS session '{}' git-clone init container failed with exit code {}",
+        cfs_session_name,
+        exit_code
+      );
+      return Ok(Box::pin(log_stream_git_clone));
+    }
 
     let log_stream_inventory =
       kubernetes::get_cfs_session_container_inventory_logs_stream(

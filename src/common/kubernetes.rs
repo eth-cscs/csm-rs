@@ -333,6 +333,7 @@ pub async fn i_print_init_container_logs(
     timestamps,
   )
   .await?
+  .0
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
@@ -346,7 +347,7 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
   cfs_session_name: &str,
   timestamps: bool,
-) -> Result<impl AsyncBufRead, Error> {
+) -> Result<(impl AsyncBufRead, i32), Error> {
   get_init_container_logs_stream(
     client,
     cfs_session_name,
@@ -463,6 +464,20 @@ pub fn init_container_status<'a>(
   })
 }
 
+pub fn init_container_exit_code(
+  pod: &Pod,
+  container_name: &str,
+) -> Option<i32> {
+  init_container_status(pod, container_name).and_then(|container_status| {
+    container_status.state.as_ref().and_then(|container_state| {
+      container_state
+        .terminated
+        .as_ref()
+        .map(|terminated_state| terminated_state.exit_code)
+    })
+  })
+}
+
 pub fn is_init_container_state_unkown(pod: &Pod, container_name: &str) -> bool {
   init_container_status(pod, container_name)
     .is_some_and(|container_status| container_status.state.as_ref().is_none())
@@ -507,7 +522,7 @@ pub fn container_status<'a>(
 }
 
 pub fn is_container_state_unkown(pod: &Pod, container_name: &str) -> bool {
-  init_container_status(pod, container_name)
+  container_status(pod, container_name)
     .is_some_and(|container_status| container_status.state.as_ref().is_none())
 }
 
@@ -520,16 +535,11 @@ pub fn is_container_state_waiting(pod: &Pod, container_name: &str) -> bool {
   })
 }
 
-pub async fn get_init_container_logs_stream(
-  client: kube::Client,
+pub async fn get_pod(
+  pods_api: &Api<Pod>,
   cfs_session_name: &str,
-  init_container_name: &str,
-  namespace: &str,
   label_selector: &str,
-  timestamps: bool,
-) -> Result<impl AsyncBufRead, Error> {
-  let pods_api: Api<Pod> = Api::namespaced(client, namespace);
-
+) -> Result<Pod, Error> {
   let params = kube::api::ListParams::default()
     .limit(1)
     .labels(label_selector);
@@ -579,14 +589,14 @@ pub async fn get_init_container_logs_stream(
 
   let cfs_session_pod = cfs_session_pods.items.first().unwrap();
 
-  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
+  Ok(cfs_session_pod.clone())
+}
 
-  log::info!(
-    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
-    init_container_name,
-    namespace,
-    cfs_session_pod_name,
-  );
+pub async fn get_init_container_and_wait_to_ready(
+  cfs_session_pod: &Pod,
+  init_container_name: &str,
+) -> Result<Container, Error> {
+  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
 
   let init_container_opt =
     get_init_container(cfs_session_pod, init_container_name);
@@ -612,8 +622,13 @@ pub async fn get_init_container_logs_stream(
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name))
     && i <= max
   {
+    log::debug!(
+      "Init Container name: '{}' container state {:?}",
+      init_container.name,
+      init_container_status(cfs_session_pod, &init_container.name)
+    );
     println!(
-      "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
+      "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       init_container.name,
       i + 1,
       max
@@ -622,6 +637,117 @@ pub async fn get_init_container_logs_stream(
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
   }
+
+  Ok(init_container.clone())
+}
+
+pub async fn get_init_container_logs_stream(
+  client: kube::Client,
+  cfs_session_name: &str,
+  init_container_name: &str,
+  namespace: &str,
+  label_selector: &str,
+  timestamps: bool,
+) -> Result<(impl AsyncBufRead, i32), Error> {
+  let pods_api: Api<Pod> = Api::namespaced(client, namespace);
+
+  /* let params = kube::api::ListParams::default()
+    .limit(1)
+    .labels(label_selector);
+
+  let mut cfs_session_pods = pods_api
+    .list(&params)
+    .await
+    .map_err(|e| Error::K8sError(format!("{e}")))?;
+
+  let mut i = 0;
+  let max = 150;
+  let delay_secs = 2;
+
+  // Waiting for pod to start
+  while cfs_session_pods.items.is_empty() && i <= max {
+    println!(
+      "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
+      cfs_session_name,
+      delay_secs,
+      i + 1,
+      max
+    );
+
+    i += 1;
+
+    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
+
+    cfs_session_pods = pods_api
+      .list(&params)
+      .await
+      .map_err(|e| Error::K8sError(format!("{e}")))?;
+  }
+
+  if cfs_session_pods.items.is_empty() {
+    return Err(Error::K8sError(format!(
+      "Pod for cfs session {} missing. Aborting operation",
+      cfs_session_name
+    )));
+  }
+
+  if cfs_session_pods.items.len() > 1 {
+    return Err(Error::K8sError(format!(
+      "Multiple pods found for cfs session '{}'. Using the first one.",
+      cfs_session_name
+    )));
+  }
+
+  let cfs_session_pod = cfs_session_pods.items.first().unwrap(); */
+
+  let cfs_session_pod =
+    &get_pod(&pods_api, cfs_session_name, label_selector).await?;
+
+  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
+
+  /* let init_container_opt =
+    get_init_container(cfs_session_pod, init_container_name);
+
+  if init_container_opt.is_none() {
+    return Err(Error::K8sError(format!(
+      "Init container '{}' not found in pod '{}'",
+      init_container_name, cfs_session_pod_name,
+    )));
+  }
+
+  // Waiting for init container to start
+  let init_container = get_init_container(cfs_session_pod, init_container_name)
+    .ok_or(Error::K8sError(format!(
+      "Init container '{}' not found in pod '{}'",
+      init_container_name, cfs_session_pod_name,
+    )))?;
+
+  let mut i = 0;
+  let max = 60;
+
+  while (is_init_container_state_unkown(cfs_session_pod, &init_container.name)
+    || is_init_container_state_waiting(cfs_session_pod, &init_container.name))
+    && i <= max
+  {
+    log::debug!(
+      "Init Container name: '{}' container state {:?}",
+      init_container.name,
+      init_container_status(cfs_session_pod, &init_container.name)
+    );
+    println!(
+      "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
+      init_container.name,
+      i + 1,
+      max
+    );
+
+    i += 1;
+    tokio::time::sleep(time::Duration::from_secs(2)).await;
+  } */
+
+  let init_container =
+    get_init_container_and_wait_to_ready(cfs_session_pod, init_container_name)
+      .await?;
 
   if is_init_container_state_unkown(cfs_session_pod, &init_container.name)
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name)
@@ -635,7 +761,18 @@ pub async fn get_init_container_logs_stream(
     );
   }
 
-  pods_api
+  let exit_code =
+    init_container_exit_code(cfs_session_pod, &init_container.name)
+      .unwrap_or(-1);
+
+  log::info!(
+    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
+    init_container_name,
+    namespace,
+    cfs_session_pod_name,
+  );
+
+  let container_log_stream = pods_api
     .log_stream(
       cfs_session_pod_name.as_ref(),
       &kube::api::LogParams {
@@ -651,7 +788,9 @@ pub async fn get_init_container_logs_stream(
       },
     )
     .await
-    .map_err(|e| Error::K8sError(format!("{e}")))
+    .map_err(|e| Error::K8sError(format!("{e}")))?;
+
+  Ok((container_log_stream, exit_code))
 }
 
 pub async fn get_container_logs_stream(
@@ -746,6 +885,11 @@ pub async fn get_container_logs_stream(
     || is_container_state_waiting(cfs_session_pod, &container.name))
     && i <= max
   {
+    log::debug!(
+      "Container name: '{}' container state {:?}",
+      container.name,
+      container_status(cfs_session_pod, &container.name)
+    );
     println!(
       "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       container.name,

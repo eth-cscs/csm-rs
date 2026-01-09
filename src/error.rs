@@ -1,5 +1,6 @@
-use std::io;
+use std::{io, pin::Pin};
 
+use futures::AsyncBufRead;
 use manta_backend_dispatcher::error::Error as MantaError;
 use serde_json::Value;
 
@@ -25,7 +26,7 @@ pub enum Error {
   ConsoleError(String),
   #[error("CSM-RS > K8s: {0}")]
   K8sError(String),
-  #[error("CSM-RS > Image '{0}' not found")]
+  #[error("CSM-RS > CFS Session")]
   ImageNotFound(String),
   #[error("CSM-RS > Group '{0}' not found")]
   GroupNotFound(String),
