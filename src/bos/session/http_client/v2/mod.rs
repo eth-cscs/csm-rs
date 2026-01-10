@@ -25,9 +25,7 @@ pub async fn post(
   // Build client
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -80,9 +78,7 @@ pub async fn get(
   // Build client
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -140,9 +136,7 @@ pub async fn delete(
   // Build client
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;

@@ -57,7 +57,7 @@ impl Group {
       .members
       .as_ref()
       .and_then(|members| members.ids.clone())
-      .unwrap_or(Vec::new())
+      .unwrap_or_default()
   }
 
   /// Get HSM group members
@@ -75,7 +75,7 @@ impl Group {
       members
         .ids
         .as_mut()
-        .and_then(|ids| Some(ids.extend_from_slice(xnames)))
+        .map(|ids| ids.extend_from_slice(xnames))
     });
 
     self.get_members()

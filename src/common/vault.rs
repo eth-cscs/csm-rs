@@ -18,9 +18,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -45,39 +43,20 @@ pub mod http_client {
     match resp.error_for_status() {
       Ok(resp) => {
         let resp_value = resp.json::<Value>().await?;
-        return Ok(String::from(
-          resp_value["auth"]["client_token"].as_str().unwrap(),
-        ));
+        return Ok(
+          resp_value
+            .get("auth")
+            .and_then(|auth| auth.get("client_token"))
+            .and_then(Value::as_str)
+            .map(String::from)
+            .unwrap(),
+        );
       }
       Err(e) => {
         return Err(Error::NetError(e));
       }
     }
   }
-
-  /* pub async fn auth_approle(vault_base_url: &str, vault_role_id: &str) -> Result<String, Error> {
-      // rest client create new cfs sessions
-      let client = reqwest::Client::builder().build()?;
-
-      let api_url = vault_base_url.to_owned() + "/v1/auth/approle/login";
-
-      log::debug!("Accessing/login to {}", api_url);
-
-      Ok(client
-          .post(api_url.clone())
-          // .post(format!("{}{}", vault_base_url, "/v1/auth/approle/login"))
-          .json(&json!({ "role_id": vault_role_id }))
-          .send()
-          .await?
-          .error_for_status()?
-          .json::<Value>()
-          .await?
-          .pointer("/auth/client_token")
-          .unwrap()
-          .as_str()
-          .unwrap()
-          .to_string())
-  } */
 
   pub async fn fetch_secret(
     vault_auth_token: &str,
@@ -91,9 +70,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -139,9 +116,14 @@ pub mod http_client {
     )
     .await?; // this works for hashicorp-vault for fulen may need /v1/secret/data/shasta/vcs
 
-    Ok(String::from(
-      vault_secret["data"]["token"].as_str().unwrap(),
-    )) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
+    Ok(
+      vault_secret
+        .get("data")
+        .and_then(|data| data.get("token"))
+        .and_then(Value::as_str)
+        .map(String::from)
+        .unwrap(),
+    ) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
   }
 
   pub async fn fetch_shasta_k8s_secrets_from_vault(

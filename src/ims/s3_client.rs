@@ -58,16 +58,23 @@ pub async fn s3_auth(
   // SET AUTH ENVS
   std::env::set_var(
     "AWS_SESSION_TOKEN",
-    sts_value["Credentials"]["SessionToken"].as_str().unwrap(),
+    sts_value
+      .pointer("/Credentials/SessionToken")
+      .and_then(Value::as_str)
+      .unwrap(),
   );
   std::env::set_var(
     "AWS_ACCESS_KEY_ID",
-    sts_value["Credentials"]["AccessKeyId"].as_str().unwrap(),
+    sts_value
+      .pointer("/Credentials/AccessKeyId")
+      .and_then(Value::as_str)
+      .unwrap(),
   );
   std::env::set_var(
     "AWS_SECRET_ACCESS_KEY",
-    sts_value["Credentials"]["SecretAccessKey"]
-      .as_str()
+    sts_value
+      .pointer("/Credentials/SecretAccessKey")
+      .and_then(Value::as_str)
       .unwrap(),
   );
 
@@ -94,20 +101,19 @@ async fn setup_client(sts_value: &Value) -> Client {
       auth: None,
       connector: http_connector.clone(),
     };
-    // let smithy_connector = aws_smithy_client::hyper_ext::Adapter::builder()
-    //     // Optionally set things like timeouts as well
-    //     .connector_settings(
-    //         aws_smithy_client::http_connector::ConnectorSettings::builder()
-    //             .connect_timeout(std::time::Duration::from_secs(10))
-    //             .build(),
-    //     )
-    //     .build(socks_http_connector);
+
     let http_client = HyperClientBuilder::new().build(socks_http_connector);
 
     config = aws_config::from_env()
       .region(region_provider)
       .http_client(http_client)
-      .endpoint_url(sts_value["Credentials"]["EndpointURL"].as_str().unwrap())
+      .endpoint_url(
+        sts_value
+          .get("Credentials")
+          .and_then(|credentials| credentials.get("EndpointURL"))
+          .and_then(Value::as_str)
+          .unwrap(),
+      )
       .app_name(aws_config::AppName::new("manta").unwrap())
       // .no_credentials()
       .load()
@@ -115,7 +121,13 @@ async fn setup_client(sts_value: &Value) -> Client {
   } else {
     config = aws_config::from_env()
       .region(region_provider)
-      .endpoint_url(sts_value["Credentials"]["EndpointURL"].as_str().unwrap())
+      .endpoint_url(
+        sts_value
+          .get("Credentials")
+          .and_then(|credentials| credentials.get("EndpointURL"))
+          .and_then(Value::as_str)
+          .unwrap(),
+      )
       .app_name(aws_config::AppName::new("manta").unwrap())
       // .no_credentials()
       .load()
@@ -243,13 +255,13 @@ pub async fn s3_upload_object(
 ) -> Result<String, Error> {
   let client = setup_client(sts_value).await;
 
-  let body = ByteStream::from_path(Path::new(&file_path)).await;
+  let body = ByteStream::from_path(Path::new(&file_path)).await?;
 
   match client
     .put_object()
     .bucket(bucket)
     .key(object_path)
-    .body(body.unwrap())
+    .body(body)
     .send()
     .await
   {

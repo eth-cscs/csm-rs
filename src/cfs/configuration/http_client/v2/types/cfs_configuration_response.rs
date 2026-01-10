@@ -175,7 +175,6 @@ impl Into<FrontendNext> for Next {
 impl Layer {
   pub fn new(
     clone_url: String,
-    // source: Option<String>,
     commit: Option<String>,
     name: String,
     playbook: String,
@@ -183,7 +182,6 @@ impl Layer {
   ) -> Self {
     Self {
       clone_url,
-      // source,
       commit,
       name,
       playbook,
@@ -233,53 +231,70 @@ impl CfsConfigurationResponse {
   ) -> Self {
     let mut cfs_configuration = Self::new();
 
-    cfs_configuration.name =
-      configuration_yaml["name"].as_str().unwrap().to_string();
+    cfs_configuration.name = configuration_yaml
+      .get("name")
+      .and_then(serde_yaml::Value::as_str)
+      .map(str::to_string)
+      .unwrap();
 
-    for layer_yaml in configuration_yaml["layers"].as_sequence().unwrap() {
+    for layer_yaml in configuration_yaml
+      .get("layers")
+      .and_then(serde_yaml::Value::as_sequence)
+      .unwrap()
+    {
       // println!("\n\n### Layer:\n{:#?}\n", layer_json);
 
       if layer_yaml.get("git").is_some() {
         // Git layer
-        let repo_name = layer_yaml["name"].as_str().unwrap().to_string();
-        let repo_url = layer_yaml["git"]["url"].as_str().unwrap().to_string();
+        let repo_name = layer_yaml
+          .get("name")
+          .and_then(serde_yaml::Value::as_str)
+          .map(str::to_string)
+          .unwrap();
+        let repo_url = layer_yaml.get("git").and_then(|git| git.get("url"))
+            .and_then(serde_yaml::Value::as_str)
+            .map(str::to_string)
+          .unwrap();
         let layer = Layer::new(
           repo_url,
-          // None, // TODO: replace with real source value
-          // Some(layer_json["git"]["commit"].as_str().unwrap_or_default().to_string()),
           None,
           repo_name,
-          layer_yaml["playbook"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-          Some(
-            layer_yaml["git"]["branch"]
-              .as_str()
-              .unwrap_or_default()
-              .to_string(),
-          ),
+          layer_yaml
+            .get("playbook")
+            .and_then(serde_yaml::Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_default(),
+          layer_yaml
+            .get("git")
+            .and_then(|git| git.get("branch"))
+            .and_then(serde_yaml::Value::as_str)
+            .map(str::to_string),
         );
         cfs_configuration.add_layer(layer);
       } else {
         // Product layer
-        let repo_url = format!(
+        let repo_url =
+          format!(
           "https://api-gw-service-nmn.local/vcs/cray/{}-config-management.git",
-          layer_yaml["name"].as_str().unwrap()
+          layer_yaml.get("name").and_then(serde_yaml::Value::as_str).unwrap()
         );
         let layer = Layer::new(
           repo_url,
-          // None, // TODO: replace with real source value
-          // Some(layer_json["product"]["commit"].as_str().unwrap_or_default().to_string()),
           None,
-          layer_yaml["product"]["name"]
-            .as_str()
+          layer_yaml["product"]
+            .get("name")
+            .and_then(serde_yaml::Value::as_str)
             .unwrap_or_default()
             .to_string(),
-          layer_yaml["playbook"].as_str().unwrap().to_string(),
+          layer_yaml
+            .get("playbook")
+            .and_then(serde_yaml::Value::as_str)
+            .map(str::to_string)
+            .unwrap(),
           Some(
-            layer_yaml["product"]["branch"]
-              .as_str()
+            layer_yaml["product"]
+              .get("branch")
+              .and_then(serde_yaml::Value::as_str)
               .unwrap_or_default()
               .to_string(),
           ),

@@ -150,15 +150,6 @@ pub fn get_best_candidate_in_target_and_parent_hsm_pin(
   } else {
     None
   }
-
-  /* if let Some(target_best_candidate) = target_best_candidate_tuple {
-      target_best_candidate
-  } else if let Some(parent_best_candidate) = parent_best_candidate_tuple {
-      parent_best_candidate
-  } else {
-      eprintln!("ERROR - No best candidate found.");
-      std::process::exit(1);
-  } */
 }
 
 /// Generates a list of tuples with xnames and the hardware summary for each node. This method
@@ -249,31 +240,6 @@ pub fn calculate_target_hsm_pin(
     HashMap<String, usize>,
   )> = Vec::new();
 
-  /* // Get best candidate in 'target' HSM group
-  let target_best_candidate_tuple =
-      get_best_candidate_in_hsm_based_on_scarcity_node_score_pin(
-          &mut target_hsm_node_score_tuple_vec,
-          target_hsm_node_hw_component_count_vec,
-      );
-
-  // Get best candidate in 'parent' HSM group
-  let parent_best_candidate_tuple =
-      get_best_candidate_in_hsm_based_on_scarcity_node_score_pin(
-          &mut parent_hsm_node_score_tuple_vec,
-          parent_hsm_node_hw_component_count_vec,
-      );
-
-  // If best candidate exists (in 'target' HSM group), then use it. Otherwise, use the one in 'parent' HSM group
-  let (mut best_candidate, mut best_candidate_counters) =
-      if let Some(target_best_candidate) = target_best_candidate_tuple {
-          target_best_candidate
-      } else if let Some(parent_best_candidate) = parent_best_candidate_tuple {
-          parent_best_candidate
-      } else {
-          eprintln!("ERROR - No best candidate found.");
-          std::process::exit(1);
-      }; */
-
   let (mut best_candidate, mut best_candidate_counters) =
     get_best_candidate_in_target_and_parent_hsm_pin(
       &mut target_hsm_node_score_tuple_vec,
@@ -315,20 +281,6 @@ pub fn calculate_target_hsm_pin(
       best_candidate.1,
       best_candidate_counters
     );
-
-    /* // Print target hsm group hw configuration in table
-    print_table_f32_score(
-        user_defined_hw_component_vec,
-        target_hsm_node_hw_component_count_vec,
-        &target_hsm_node_score_tuple_vec,
-    );
-
-    // Print target hsm group hw configuration in table
-    print_table_f32_score(
-        user_defined_hw_component_vec,
-        parent_hsm_node_hw_component_count_vec,
-        &parent_hsm_node_score_tuple_vec,
-    ); */
 
     ////////////////////////////////
     // Apply changes - Migrate from target to parent HSM
@@ -409,31 +361,7 @@ pub fn calculate_target_hsm_pin(
         .or_insert(vec![node.clone()]);
     }
 
-    /* // Get best candidate in 'target' HSM group
-    let target_best_candidate_tuple =
-        get_best_candidate_in_hsm_based_on_scarcity_node_score_pin(
-            &mut target_hsm_node_score_tuple_vec,
-            target_hsm_node_hw_component_count_vec,
-        );
-
-    // Get best candidate in 'parent' HSM group
-    let parent_best_candidate_tuple =
-        get_best_candidate_in_hsm_based_on_scarcity_node_score_pin(
-            &mut parent_hsm_node_score_tuple_vec,
-            parent_hsm_node_hw_component_count_vec,
-        );
-
-    // If best candidate exists (in 'target' HSM group), then use it. Otherwise, use the one in 'parent' HSM group
-    (best_candidate, best_candidate_counters) =
-        if let Some(target_best_candidate) = target_best_candidate_tuple {
-            target_best_candidate
-        } else if let Some(parent_best_candidate) = parent_best_candidate_tuple {
-            parent_best_candidate
-        } else {
-            eprintln!("ERROR - No best candidate found.");
-            std::process::exit(1);
-        }; */
-
+    // Get best candidate in 'target' HSM group
     (best_candidate, best_candidate_counters) =
       get_best_candidate_in_target_and_parent_hsm_pin(
         &mut target_hsm_node_score_tuple_vec,
@@ -444,13 +372,10 @@ pub fn calculate_target_hsm_pin(
       .ok_or_else(|| {
         Error::Message("ERROR - No best candidate found.".to_string())
       })?;
-    // .expect("ERROR - No best candidate found.");
 
     // Check if we need to keep iterating
     work_to_do = keep_iterating_final_hsm(
       user_defined_hsm_hw_components_count_hashmap,
-      // &best_candidate_counters,
-      // &downscale_deltas,
       &combination_target_parent_hsm_hw_component_summary_hashmap,
     );
 
@@ -460,20 +385,6 @@ pub fn calculate_target_hsm_pin(
   log::info!("----- FINAL RESULT -----");
 
   log::info!("No candidates found");
-
-  /* // Print target hsm group hw configuration in table
-  print_table_f32_score(
-      user_defined_hw_component_vec,
-      target_hsm_node_hw_component_count_vec,
-      &target_hsm_node_score_tuple_vec,
-  );
-
-  // Print target hsm group hw configuration in table
-  print_table_f32_score(
-      user_defined_hw_component_vec,
-      parent_hsm_node_hw_component_count_vec,
-      &parent_hsm_node_score_tuple_vec,
-  ); */
 
   Ok(nodes_migrated_from_combination_target_parent_hsm)
 }
@@ -614,20 +525,6 @@ pub async fn get_node_hw_component_count(
   hsm_member: &str,
   user_defined_hw_profile_vec: Vec<String>,
 ) -> Result<(String, Vec<String>, Vec<u64>), Error> {
-  /* let node_hw_inventory_value = backend
-  .get_inventory_hardware_query(
-      &shasta_token,
-      /* &shasta_base_url,
-      &shasta_root_cert, */
-      hsm_member,
-      None,
-      None,
-      None,
-      None,
-      None,
-  )
-  .await
-  .unwrap(); */
   let node_hw_inventory_value =
     hsm::hw_inventory::hw_component::http_client::get_query(
       &shasta_token,
@@ -636,15 +533,6 @@ pub async fn get_node_hw_component_count(
       hsm_member,
     )
     .await?;
-
-  /* hsm::hw_inventory::hw_component::http_client::get_hw_inventory(
-      &shasta_token,
-      &shasta_base_url,
-      &shasta_root_cert,
-      hsm_member,
-  )
-  .await
-  .unwrap(); */
 
   let node_hw_profile = get_node_hw_properties_from_value(
     &node_hw_inventory_value,
@@ -722,91 +610,6 @@ pub fn get_node_hw_properties_from_value(
 
   (node_hw_component_pattern_vec, memory_vec)
 }
-
-/* pub fn print_table_f32_score(
-    user_defined_hw_componet_vec: &[String],
-    hsm_hw_pattern_vec: &[(String, HashMap<String, usize>)],
-    hsm_score_vec: &[(String, f32)],
-) {
-    let hsm_hw_component_vec: Vec<String> = hsm_hw_pattern_vec
-        .iter()
-        .flat_map(|(_xname, node_pattern_hashmap)| node_pattern_hashmap.keys().cloned())
-        .collect();
-
-    let mut all_hw_component_vec =
-        [hsm_hw_component_vec, user_defined_hw_componet_vec.to_vec()].concat();
-
-    all_hw_component_vec.sort();
-    all_hw_component_vec.dedup();
-
-    let mut table = comfy_table::Table::new();
-
-    table.set_header(
-        [
-            vec!["Node".to_string()],
-            all_hw_component_vec.clone(),
-            vec!["Score".to_string()],
-        ]
-        .concat(),
-    );
-
-    for (xname, node_pattern_hashmap) in hsm_hw_pattern_vec {
-        // println!("node_pattern_hashmap: {:?}", node_pattern_hashmap);
-
-        let mut row: Vec<comfy_table::Cell> = Vec::new();
-        // Node xname table cell
-        row.push(
-            comfy_table::Cell::new(xname.clone()).set_alignment(comfy_table::CellAlignment::Center),
-        );
-        // User hw components table cell
-        for hw_component in &all_hw_component_vec {
-            if user_defined_hw_componet_vec.contains(hw_component)
-                && node_pattern_hashmap.contains_key(hw_component)
-            {
-                let counter = node_pattern_hashmap.get(hw_component).unwrap();
-                row.push(
-                    comfy_table::Cell::new(format!("✅ ({})", counter,))
-                        .fg(Color::Green)
-                        .set_alignment(comfy_table::CellAlignment::Center),
-                );
-            } else if node_pattern_hashmap.contains_key(hw_component) {
-                let counter = node_pattern_hashmap.get(hw_component).unwrap();
-                row.push(
-                    comfy_table::Cell::new(format!("⚠️  ({})", counter)) // NOTE: emojis
-                        // can also be printed using unicode like \u{26A0}
-                        .fg(Color::Yellow)
-                        .set_alignment(comfy_table::CellAlignment::Center),
-                );
-            } else {
-                // node does not contain hardware but it was requested by the user
-                row.push(
-                    comfy_table::Cell::new("❌".to_string())
-                        .set_alignment(comfy_table::CellAlignment::Center),
-                );
-            }
-        }
-
-        // Node score table cell
-        let node_score = hsm_score_vec
-            .iter()
-            .find(|(node_name, _)| node_name.eq(xname))
-            .unwrap_or(&(xname.to_string(), 0f32))
-            .1;
-        let node_score_table_cell = if node_score <= 0f32 {
-            comfy_table::Cell::new(node_score)
-                .set_alignment(comfy_table::CellAlignment::Center)
-                .fg(Color::Red)
-        } else {
-            comfy_table::Cell::new(node_score)
-                .set_alignment(comfy_table::CellAlignment::Center)
-                .fg(Color::Green)
-        };
-        row.push(node_score_table_cell);
-        table.add_row(row);
-    }
-
-    log::info!("\n{table}\n");
-} */
 
 pub async fn get_hsm_node_hw_component_counter(
   shasta_token: &str,

@@ -18,7 +18,7 @@ pub async fn get(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
 
     // rest client to authenticate
     client = client_builder.proxy(socks5proxy).build()?;
@@ -65,7 +65,7 @@ pub async fn get_task_id(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
 
     // rest client to authenticate
     client = client_builder.proxy(socks5proxy).build()?;

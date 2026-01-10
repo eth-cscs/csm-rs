@@ -20,6 +20,7 @@ use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
 use md5::Digest;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -96,32 +97,32 @@ pub async fn exec(
     artifacts: vec![],
   };
 
-  let backup_ims_file = ims_file.unwrap().to_string();
-  let backup_cfs_file = cfs_file.unwrap().to_string();
-  let backup_bos_file = bos_file.unwrap().to_string();
-  let backup_hsm_file = hsm_file.unwrap().to_string();
+  let backup_ims_file = ims_file.map(str::to_string).unwrap();
+  let backup_cfs_file = cfs_file.map(str::to_string).unwrap();
+  let backup_bos_file = bos_file.map(str::to_string).unwrap();
+  let backup_hsm_file = hsm_file.map(str::to_string).unwrap();
 
-  let ims_image_name: String = get_image_name_from_ims_file(&backup_ims_file);
+  let ims_image_name: String = get_image_name_from_ims_file(&backup_ims_file)?;
   println!(" Image name: {}", ims_image_name);
 
   println!(
     "\tinitrd file: {}",
-    image_dir.unwrap().to_string() + "/initrd"
+    image_dir.map(|v| v.to_string() + "/initrd").unwrap()
   );
   println!(
     "\tkernel file: {}",
-    image_dir.unwrap().to_string() + "/kernel"
+    image_dir.map(|v| v.to_string() + "/kernel").unwrap()
   );
   println!(
     "\trootfs file: {}",
-    image_dir.unwrap().to_string() + "/rootfs"
+    image_dir.map(|v| v.to_string() + "/rootfs").unwrap()
   );
 
   // These should come from the manifest, but let's assume these values are correct
   let vec_backup_image_files = vec![
-    image_dir.unwrap().to_string() + "/initrd",
-    image_dir.unwrap().to_string() + "/kernel",
-    image_dir.unwrap().to_string() + "/rootfs",
+    image_dir.map(|v| v.to_string() + "/initrd").unwrap(),
+    image_dir.map(|v| v.to_string() + "/kernel").unwrap(),
+    image_dir.map(|v| v.to_string() + "/rootfs").unwrap(),
   ];
 
   for file in &vec_backup_image_files {
@@ -135,8 +136,6 @@ pub async fn exec(
 
   println!("Calculating image artifact checksum...");
   calculate_image_checksums(&mut ims_image_manifest, &vec_backup_image_files);
-
-  // println!("{:?}", ims_image_manifest);
 
   // Do we have another image with this name?
   println!("\n\nRegistering image with IMS...");
@@ -156,7 +155,7 @@ pub async fn exec(
     }
   };
 
-  println!("Ok, IMS image ID: {}", &ims_image_id);
+  println!("IMS image ID: {}", &ims_image_id);
 
   println!("\nUploading image artifacts to s3...");
   s3_upload_image_artifacts(
@@ -167,7 +166,7 @@ pub async fn exec(
     &mut ims_image_manifest,
     &vec_backup_image_files,
   )
-  .await;
+  .await?;
   println!("\nUpdating IMS image record with the new location in s3...");
   log::debug!("Updating image record with location of the newly generated manifest.json data");
   ims_update_image_add_manifest(
@@ -178,7 +177,6 @@ pub async fn exec(
     &ims_image_id,
   )
   .await;
-  println!("Ok");
 
   println!("\nCreating HSM group...");
   create_hsm_group_from_file(
@@ -188,8 +186,7 @@ pub async fn exec(
     &backup_hsm_file,
     overwrite_group,
   )
-  .await;
-  println!("Ok");
+  .await?;
 
   println!("\nUploading CFS configuration...");
   // create a new CFS configuration based on the original CFS file backed up previously
@@ -201,9 +198,10 @@ pub async fn exec(
     &backup_cfs_file,
     overwrite_configuration,
   )
-  .await;
+  .await?;
 
   println!("\nUploading BOS sessiontemplate...");
+
   // Create a new BOS session template based on the original BOS file backed previously
   create_bos_sessiontemplate(
     shasta_token,
@@ -213,7 +211,7 @@ pub async fn exec(
     &ims_image_id,
     overwrite_template,
   )
-  .await;
+  .await?;
 
   println!("\nDone, the image bundle, HSM group, CFS configuration and BOS sessiontemplate have been restored.");
 
@@ -229,13 +227,11 @@ async fn create_bos_sessiontemplate(
   bos_file: &String,
   ims_image_id: &String,
   overwrite: bool,
-) {
-  let file_content = File::open(bos_file)
-    .expect(&format!("Unable to read BOS JSON file '{}'", bos_file));
+) -> Result<(), Error> {
+  let file_content = File::open(bos_file)?;
 
   let bos_json: BosSessionTemplate =
-    serde_json::from_reader(BufReader::new(file_content))
-      .expect("BOS JSON file does not have correct format.");
+    serde_json::from_reader(BufReader::new(file_content))?;
 
   let bos_sessiontemplate_name = bos_json.name.unwrap();
 
@@ -284,12 +280,10 @@ async fn create_bos_sessiontemplate(
     }
   }
 
-  let file_content = File::open(bos_file)
-    .expect(&format!("Unable to read BOS JSON file '{}'", bos_file));
+  let file_content = File::open(bos_file)?;
 
   let mut bos_sessiontemplate: BosSessionTemplate =
-    serde_json::from_reader(BufReader::new(file_content))
-      .expect("BOS JSON file does not have correct format.");
+    serde_json::from_reader(BufReader::new(file_content))?;
 
   let path_modified =
     format!("s3://boot-images/{}/manifest.json", ims_image_id);
@@ -297,8 +291,7 @@ async fn create_bos_sessiontemplate(
   bos_sessiontemplate
     .boot_sets
     .as_mut()
-    .unwrap()
-    .get_mut("compute")
+    .and_then(|boot_sets| boot_sets.get_mut("compute"))
     .unwrap()
     .path = Some(path_modified);
 
@@ -323,6 +316,8 @@ async fn create_bos_sessiontemplate(
             e1
         ),
     }
+
+  Ok(())
 }
 
 /// Creates a CFS config on the current CSM system, based on the CFS file generated by manta migrate backup
@@ -333,13 +328,11 @@ async fn create_cfs_config(
   shasta_root_cert: &[u8],
   cfs_file: &String,
   overwrite: bool,
-) {
-  let file_content = File::open(cfs_file)
-    .expect(&format!("Unable to read CFS JSON file '{}'", cfs_file));
+) -> Result<(), Error> {
+  let file_content = File::open(cfs_file)?;
 
   let cfs_configuration: CfsConfigurationResponse =
-    serde_json::from_reader(BufReader::new(file_content))
-      .expect("CFS JSON file does not have correct format.");
+    serde_json::from_reader(BufReader::new(file_content))?;
 
   // CFS needs to be cleaned up when loading into the system, the filed lastUpdate should not exist
   let cfs_config_name = cfs_configuration.name;
@@ -387,12 +380,10 @@ async fn create_cfs_config(
   // At this point we're sure there's either no CFS config with that name
   // or that the user wants to overwrite it, so let's do it
 
-  let file_content = File::open(cfs_file)
-    .expect(&format!("Unable to read CFS JSON file '{}'", cfs_file));
+  let file_content = File::open(cfs_file)?;
 
   let cfs_configuration: CfsConfigurationRequest =
-    serde_json::from_reader(BufReader::new(file_content))
-      .expect("CFS JSON file does not have correct format.");
+    serde_json::from_reader(BufReader::new(file_content))?;
 
   log::debug!("CFS config:\n{:#?}", &cfs_configuration);
 
@@ -417,6 +408,8 @@ async fn create_cfs_config(
             e1
         ),
     }
+
+  Ok(())
 }
 
 /// Add the image manifest field to an IMS image record
@@ -499,7 +492,7 @@ async fn s3_upload_image_artifacts(
   ims_image_id: &String,
   ims_image_manifest: &mut ImageManifest,
   vec_image_files: &Vec<String>,
-) {
+) -> Result<(), Error> {
   let bucket_name = "boot-images";
   let object_path = ims_image_id;
 
@@ -626,15 +619,17 @@ async fn s3_upload_image_artifacts(
   }
 
   log::debug!("Writing the new manifest.json file with the correct new ID");
+
   let new_manifest_file_name = String::from("new-manifest.json");
+
   let new_manifest_file_path = Path::new(vec_image_files.first().unwrap())
     .parent()
-    .unwrap()
-    .join(&new_manifest_file_name);
-  let new_manifest_file = File::create(&new_manifest_file_path)
-    .expect("new manifest.json file could not be created.");
-  serde_json::to_writer_pretty(&new_manifest_file, &ims_image_manifest)
-    .expect("Unable to write new manifest.json file");
+    .map(|path| path.join(&new_manifest_file_name))
+    .unwrap();
+
+  let new_manifest_file = File::create(&new_manifest_file_path)?;
+
+  serde_json::to_writer_pretty(&new_manifest_file, &ims_image_manifest)?;
 
   log::debug!("Uploading the new manifest.json file");
   let manifest_full_object_path = format!("{}/manifest.json", &object_path);
@@ -656,6 +651,8 @@ async fn s3_upload_image_artifacts(
     }
     Err(error) => panic!("Unable to upload file to s3. Error {}", error),
   };
+
+  Ok(())
 }
 
 /// Return the md5sum of a file
@@ -794,19 +791,31 @@ async fn ims_register_image(
   )
   .await?;
 
-  Ok(json_response["id"].to_string().replace('"', ""))
+  Ok(
+    json_response
+      .get("id")
+      .and_then(Value::as_str)
+      .map(|id| id.replace('"', ""))
+      .unwrap(),
+  )
 }
 
 /// Gets the image name off an IMS yaml file
-pub fn get_image_name_from_ims_file(ims_file: &String) -> String {
+pub fn get_image_name_from_ims_file(
+  ims_file: &String,
+) -> Result<String, Error> {
   // load into memory
-  let ims_data = fs::read_to_string(PathBuf::from(&ims_file))
-    .expect("Unable to read IMS file file");
+  let ims_data = fs::read_to_string(PathBuf::from(&ims_file))?;
 
-  let ims_json: serde_json::Value = serde_json::from_str(&ims_data)
-    .expect("HSM JSON file does not have correct format.");
+  let ims_json: serde_json::Value = serde_json::from_str(&ims_data)?;
 
-  ims_json[0]["name"].clone().to_string().replace('"', "")
+  Ok(
+    ims_json
+      .pointer("/0/name")
+      .and_then(Value::as_str)
+      .map(|ims_name| ims_name.replace('"', ""))
+      .unwrap(),
+  )
 }
 
 // Anything in this function is critical, so the asserts will kill further processing
@@ -817,15 +826,13 @@ pub async fn create_hsm_group_from_file(
   shasta_root_cert: &[u8],
   hsm_file: &String,
   overwrite: bool,
-) {
+) -> Result<(), Error> {
   // Parse HSM group file
   // The file looks like this: [{"gele":["x1001c7s1b1n1","x1001c7s1b0n0","x1001c7s1b1n0","x1001c7s1b0n1"]}]
   // load into memory
-  let hsm_data = fs::read_to_string(PathBuf::from(hsm_file))
-    .expect("Unable to read HSM JSON file");
+  let hsm_data = fs::read_to_string(PathBuf::from(hsm_file))?;
 
-  let group_vec: Vec<Group> = serde_json::from_str(&hsm_data)
-    .expect("HSM JSON file does not have correct format.");
+  let group_vec: Vec<Group> = serde_json::from_str(&hsm_data)?;
 
   for group in group_vec {
     // Create the HSM group
@@ -904,4 +911,6 @@ pub async fn create_hsm_group_from_file(
       }
     };
   }
+
+  Ok(())
 }

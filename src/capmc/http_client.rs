@@ -2,8 +2,9 @@ pub mod node_power_off {
 
   use serde_json::Value;
 
-  use crate::capmc::{
-    self, types::PowerStatus, utils::wait_nodes_to_power_off,
+  use crate::{
+    capmc::{self, types::PowerStatus, utils::wait_nodes_to_power_off},
+    error::Error,
   };
 
   pub async fn post(
@@ -13,7 +14,7 @@ pub mod node_power_off {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     log::info!("Power OFF nodes: {:?}", xname_vec);
 
     let power_off = PowerStatus::new(reason_opt, xname_vec, force, None);
@@ -27,9 +28,7 @@ pub mod node_power_off {
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
       log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -37,17 +36,16 @@ pub mod node_power_off {
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_off";
 
-    let resp = client
-      .post(api_url)
-      .bearer_auth(shasta_token)
-      .json(&power_off)
-      .send()
-      .await?;
-
-    match resp.error_for_status() {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(error),
-    }
+    Ok(
+      client
+        .post(api_url)
+        .bearer_auth(shasta_token)
+        .json(&power_off)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?,
+    )
   }
 
   /// Shut down a node
@@ -59,7 +57,7 @@ pub mod node_power_off {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     // Check Nodes are shutdown
     let _ = capmc::http_client::node_power_status::post(
       shasta_token,
@@ -67,8 +65,7 @@ pub mod node_power_off {
       shasta_root_cert,
       &xname_vec,
     )
-    .await
-    .unwrap();
+    .await?;
 
     wait_nodes_to_power_off(
       shasta_token,
@@ -86,7 +83,10 @@ pub mod node_power_on {
 
   use serde_json::Value;
 
-  use crate::capmc::{self, types::PowerStatus, utils::wait_nodes_to_power_on};
+  use crate::{
+    capmc::{self, types::PowerStatus, utils::wait_nodes_to_power_on},
+    error::Error,
+  };
 
   pub async fn post(
     shasta_token: &str,
@@ -94,7 +94,7 @@ pub mod node_power_on {
     shasta_root_cert: &[u8],
     xname_vec: Vec<String>,
     reason: Option<String>,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     // log::info!("Power ON nodes: {:?}", xname_vec);
 
     let power_on = PowerStatus::new(reason, xname_vec, false, None);
@@ -116,17 +116,16 @@ pub mod node_power_on {
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_on";
 
-    let resp = client
-      .post(api_url)
-      .bearer_auth(shasta_token)
-      .json(&power_on)
-      .send()
-      .await?;
-
-    match resp.error_for_status() {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(error),
-    }
+    Ok(
+      client
+        .post(api_url)
+        .bearer_auth(shasta_token)
+        .json(&power_on)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?,
+    )
   }
 
   /// Power ON a group of nodes
@@ -137,7 +136,7 @@ pub mod node_power_on {
     shasta_root_cert: &[u8],
     xname_vec: Vec<String>,
     reason: Option<String>,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     // Check Nodes are shutdown
     let _ = capmc::http_client::node_power_status::post(
       shasta_token,
@@ -145,8 +144,7 @@ pub mod node_power_on {
       shasta_root_cert,
       &xname_vec,
     )
-    .await
-    .unwrap();
+    .await?;
 
     wait_nodes_to_power_on(
       shasta_token,
@@ -163,7 +161,10 @@ pub mod node_power_reset {
 
   use serde_json::Value;
 
-  use crate::capmc::{self, types::PowerStatus};
+  use crate::{
+    capmc::{self, types::PowerStatus},
+    error::Error,
+  };
 
   pub async fn post(
     shasta_token: &str,
@@ -172,7 +173,7 @@ pub mod node_power_reset {
     xname_vec: Vec<String>,
     reason: Option<String>,
     force: bool,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     let node_restart = PowerStatus::new(reason, xname_vec, force, None);
 
     let client;
@@ -184,9 +185,7 @@ pub mod node_power_reset {
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
       log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -194,17 +193,16 @@ pub mod node_power_reset {
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_reinit";
 
-    let resp = client
-      .post(api_url)
-      .bearer_auth(shasta_token)
-      .json(&node_restart)
-      .send()
-      .await?;
-
-    match resp.error_for_status() {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(error),
-    }
+    Ok(
+      client
+        .post(api_url)
+        .bearer_auth(shasta_token)
+        .json(&node_restart)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?,
+    )
   }
 
   pub async fn post_sync(
@@ -214,7 +212,7 @@ pub mod node_power_reset {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     log::info!("Power RESET node: {:?}", xname_vec);
 
     let _ = capmc::http_client::node_power_off::post_sync(
@@ -225,7 +223,7 @@ pub mod node_power_reset {
       reason_opt.clone(),
       force,
     )
-    .await;
+    .await?;
 
     capmc::http_client::node_power_on::post_sync(
       shasta_token,
@@ -246,7 +244,7 @@ pub mod node_power_reset {
     xnames: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     let mut nodes_reseted = Vec::new();
 
     let mut tasks = tokio::task::JoinSet::new();
@@ -271,17 +269,10 @@ pub mod node_power_reset {
     }
 
     while let Some(message) = tasks.join_next().await {
-      match message.unwrap() {
-        Ok(node_power_status) => {
-          nodes_reseted.push(node_power_status);
-        }
-        Err(error) => {
-          log::error!("Error: {:?}", error);
-        }
-      }
+      nodes_reseted.push(message??);
     }
 
-    Ok(serde_json::to_value(nodes_reseted).unwrap())
+    Ok(serde_json::to_value(nodes_reseted)?)
   }
 }
 
@@ -289,14 +280,14 @@ pub mod node_power_status {
 
   use serde_json::Value;
 
-  use crate::capmc::types::NodeStatus;
+  use crate::{capmc::types::NodeStatus, error::Error};
 
   pub async fn post(
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
     xnames: &Vec<String>,
-  ) -> core::result::Result<Value, reqwest::Error> {
+  ) -> core::result::Result<Value, Error> {
     log::info!("Checking nodes status: {:?}", xnames);
 
     let node_status_payload =
@@ -311,9 +302,7 @@ pub mod node_power_status {
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
       log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -322,16 +311,15 @@ pub mod node_power_status {
     let url_api =
       shasta_base_url.to_owned() + "/capmc/capmc/v1/get_xname_status";
 
-    let resp = client
-      .post(url_api)
-      .bearer_auth(shasta_token)
-      .json(&node_status_payload)
-      .send()
-      .await?;
-
-    match resp.error_for_status() {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(error),
-    }
+    Ok(
+      client
+        .post(url_api)
+        .bearer_auth(shasta_token)
+        .json(&node_status_payload)
+        .send()
+        .await?
+        .json::<Value>()
+        .await?,
+    )
   }
 }

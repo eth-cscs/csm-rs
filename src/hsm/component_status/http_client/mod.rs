@@ -37,25 +37,21 @@ pub async fn get_raw(
     .get(api_url.clone())
     .header("Authorization", format!("Bearer {}", shasta_token))
     .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
+    .await?;
 
   if response.status().is_success() {
     Ok(
       response
         .json::<Value>()
         .await
-        .map_err(|error| Error::NetError(error))
-        .unwrap()["Components"]
-        .as_array()
-        .unwrap_or(&Vec::new())
-        .clone(),
+        .map_err(|error| Error::NetError(error))?
+        .get("Components")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default(),
     )
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
+    let payload = response.json::<Value>().await?;
     Err(Error::CsmError(payload))
   }
 }

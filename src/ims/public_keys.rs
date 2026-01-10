@@ -12,21 +12,20 @@ pub mod http_client {
       shasta_base_url: &str,
       shasta_root_cert: &[u8],
       username_opt: &str,
-    ) -> Option<Value> {
-      if let Ok(public_key_value_list) = get(
+    ) -> Result<Option<Value>, Error> {
+      let public_key_value_list = get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
         Some(username_opt),
       )
-      .await
-      {
-        if public_key_value_list.len() == 1 {
-          return public_key_value_list.first().cloned();
-        };
-      }
+      .await?;
 
-      None
+      if public_key_value_list.len() == 1 {
+        Ok(public_key_value_list.first().cloned())
+      } else {
+        Ok(None)
+      }
     }
 
     /// Fetch IMS image ref --> https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/
@@ -46,8 +45,7 @@ pub mod http_client {
       if std::env::var("SOCKS5").is_ok() {
         // socks5 proxy
         log::debug!("SOCKS5 enabled");
-        let socks5proxy =
-          reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
+        let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
 
         // rest client to authenticate
         client = client_builder.proxy(socks5proxy).build()?;
@@ -72,7 +70,10 @@ pub mod http_client {
 
       public_key_value_list = if let Some(username) = username_opt {
         public_key_value_list.retain(|ssh_key_value| {
-          ssh_key_value["name"].as_str().unwrap().eq(username)
+          ssh_key_value
+            .get("name")
+            .and_then(Value::as_str)
+            .is_some_and(|v| v.eq(username))
         });
 
         public_key_value_list

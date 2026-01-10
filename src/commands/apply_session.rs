@@ -10,6 +10,7 @@ use crate::{
 };
 
 use k8s_openapi::chrono;
+use serde_json::Value;
 
 /// Creates a CFS session target dynamic
 /// Returns a tuple like (<cfs configuration name>, <cfs session name>)
@@ -95,14 +96,15 @@ pub async fn exec(
       // both hsm_group provided and ansible_limit provided --> check ansible_limit belongs to hsm_group
       xname_list = hsm_groups_node_list;
       // Check user has provided valid XNAMES
-      if !validate_xnames_format_and_membership_agaisnt_single_hsm(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        &xname_list,
-        hsm_group,
-      )
-      .await
+      if let Ok(false) =
+        validate_xnames_format_and_membership_agaisnt_single_hsm(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          &xname_list,
+          hsm_group,
+        )
+        .await
       {
         eprintln!("xname/s invalid. Exit");
         std::process::exit(1);
@@ -186,32 +188,24 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         &cfs_session
           .status
           .as_ref()
-          .unwrap()
-          .session
-          .as_ref()
-          .unwrap()
-          .status
-          .as_ref()
-          .unwrap()
-          .as_str(),
+          .and_then(|status| status.session.as_ref())
+          .and_then(|session| session.status.as_ref())
+          .map(String::as_str)
+          .unwrap(),
       ) && cfs_session
         .configuration
         .as_ref()
-        .unwrap()
-        .name
-        .as_ref()
-        .unwrap()
-        == cfs_configuration_name
+        .and_then(|configuration| configuration.name.as_ref())
+        .map(String::as_str)
+        == Some(&cfs_configuration_name)
     })
     .flat_map(|cfs_session| {
       cfs_session
         .ansible
         .as_ref()
+        .and_then(|ansible| ansible.limit.as_ref())
+        .map(|ansible_limit| ansible_limit.split(','))
         .unwrap()
-        .limit
-        .as_ref()
-        .unwrap()
-        .split(',')
     })
     .map(|xname| xname.trim())
     .collect(); // TODO: remove duplicates... sort() + dedup() ???
@@ -264,17 +258,16 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     )
     .await?;
 
-    let hsm_component_status_state = &hsm_component_status_rslt
-      // ["Components"]
-      // .as_array()
-      // .unwrap()
+    let hsm_component_status_state: &str = &hsm_component_status_rslt
       .first()
-      .unwrap()["State"];
+      .and_then(|v| v.get("State"))
+      .and_then(Value::as_str)
+      .unwrap();
 
     log::info!(
       "HSM component state for component {}: {}",
       xname,
-      hsm_component_status_state.as_str().unwrap()
+      hsm_component_status_state
     );
     log::info!(
       "Is component enabled for batched CFS: {}",
@@ -301,21 +294,16 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   .await?;
 
   // Update/PUT CFS configuration
-  let cfs_configuration_resp = cfs::configuration::http_client::v3::put(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    &cfs_configuration,
-    cfs_configuration_name,
-  )
-  .await;
-  let cfs_configuration_name = match cfs_configuration_resp {
-    Ok(_) => &cfs_configuration_resp.as_ref().unwrap().name,
-    Err(e) => {
-      eprintln!("{}", e);
-      std::process::exit(1);
-    }
-  };
+  let cfs_configuration_name: String =
+    cfs::configuration::http_client::v3::put(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      &cfs_configuration,
+      cfs_configuration_name,
+    )
+    .await?
+    .name;
 
   // Create dynamic CFS session
   let cfs_session_name = format!(
@@ -326,7 +314,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
 
   let session = CfsSessionPostRequest::new(
     cfs_session_name,
-    cfs_configuration_name,
+    &cfs_configuration_name,
     limit,
     ansible_verbosity,
     ansible_passthrough,
@@ -335,21 +323,14 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     None,
   );
 
-  let cfs_session_resp = cfs::session::post(
+  let cfs_session_name = cfs::session::post(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
     &session,
   )
-  .await;
+  .await?
+  .name;
 
-  let cfs_session_name = match cfs_session_resp {
-    Ok(_) => cfs_session_resp.as_ref().unwrap().name.as_ref().unwrap(),
-    Err(e) => {
-      eprintln!("{}", e);
-      std::process::exit(1);
-    }
-  };
-
-  Ok(String::from(cfs_session_name))
+  Ok(cfs_session_name)
 }

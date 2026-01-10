@@ -27,8 +27,7 @@ pub async fn get_images_and_details(
     shasta_root_cert,
     id_opt,
   )
-  .await
-  .unwrap();
+  .await?;
 
   let image_detail_vec_rslt: Result<Vec<(Image, String, String, bool)>, Error> =
     image::utils::get_image_cfs_config_name_hsm_group_name(

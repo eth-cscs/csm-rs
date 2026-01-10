@@ -12,8 +12,7 @@ use manta_backend_dispatcher::types::cfs::session::{
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsSessionGetResponse {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub name: Option<String>,
+  pub name: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub configuration: Option<Configuration>,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,6 +23,16 @@ pub struct CfsSessionGetResponse {
   pub status: Option<Status>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tags: Option<HashMap<String, String>>,
+}
+
+impl CfsSessionGetResponse {
+  pub fn configuration(&self) -> Option<&Configuration> {
+    self.configuration.as_ref()
+  }
+
+  pub fn tags(&self) -> Option<&HashMap<String, String>> {
+    self.tags.as_ref()
+  }
 }
 
 impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
@@ -57,10 +66,6 @@ impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
 }
 
 impl CfsSessionGetResponse {
-  pub fn name(&self) -> Option<&str> {
-    self.name.as_deref()
-  }
-
   /// Get start time
   pub fn get_start_time(&self) -> Option<String> {
     self.status.as_ref().and_then(|status| {
@@ -69,23 +74,6 @@ impl CfsSessionGetResponse {
         .as_ref()
         .and_then(|session| session.start_time.clone())
     })
-  }
-
-  /// Returns list of result_ids
-  #[deprecated(note = "Use results_id instead")]
-  pub fn get_result_id_vec(&self) -> Vec<String> {
-    if let Some(status) = &self.status {
-      status
-        .artifacts
-        .as_ref()
-        .unwrap_or(&Vec::new())
-        .into_iter()
-        .filter(|artifact| artifact.result_id.is_some())
-        .map(|artifact| artifact.result_id.clone().unwrap())
-        .collect()
-    } else {
-      Vec::new()
-    }
   }
 
   /// Returns list of result_ids
@@ -99,14 +87,6 @@ impl CfsSessionGetResponse {
         .filter_map(|artifact| artifact.result_id.as_deref())
     })
   }
-
-  /* /// Returns list of result_ids
-  #[deprecated(note = "Use first_result_id instead")]
-  pub fn get_first_result_id(&self) -> Option<String> {
-    CfsSessionGetResponse::get_result_id_vec(&self)
-      .first()
-      .cloned()
-  } */
 
   /// Returns list of result_ids
   pub fn first_result_id(&self) -> Option<&str> {
@@ -160,17 +140,12 @@ impl CfsSessionGetResponse {
   }
 
   pub fn is_success(&self) -> bool {
-    self
-      .status
-      .as_ref()
-      .unwrap()
-      .session
-      .as_ref()
-      .unwrap()
-      .succeeded
-      .as_ref()
-      .unwrap()
-      == "true"
+    self.status.as_ref().is_some_and(|status| {
+      status
+        .session
+        .as_ref()
+        .is_some_and(|session| session.succeeded == Some("true".to_string()))
+    })
   }
 }
 
@@ -239,7 +214,7 @@ pub struct Status {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub artifacts: Option<Vec<Artifact>>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub session: Option<Session>,
+  pub session: Option<Session>, // FIXME: make it none Optional
 }
 
 impl From<FrontEndStatus> for Status {
@@ -303,7 +278,7 @@ pub struct Session {
   pub completion_time: Option<String>,
   #[serde(rename = "startTime")]
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub start_time: Option<String>,
+  pub start_time: Option<String>, // FIXME: make it not Optional
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -433,19 +408,20 @@ impl CfsSessionPostRequest {
     let mut cfs_session = Self {
       name,
       configuration_name: configuration_name.to_string(),
-      ansible_limit: ansible_limit.map(|s| s.to_string()),
+      ansible_limit: ansible_limit.map(str::to_string),
       ansible_verbosity,
-      ansible_passthrough: ansible_passthrough.map(|s| s.to_string()),
+      ansible_passthrough: ansible_passthrough.map(str::to_string),
       ..Default::default()
     };
 
     if is_target_definition_image {
+      // CFS session to build an image
       let target_groups: Vec<Group> = groups_name
-        .unwrap()
+        .unwrap_or_default()
         .into_iter()
         .map(|group_name| Group {
           name: group_name.to_string(),
-          members: vec![base_image_id.as_ref().unwrap().to_string()],
+          members: vec![base_image_id.unwrap_or_default().to_string()],
         })
         .collect();
 

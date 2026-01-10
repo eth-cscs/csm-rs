@@ -23,9 +23,7 @@ pub async fn get(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -47,7 +45,7 @@ pub async fn get(
       .map_err(|error| Error::NetError(error))?;
 
     serde_json::from_value::<Vec<Value>>(resp_payload["transitions"].clone())
-      .map_err(|error| Error::SerdeError(error))
+      .map_err(|error| Error::SerdeJsonError(error))
   } else {
     let payload = response
       .json::<Value>()
@@ -73,9 +71,7 @@ pub async fn get_by_id(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -193,7 +189,10 @@ pub async fn post_block(
   )
   .await?;
 
-  let transition_id = node_reset["transitionID"].as_str().unwrap();
+  let transition_id = node_reset
+    .get("transitionID")
+    .and_then(Value::as_str)
+    .unwrap();
 
   log::info!("PCS transition ID: {}", transition_id);
 
@@ -237,50 +236,38 @@ pub async fn wait_to_complete(
     )
     .await?;
 
-    transition_status = transition["transitionStatus"].as_str().unwrap();
+    transition_status = transition
+      .get("transitionStatus")
+      .and_then(Value::as_str)
+      .unwrap();
 
-    let operation = transition["operation"].as_str().unwrap();
+    let operation =
+      transition.get("operation").and_then(Value::as_str).unwrap();
 
     let failed = transition
       .pointer("/taskCounts/failed")
-      .unwrap()
-      .as_number()
+      .and_then(Value::as_number)
       .unwrap();
 
     let in_progress = transition
       .pointer("/taskCounts/in-progress")
-      .unwrap()
-      .as_number()
+      .and_then(Value::as_number)
       .unwrap();
-
-    /* let new = transition
-    .pointer("/taskCounts/new")
-    .unwrap()
-    .as_number()
-    .unwrap(); */
 
     let succeeded = transition
       .pointer("/taskCounts/succeeded")
-      .unwrap()
-      .as_number()
+      .and_then(Value::as_number)
       .unwrap();
 
     let total = transition
       .pointer("/taskCounts/total")
-      .unwrap()
-      .as_number()
+      .and_then(Value::as_number)
       .unwrap();
 
-    /* let un_supported = transition
-    .pointer("/taskCounts/un-supported")
-    .unwrap()
-    .as_number()
-    .unwrap(); */
-
     eprintln!(
-                    "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
-                    operation, transition_status, failed, in_progress, succeeded, total, i, max_attempt
-                );
+      "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
+      operation, transition_status, failed, in_progress, succeeded, total, i, max_attempt
+    );
 
     tokio::time::sleep(time::Duration::from_secs(3)).await;
     i += 1;

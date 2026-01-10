@@ -59,11 +59,11 @@ pub async fn get(
   if status.is_success() {
     if configuration_name_opt.is_some() {
       let payload = serde_json::from_slice::<CfsConfigurationResponse>(&bytes)
-        .map_err(Error::SerdeError)?;
+        .map_err(Error::SerdeJsonError)?;
       Ok(vec![payload])
     } else {
       let payload =
-        serde_json::from_slice(&bytes).map_err(Error::SerdeError)?;
+        serde_json::from_slice(&bytes).map_err(Error::SerdeJsonError)?;
       Ok(payload)
     }
   } else {

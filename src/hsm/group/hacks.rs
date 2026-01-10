@@ -48,7 +48,8 @@ pub fn filter_keycloak_roles(keycloak_roles: &[&str]) -> Vec<String> {
   keycloak_roles
     .iter()
     .filter(|role| !KEYCLOAK_ROLES_TO_IGNORE.contains(&role))
-    .map(|role| role.to_string())
+    .cloned()
+    .map(str::to_string)
     .collect()
 }
 
@@ -74,7 +75,8 @@ pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
     .filter(|hsm_group_name| {
       !ROLES.contains(&hsm_group_name) && !SUBROLES.contains(&hsm_group_name)
     })
-    .map(|hsm_group_name| hsm_group_name.to_string())
+    .cloned()
+    .map(str::to_string)
     .collect()
 }
 

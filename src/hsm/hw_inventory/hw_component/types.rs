@@ -174,45 +174,69 @@ impl Into<FrontEndNodeSummary> for NodeSummary {
 
 impl NodeSummary {
   pub fn from_csm_value(hw_artifact_value: Value) -> Self {
-    let processors = hw_artifact_value["Processors"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|processor_value| {
-        ArtifactSummary::from_processor_value(processor_value.clone())
+    let processors = hw_artifact_value
+      .get("Processors")
+      .and_then(Value::as_array)
+      .map(|proc_vec| {
+        proc_vec
+          .iter()
+          .map(|processor_value| {
+            ArtifactSummary::from_processor_value(processor_value.clone())
+          })
+          .collect()
       })
-      .collect();
+      .unwrap_or_default();
 
-    let memory = hw_artifact_value["Memory"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|memory_value| {
-        ArtifactSummary::from_memory_value(memory_value.clone())
+    let memory = hw_artifact_value
+      .get("Memory")
+      .and_then(Value::as_array)
+      .map(|mem_vec| {
+        mem_vec
+          .iter()
+          .map(|memory_value| {
+            ArtifactSummary::from_memory_value(memory_value.clone())
+          })
+          .collect()
       })
-      .collect();
+      .unwrap_or_default();
 
-    let node_accels = hw_artifact_value["NodeAccels"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|nodeaccel_value| {
-        ArtifactSummary::from_nodeaccel_value(nodeaccel_value.clone())
+    let node_accels = hw_artifact_value
+      .get("NodeAccels")
+      .and_then(Value::as_array)
+      .map(|nodeaccel_vec| {
+        nodeaccel_vec
+          .iter()
+          .map(|nodeaccel_value| {
+            ArtifactSummary::from_nodeaccel_value(nodeaccel_value.clone())
+          })
+          .collect()
       })
-      .collect();
+      .unwrap_or_default();
 
-    let node_hsn_nics = hw_artifact_value["NodeHsnNics"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|nodehsnnic_value| {
-        ArtifactSummary::from_nodehsnnics_value(nodehsnnic_value.clone())
+    let node_hsn_nics = hw_artifact_value
+      .get("NodeHsnNics")
+      .and_then(Value::as_array)
+      .map(|hw_artifact_vec| {
+        hw_artifact_vec
+          .iter()
+          .map(|nodehsnnic_value| {
+            ArtifactSummary::from_nodehsnnics_value(nodehsnnic_value.clone())
+          })
+          .collect()
       })
-      .collect();
+      .unwrap_or_default();
 
     Self {
-      xname: hw_artifact_value["ID"].as_str().unwrap().to_string(),
-      r#type: hw_artifact_value["Type"].as_str().unwrap().to_string(),
+      xname: hw_artifact_value
+        .get("ID")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap(),
+      r#type: hw_artifact_value
+        .get("Type")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap(),
       processors,
       memory,
       node_accels,
@@ -251,49 +275,76 @@ impl Into<FrontEndArtifactSummary> for ArtifactSummary {
 impl ArtifactSummary {
   fn from_processor_value(processor_value: Value) -> Self {
     Self {
-      xname: processor_value["ID"].as_str().unwrap().to_string(),
-      r#type: ArtifactType::from_str(processor_value["Type"].as_str().unwrap())
+      xname: processor_value
+        .get("ID")
+        .and_then(Value::as_str)
+        .map(str::to_string)
         .unwrap(),
+      r#type: ArtifactType::from_str(
+        processor_value.get("Type").and_then(Value::as_str).unwrap(),
+      )
+      .unwrap(),
       info: processor_value
         .pointer("/PopulatedFRU/ProcessorFRUInfo/Model")
-        .map(|model| model.as_str().unwrap().to_string()),
+        .and_then(Value::as_str)
+        .map(str::to_string),
     }
   }
 
   fn from_memory_value(memory_value: Value) -> Self {
     Self {
-      xname: memory_value["ID"].as_str().unwrap().to_string(),
-      r#type: ArtifactType::from_str(memory_value["Type"].as_str().unwrap())
+      xname: memory_value
+        .get("ID")
+        .and_then(Value::as_str)
+        .map(str::to_string)
         .unwrap(),
+      r#type: ArtifactType::from_str(
+        memory_value.get("Type").and_then(Value::as_str).unwrap(),
+      )
+      .unwrap(),
       info: memory_value
         .pointer("/PopulatedFRU/MemoryFRUInfo/CapacityMiB")
-        .map(|capacity_mib| {
-          capacity_mib.as_number().unwrap().to_string() + " MiB"
-        }),
+        .and_then(Value::as_number)
+        .map(|v| v.to_string() + " MiB"),
     }
   }
 
   fn from_nodehsnnics_value(nodehsnnic_value: Value) -> Self {
     Self {
-      xname: nodehsnnic_value["ID"].as_str().unwrap().to_string(),
+      xname: nodehsnnic_value
+        .get("ID")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap(),
       r#type: ArtifactType::from_str(
-        nodehsnnic_value["Type"].as_str().unwrap(),
+        nodehsnnic_value
+          .get("Type")
+          .and_then(Value::as_str)
+          .unwrap(),
       )
       .unwrap(),
       info: nodehsnnic_value
         .pointer("/NodeHsnNicLocationInfo/Description")
-        .map(|description| description.as_str().unwrap().to_string()),
+        .and_then(Value::as_str)
+        .map(str::to_string),
     }
   }
 
   fn from_nodeaccel_value(nodeaccel_value: Value) -> Self {
     Self {
-      xname: nodeaccel_value["ID"].as_str().unwrap().to_string(),
-      r#type: ArtifactType::from_str(nodeaccel_value["Type"].as_str().unwrap())
+      xname: nodeaccel_value
+        .get("ID")
+        .and_then(Value::as_str)
+        .map(str::to_string)
         .unwrap(),
+      r#type: ArtifactType::from_str(
+        nodeaccel_value.get("Type").and_then(Value::as_str).unwrap(),
+      )
+      .unwrap(),
       info: nodeaccel_value
         .pointer("/PopulatedFRU/NodeAccelFRUInfo/Model")
-        .map(|model| model.as_str().unwrap().to_string()),
+        .and_then(Value::as_str)
+        .map(str::to_string),
     }
   }
 }

@@ -55,6 +55,32 @@ pub async fn get_all_nodes(
   .await
 }
 
+pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
+  component_vec.retain(|component| {
+    if let Some(xname) = &component.id {
+      xname_list.contains(xname)
+    } else {
+      false
+    }
+  });
+}
+
+pub async fn get_and_filter(
+  auth_token: &str,
+  base_url: &str,
+  root_cert: &[u8],
+  xname_list: &[String],
+) -> Result<Vec<Component>, Error> {
+  let mut component_vec = get_all(base_url, root_cert, auth_token, None)
+    .await?
+    .components
+    .unwrap_or_default();
+
+  filter(&mut component_vec, xname_list);
+
+  Ok(component_vec)
+}
+
 /// Get all components
 /// NOTE: nid is a comma separated list of NIDs like "1,2,3". Value "nid0001,nid0002,nid0003" is not
 /// valid values

@@ -91,23 +91,6 @@ pub async fn get_data_to_delete(
 
   // Filter CFS configurations related to HSM group, configuration name or configuration name
   // pattern
-  /* cfs::configuration::utils::filter(
-    &mut cfs_configuration_vec,
-    &xname_from_groups_vec
-      .iter()
-      .map(|s| s.as_str())
-      .collect::<Vec<&str>>(),
-    &mut Vec::new(),
-    &mut Vec::new(),
-    &Vec::new(),
-    configuration_name_pattern_opt,
-    hsm_name_available_vec,
-    since_opt,
-    until_opt,
-    None,
-    keep_generic_sessions,
-  )?; */
-
   cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
     &xname_from_groups_vec
@@ -142,7 +125,7 @@ pub async fn get_data_to_delete(
   let mut cfs_configuration_name_vec: Vec<String> =
     cfs_configuration_name_from_bos_sessiontemplate_value_iter
       .chain(cfs_configuration_name_from_cfs_sessions)
-      .map(|s| s.to_string())
+      .map(str::to_string)
       .collect();
 
   cfs_configuration_name_vec.sort();
@@ -157,7 +140,7 @@ pub async fn get_data_to_delete(
   // Get image ids from CFS sessions related to CFS configuration to delete
   let mut image_id_vec: Vec<String> =
     cfs::session::utils::images_id_from_cfs_session(&cfs_session_to_delete_vec)
-      .map(|s| s.to_string())
+      .map(str::to_string)
       .collect();
 
   log::info!("Image ids to delete: {:?}", image_id_vec);
@@ -173,7 +156,7 @@ pub async fn get_data_to_delete(
     .filter(|cfs_session| cfs_session.first_result_id().is_some())
     .map(|cfs_session| {
       (
-        cfs_session.name().unwrap_or_default().to_string(),
+        cfs_session.name.clone(),
         cfs_session
           .configuration_name()
           .unwrap_or_default()

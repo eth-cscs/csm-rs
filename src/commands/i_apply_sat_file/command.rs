@@ -1,5 +1,7 @@
 use std::{collections::HashMap, time::Instant};
 
+use serde_yaml::Value;
+
 use crate::{
   cfs::{
     self,
@@ -42,30 +44,32 @@ pub async fn exec(
   // Get data from SAT YAML file
   //
   // Get hardware pattern from SAT YAML file
-  let hardware_yaml_value_vec_opt =
-    sat_template_file_yaml["hardware"].as_sequence();
+  let hardware_yaml_value_vec_opt = sat_template_file_yaml
+    .get("hardware")
+    .and_then(Value::as_sequence);
 
   // Get CFS configurations from SAT YAML file
-  let configuration_yaml_vec_opt =
-    sat_template_file_yaml["configurations"].as_sequence();
+  let configuration_yaml_vec_opt = sat_template_file_yaml
+    .get("configurations")
+    .and_then(Value::as_sequence);
 
   // Get images from SAT YAML file
-  let image_yaml_vec_opt = sat_template_file_yaml["images"].as_sequence();
+  let image_yaml_vec_opt = sat_template_file_yaml
+    .get("images")
+    .and_then(Value::as_sequence);
 
   // Get images from SAT YAML file
-  let bos_session_template_yaml_vec_opt =
-    sat_template_file_yaml["session_templates"].as_sequence();
+  let bos_session_template_yaml_vec_opt = sat_template_file_yaml
+    .get("session_templates")
+    .and_then(Value::as_sequence);
 
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
-  let kube_client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-    .await
-    .unwrap();
+  let kube_client =
+    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets).await?;
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
-    kubernetes::try_get_configmap(kube_client, "cray-product-catalog")
-      .await
-      .unwrap();
+    kubernetes::try_get_configmap(kube_client, "cray-product-catalog").await?;
 
   // Get data from CSM
   //
@@ -136,14 +140,17 @@ pub async fn exec(
   //
   if let Some(hw_component_pattern_vec) = hardware_yaml_value_vec_opt {
     for hw_component_pattern in hw_component_pattern_vec {
-      let target_hsm_group_name =
-        hw_component_pattern["target"].as_str().unwrap();
-      let parent_hsm_group_name =
-        hw_component_pattern["parent"].as_str().unwrap();
+      let target_hsm_group_name = hw_component_pattern
+        .get("target")
+        .and_then(Value::as_str)
+        .unwrap();
+      let parent_hsm_group_name = hw_component_pattern
+        .get("parent")
+        .and_then(Value::as_str)
+        .unwrap();
 
-      if let Some(pattern) = hw_component_pattern
-        .get("pattern")
-        .and_then(|pattern_value| pattern_value.as_str())
+      if let Some(pattern) =
+        hw_component_pattern.get("pattern").and_then(Value::as_str)
       {
         log::info!("Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'", pattern, target_hsm_group_name, parent_hsm_group_name);
         // When applying a SAT file, I'm assuming the user doesn't want to create new HSM groups or delete empty parent hsm groups
@@ -166,7 +173,7 @@ pub async fn exec(
         }
       } else if let Some(nodes) = hw_component_pattern
         .get("nodespattern")
-        .and_then(|pattern_value| pattern_value.as_str())
+        .and_then(Value::as_str)
       {
         let hsm_group_members_vec: Vec<String> =
           crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
@@ -176,17 +183,10 @@ pub async fn exec(
             &[target_hsm_group_name],
           )
           .await?;
-        /* hsm::group::utils::get_member_vec_from_hsm_group_name(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            target_hsm_group_name,
-        )
-        .await; */
         let new_target_hsm_group_members_vec: Vec<String> = nodes
           .split(',')
           .filter(|node| !hsm_group_members_vec.contains(&node.to_string()))
-          .map(|node| node.to_string())
+          .map(str::to_string)
           .collect();
 
         log::info!(
@@ -216,15 +216,6 @@ pub async fn exec(
               .collect::<Vec<&str>>(),
           )
           .await?;
-          /* let _ = hsm::group::utils::update_hsm_group_members(
-              shasta_token,
-              shasta_base_url,
-              shasta_root_cert,
-              target_hsm_group_name,
-              &hsm_group_members_vec,
-              &new_target_hsm_group_members_vec,
-          )
-          .await; */
         }
       }
     }
@@ -277,11 +268,9 @@ pub async fn exec(
       shasta_root_cert,
       vault_base_url,
       site_name,
-      // vault_secret_path,
-      // vault_role_id,
       k8s_api_url,
       &mut ref_name_processed_hashmap,
-      &image_yaml_vec_opt.unwrap_or(&Vec::new()).to_vec(),
+      image_yaml_vec_opt.unwrap_or(&Vec::new()),
       &cray_product_catalog,
       ansible_verbosity_opt,
       ansible_passthrough_opt,
@@ -305,10 +294,8 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     ref_name_processed_hashmap,
-    // hsm_group_param_opt,
     hsm_group_available_vec,
     sat_template_file_yaml,
-    // &tag,
     reboot,
     dry_run,
   )

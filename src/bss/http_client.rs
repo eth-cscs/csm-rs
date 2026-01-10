@@ -24,9 +24,7 @@ pub async fn get(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -171,9 +169,7 @@ pub async fn put(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -183,7 +179,7 @@ pub async fn put(
 
   log::debug!(
     "request payload:\n{}",
-    serde_json::to_string_pretty(&boot_parameters).unwrap()
+    serde_json::to_string_pretty(&boot_parameters)?
   );
 
   let response = client
@@ -216,9 +212,7 @@ pub async fn patch(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;

@@ -132,7 +132,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     )
     .await?;
 
-  bos::template::utils::filter(
+  let _ = bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
     None,
     hsm_group_name_vec,
@@ -168,7 +168,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   let mut image_id_cfs_configuration_from_cfs_session: Vec<(String, String, Vec<String>)> =
         crate::cfs::session::utils::get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
             &cfs_session_vec,
-        );
+        )?;
 
   image_id_cfs_configuration_from_cfs_session
     .retain(|(image_id, _cfs_configuration, _hsm_groups)| !image_id.is_empty());
@@ -299,7 +299,7 @@ pub async fn get_image_available_vec(
     .await?;
 
   // Filter BOS sessiontemplates to the ones the user has access to
-  bos::template::utils::filter(
+  let _ = bos::template::utils::filter(
     &mut bos_sessiontemplate_vec,
     None,
     hsm_name_available_vec,
@@ -351,7 +351,7 @@ pub async fn get_image_available_vec(
   let mut image_id_cfs_configuration_from_cfs_session_vec: Vec<(String, String, Vec<String>)> =
         crate::cfs::session::utils::get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
             &cfs_session_vec,
-        );
+        )?;
 
   image_id_cfs_configuration_from_cfs_session_vec
     .retain(|(image_id, _cfs_confguration, _hsm_groups)| !image_id.is_empty());

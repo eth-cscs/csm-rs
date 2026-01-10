@@ -2,8 +2,9 @@ use core::time;
 use serde_json::Value;
 use std::io::Write;
 
-use crate::capmc::http_client::{
-  node_power_off, node_power_on, node_power_status,
+use crate::{
+  capmc::http_client::{node_power_off, node_power_on, node_power_status},
+  error::Error,
 };
 
 pub async fn wait_nodes_to_power_on(
@@ -12,22 +13,25 @@ pub async fn wait_nodes_to_power_on(
   shasta_root_cert: &[u8],
   xname_vec: Vec<String>,
   reason: Option<String>,
-) -> Result<Value, reqwest::Error> {
+) -> Result<Value, Error> {
   let mut node_status_value: Value = node_power_status::post(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
     &xname_vec,
   )
-  .await
-  .unwrap();
+  .await?;
 
-  let mut node_off_vec: Vec<String> = node_status_value["off"]
-    .as_array()
-    .unwrap_or(&Vec::new())
-    .iter()
-    .map(|xname: &Value| xname.as_str().unwrap().to_string())
-    .collect();
+  let mut node_off_vec: Vec<String> = node_status_value
+    .get("off")
+    .and_then(Value::as_array)
+    .map(|node_status_off| {
+      node_status_off
+        .iter()
+        .filter_map(|xname: &Value| xname.as_str().map(str::to_string))
+        .collect()
+    })
+    .unwrap_or_default();
 
   // Check all nodes are OFF
   let mut i = 0;
@@ -51,15 +55,18 @@ pub async fn wait_nodes_to_power_on(
       shasta_root_cert,
       &xname_vec,
     )
-    .await
-    .unwrap();
+    .await?;
 
-    node_off_vec = node_status_value["off"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|xname: &Value| xname.as_str().unwrap().to_string())
-      .collect();
+    node_off_vec = node_status_value
+      .get("off")
+      .and_then(Value::as_array)
+      .map(|node_status_off| {
+        node_status_off
+          .iter()
+          .filter_map(|xname: &Value| xname.as_str().map(str::to_string))
+          .collect()
+      })
+      .unwrap_or_default();
 
     print!(
             "\rWaiting nodes to power on. Trying again in {} seconds. Attempt {} of {}.",
@@ -82,7 +89,7 @@ pub async fn wait_nodes_to_power_off(
   xname_vec: Vec<String>,
   reason_opt: Option<String>,
   force: bool,
-) -> Result<Value, reqwest::Error> {
+) -> Result<Value, Error> {
   let mut node_off_vec: Vec<String> = Vec::new();
   let mut node_status_value: Value = serde_json::Value::Null;
 
@@ -100,7 +107,7 @@ pub async fn wait_nodes_to_power_off(
       reason_opt.clone(),
       force,
     )
-    .await;
+    .await?;
 
     tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
 
@@ -110,22 +117,25 @@ pub async fn wait_nodes_to_power_off(
       shasta_root_cert,
       &xname_vec,
     )
-    .await
-    .unwrap();
+    .await?;
 
-    node_off_vec = node_status_value["off"]
-      .as_array()
-      .unwrap_or(&Vec::new())
-      .iter()
-      .map(|xname: &Value| xname.as_str().unwrap().to_string())
-      .collect();
+    node_off_vec = node_status_value
+      .get("off")
+      .and_then(Value::as_array)
+      .map(|node_status_off| {
+        node_status_off
+          .iter()
+          .map(|xname: &Value| xname.as_str().map(str::to_string).unwrap())
+          .collect()
+      })
+      .unwrap_or_default();
 
     print!(
-            "\rWaiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
-            delay_secs,
-            i + 1,
-            max
-        );
+       "\rWaiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
+       delay_secs,
+       i + 1,
+       max
+    );
     std::io::stdout().flush().unwrap();
 
     i += 1;

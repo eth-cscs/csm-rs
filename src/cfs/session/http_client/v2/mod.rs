@@ -7,6 +7,7 @@ use crate::error::Error;
 use super::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
+// FIX: change parameters types from '&String' to '&str'
 pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -76,11 +77,11 @@ pub async fn get(
   if status.is_success() {
     if session_name_opt.is_some() {
       let payload = serde_json::from_slice::<CfsSessionGetResponse>(&bytes)
-        .map_err(Error::SerdeError)?;
+        .map_err(Error::SerdeJsonError)?;
       Ok(vec![payload])
     } else {
       let payload =
-        serde_json::from_slice(&bytes).map_err(Error::SerdeError)?;
+        serde_json::from_slice(&bytes).map_err(Error::SerdeJsonError)?;
       Ok(payload)
     }
   } else {
@@ -177,9 +178,7 @@ pub async fn delete(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;

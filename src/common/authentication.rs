@@ -16,9 +16,7 @@ pub async fn validate_api_token(
   let client = if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client_builder.proxy(socks5proxy).build()?
   } else {
     client_builder.build()?
@@ -58,9 +56,7 @@ pub async fn get_token_from_shasta_endpoint(
   // Build client
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -81,9 +77,10 @@ pub async fn get_token_from_shasta_endpoint(
       .await?
       .error_for_status()?
       .json::<Value>()
-      .await?["access_token"]
-      .as_str()
-      .unwrap()
-      .to_string(),
+      .await?
+      .get("access_token")
+      .and_then(Value::as_str)
+      .map(str::to_string)
+      .unwrap(),
   )
 }

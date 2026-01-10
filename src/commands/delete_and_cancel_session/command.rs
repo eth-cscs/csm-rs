@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 use crate::{
   bss::types::BootParameters,
   cfs::{
@@ -23,70 +25,9 @@ pub async fn exec(
   bos_bootparameters_vec: &[BootParameters],
   dry_run: bool,
 ) -> Result<(), Error> {
-  let cfs_session_name = cfs_session
-    .name
-    .as_ref()
-    .ok_or_else(|| Error::Message("CFS session name is missing".to_string()))?;
+  let cfs_session_name = &cfs_session.name;
 
   log::debug!("Deleting session '{}'", cfs_session_name);
-
-  /* // Get collectives (CFS configuration, CFS session, BOS session template, IMS image and CFS component)
-  let start = Instant::now();
-  log::info!("Fetching data from the backend...");
-  let (mut cfs_session_vec, cfs_component_vec, bss_bootparameters_vec) = tokio::try_join!(
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-    ),
-    cfs::component::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-    ),
-    bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
-  )?;
-  let duration = start.elapsed();
-  log::info!(
-    "Time elapsed to fetch information from backend: {:?}",
-    duration
-  ); */
-
-  // Validate:
-  // - Check CFS session belongs to a cluster available to the user
-  // - Check CFS session to delete exists
-  // - CFS configuration related to CFS session is not being used to create an image
-  // - CFS configuration related to CFS session is not a desired configuration
-  //
-  // Get CFS session to delete
-  // Filter CFS sessions based on use input
-  // let mut cfs_session_vec = cfs_session_vec_opt.unwrap_or_default();
-
-  // Check CFS session belongs to a cluster the user has access to (filter sessions by HSM
-  // group)
-  /* cfs::session::utils::filter_by_hsm(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    &mut cfs_session_vec,
-    &hsm_group_available_vec,
-    None,
-    false,
-  )
-  .await?;
-
-  // Check CFS session to delete exists (filter sessions by name)
-  let cfs_session = cfs_session_vec
-    .iter()
-    .find(|cfs_session| {
-      cfs_session.name.eq(&Some(cfs_session_name.to_string()))
-    })
-    .ok_or_else(|| {
-      Error::Message(format!(
-        "CFS session '{}' not found. Exit",
-        cfs_session_name
-      ))
-    })?; */
 
   // Get xnames related to CFS session to delete:
   // - xnames belonging to HSM group related to CFS session
@@ -115,8 +56,9 @@ pub async fn exec(
     )
     .await?;
 
-    let retry_policy = cfs_global_options["default_batcher_retry_policy"]
-      .as_u64()
+    let retry_policy = cfs_global_options
+      .get("default_batcher_retry_policy")
+      .and_then(Value::as_u64)
       .unwrap();
 
     cancel_session(
@@ -134,24 +76,6 @@ pub async fn exec(
     let image_created_by_cfs_session_vec: Vec<&str> =
       cfs_session.results_id().collect();
     if !image_created_by_cfs_session_vec.is_empty() {
-      // if !assume_yes {
-      //   // Ask user for confirmation
-      //   let user_msg = format!(
-      //               "Images listed below which will get deleted:\n{}\nDo you want to continue?",
-      //               image_created_by_cfs_session_vec.join("\n"),
-      //           );
-      //   if Confirm::with_theme(&ColorfulTheme::default())
-      //     .with_prompt(user_msg)
-      //     .interact()
-      //     .unwrap()
-      //   {
-      //     log::info!("Continue",);
-      //   } else {
-      //     println!("Cancelled by user. Aborting.");
-      //     return Ok(());
-      //   }
-      // }
-
       // Delete images
       delete_images(
         shasta_token,
@@ -244,18 +168,19 @@ async fn cancel_session(
 
   // Update CFS component error_count
   let cfs_component_vec: Vec<Component> = cfs_component_vec_opt
-    .expect("No CFS components")
-    .iter()
-    .filter(|cfs_component| {
-      xname_vec.contains(
-        &cfs_component
-          .id
-          .as_ref()
-          .expect("CFS component found but it has no id???"),
-      )
+    .map(|cfs_component_vec| {
+      cfs_component_vec
+        .iter()
+        .filter(|cfs_component| {
+          cfs_component
+            .id
+            .as_ref()
+            .is_some_and(|id| xname_vec.contains(&id))
+        })
+        .cloned()
+        .collect()
     })
-    .cloned()
-    .collect();
+    .ok_or_else(|| Error::Message("No CFS components".to_string()))?;
 
   log::info!(
     "Update error count on nodes {:?} to {}",

@@ -65,7 +65,7 @@ pub async fn patch(
   let ip_address = ip_address_mapping.0;
   let network = ip_address_mapping.1;
   let cei = ComponentEthernetInterface {
-    description: description.map(|value| value.to_string()),
+    description: description.map(str::to_string),
     ip_addresses: vec![IpAddressMapping {
       ip_address: ip_address.to_string(),
       network: Some(network.to_string()),

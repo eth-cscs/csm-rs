@@ -14,6 +14,7 @@ use crate::{
     },
     session::http_client::v2::types::CfsSessionPostRequest,
   },
+  commands::i_apply_sat_file::utils::sessiontemplate::Arch,
   common,
   error::Error,
   hsm,
@@ -62,19 +63,15 @@ impl SatFile {
           return Err(Error::Message(
             "ERROR - 'images' section missing in SAT file".to_string(),
           ));
-          /* eprintln!("ERROR - 'images' section missing in SAT file");
-          std::process::exit(1); */
         }
       };
 
       // Remove configurations not used by any image
-      self
-        .configurations
-        .as_mut()
-        .unwrap_or(&mut Vec::new())
-        .retain(|configuration| {
+      self.configurations.as_mut().map(|configuration_vec| {
+        configuration_vec.retain(|configuration| {
           configuration_name_image_vec.contains(&configuration.name)
-        });
+        })
+      });
 
       // Remove section "session_templates"
       self.session_templates = None;
@@ -100,27 +97,21 @@ impl SatFile {
               "ERROR - 'session_templates' section not defined in SAT file"
                 .to_string(),
             ));
-            /* eprintln!("ERROR - 'session_templates' section not defined in SAT file");
-            std::process::exit(1); */
           }
         };
 
       // Remove configurations not used by any sessiontemplate
-      /* self.configurations
-      .as_mut()
-      .unwrap_or(&mut Vec::new())
-      .retain(|configuration| {
-          configuration_name_sessiontemplate_vec.contains(&configuration.name)
-      }); */
-
       if let Some(&[_]) = self.configurations.as_deref() {
         self
           .configurations
           .as_mut()
-          .unwrap_or(&mut Vec::new())
-          .retain(|configuration| {
-            configuration_name_sessiontemplate_vec.contains(&configuration.name)
+          .map(|configuration_vec| {
+            configuration_vec.retain(|configuration| {
+              configuration_name_sessiontemplate_vec
+                .contains(&configuration.name)
+            })
           })
+          .unwrap_or_default()
       } else {
         self.configurations = None;
       }
@@ -128,24 +119,29 @@ impl SatFile {
       let image_name_sessiontemplate_vec: Vec<String> = self
         .session_templates
         .as_ref()
-        .unwrap_or(&Vec::new())
-        .iter()
-        .filter_map(|sessiontemplate| match &sessiontemplate.image {
-          sessiontemplate::Image::ImageRef(name) => Some(name),
-          sessiontemplate::Image::Ims { ims } => match ims {
-            sessiontemplate::ImsDetails::Name { name } => Some(name),
-            sessiontemplate::ImsDetails::Id { .. } => None,
-          },
+        .map(|session_template_vec| {
+          {
+            session_template_vec.iter().filter_map(|sessiontemplate| {
+              match &sessiontemplate.image {
+                sessiontemplate::Image::ImageRef(name) => Some(name),
+                sessiontemplate::Image::Ims { ims } => match ims {
+                  sessiontemplate::ImsDetails::Name { name } => Some(name),
+                  sessiontemplate::ImsDetails::Id { .. } => None,
+                },
+              }
+            })
+          }
+          .cloned()
+          .collect()
         })
-        .cloned()
-        .collect();
+        .unwrap_or_default();
 
       // Remove images not used by any sessiontemplate
-      self
-        .images
-        .as_mut()
-        .unwrap_or(&mut Vec::new())
-        .retain(|image| image_name_sessiontemplate_vec.contains(&image.name));
+      self.images.as_mut().map(|image_vec| {
+        image_vec.retain(|sat_image| {
+          image_name_sessiontemplate_vec.contains(&sat_image.name)
+        })
+      });
 
       if self.images.as_ref().is_some_and(|images| images.is_empty()) {
         self.images = None;
@@ -249,7 +245,7 @@ impl TryFrom<SessionTemplate> for BosSessionTemplate {
         rootfs_provider: boot_set.rootfs_provider,
         rootfs_provider_passthrough: boot_set.rootfs_provider_passthrough,
         cfs: Some(b_st_cfs.clone()),
-        arch: boot_set.arch.map(|value| value.to_string()),
+        arch: boot_set.arch.as_ref().map(Arch::to_string),
       };
 
       boot_set_map.insert(property, boot_set);
@@ -443,238 +439,7 @@ pub mod sat_file_image_old {
     version: String,
     r#type: String,
   }
-
-  /* pub struct SatFileImage {
-      pub name: String,
-      pub ims: Ims,
-      pub configuration: Option<String>,
-      pub configuration_group_names: Option<Vec<String>>,
-      pub ref_name: Option<String>,
-      pub description: Option<String>,
-  } */
 }
-
-/* /// Merge 2 yamls, 'b' values will overwrite 'a' values
-/// eg:
-/// having a:
-///
-/// ```
-/// key_1
-///   key_1_1: value_1_1
-///   key_1_2: value_1_2
-/// key_2: value_2
-/// key_3: value_3
-/// ```
-/// and b:
-/// ```
-/// key_1
-///   key_1_1: new_value_1_1
-///   key_1_2: value_1_2
-///   key_1_3: new_value_1_3
-/// key_2: new_value_2
-/// key_4: new_value_4
-/// ```
-/// would convert a into:
-/// ```
-/// key_1
-///   key_1_1: new_value_1_1
-///   key_1_3: new_value_1_3
-/// key_2: new_value_2
-/// key_3: value_3
-/// key_4: new_value_4
-/// ```
-fn merge_yaml(base: Value, merge: Value) -> Option<Value> {
-    match (base, merge) {
-        (Value::Mapping(mut base_map), Value::Mapping(merge_map)) => {
-            for (key, value) in merge_map {
-                if let Some(base_value) = base_map.get_mut(&key) {
-                    *base_value = merge_yaml(base_value.clone(), value)?;
-                } else {
-                    base_map.insert(key, value);
-                }
-            }
-            Some(Value::Mapping(base_map))
-        }
-        (Value::Sequence(mut base_seq), Value::Sequence(merge_seq)) => {
-            base_seq.extend(merge_seq);
-            Some(Value::Sequence(base_seq))
-        }
-        (_, merge) => Some(merge),
-    }
-} */
-
-/* /// Convert a String dot notation expression into a serde_yaml::Value.
-/// eg:
-/// dot notation input like:
-/// ```
-/// key_1.key_2.key_3=1
-/// ````
-/// would result in a serde_yaml::Value equivalent to:
-/// ```
-/// key_1
-///   key_2
-///     key_3: 1
-/// ```
-fn dot_notation_to_yaml(dot_notation: &str) -> Result<serde_yaml::Value, Error> {
-    let parts: Vec<&str> = dot_notation.split('=').collect();
-    if parts.len() != 2 {
-        return Err(Error::Message("Invalid format".to_string()));
-    }
-
-    let keys: Vec<&str> = parts[0].trim().split('.').collect();
-    let value_str = parts[1].trim().trim_matches('"'); // Remove leading and trailing quotes
-    let value: Value = Value::String(value_str.to_string());
-
-    let mut root = Value::Mapping(Mapping::new());
-    let mut current_level = &mut root;
-
-    for (i, &key) in keys.iter().enumerate() {
-        if i == keys.len() - 1 {
-            // Last key, assign the value
-            if let Value::Mapping(map) = current_level {
-                map.insert(Value::String(key.to_string()), value.clone());
-            }
-        } else {
-            // Not the last key, create or use existing map
-            let next_level = if let Value::Mapping(map) = current_level {
-                if map.contains_key(&Value::String(key.to_string())) {
-                    // Use existing map
-                    map.get_mut(&Value::String(key.to_string())).unwrap()
-                } else {
-                    // Create new map and insert
-                    map.insert(
-                        Value::String(key.to_string()),
-                        Value::Mapping(Mapping::new()),
-                    );
-                    map.get_mut(&Value::String(key.to_string())).unwrap()
-                }
-            } else {
-                // In case the structure is not as expected; should not happen in this logic
-                return Err(Error::Message(
-                    "Unexpected structure encountered".to_string(),
-                ));
-            };
-            current_level = next_level;
-        }
-    }
-
-    Ok(root)
-} */
-
-/* pub fn render_jinja2_sat_file_yaml(
-    sat_file_content: &String,
-    values_file_content_opt: Option<&String>,
-    value_cli_vec_opt: Option<Vec<String>>,
-) -> Value {
-    let mut env = minijinja::Environment::new();
-    // Set/enable debug in order to force minijinja to print debug error messages which are more
-    // descriptive. Eg https://github.com/mitsuhiko/minijinja/blob/main/examples/error/src/main.rs#L4-L5
-    env.set_debug(true);
-    // Set lines starting with `#` as comments
-    env.set_syntax(
-        minijinja::syntax::SyntaxConfig::builder()
-            .line_comment_prefix("#")
-            .build()
-            .unwrap(),
-    );
-    // Set 'String' as undefined behaviour meaning, missing values won't pass the template
-    // rendering
-    env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
-
-    // Render session values file
-    let mut values_file_yaml: Value = if let Some(values_file_content) = values_file_content_opt {
-        log::info!("'Session vars' file provided. Going to process SAT file as a template.");
-        // Read sesson vars file and parse it to YAML
-        let values_file_yaml: Value = serde_yaml::from_str(values_file_content).unwrap();
-        // Render session vars file with itself (copying ansible behaviour where the ansible vars
-        // file is also a jinja template and combine both vars and values in it)
-        let values_file_rendered = env
-            .render_str(values_file_content, values_file_yaml)
-            .expect("ERROR - Error parsing values file to YAML. Exit");
-        serde_yaml::from_str(&values_file_rendered).unwrap()
-    } else {
-        serde_yaml::from_str(sat_file_content).unwrap()
-    };
-
-    // Convert variable values sent by cli argument from dot notation to yaml format
-    log::debug!("Convert variable values sent by cli argument from dot notation to yaml format");
-    if let Some(value_option_vec) = value_cli_vec_opt {
-        for value_option in value_option_vec {
-            let cli_var_context_yaml_rslt = dot_notation_to_yaml(&value_option);
-            let cli_var_context_yaml = match cli_var_context_yaml_rslt {
-                Ok(value) => value,
-                Err(e) => {
-                    eprintln!("ERROR - {:#?}", e);
-                    panic!();
-                }
-            };
-            values_file_yaml = merge_yaml(values_file_yaml.clone(), cli_var_context_yaml).unwrap();
-        }
-    }
-
-    // render sat template file
-    let sat_file_rendered_rslt = env.render_str(sat_file_content, values_file_yaml);
-
-    let sat_file_rendered = match sat_file_rendered_rslt {
-        Ok(sat_file_rendered) => sat_file_rendered,
-        Err(err) => {
-            eprintln!("ERROR - Could not render template: {:#}", err);
-            // render causes as well
-            let mut err = &err as &dyn std::error::Error;
-            while let Some(next_err) = err.source() {
-                eprintln!();
-                eprintln!("caused by: {:#}", next_err);
-                err = next_err;
-            }
-
-            std::process::exit(1);
-        }
-    };
-
-    // Disable debug
-    env.set_debug(false);
-
-    let sat_file_yaml: Value = serde_yaml::from_str(&sat_file_rendered).unwrap();
-
-    sat_file_yaml
-} */
-
-/* pub fn render_jinja2_sat_file_struct(
-    sat_file_content: &String,
-    values_file_content_opt: Option<&String>,
-    value_cli_vec_opt: Option<Vec<String>>,
-) -> SatFile {
-    let env = minijinja::Environment::new();
-
-    // Render session values file
-    let mut values_file_yaml: Value = if let Some(values_file_content) = values_file_content_opt {
-        log::info!("'Session vars' file provided. Going to process SAT file as a template.");
-        // Read sesson vars file and parse it to YAML
-        let values_file_yaml: Value = serde_yaml::from_str(values_file_content).unwrap();
-        // Render session vars file with itself (copying ansible behaviour where the ansible vars
-        // file is also a jinja template and combine both vars and values in it)
-        let values_file_rendered = env
-            .render_str(values_file_content, values_file_yaml)
-            .expect("ERROR - Error parsing values file to YAML. Exit");
-        serde_yaml::from_str(&values_file_rendered).unwrap()
-    } else {
-        serde_yaml::from_str(sat_file_content).unwrap()
-    };
-
-    if let Some(value_option_vec) = value_cli_vec_opt {
-        for value_option in value_option_vec {
-            let cli_var_context_yaml = dot_notation_to_yaml(&value_option).unwrap();
-            values_file_yaml = merge_yaml(values_file_yaml.clone(), cli_var_context_yaml).unwrap();
-        }
-    }
-
-    // render sat template file
-    let sat_file_rendered = env.render_str(sat_file_content, values_file_yaml).unwrap();
-
-    let sat_file_yaml: SatFile = serde_yaml::from_str(&sat_file_rendered).unwrap();
-
-    sat_file_yaml
-} */
 
 pub async fn create_cfs_configuration_from_sat_file(
   shasta_token: &str,
@@ -684,7 +449,6 @@ pub async fn create_cfs_configuration_from_sat_file(
   gitea_token: &str,
   cray_product_catalog: &BTreeMap<String, String>,
   sat_file_configuration_yaml: &serde_yaml::Value,
-  // tag: &str,
   dry_run: bool,
   site_name: &str,
   overwrite: bool,
@@ -722,14 +486,6 @@ pub async fn create_cfs_configuration_from_sat_file(
     // Return mock CFS configuration
     Ok(cfs_configuration)
   } else {
-    /* cfs::configuration::http_client::v2::put(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      &mut cfs_configuration,
-      &cfs_configuration_name,
-    )
-    .await */
     cfs::configuration::utils::create_new_configuration(
       shasta_token,
       shasta_base_url,
@@ -767,12 +523,10 @@ pub fn get_next_image_in_sat_file_to_process(
                                                                                // SAT file may or may not have ref_name value, we will use "get_ref_name" function to
                                                                                // get the id of the image
 
-      let image_base_image_ref_opt: Option<&str> =
-        image_yaml.get("base").and_then(|image_base_yaml| {
-          image_base_yaml.get("image_ref").and_then(
-            |image_base_image_ref_yaml| image_base_image_ref_yaml.as_str(),
-          )
-        });
+      let image_base_image_ref_opt: Option<&str> = image_yaml
+        .get("base")
+        .and_then(|image_base_yaml| image_base_yaml.get("image_ref"))
+        .and_then(Value::as_str);
 
       !ref_name_processed_vec.contains(&ref_name.to_string())
         && (image_base_image_ref_opt.is_none()
@@ -791,12 +545,20 @@ pub fn get_image_name_or_ref_name_to_process(
   image_yaml: &serde_yaml::Value,
 ) -> String {
   if image_yaml.get("ref_name").is_some() {
-    image_yaml["ref_name"].as_str().unwrap().to_string()
+    image_yaml
+      .get("ref_name")
+      .and_then(Value::as_str)
+      .map(str::to_string)
+      .unwrap()
   } else {
     // If the image processed is missing the field "ref_name", then use the field "name"
     // instead, this is needed to flag this image as processed and filtered when
     // calculating the next image to process (get_next_image_to_process)
-    image_yaml["name"].as_str().unwrap().to_string()
+    image_yaml
+      .get("name")
+      .and_then(Value::as_str)
+      .map(str::to_string)
+      .unwrap()
   }
 }
 
@@ -810,8 +572,6 @@ pub async fn i_import_images_section_in_sat_file(
   shasta_root_cert: &[u8],
   vault_base_url: &str,
   site_name: &str,
-  // vault_secret_path: &str,
-  // vault_role_id: &str,
   k8s_api_url: &str,
   ref_name_processed_hashmap: &mut HashMap<String, String>,
   image_yaml_vec: &[serde_yaml::Value],
@@ -851,8 +611,6 @@ pub async fn i_import_images_section_in_sat_file(
       shasta_root_cert,
       vault_base_url,
       site_name,
-      // vault_secret_path,
-      // vault_role_id,
       k8s_api_url,
       image_yaml,
       cray_product_catalog,
@@ -920,7 +678,11 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   )
   .await?;
 
-  let image_name = image_yaml["name"].as_str().unwrap().to_string();
+  let image_name = image_yaml
+    .get("name")
+    .and_then(Value::as_str)
+    .map(str::to_string)
+    .unwrap();
 
   // Create CFS session to build image
   if !dry_run {
@@ -930,8 +692,6 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       shasta_root_cert,
       vault_base_url,
       site_name,
-      // vault_secret_path,
-      // vault_role_id,
       k8s_api_url,
       &cfs_session,
       watch_logs,
@@ -946,15 +706,13 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
           "Could not create Image. Reason:\n{}",
           e
         )));
-        /* eprintln!("ERROR - Could not create Image. Reason:\n{}", e);
-        std::process::exit(1); */
       }
     };
 
     if !cfs_session.is_success() {
       return Err(Error::Message(format!(
         "CFS session '{}' failed. Exit",
-        cfs_session.name.unwrap()
+        cfs_session.name
       )));
     }
 
@@ -992,12 +750,11 @@ async fn get_session_from_image_yaml(
 ) -> Result<CfsSessionPostRequest, Error> {
   // Collect CFS session details from SAT file
   // Get CFS image name from SAT file
-  let image_name = image_yaml["name"].as_str().unwrap().to_string();
-  // let image_name = image_yaml["name"]
-  //     .as_str()
-  //     .unwrap()
-  //     .to_string()
-  //     .replace("__DATE__", tag);
+  let image_name = image_yaml
+    .get("name")
+    .and_then(Value::as_str)
+    .map(str::to_string)
+    .unwrap();
 
   log::info!(
     "Creating CFS session related to build image '{}'",
@@ -1005,19 +762,23 @@ async fn get_session_from_image_yaml(
   );
 
   // Get CFS configuration related to CFS session in SAT file
-  let configuration_name: String =
-    image_yaml["configuration"].as_str().unwrap().to_string();
+  let configuration_name: String = image_yaml
+    .get("configuration")
+    .and_then(Value::as_str)
+    .map(str::to_string)
+    .unwrap();
 
   // Get HSM groups related to CFS session in SAT file
-  let groups_name: Vec<&str> = image_yaml["configuration_group_names"]
-    .as_sequence()
+  let groups_name: Vec<&str> = image_yaml
+    .get("configuration_group_names")
+    .and_then(Value::as_sequence)
     .and_then(|group_name_vec| {
       group_name_vec
         .iter()
         .map(|group_name| group_name.as_str())
         .collect::<Option<Vec<&str>>>()
     })
-    .unwrap_or(vec![]);
+    .unwrap_or_default();
 
   // VALIDATION: make sure grups in SAT.images "CFS session" are valid
   // NOTE: this is temporary until we get rid off "group" names as ansible folder names
@@ -1075,18 +836,23 @@ async fn process_sat_file_image_product_type_ims_recipe(
   image_name: &str,
   dry_run: bool,
 ) -> Result<String, Error> {
+  let root_ims_key_name = "mgmt root key";
+
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value =
     ims::public_keys::http_client::v3::get_single(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      "mgmt root key",
+      root_ims_key_name,
     )
-    .await
-    .unwrap();
+    .await?
+    .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
-  let root_public_ssh_key = root_public_ssh_key_value["id"].as_str().unwrap();
+  let root_public_ssh_key: &str = root_public_ssh_key_value
+    .get("id")
+    .and_then(serde_json::Value::as_str)
+    .unwrap();
 
   // let ims_job = ims::job::types::JobPostRequest {
   let ims_job = ims::job::types::Job {
@@ -1127,8 +893,7 @@ async fn process_sat_file_image_product_type_ims_recipe(
       shasta_root_cert,
       &ims_job,
     )
-    .await
-    .unwrap()
+    .await?
   };
 
   Ok(ims_job.resultant_image_id.unwrap())
@@ -1143,8 +908,10 @@ async fn process_sat_file_image_ims_type_recipe(
   dry_run: bool,
 ) -> Result<String, Error> {
   // Base image needs to be created from a IMS job using an IMS recipe
-  let recipe_name =
-    sat_file_image_base_ims_value_yaml["name"].as_str().unwrap();
+  let recipe_name = sat_file_image_base_ims_value_yaml
+    .get("name")
+    .and_then(Value::as_str)
+    .unwrap();
 
   // Get all IMS recipes
   let recipe_detail_vec: Vec<ims::recipe::types::RecipeGetResponse> =
@@ -1154,8 +921,7 @@ async fn process_sat_file_image_ims_type_recipe(
       shasta_root_cert,
       None,
     )
-    .await
-    .unwrap();
+    .await?;
 
   // Filter recipes by name
   let recipe_detail_opt = recipe_detail_vec
@@ -1176,18 +942,23 @@ async fn process_sat_file_image_ims_type_recipe(
 
   log::info!("IMS recipe id found '{}'", recipe_id);
 
+  let root_ims_key_name = "mgmt root key";
+
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value =
     ims::public_keys::http_client::v3::get_single(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      "mgmt root key",
+      root_ims_key_name,
     )
-    .await
-    .unwrap();
+    .await?
+    .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
-  let root_public_ssh_key = root_public_ssh_key_value["id"].as_str().unwrap();
+  let root_public_ssh_key = root_public_ssh_key_value
+    .get("id")
+    .and_then(serde_json::Value::as_str)
+    .unwrap();
 
   let ims_job = ims::job::types::Job {
     job_type: "create".to_string(),
@@ -1225,8 +996,7 @@ async fn process_sat_file_image_ims_type_recipe(
       shasta_root_cert,
       &ims_job,
     )
-    .await
-    .unwrap()
+    .await?
   };
 
   log::info!("IMS job response:\n{:#?}", ims_job);
@@ -1244,10 +1014,11 @@ fn process_sat_file_image_old_version(
   {
     // Create final image from CFS session
     Ok(
-      sat_file_image_ims_value_yaml["id"]
-        .as_str()
-        .unwrap()
-        .to_string(),
+      sat_file_image_ims_value_yaml
+        .get("id")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap(),
     )
   } else {
     Err(Error::Message("Functionality not built. Exit".to_string()))
@@ -1258,18 +1029,19 @@ fn process_sat_file_image_ref_name(
   sat_file_image_base_image_ref_value_yaml: &serde_yaml::Value,
   ref_name_image_id_hashmap: &HashMap<String, String>,
 ) -> Result<String, Error> {
-  let image_ref: String = sat_file_image_base_image_ref_value_yaml
+  let image_ref_opt: Option<String> = sat_file_image_base_image_ref_value_yaml
     .as_str()
-    .unwrap()
-    .to_string();
+    .map(str::to_string);
 
-  // Process image with 'image_ref' from another image in this same SAT file
-  Ok(
-    ref_name_image_id_hashmap
-      .get(&image_ref)
-      .unwrap()
-      .to_string(),
-  )
+  match image_ref_opt {
+    Some(image_ref) => {
+      Ok(ref_name_image_id_hashmap.get(&image_ref).cloned().unwrap())
+    }
+    None => Err(Error::Message(
+      "field 'image_ref' in SAT file not found".to_string(), // FIXME: Create an enum in
+                                                             // csm-rs::Error for this
+    )),
+  }
 }
 
 pub fn filter_product_catalog_images(
@@ -1283,13 +1055,7 @@ pub fn filter_product_catalog_images(
       .keys()
       .collect::<Vec<_>>()
       .into_iter()
-      .filter(|product| {
-        product
-          .split(".")
-          .last()
-          .unwrap()
-          .eq(arch.as_str().unwrap())
-      })
+      .filter(|product| product.split(".").last().eq(&arch.as_str()))
       .collect::<Vec<_>>();
 
     if image_key_vec.is_empty() {
@@ -1303,12 +1069,14 @@ pub fn filter_product_catalog_images(
         image_name
       )))
     } else {
-      let image_key = image_key_vec.first().cloned().unwrap();
+      let image_key: &String = image_key_vec.first().unwrap();
+      let image_value_opt = image_map.get(image_key);
       Ok(
-        image_map.get(image_key).unwrap()["id"]
-          .as_str()
-          .unwrap()
-          .to_string(),
+        image_value_opt
+          .and_then(|image_value| image_value.get("id"))
+          .and_then(serde_json::Value::as_str)
+          .map(str::to_string)
+          .unwrap(),
       )
     }
   } else if let Some(wildcard) = filter.get("wildcard") {
@@ -1330,11 +1098,13 @@ pub fn filter_product_catalog_images(
       )))
     } else {
       let image_key = image_key_vec.first().cloned().unwrap();
+      let image_value_opt = image_map.get(image_key);
       Ok(
-        image_map.get(image_key).unwrap()["id"]
-          .as_str()
-          .unwrap()
-          .to_string(),
+        image_value_opt
+          .and_then(|image_value| image_value.get("id"))
+          .and_then(serde_json::Value::as_str)
+          .map(str::to_string)
+          .unwrap(),
       )
     }
   } else if let Some(prefix) = filter.get("prefix") {
@@ -1343,7 +1113,7 @@ pub fn filter_product_catalog_images(
       .keys()
       .filter(|product| {
         product
-          .strip_prefix(&prefix.as_str().unwrap().to_string())
+          .strip_prefix(&prefix.as_str().map(str::to_string).unwrap())
           .is_some()
       })
       .collect::<Vec<_>>();
@@ -1360,11 +1130,13 @@ pub fn filter_product_catalog_images(
       )))
     } else {
       let image_key = image_key_vec.first().cloned().unwrap();
+      let image_value_opt = image_map.get(image_key);
       Ok(
-        image_map.get(image_key).unwrap()["id"]
-          .as_str()
-          .unwrap()
-          .to_string(),
+        image_value_opt
+          .and_then(|image_value| image_value.get("id"))
+          .and_then(serde_json::Value::as_str)
+          .map(str::to_string)
+          .unwrap(),
       )
     }
   } else {
@@ -1388,13 +1160,13 @@ pub fn validate_sat_file_images_section(
 
   for image_yaml in image_yaml_vec {
     // Validate image
-    let image_name = image_yaml["name"].as_str().unwrap();
+    let image_name = image_yaml.get("name").and_then(Value::as_str).unwrap();
 
     log::info!("Validate 'image' '{}'", image_name);
 
     if let Some(image_ims_id_to_find) = image_yaml
       .get("ims")
-      .and_then(|ims| ims.get("id").and_then(|id| id.as_str()))
+      .and_then(|ims| ims.get("id").and_then(Value::as_str))
     {
       // Validate base image
       log::info!(
@@ -1420,12 +1192,15 @@ pub fn validate_sat_file_images_section(
         return Err(Error::Message(format!(
           "Could not find base image id '{}' in image '{}'. Exit",
           image_ims_id_to_find,
-          image_yaml["name"].as_str().unwrap()
+          image_yaml.get("name").and_then(Value::as_str).unwrap()
         )));
       }
     } else if image_yaml.get("base").is_some() {
       // New format
-      if let Some(image_ref_to_find) = image_yaml["base"].get("image_ref") {
+      if let Some(image_ref_to_find) = image_yaml
+        .get("base")
+        .and_then(|base| base.get("image_ref"))
+      {
         // Validate base image
         log::info!(
           "Validate 'image' '{}' base image '{}'",
@@ -1455,12 +1230,21 @@ pub fn validate_sat_file_images_section(
 
         // Base image created from a cray product
 
-        let product_name = image_base_product["name"].as_str().unwrap();
+        let product_name = image_base_product
+          .get("name")
+          .and_then(Value::as_str)
+          .unwrap();
 
-        let product_version = image_base_product["version"].as_str().unwrap();
+        let product_version = image_base_product
+          .get("version")
+          .and_then(Value::as_str)
+          .unwrap();
 
-        let product_type =
-          image_base_product["type"].as_str().unwrap().to_string() + "s";
+        let product_type = image_base_product
+          .get("type")
+          .and_then(Value::as_str)
+          .map(|v| v.to_string() + "s")
+          .unwrap();
 
         let product_catalog_rslt = &serde_yaml::from_str::<serde_json::Value>(
           &cray_product_catalog
@@ -1534,9 +1318,11 @@ pub fn validate_sat_file_images_section(
             image_name
           );
 
-          let mut image_found = image_yaml_vec
-            .iter()
-            .any(|image_yaml| image_yaml["name"].eq(image_base_ims_name_yaml));
+          let mut image_found = image_yaml_vec.iter().any(|image_yaml| {
+            image_yaml
+              .get("name")
+              .is_some_and(|name| name.eq(image_base_ims_name_yaml))
+          });
 
           if !image_found {
             log::warn!(
@@ -1633,10 +1419,10 @@ pub fn validate_sat_file_images_section(
 
       let mut configuration_found =
         configuration_yaml_vec.iter().any(|configuration_yaml| {
-          configuration_yaml["name"]
-            .as_str()
-            .unwrap()
-            .eq(configuration_name_to_find)
+          configuration_yaml
+            .get("name")
+            .and_then(Value::as_str)
+            .eq(&Some(configuration_name_to_find))
         });
 
       if !configuration_found {
@@ -1649,7 +1435,7 @@ pub fn validate_sat_file_images_section(
         log::info!(
           "Searching configuration name '{}' related to image '{}' in CSM",
           configuration_name_to_find,
-          image_yaml["name"].as_str().unwrap()
+          image_yaml.get("name").and_then(Value::as_str).unwrap()
         );
 
         configuration_found = configuration_vec.iter().any(|configuration| {
@@ -1658,10 +1444,10 @@ pub fn validate_sat_file_images_section(
 
         if !configuration_found {
           return Err(Error::Message(format!(
-                        "Could not find configuration '{}' in image '{}'. Cancelling image build proccess. Exit",
-                        configuration_name_to_find,
-                        image_name
-                    )));
+             "Could not find configuration '{}' in image '{}'. Cancelling image build proccess. Exit",
+             configuration_name_to_find,
+             image_name
+          )));
         }
       }
 
@@ -1691,12 +1477,12 @@ pub fn validate_sat_file_images_section(
         {
           if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
             return Err(Error::Message(format!
-                        (
-                        "HSM group '{}' in image '{}' not allowed, List of HSM groups available:\n{:?}. Exit",
-                        hsm_group,
-                        image_yaml["name"].as_str().unwrap(),
-                        hsm_group_available_vec
-                    )));
+               (
+               "HSM group '{}' in image '{}' not allowed, List of HSM groups available:\n{:?}. Exit",
+               hsm_group,
+               image_yaml.get("name").and_then(Value::as_str).unwrap(),
+               hsm_group_available_vec
+            )));
           }
         }
       };
@@ -1721,13 +1507,9 @@ pub fn validate_sat_file_configurations_section(
         && !sessiontemplate_yaml_vec_opt.unwrap().is_empty())
     {
       return Err(Error::Message(
-                "Incorrect SAT file. Please define either an 'image' or a 'session template'. Exit"
-                    .to_string(),
-            ));
-      /* eprint!(
-          "Incorrect SAT file. Please define either an 'image' or a 'session template'. Exit"
-      );
-      std::process::exit(1); */
+        "Incorrect SAT file. Please define either an 'image' or a 'session template'. Exit"
+            .to_string(),
+      ));
     }
   }
 
@@ -1745,10 +1527,14 @@ pub async fn validate_sat_file_session_template_section(
 ) -> Result<(), Error> {
   // Validate 'session_template' section in SAT file
   log::info!("Validate 'session_template' section in SAT file");
-  for session_template_yaml in session_template_yaml_vec_opt.unwrap_or(&vec![])
+  for session_template_yaml in
+    session_template_yaml_vec_opt.cloned().unwrap_or_default()
   {
     // Validate session_template
-    let session_template_name = session_template_yaml["name"].as_str().unwrap();
+    let session_template_name = session_template_yaml
+      .get("name")
+      .and_then(Value::as_str)
+      .unwrap();
 
     log::info!("Validate 'session_template' '{}'", session_template_name);
 
@@ -1759,40 +1545,50 @@ pub async fn validate_sat_file_session_template_section(
     );
 
     let bos_session_template_hsm_groups: Vec<String> =
-      if let Some(boot_sets_compute) =
-        session_template_yaml["bos_parameters"]["boot_sets"].get("compute")
+      if let Some(boot_sets_compute) = session_template_yaml
+        .get("bos_parameters")
+        .and_then(|bos_params| bos_params.get("boot_sets"))
+        .and_then(|boot_sets| boot_sets.get("compute"))
       {
-        boot_sets_compute["node_groups"]
-          .as_sequence()
-          .unwrap_or(&vec![])
-          .iter()
-          .map(|node| node.as_str().unwrap().to_string())
-          .collect()
-      } else if let Some(boot_sets_compute) =
-        session_template_yaml["bos_parameters"]["boot_sets"].get("uan")
+        boot_sets_compute
+          .get("node_groups")
+          .and_then(Value::as_sequence)
+          .map(|node_groups| {
+            node_groups
+              .iter()
+              .map(|node| node.as_str().map(str::to_string).unwrap())
+              .collect()
+          })
+          .unwrap_or_default()
+      } else if let Some(boot_sets_compute) = session_template_yaml
+        .get("bos_parameters")
+        .and_then(|bos_params| bos_params.get("boot_sets"))
+        .and_then(|boot_sets| boot_sets.get("uan"))
       {
-        boot_sets_compute["node_groups"]
-          .as_sequence()
-          .unwrap_or(&vec![])
-          .iter()
-          .map(|node| node.as_str().unwrap().to_string())
-          .collect()
+        boot_sets_compute
+          .get("node_groups")
+          .and_then(Value::as_sequence)
+          .map(|node_groups| {
+            node_groups
+              .iter()
+              .map(|node| node.as_str().map(str::to_string).unwrap())
+              .collect()
+          })
+          .unwrap_or_default()
       } else {
         return Err(Error::Message(format!(
           "No HSM group found in session_templates section in SAT file"
         )));
-        /* println!("No HSM group found in session_templates section in SAT file");
-        std::process::exit(1); */
       };
 
     for hsm_group in bos_session_template_hsm_groups {
       if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
         return Err(Error::Message(format!(
-                    "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
-                    hsm_group,
-                    session_template_yaml["name"].as_str().unwrap(),
-                    hsm_group_available_vec
-                )));
+           "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
+           hsm_group,
+           session_template_yaml.get("name").and_then(Value::as_str).unwrap(),
+           hsm_group_available_vec
+        )));
       }
     }
 
@@ -1835,7 +1631,7 @@ pub async fn validate_sat_file_session_template_section(
       log::info!(
                 "Searching image name '{}' related to session template '{}' in SAT file",
                 image_name_substr_to_find.as_str().unwrap(),
-                session_template_yaml["name"].as_str().unwrap()
+                session_template_yaml.get("name").and_then(Value::as_str).unwrap()
             );
 
       let mut image_found = image_yaml_vec_opt.is_some_and(|image_vec| {
@@ -1855,7 +1651,10 @@ pub async fn validate_sat_file_session_template_section(
         log::info!(
           "Searching image name '{}' related to session template '{}' in CSM",
           image_name_substr_to_find.as_str().unwrap(),
-          session_template_yaml["name"].as_str().unwrap()
+          session_template_yaml
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap()
         );
 
         image_found = ims::image::utils::get_fuzzy(
@@ -1874,7 +1673,10 @@ pub async fn validate_sat_file_session_template_section(
         return Err(Error::Message(format!(
           "Could not find image name '{}' in session_template '{}'. Exit",
           image_name_substr_to_find.as_str().unwrap(),
-          session_template_yaml["name"].as_str().unwrap()
+          session_template_yaml
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap()
         )));
       }
     } else if let Some(image_id) = session_template_yaml
@@ -1885,7 +1687,10 @@ pub async fn validate_sat_file_session_template_section(
       log::info!(
         "Searching image id '{}' related to session template '{}' in CSM",
         image_id.as_str().unwrap(),
-        session_template_yaml["name"].as_str().unwrap()
+        session_template_yaml
+          .get("name")
+          .and_then(Value::as_str)
+          .unwrap()
       );
 
       let image_found = ims::image::http_client::get(
@@ -1901,7 +1706,10 @@ pub async fn validate_sat_file_session_template_section(
         return Err(Error::Message(format!(
           "Could not find image id '{}' in session_template '{}'. Exit",
           image_id.as_str().unwrap(),
-          session_template_yaml["name"].as_str().unwrap()
+          session_template_yaml
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap()
         )));
       }
     } else if let Some(image_name_substr_to_find) =
@@ -1910,10 +1718,10 @@ pub async fn validate_sat_file_session_template_section(
       // Backward compatibility
       // Validate image name (session_template.image.ims.name). Search in SAT file and CSM
       log::info!(
-                "Searching image name '{}' related to session template '{}' in CSM - ('sessiontemplate' section in SAT file is outdated - switching to backward compatibility)",
-                image_name_substr_to_find.as_str().unwrap(),
-                session_template_yaml["name"].as_str().unwrap()
-            );
+         "Searching image name '{}' related to session template '{}' in CSM - ('sessiontemplate' section in SAT file is outdated - switching to backward compatibility)",
+         image_name_substr_to_find.as_str().unwrap(),
+         session_template_yaml.get("name").and_then(Value::as_str).unwrap()
+      );
 
       let image_found = ims::image::utils::get_fuzzy(
         shasta_token,
@@ -1935,9 +1743,9 @@ pub async fn validate_sat_file_session_template_section(
       }
     } else {
       return Err(Error::Message(format!(
-                "Session template '{}' must have one of these entries 'image.ref_name', 'image.ims.name' or 'image.ims.id' values. Exit",
-                session_template_yaml["name"].as_str().unwrap(),
-            )));
+         "Session template '{}' must have one of these entries 'image.ref_name', 'image.ims.name' or 'image.ims.id' values. Exit",
+         session_template_yaml.get("name").and_then(Value::as_str).unwrap(),
+      )));
     }
 
     // Validate configuration
@@ -1952,15 +1760,17 @@ pub async fn validate_sat_file_session_template_section(
       let configuration_to_find = configuration_to_find_value.as_str().unwrap();
 
       log::info!(
-                "Searching configuration name '{}' related to session template '{}' in CSM in SAT file",
-                configuration_to_find,
-                session_template_yaml["name"].as_str().unwrap()
-            );
+         "Searching configuration name '{}' related to session template '{}' in CSM in SAT file",
+         configuration_to_find,
+         session_template_yaml.get("name").and_then(Value::as_str).unwrap()
+      );
 
       let mut configuration_found =
         configuration_yaml_vec_opt.is_some_and(|configuration_yaml_vec| {
           configuration_yaml_vec.iter().any(|configuration_yaml| {
-            configuration_yaml["name"].eq(configuration_to_find_value)
+            configuration_yaml
+              .get("name")
+              .eq(&Some(configuration_to_find_value))
           })
         });
 
@@ -1968,10 +1778,10 @@ pub async fn validate_sat_file_session_template_section(
         // CFS configuration in session_template not found in SAT file, searching in CSM
         log::warn!("Configuration not found in SAT file, looking in CSM");
         log::info!(
-                    "Searching configuration name '{}' related to session_template '{}' in CSM",
-                    configuration_to_find,
-                    session_template_yaml["name"].as_str().unwrap()
-                );
+           "Searching configuration name '{}' related to session_template '{}' in CSM",
+           configuration_to_find,
+           session_template_yaml.get("name").and_then(Value::as_str).unwrap()
+        );
 
         configuration_found = cfs::configuration::http_client::v3::get(
           shasta_token,
@@ -1986,14 +1796,20 @@ pub async fn validate_sat_file_session_template_section(
           return Err(Error::Message(format!(
             "Could not find configuration '{}' in session_template '{}'. Exit",
             configuration_to_find,
-            session_template_yaml["name"].as_str().unwrap(),
+            session_template_yaml
+              .get("name")
+              .and_then(Value::as_str)
+              .unwrap(),
           )));
         }
       }
     } else {
       return Err(Error::Message(format!(
         "Session template '{}' does not have 'configuration' value. Exit",
-        session_template_yaml["name"].as_str().unwrap(),
+        session_template_yaml
+          .get("name")
+          .and_then(Value::as_str)
+          .unwrap(),
       )));
     }
   }
@@ -2012,8 +1828,9 @@ pub async fn process_session_template_section_in_sat_file(
   dry_run: bool,
 ) -> Result<(), Error> {
   let empty_vec = Vec::new();
-  let bos_session_template_list_yaml = sat_file_yaml["session_templates"]
-    .as_sequence()
+  let bos_session_template_list_yaml = sat_file_yaml
+    .get("session_templates")
+    .and_then(Value::as_sequence)
     .unwrap_or(&empty_vec);
 
   if bos_session_template_list_yaml.is_empty() {
@@ -2024,10 +1841,6 @@ pub async fn process_session_template_section_in_sat_file(
   let mut bos_st_created_vec: Vec<String> = Vec::new();
 
   for bos_sessiontemplate_yaml in bos_session_template_list_yaml {
-    /* let bos_sessiontemplate: BosSessionTemplate =
-    serde_yaml::from_value(bos_sessiontemplate_yaml.clone())
-      .map_err(|e| Error::Message(e.to_string()))?; */
-
     // Get boot image details in BOS sessiontemplate. This is needed to create the BOS
     // sessiontemplate BootSets
     let image_details: ims::image::http_client::types::Image =
@@ -2106,18 +1919,16 @@ pub async fn process_session_template_section_in_sat_file(
         return Err(Error::Message(
           "ERROR: no 'image' section in session_template.\nExit".to_string(),
         ));
-        /* eprintln!("ERROR: no 'image' section in session_template.\nExit");
-        std::process::exit(1); */
       };
 
     log::info!("Image with name '{}' found", image_details.name);
 
     // Get CFS configuration to configure the nodes
     let bos_session_template_configuration_name = bos_sessiontemplate_yaml
-      ["configuration"]
-      .as_str()
-      .unwrap()
-      .to_string();
+      .get("configuration")
+      .and_then(Value::as_str)
+      .map(str::to_string)
+      .unwrap();
 
     // Check CFS configuration exists in CSM
     log::info!(
@@ -2141,41 +1952,53 @@ pub async fn process_session_template_section_in_sat_file(
     };
 
     // let ims_image_name = image_details.name.to_string();
-    let ims_image_etag =
-      image_details.link.as_ref().unwrap().etag.as_ref().unwrap();
-    let ims_image_path = &image_details.link.as_ref().unwrap().path;
-    let ims_image_type = &image_details.link.as_ref().unwrap().r#type;
+    let ims_image_etag: &str = image_details
+      .link
+      .as_ref()
+      .and_then(|link| link.etag.as_ref())
+      .unwrap();
+    let ims_image_path: &str = image_details
+      .link
+      .as_ref()
+      .map(|link| link.path.as_ref())
+      .unwrap();
+    let ims_image_type: &str = image_details
+      .link
+      .as_ref()
+      .map(|link| link.r#type.as_ref())
+      .unwrap();
 
-    let bos_sessiontemplate_name = bos_sessiontemplate_yaml["name"]
-      .as_str()
-      .unwrap_or("")
-      .to_string();
+    let bos_sessiontemplate_name = bos_sessiontemplate_yaml
+      .get("name")
+      .and_then(Value::as_str)
+      .map(str::to_string)
+      .unwrap_or_default();
 
     let mut boot_set_vec: HashMap<String, BootSet> = HashMap::new();
 
-    for (parameter, boot_set) in bos_sessiontemplate_yaml["bos_parameters"]
-      ["boot_sets"]
-      .as_mapping()
+    for (parameter, boot_set) in bos_sessiontemplate_yaml
+      .get("bos_parameters")
+      .and_then(|bos_parameters| bos_parameters.get("boot_sets"))
+      .and_then(Value::as_mapping)
       .unwrap()
     {
-      let kernel_parameters = boot_set["kernel_parameters"].as_str().unwrap();
-      let arch_opt = boot_set["arch"].as_str().map(|value| value.to_string());
+      let kernel_parameters = boot_set
+        .get("kernel_parameters")
+        .and_then(Value::as_str)
+        .unwrap();
+      let arch_opt = boot_set
+        .get("arch")
+        .and_then(Value::as_str)
+        .map(str::to_string);
 
       let node_roles_groups_opt: Option<Vec<String>> = boot_set
         .get("node_roles_groups")
-        .and_then(|node_roles_groups| {
-          node_roles_groups
-            .as_sequence()
-            .and_then(|node_role_groups| {
-              node_role_groups
-                .iter()
-                .map(|hsm_group_value| {
-                  hsm_group_value
-                    .as_str()
-                    .map(|hsm_group| hsm_group.to_string())
-                })
-                .collect()
-            })
+        .and_then(Value::as_sequence)
+        .and_then(|node_role_groups| {
+          node_role_groups
+            .iter()
+            .map(|hsm_group_value| hsm_group_value.as_str().map(str::to_string))
+            .collect()
         });
 
       // Validate/check user can create BOS sessiontemplates based on node roles. Users
@@ -2192,18 +2015,14 @@ pub async fn process_session_template_section_in_sat_file(
         ));
       }
 
-      let node_groups_opt: Option<Vec<String>> =
-        boot_set.get("node_groups").and_then(|node_groups_value| {
-          node_groups_value.as_sequence().and_then(|node_group| {
-            node_group
-              .iter()
-              .map(|hsm_group_value| {
-                hsm_group_value
-                  .as_str()
-                  .map(|hsm_group| hsm_group.to_string())
-              })
-              .collect()
-          })
+      let node_groups_opt: Option<Vec<String>> = boot_set
+        .get("node_groups")
+        .and_then(Value::as_sequence)
+        .and_then(|node_group| {
+          node_group
+            .iter()
+            .map(|hsm_group_value| hsm_group_value.as_str().map(str::to_string))
+            .collect()
         });
 
       //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
@@ -2221,18 +2040,16 @@ pub async fn process_session_template_section_in_sat_file(
       }
 
       // Validate user has access to the xnames in the BOS sessiontemplate
-      let node_list_opt: Option<Vec<String>> =
-        boot_set.get("node_list").and_then(|node_list_value| {
-          node_list_value.as_sequence().and_then(|node_list| {
-            node_list
-              .into_iter()
-              .map(|node_value_value| {
-                node_value_value
-                  .as_str()
-                  .map(|node_value| node_value.to_string())
-              })
-              .collect()
-          })
+      let node_list_opt: Option<Vec<String>> = boot_set
+        .get("node_list")
+        .and_then(Value::as_sequence)
+        .and_then(|node_list| {
+          node_list
+            .into_iter()
+            .map(|node_value_value| {
+              node_value_value.as_str().map(str::to_string)
+            })
+            .collect()
         });
 
       // Validate user has access to the list of nodes in BOS sessiontemplate
@@ -2247,24 +2064,20 @@ pub async fn process_session_template_section_in_sat_file(
       }
 
       let cfs = Cfs {
-        // clone_url: None,
-        // branch: None,
-        // commit: None,
-        // playbook: None,
         configuration: Some(bos_session_template_configuration_name.clone()),
       };
 
-      let rootfs_provider = boot_set["rootfs_provider"]
-        .as_str()
-        .map(|value| value.to_string());
-      let rootfs_provider_passthrough = boot_set["rootfs_provider_passthrough"]
-        .as_str()
-        .map(|value| value.to_string());
+      let rootfs_provider = boot_set
+        .get("rootfs_provider")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+      let rootfs_provider_passthrough = boot_set
+        .get("rootfs_provider_passthrough")
+        .and_then(Value::as_str)
+        .map(str::to_string);
 
       let boot_set = BootSet {
         name: None,
-        // boot_ordinal: Some(2),
-        // shutdown_ordinal: None,
         path: Some(ims_image_path.to_string()),
         r#type: Some(ims_image_type.to_string()),
         etag: Some(ims_image_etag.to_string()),
@@ -2278,27 +2091,19 @@ pub async fn process_session_template_section_in_sat_file(
         arch: arch_opt,
       };
 
-      boot_set_vec.insert(parameter.as_str().unwrap().to_string(), boot_set);
+      boot_set_vec
+        .insert(parameter.as_str().map(str::to_string).unwrap(), boot_set);
     }
 
     let cfs = Cfs {
-      // clone_url: None,
-      // branch: None,
-      // commit: None,
-      // playbook: None,
       configuration: Some(bos_session_template_configuration_name),
     };
 
     let create_bos_session_template_payload = BosSessionTemplate {
-      // template_url: None,
-      // name: Some(bos_sessiontemplate_name.clone()),
       name: None,
       description: None,
-      // cfs_url: None,
-      // cfs_branch: None,
       enable_cfs: Some(true),
       cfs: Some(cfs),
-      // partition: None,
       boot_sets: Some(boot_set_vec),
       links: None,
       tenant: None,
@@ -2324,7 +2129,6 @@ pub async fn process_session_template_section_in_sat_file(
         shasta_base_url,
         shasta_root_cert,
         &create_bos_session_template_payload,
-        // &create_bos_session_template_payload.name.as_ref().unwrap(),
         &bos_sessiontemplate_name,
       )
       .await?;
@@ -2346,9 +2150,9 @@ pub async fn process_session_template_section_in_sat_file(
 
     for bos_st_name in bos_st_created_vec {
       log::info!(
-                "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
-                bos_st_name
-            );
+         "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
+         bos_st_name
+      );
 
       // BOS session v2
       let bos_session = BosSession {
@@ -2411,8 +2215,8 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       // BOS sessiontemplate boot image defined by name
       let image_name = bos_session_template_image_ims_name
         .as_str()
-        .unwrap()
-        .to_string();
+        .map(str::to_string)
+        .unwrap();
 
       Ok((image_name, false))
     } else if let Some(bos_session_template_image_ims_id) =
@@ -2421,8 +2225,8 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       // BOS sessiontemplate boot image defined by id
       let image_id = bos_session_template_image_ims_id
         .as_str()
-        .unwrap()
-        .to_string();
+        .map(str::to_string)
+        .unwrap();
 
       Ok((image_id, true))
     } else {
@@ -2434,13 +2238,10 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
     // BOS sessiontemplate boot image defined by image_ref
     let image_ref = bos_session_template_image_image_ref
       .as_str()
-      .unwrap()
-      .to_string();
+      .map(str::to_string)
+      .unwrap();
 
-    let image_id = ref_name_processed_hashmap
-      .get(&image_ref)
-      .unwrap()
-      .to_string();
+    let image_id = ref_name_processed_hashmap.get(&image_ref).cloned().unwrap();
 
     Ok((image_id, true))
   } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str()
@@ -2486,91 +2287,6 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   };
 
   image
-
-  /* if let Some(bos_sessiontemplate_image_ims) = bos_sessiontemplate_image.get("ims") {
-      // Get boot image to configure the nodes
-      if let Some(bos_session_template_image_ims_name) = bos_sessiontemplate_image_ims.get("name")
-      {
-          // BOS sessiontemplate boot image defined by name
-          let bos_session_template_image_name = bos_session_template_image_ims_name
-              .as_str()
-              .unwrap()
-              .to_string();
-
-          // Get base image details
-          ims::image::utils::get_fuzzy(
-              shasta_token,
-              shasta_base_url,
-              shasta_root_cert,
-              hsm_group_available_vec,
-              Some(&bos_session_template_image_name),
-              Some(&1),
-          )
-          .await
-          .map(|image_vec| image_vec.first().cloned().unwrap())
-      } else if let Some(bos_session_template_image_ims_id) =
-          bos_sessiontemplate_image_ims.get("id")
-      {
-          // BOS sessiontemplate boot image defined by id
-          let bos_session_template_image_id = bos_session_template_image_ims_id
-              .as_str()
-              .unwrap()
-              .to_string();
-
-          // Get base image details
-          ims::image::http_client::get(
-              shasta_token,
-              shasta_base_url,
-              shasta_root_cert,
-              Some(&bos_session_template_image_id),
-          )
-          .await
-          .map(|image_vec| image_vec.first().cloned().unwrap())
-      } else {
-          return Err(Error::Message("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()));
-      }
-  } else if let Some(bos_session_template_image_image_ref) =
-      bos_sessiontemplate_image.get("image_ref")
-  {
-      // BOS sessiontemplate boot image defined by image_ref
-      let image_ref = bos_session_template_image_image_ref
-          .as_str()
-          .unwrap()
-          .to_string();
-
-      let image_id = ref_name_processed_hashmap
-          .get(&image_ref)
-          .unwrap()
-          .to_string();
-
-      // Get Image by id
-      ims::image::http_client::get(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          Some(&image_id),
-      )
-      .await
-      .map(|image_vec| image_vec.first().cloned().unwrap())
-  } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str() {
-      let image_name = image_name_substring;
-      // Backward compatibility
-      // Get base image details
-      log::info!("Looking for IMS image which name contains '{}'", image_name);
-
-      ims::image::utils::get_fuzzy(
-          shasta_token,
-          shasta_base_url,
-          shasta_root_cert,
-          hsm_group_available_vec,
-          Some(&image_name),
-          None,
-      )
-      .await
-      .map(|image_vec| image_vec.first().cloned().unwrap())
-  } else {
-      return Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()));
-  } */
 }
 
 async fn get_base_image_id_from_sat_file_image_yaml(
@@ -2591,8 +2307,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
     log::info!("SAT file - 'image.ims' job ('images' section in SAT file is outdated - switching to backward compatibility)");
 
     base_image_id =
-      process_sat_file_image_old_version(sat_file_image_ims_value_yaml)
-        .unwrap();
+      process_sat_file_image_old_version(sat_file_image_ims_value_yaml)?;
   } else if let Some(sat_file_image_base_value_yaml) = image_yaml.get("base") {
     if let Some(sat_file_image_base_image_ref_value_yaml) =
       sat_file_image_base_value_yaml.get("image_ref")
@@ -2602,14 +2317,15 @@ async fn get_base_image_id_from_sat_file_image_yaml(
       base_image_id = process_sat_file_image_ref_name(
         sat_file_image_base_image_ref_value_yaml,
         ref_name_image_id_hashmap,
-      )
-      .unwrap();
+      )?;
     } else if let Some(sat_file_image_base_ims_value_yaml) =
       sat_file_image_base_value_yaml.get("ims")
     {
       log::info!("SAT file - 'image.base.ims' job");
-      let ims_job_type =
-        sat_file_image_base_ims_value_yaml["type"].as_str().unwrap();
+      let ims_job_type = sat_file_image_base_ims_value_yaml
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap();
       if ims_job_type == "recipe" {
         log::info!("SAT file - 'image.base.ims' job of type 'recipe'");
 
@@ -2621,15 +2337,15 @@ async fn get_base_image_id_from_sat_file_image_yaml(
           image_name,
           dry_run,
         )
-        .await
-        .unwrap();
+        .await?;
       } else if ims_job_type == "image" {
         log::info!("SAT file - 'image.base.ims' job of type 'image'");
 
-        base_image_id = sat_file_image_base_ims_value_yaml["id"]
-          .as_str()
-          .unwrap()
-          .to_string();
+        base_image_id = sat_file_image_base_ims_value_yaml
+          .get("id")
+          .and_then(Value::as_str)
+          .map(str::to_string)
+          .unwrap();
       } else {
         return Err(Error::Message(
           "Can't process SAT file 'images.base.ims' is missing. Exit"
@@ -2643,29 +2359,30 @@ async fn get_base_image_id_from_sat_file_image_yaml(
     {
       log::info!("SAT file - 'image.base.product' job");
       // Base image created from a cray product
-      let product_name = sat_file_image_base_product_value_yaml["name"]
-        .as_str()
+      let product_name = sat_file_image_base_product_value_yaml
+        .get("name")
+        .and_then(Value::as_str)
         .unwrap();
 
-      let product_version = sat_file_image_base_product_value_yaml["version"]
-        .as_str()
+      let product_version = sat_file_image_base_product_value_yaml
+        .get("version")
+        .and_then(Value::as_str)
         .unwrap();
 
-      let product_type = sat_file_image_base_product_value_yaml["type"]
-        .as_str()
-        .unwrap()
-        .to_string()
-        + "s";
+      let product_type = sat_file_image_base_product_value_yaml
+        .get("type")
+        .and_then(Value::as_str)
+        .map(|v| v.to_string() + "s")
+        .unwrap();
 
       // We assume the SAT file has been alredy validated therefore taking some risks in
       // getting the details from the Cray product catalog
       let product_image_map = &serde_yaml::from_str::<serde_json::Value>(
         &cray_product_catalog[product_name],
-      )
-      .unwrap()[product_version][product_type.clone()]
+      )?[product_version][product_type.clone()]
       .as_object()
-      .unwrap()
-      .clone();
+      .cloned()
+      .unwrap();
 
       let image_id = if let Some(filter) =
         sat_file_image_base_product_value_yaml.get("filter")
@@ -2674,8 +2391,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
           filter,
           product_image_map.clone(),
           &image_name,
-        )
-        .unwrap()
+        )?
       } else {
         // There is no 'image.product.filter' value defined in SAT file. Check Cray
         // product catalog only has 1 image. Othewise fail
@@ -2684,10 +2400,9 @@ async fn get_base_image_id_from_sat_file_image_yaml(
           .values()
           .next()
           .and_then(|value| value.get("id"))
+          .and_then(serde_json::Value::as_str)
+          .map(str::to_string)
           .unwrap()
-          .as_str()
-          .unwrap()
-          .to_string()
       };
 
       // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE RECIPE
@@ -2708,8 +2423,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
           &image_name,
           dry_run,
         )
-        .await
-        .unwrap()
+        .await?
 
         // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE IMAGE
       } else if product_type == "images" {

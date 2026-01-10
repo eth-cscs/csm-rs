@@ -1,4 +1,6 @@
-use crate::bos::template::http_client::v2::types::BosSessionTemplate;
+use crate::{
+  bos::template::http_client::v2::types::BosSessionTemplate, error::Error,
+};
 use globset::Glob;
 
 pub fn filter(
@@ -8,13 +10,11 @@ pub fn filter(
   xname_vec: &[&str],
   // cfs_configuration_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
-) -> Vec<BosSessionTemplate> {
+) -> Result<Vec<BosSessionTemplate>, Error> {
   log::info!("Filter BOS sessiontemplates");
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
-    let glob = Glob::new(configuration_name_pattern)
-      .unwrap()
-      .compile_matcher();
+    let glob = Glob::new(configuration_name_pattern)?.compile_matcher();
 
     bos_sessiontemplate_vec.retain(|sessiontemplate| {
       sessiontemplate
@@ -54,7 +54,7 @@ pub fn filter(
       .to_vec();
   }
 
-  bos_sessiontemplate_vec.to_vec()
+  Ok(bos_sessiontemplate_vec.to_vec())
 }
 
 pub async fn filter_by_configuration(
@@ -76,57 +76,36 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
   )> = Vec::new();
 
   for bos_sessiontemplate in bos_sessiontemplate_value_vec {
-    if bos_sessiontemplate.cfs.is_none() {
-      continue;
-    }
-
-    let cfs_configuration = bos_sessiontemplate
+    let cfs_configuration_opt: Option<String> = bos_sessiontemplate
+      .clone()
       .cfs
-      .as_ref()
-      .unwrap()
-      .configuration
-      .as_ref()
-      .unwrap();
+      .and_then(|cfs| cfs.configuration);
 
     // FIXME: use BosSessionTemplate.get_image_vec() to get the list of image ids
-    let first_image_id = bos_sessiontemplate
+    let first_image_id_opt: Option<String> = bos_sessiontemplate
       .get_path_vec()
       .first()
-      .unwrap()
-      .strip_prefix("s3://boot-images/")
-      .unwrap()
-      .strip_suffix("/manifest.json")
-      .unwrap()
-      .to_string();
+      .and_then(|v| v.strip_prefix("s3://boot-images/"))
+      .and_then(|v| v.strip_suffix("/manifest.json").map(str::to_string));
 
-    let target = [
-      bos_sessiontemplate.get_target_hsm(),
-      bos_sessiontemplate.get_target_xname(),
-    ]
-    .concat();
+    if let (Some(cfs_configuration), Some(first_image_id)) =
+      (cfs_configuration_opt, first_image_id_opt)
+    {
+      let target = [
+        bos_sessiontemplate.get_target_hsm(),
+        bos_sessiontemplate.get_target_xname(),
+      ]
+      .concat();
 
-    image_id_cfs_configuration_from_bos_sessiontemplate.push((
-      first_image_id.to_string(),
-      cfs_configuration.to_string(),
-      target,
-    ));
+      image_id_cfs_configuration_from_bos_sessiontemplate.push((
+        first_image_id.to_string(),
+        cfs_configuration.to_string(),
+        target,
+      ));
+    } else {
+      log::warn!("BOS sessiontemplate '{:?}' not valid, check fields 'path' and 'cfs.configuration' have valid values. Path field should have 's3://boot-images/' as prefix and '/manifest.json' as sufix", bos_sessiontemplate.name);
+    }
   }
 
   image_id_cfs_configuration_from_bos_sessiontemplate
-}
-
-pub fn find_bos_sessiontemplate_related_to_image_id(
-  bos_sessiontemplate_vec: &[BosSessionTemplate],
-  image_id: &str,
-) -> Option<BosSessionTemplate> {
-  bos_sessiontemplate_vec
-    .iter()
-    .find(|bos_sessiontemplate| {
-      bos_sessiontemplate
-        .get_path_vec()
-        .first()
-        .unwrap()
-        .contains(image_id)
-    })
-    .cloned()
 }

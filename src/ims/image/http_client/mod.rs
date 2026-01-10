@@ -47,7 +47,7 @@ pub async fn get(
     .error_for_status()
     .map_err(|e| match e.status() {
       Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id_opt.unwrap().to_string())
+        Error::ImageNotFound(image_id_opt.map(str::to_string).unwrap())
       }
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
@@ -94,9 +94,7 @@ pub async fn post(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -136,9 +134,7 @@ pub async fn delete(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;
@@ -207,9 +203,7 @@ pub async fn patch(
   if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client = client_builder.proxy(socks5proxy).build()?;
   } else {
     client = client_builder.build()?;

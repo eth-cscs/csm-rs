@@ -21,7 +21,7 @@ pub async fn get_container_attachment_to_conman(
 ) -> Result<AttachedProcess, Error> {
   log::info!("xname: {}", xname);
 
-  let client = get_client(k8s_api_url, shasta_k8s_secrets).await.unwrap();
+  let client = get_client(k8s_api_url, shasta_k8s_secrets).await?;
 
   let pods_fabric: Api<Pod> = Api::namespaced(client, "services");
 
@@ -29,11 +29,13 @@ pub async fn get_container_attachment_to_conman(
     .limit(1)
     .labels("app.kubernetes.io/name=cray-console-operator");
 
-  let pods_objects = pods_fabric.list(&params).await.unwrap();
+  let pods_objects = pods_fabric.list(&params).await?;
 
   let console_operator_pod = &pods_objects.items[0];
   let console_operator_pod_name =
-    console_operator_pod.metadata.name.clone().unwrap();
+    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
+      Error::K8sError("Pod related to console has no name".to_string())
+    })?;
 
   log::info!("Console operator pod name '{}'", console_operator_pod_name);
 
@@ -45,15 +47,15 @@ pub async fn get_container_attachment_to_conman(
         .container("cray-console-operator")
         .stderr(false),
     )
-    .await
-    .unwrap();
+    .await?;
 
   let mut stdout_stream = ReaderStream::new(attached.stdout().unwrap());
-  let next_stdout = stdout_stream.next().await.unwrap().unwrap();
-  let stdout_str = std::str::from_utf8(&next_stdout).unwrap();
-  let output_json: Value = serde_json::from_str(stdout_str).unwrap();
+  let next_stdout = stdout_stream.next().await.unwrap()?;
+  let stdout_str = std::str::from_utf8(&next_stdout)?;
+  let output_json: Value = serde_json::from_str(stdout_str)?;
 
-  let console_pod_name = output_json["podname"].as_str().unwrap();
+  let console_pod_name =
+    output_json.get("podname").and_then(Value::as_str).unwrap();
 
   let command = vec!["conman", "-j", xname]; // Enter the container and open conman to access node's console
                                              // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
@@ -96,7 +98,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     .limit(1)
     .labels(format!("cfsession={}", cfs_session_name).as_str());
 
-  let mut pods = pods_fabric.list(&params).await.unwrap();
+  let mut pods = pods_fabric.list(&params).await?;
 
   let mut i = 0;
   let max = 30;
@@ -111,7 +113,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
         );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
-    pods = pods_fabric.list(&params).await.unwrap();
+    pods = pods_fabric.list(&params).await?;
   }
 
   if pods.items.is_empty() {
@@ -121,10 +123,13 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     )));
   }
 
-  let console_operator_pod = &pods.items[0].clone();
-
-  let console_operator_pod_name =
-    console_operator_pod.metadata.name.clone().unwrap();
+  let console_operator_pod_name = &pods
+    .items
+    .first()
+    .and_then(|pod| pod.metadata.name.as_ref())
+    .ok_or_else(|| {
+      Error::K8sError("Pod related to console has no name".to_string())
+    })?;
 
   log::info!("Ansible pod name: {}", console_operator_pod_name);
 
@@ -138,8 +143,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
             ],
             &AttachParams::default().container("ansible").stderr(false),
         )
-        .await
-        .unwrap();
+        .await?;
 
   let mut output = kubernetes::get_output(attached).await;
   log::info!("{output}");
@@ -148,11 +152,10 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   log::info!("{output}");
 
-  output = output.strip_prefix("ansible_host: ").unwrap().to_string();
-
   output = output
-    .strip_suffix("-service.ims.svc.cluster.local")
-    .unwrap()
+    .strip_prefix("ansible_host: ")
+    .and_then(|output| output.strip_suffix("-service.ims.svc.cluster.local"))
+    .ok_or_else(|| Error::Message("Output neither contains prefix 'ansible_host: ' not suffix '-service.ims.svc.cluster.local'".to_string()))?
     .to_string();
 
   log::info!("{output}");
@@ -169,7 +172,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     .limit(1)
     .labels(format!("job-name={}", ansible_target_container_label).as_str());
 
-  let mut pods = pods_fabric.list(&params).await.unwrap();
+  let mut pods = pods_fabric.list(&params).await?;
 
   let mut i = 0;
   let max = 30;
@@ -184,7 +187,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
         );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
-    pods = pods_fabric.list(&params).await.unwrap();
+    pods = pods_fabric.list(&params).await?;
   }
 
   if pods.items.is_empty() {
@@ -199,7 +202,9 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
   log::info!("Connecting to console ansible target container");
 
   let console_operator_pod_name =
-    console_operator_pod.metadata.name.clone().unwrap();
+    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
+      Error::K8sError("Pod related to console has no name".to_string())
+    })?;
 
   let command = vec!["bash"]; // Enter the container and open conman to access node's console
                               // let command = vec!["bash"]; // Enter the container and open bash to start an interactive

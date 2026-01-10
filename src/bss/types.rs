@@ -1,6 +1,6 @@
-use manta_backend_dispatcher::types::bss::BootParameters as FrontEndBootParameters;
-
 use std::collections::HashMap;
+
+use manta_backend_dispatcher::types::bss::BootParameters as FrontEndBootParameters;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,8 +20,6 @@ pub struct BootParameters {
   pub nids: Option<Vec<u32>>,
   #[serde(default)]
   pub params: String, // FIXME: change type to HashMap<String, String> by using function
-  // bss::utils::convert_kernel_params_to_map AND create new method
-  // bss::BootParameters::num_kernel_params which returns the list of kernel parameters
   #[serde(default)]
   pub kernel: String,
   #[serde(default)]
@@ -30,16 +28,6 @@ pub struct BootParameters {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cloud_init: Option<Value>,
 }
-
-/* let boot_parameters = BootParameters::new(
-    xnames,
-    macs_opt,
-    nids_opt,
-    params,
-    kernel,
-    initrd,
-    cloud_init_opt,
-); */
 
 impl From<FrontEndBootParameters> for BootParameters {
   fn from(value: FrontEndBootParameters) -> Self {
@@ -70,33 +58,6 @@ impl Into<FrontEndBootParameters> for BootParameters {
 }
 
 impl BootParameters {
-  pub fn new(
-    hosts: Vec<&str>,
-    macs: Option<Vec<&str>>,
-    nids: Option<Vec<&str>>,
-    params: &str,
-    kernel: &str,
-    initrd: &str,
-    cloud_init_opt: Option<&str>,
-  ) -> Self {
-    BootParameters {
-      hosts: hosts.iter().map(|value| value.to_string()).collect(),
-      macs: macs
-        .map(|mac_vec| mac_vec.iter().map(|value| value.to_string()).collect()),
-      nids: nids.map(|nid_vec| {
-        nid_vec
-          .iter()
-          .map(|value| value.parse::<u32>().unwrap())
-          .collect()
-      }),
-      params: params.to_string(),
-      kernel: kernel.to_string(),
-      initrd: initrd.to_string(),
-      cloud_init: cloud_init_opt
-        .map(|cloud_init| serde_json::to_value(cloud_init).unwrap()),
-    }
-  }
-
   /// Returns the image id. This function may fail since it assumes kernel path has the following
   // FIXME: Change function signature so it returns a Result<String, Error> instead of String
   pub fn get_boot_image(&self) -> String {
@@ -277,7 +238,7 @@ impl BootParameters {
       .map(|(key, value)| (key.trim(), value.trim()))
       .collect();
 
-    params.get(key).map(|value| value.to_string())
+    params.get(key).cloned().map(str::to_string)
   }
 
   pub fn get_num_kernel_params(&self) -> usize {

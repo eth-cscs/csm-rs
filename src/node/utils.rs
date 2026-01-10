@@ -23,8 +23,7 @@ pub async fn validate_target_hsm_members(
     shasta_base_url,
     shasta_root_cert,
   )
-  .await
-  .unwrap();
+  .await?;
   /* let hsm_groups_user_has_access = config_show::get_hsm_name_available_from_jwt_or_all(
       shasta_token,
       shasta_base_url,
@@ -42,8 +41,7 @@ pub async fn validate_target_hsm_members(
         .map(|g| g.as_str())
         .collect::<Vec<&str>>(),
     )
-    .await
-    .unwrap();
+    .await?;
   /* let all_xnames_user_has_access = hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
       shasta_base_url,
@@ -59,14 +57,14 @@ pub async fn validate_target_hsm_members(
   {
     Ok(
       hsm_group_members_opt
+        .as_ref()
         .iter()
-        .map(|s| s.to_string())
+        .cloned()
+        .map(str::to_string)
         .collect(),
     )
   } else {
     return Err(Error::Message(format!("Can't access all or any of the HSM members '{}'.\nPlease choose members form the list of HSM groups below:\n{}\nExit", hsm_group_members_opt.join(", "), hsm_groups_user_has_access.join(", "))));
-    /* println!("Can't access all or any of the HSM members '{}'.\nPlease choose members form the list of HSM groups below:\n{}\nExit", hsm_group_members_opt.join(", "), hsm_groups_user_has_access.join(", "));
-    std::process::exit(1); */
   }
 }
 
@@ -114,13 +112,15 @@ pub fn validate_xname_format(xname: &str) -> bool {
 /// Validates a list of xnames.
 /// Checks xnames strings are valid
 /// If hsm_group_name_opt provided, then checks all xnames belongs to that hsm_group
+// TODO: idually, we should create a struct with the data available to the user, then operate with
+// it in memory, that way we avoid multiple calls to Shasta APIs
 pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   xnames: &[&str],
   hsm_group_name_opt: Option<&str>,
-) -> bool {
+) -> Result<bool, Error> {
   let hsm_group_members: Vec<String> =
     if let Some(hsm_group_name) = hsm_group_name_opt {
       hsm::group::utils::get_member_vec_from_hsm_group_name(
@@ -129,7 +129,7 @@ pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
         shasta_root_cert,
         hsm_group_name,
       )
-      .await
+      .await?
     } else {
       Vec::new()
     };
@@ -139,46 +139,11 @@ pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
       || (!hsm_group_members.is_empty()
         && !hsm_group_members.contains(&xname.to_string()))
   }) {
-    return false;
+    return Ok(false);
   }
 
-  true
+  Ok(true)
 }
-
-/* /// Validates a list of xnames.
-/// Checks xnames strings are valid
-/// If hsm_group_name_vec_opt provided, then checks all xnames belongs to those hsm_groups
-pub async fn validate_xnames_format_and_membership_agaisnt_multiple_hsm(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  xnames: &[&str],
-  hsm_group_name_vec_opt: Option<&[&str]>,
-) -> bool {
-  let hsm_group_members: Vec<String> =
-    if let Some(hsm_group_name) = hsm_group_name_vec_opt.clone() {
-      hsm::group::utils::get_member_vec_from_hsm_name_vec(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        hsm_group_name,
-      )
-      .await
-      .unwrap()
-    } else {
-      Vec::new()
-    };
-
-  if xnames.iter().any(|&xname| {
-    !validate_xname_format(xname)
-      || (!hsm_group_members.is_empty()
-        && !hsm_group_members.contains(&xname.to_string()))
-  }) {
-    return false;
-  }
-
-  true
-} */
 
 /// Get components data.
 /// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
@@ -212,7 +177,7 @@ pub async fn get_node_details(
       &xname_list,
     ),
     // Get HSM component status (needed to get NIDS)
-    hsm::component_status::http_client::get(
+    hsm::component::http_client::get_and_filter(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -231,6 +196,10 @@ pub async fn get_node_details(
     )
   );
 
+  let node_hsm_info = node_hsm_info_rslt?;
+  let node_boot_params_vec = node_boot_params_vec_rslt?;
+  let cfs_session_vec = cfs_session_vec_rslt?;
+
   // ------------------------------------------------------------------------
   // Get and collect HSM members
   let mut node_details_map = HashMap::new();
@@ -246,10 +215,9 @@ pub async fn get_node_details(
     let components_status = components_status_rslt.as_ref().unwrap();
 
     // find component details
-    let component_details_opt =
-      components_status.iter().find(|component_status| {
-        component_status.id.as_ref().unwrap().eq(&xname)
-      });
+    let component_details_opt = components_status
+      .iter()
+      .find(|component_status| component_status.id.as_ref().eq(&Some(&xname)));
 
     // FIXME: fix this by converting 'compoennt_details_opt' into a Result, with
     // backend-dispatcher::Error and resolve the value using '?'
@@ -269,25 +237,30 @@ pub async fn get_node_details(
     let error_count = component_details.error_count.clone();
 
     // Get node HSM details
-    let node_hsm_info_value = node_hsm_info_rslt
-      .as_ref()
-      .unwrap()
+    let node_hsm_info = node_hsm_info
       .iter()
-      .find(|component| component["ID"].as_str().unwrap().eq(&xname))
-      .unwrap();
+      .find(|component| component.id.eq(&Some(xname.clone())))
+      .ok_or_else(|| Error::HsmComponentNotFound(xname.clone()))?;
 
-    // Gget power status
-    let node_power_status = node_hsm_info_value["State"]
-      .as_str()
-      .unwrap()
-      .to_string()
+    let node_hsm_id = node_hsm_info
+      .id
+      .as_ref()
+      .ok_or_else(|| Error::HsmComponentIdNotDefined(xname.clone()))?;
+
+    // Get power status
+    let node_power_status = node_hsm_info
+      .state
+      .as_ref()
+      .ok_or_else(|| Error::HsmComponentPowerStateNotDefined(xname.clone()))?
       .to_uppercase();
 
+    // Get NID
+    let nid = node_hsm_info
+      .nid
+      .ok_or_else(|| Error::HsmComponentNidNotDefined(node_hsm_id.clone()))?;
+
     // Calculate NID
-    let node_nid = format!(
-      "nid{:0>6}",
-      node_hsm_info_value["NID"].as_u64().unwrap().to_string()
-    );
+    let node_nid = format!("nid{:0>6}", nid.to_string());
 
     // get node boot params (these are the boot params of the nodes with the image the node
     // boot with). the image in the bos sessiontemplate may be different i don't know why. need
@@ -295,7 +268,7 @@ pub async fn get_node_details(
     let (image_id_in_kernel_params, kernel_params): (String, String) =
       if let Some(node_boot_params) =
         bss::utils::find_boot_params_related_to_node(
-          &node_boot_params_vec_rslt.as_ref().unwrap(),
+          &node_boot_params_vec,
           &xname,
         )
       {
@@ -308,23 +281,25 @@ pub async fn get_node_details(
     // Get CFS configuration related to image id
     let cfs_session_related_to_image_id_opt =
       cfs::session::utils::find_cfs_session_related_to_image_id(
-        &cfs_session_vec_rslt.as_ref().unwrap(),
+        &cfs_session_vec,
         &image_id_in_kernel_params,
       );
 
     let cfs_configuration_boot = if let Some(cfs_session_related_to_image_id) =
       cfs_session_related_to_image_id_opt
     {
-      cfs::session::utils::get_cfs_configuration_name(
-        &cfs_session_related_to_image_id,
-      )
-      .unwrap()
+      let session_name = cfs_session_related_to_image_id.name;
+
+      cfs_session_related_to_image_id
+        .configuration
+        .ok_or_else(|| {
+          Error::SessionConfigurationNotDefined(session_name.clone())
+        })?
+        .name
+        .ok_or_else(|| {
+          Error::SessionConfigurationNotDefined(session_name.clone())
+        })?
     } else {
-      /* log::warn!(
-        "No configuration found for node '{}' related to image id '{}'",
-        xname,
-        image_id_in_kernel_params
-      ); */
       "Not found".to_string()
     };
 
@@ -339,8 +314,9 @@ pub async fn get_node_details(
           desired_configuration.clone().unwrap();
         node_details.configuration_status =
           configuration_status.clone().unwrap();
-        node_details.enabled = enabled.unwrap().to_string();
-        node_details.error_count = error_count.unwrap().to_string();
+        node_details.enabled = enabled.as_ref().map(bool::to_string).unwrap();
+        node_details.error_count =
+          error_count.as_ref().map(u64::to_string).unwrap();
         node_details.boot_image_id = image_id_in_kernel_params.clone();
         node_details.boot_configuration = cfs_configuration_boot.clone();
         node_details.kernel_params = kernel_params.clone();
@@ -352,8 +328,8 @@ pub async fn get_node_details(
         power_status: node_power_status,
         desired_configuration: desired_configuration.clone().unwrap(),
         configuration_status: configuration_status.clone().unwrap(),
-        enabled: enabled.unwrap().to_string(),
-        error_count: error_count.unwrap().to_string(),
+        enabled: enabled.as_ref().map(bool::to_string).unwrap(),
+        error_count: error_count.as_ref().map(u64::to_string).unwrap(),
         boot_image_id: image_id_in_kernel_params,
         boot_configuration: cfs_configuration_boot,
         kernel_params,
@@ -371,15 +347,11 @@ pub async fn get_node_details(
         &xname,
       )
       .await
-      /* .expect(&format!(
-          "ERROR - could not get node '{}' membership from HSM",
-          xname
-      )) */
     });
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message.unwrap() {
+    match message? {
       Ok(node_membership) => {
         let node_details = NodeDetails {
           xname: "".to_string(),
@@ -409,28 +381,6 @@ pub async fn get_node_details(
         );
       }
     }
-    /* if let Ok(Ok(node_membership)) = message {
-        let node_details = NodeDetails {
-            xname: "".to_string(),
-            nid: "".to_string(),
-            hsm: node_membership.group_labels.join(", "),
-            power_status: "".to_string(),
-            desired_configuration: "".to_string(),
-            configuration_status: "".to_string(),
-            enabled: "".to_string(),
-            error_count: "".to_string(),
-            boot_image_id: "".to_string(),
-            boot_configuration: "".to_string(),
-            kernel_params: "".to_string(),
-        };
-
-        node_details_map
-            .entry(node_membership.id.clone())
-            .and_modify(|node_details: &mut NodeDetails| {
-                node_details.hsm = node_membership.group_labels.join(", ")
-            })
-            .or_insert(node_details);
-    } */
   }
 
   let duration = start.elapsed();
@@ -456,7 +406,11 @@ pub fn nodes_to_string_format_discrete_columns(
 
   match nodes {
     Some(nodes) if !nodes.is_empty() => {
-      members = nodes[0].as_str().unwrap().to_string(); // take first element
+      members = nodes
+        .first()
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .unwrap(); // take first element
 
       for (i, _) in nodes.iter().enumerate().skip(1) {
         // iterate for the rest of the list
@@ -468,7 +422,7 @@ pub fn nodes_to_string_format_discrete_columns(
           members.push(',');
         }
 
-        members.push_str(nodes[i].as_str().unwrap());
+        members.push_str(nodes.get(i).and_then(Value::as_str).unwrap());
       }
     }
     _ => members = "".to_string(),

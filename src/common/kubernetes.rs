@@ -47,17 +47,42 @@ pub async fn get_client(
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
 ) -> Result<kube::Client, Error> {
+  let k8s_credential_name = "certificate-authority-data";
+
   let certificate_authority_data = shasta_k8s_secrets
-    ["certificate-authority-data"]
+    .get(k8s_credential_name)
+    .ok_or_else(|| {
+      Error::K8sCredentialMissingError(k8s_credential_name.to_string())
+    })?
     .as_str()
-    .unwrap();
-  let client_certificate_data = shasta_k8s_secrets["client-certificate-data"]
+    .ok_or_else(|| {
+      Error::K8sCredentialNotStringError(k8s_credential_name.to_string())
+    })?;
+
+  let k8s_credential_name = "client-certificate-data";
+
+  let client_certificate_data = shasta_k8s_secrets
+    .get(k8s_credential_name)
+    .ok_or_else(|| {
+      Error::K8sCredentialMissingError(k8s_credential_name.to_string())
+    })?
     .as_str()
-    .unwrap();
-  let client_key_data = shasta_k8s_secrets["client-key-data"]
+    .ok_or_else(|| {
+      Error::K8sCredentialNotStringError(k8s_credential_name.to_string())
+    })?;
+
+  let k8s_credential_name = "client-key-data";
+
+  let client_key_data = shasta_k8s_secrets
+    .get(k8s_credential_name)
+    .ok_or_else(|| {
+      Error::K8sCredentialMissingError(k8s_credential_name.to_string())
+    })?
     .as_str()
-    .map(|s| s.to_string())
-    .unwrap();
+    .ok_or_else(|| {
+      Error::K8sCredentialNotStringError(k8s_credential_name.to_string())
+    })?
+    .to_string();
 
   let shasta_cluster = Cluster {
     server: Some(k8s_api_url.to_string()),
@@ -436,46 +461,40 @@ pub fn get_init_container<'a>(
   pod: &'a Pod,
   name: &str,
 ) -> Option<&'a Container> {
-  pod.spec.as_ref().and_then(|pod_spec| {
-    pod_spec
-      .init_containers
-      .as_ref()
-      .and_then(|init_container_vec| {
-        init_container_vec
-          .iter()
-          .find(|container| container.name == name)
-      })
-  })
+  pod
+    .spec
+    .as_ref()
+    .and_then(|pod_spec| pod_spec.init_containers.as_ref())
+    .and_then(|init_container_vec| {
+      init_container_vec
+        .iter()
+        .find(|container| container.name == name)
+    })
 }
 
 pub fn init_container_status<'a>(
   pod: &'a Pod,
   container_name: &str,
 ) -> Option<&'a ContainerStatus> {
-  pod.status.as_ref().and_then(|pod_status| {
-    pod_status
-      .init_container_statuses
-      .as_ref()
-      .and_then(|status_vec| {
-        status_vec
-          .iter()
-          .find(|container_status| container_status.name == container_name)
-      })
-  })
+  pod
+    .status
+    .as_ref()
+    .and_then(|pod_status| pod_status.init_container_statuses.as_ref())
+    .and_then(|status_vec| {
+      status_vec
+        .iter()
+        .find(|container_status| container_status.name == container_name)
+    })
 }
 
 pub fn init_container_exit_code(
   pod: &Pod,
   container_name: &str,
 ) -> Option<i32> {
-  init_container_status(pod, container_name).and_then(|container_status| {
-    container_status.state.as_ref().and_then(|container_state| {
-      container_state
-        .terminated
-        .as_ref()
-        .map(|terminated_state| terminated_state.exit_code)
-    })
-  })
+  init_container_status(pod, container_name)
+    .and_then(|container_status| container_status.state.as_ref())
+    .and_then(|container_state| container_state.terminated.as_ref())
+    .map(|terminated_state| terminated_state.exit_code)
 }
 
 pub fn is_init_container_state_unkown(pod: &Pod, container_name: &str) -> bool {
@@ -511,9 +530,7 @@ pub fn container_status<'a>(
   pod
     .status
     .as_ref()
-    .unwrap()
-    .container_statuses
-    .as_ref()
+    .and_then(|pod_status| pod_status.container_statuses.as_ref())
     .and_then(|status_vec| {
       status_vec
         .iter()
@@ -535,7 +552,7 @@ pub fn is_container_state_waiting(pod: &Pod, container_name: &str) -> bool {
   })
 }
 
-pub async fn get_pod(
+pub async fn get_pod_and_wait_items(
   pods_api: &Api<Pod>,
   cfs_session_name: &str,
   label_selector: &str,
@@ -587,7 +604,12 @@ pub async fn get_pod(
     )));
   }
 
-  let cfs_session_pod = cfs_session_pods.items.first().unwrap();
+  let cfs_session_pod = cfs_session_pods.items.first().ok_or_else(|| {
+    Error::K8sError(format!(
+      "Pod related to CFS session '{}' not found",
+      cfs_session_name
+    ))
+  })?;
 
   Ok(cfs_session_pod.clone())
 }
@@ -596,7 +618,9 @@ pub async fn get_init_container_and_wait_to_ready(
   cfs_session_pod: &Pod,
   init_container_name: &str,
 ) -> Result<Container, Error> {
-  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
+  let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
+    Error::K8sError("Pod related to CFS session has no name".to_string())
+  })?;
 
   let init_container_opt =
     get_init_container(cfs_session_pod, init_container_name);
@@ -651,99 +675,23 @@ pub async fn get_init_container_logs_stream(
 ) -> Result<(impl AsyncBufRead, i32), Error> {
   let pods_api: Api<Pod> = Api::namespaced(client, namespace);
 
-  /* let params = kube::api::ListParams::default()
-    .limit(1)
-    .labels(label_selector);
-
-  let mut cfs_session_pods = pods_api
-    .list(&params)
-    .await
-    .map_err(|e| Error::K8sError(format!("{e}")))?;
-
-  let mut i = 0;
-  let max = 150;
-  let delay_secs = 2;
-
-  // Waiting for pod to start
-  while cfs_session_pods.items.is_empty() && i <= max {
-    println!(
-      "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
-      cfs_session_name,
-      delay_secs,
-      i + 1,
-      max
-    );
-
-    i += 1;
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    cfs_session_pods = pods_api
-      .list(&params)
-      .await
-      .map_err(|e| Error::K8sError(format!("{e}")))?;
-  }
-
-  if cfs_session_pods.items.is_empty() {
-    return Err(Error::K8sError(format!(
-      "Pod for cfs session {} missing. Aborting operation",
-      cfs_session_name
-    )));
-  }
-
-  if cfs_session_pods.items.len() > 1 {
-    return Err(Error::K8sError(format!(
-      "Multiple pods found for cfs session '{}'. Using the first one.",
-      cfs_session_name
-    )));
-  }
-
-  let cfs_session_pod = cfs_session_pods.items.first().unwrap(); */
-
   let cfs_session_pod =
-    &get_pod(&pods_api, cfs_session_name, label_selector).await?;
+    &get_pod_and_wait_items(&pods_api, cfs_session_name, label_selector)
+      .await?;
 
-  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
+  let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
+    Error::K8sError(format!(
+      "Pod related to CFS session '{}' has no name",
+      cfs_session_name
+    ))
+  })?;
 
-  /* let init_container_opt =
-    get_init_container(cfs_session_pod, init_container_name);
-
-  if init_container_opt.is_none() {
-    return Err(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
-    )));
-  }
-
-  // Waiting for init container to start
-  let init_container = get_init_container(cfs_session_pod, init_container_name)
-    .ok_or(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
-    )))?;
-
-  let mut i = 0;
-  let max = 60;
-
-  while (is_init_container_state_unkown(cfs_session_pod, &init_container.name)
-    || is_init_container_state_waiting(cfs_session_pod, &init_container.name))
-    && i <= max
-  {
-    log::debug!(
-      "Init Container name: '{}' container state {:?}",
-      init_container.name,
-      init_container_status(cfs_session_pod, &init_container.name)
-    );
-    println!(
-      "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
-      init_container.name,
-      i + 1,
-      max
-    );
-
-    i += 1;
-    tokio::time::sleep(time::Duration::from_secs(2)).await;
-  } */
+  log::info!(
+    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
+    init_container_name,
+    namespace,
+    cfs_session_pod_name,
+  );
 
   let init_container =
     get_init_container_and_wait_to_ready(cfs_session_pod, init_container_name)
@@ -803,56 +751,15 @@ pub async fn get_container_logs_stream(
 ) -> Result<impl AsyncBufRead, Error> {
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
 
-  let params = kube::api::ListParams::default()
-    .limit(1)
-    .labels(label_selector);
+  let cfs_session_pod =
+    get_pod_and_wait_items(&pods_api, cfs_session_name, label_selector).await?;
 
-  let mut cfs_session_pods = pods_api
-    .list(&params)
-    .await
-    .map_err(|e| Error::K8sError(format!("{e}")))?;
-
-  let mut i = 0;
-  let max = 30;
-  let delay_secs = 2;
-
-  // Waiting for pod to start
-  while cfs_session_pods.items.is_empty() && i <= max {
-    println!(
-      "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
-      cfs_session_name,
-      delay_secs,
-      i + 1,
-      max
-    );
-
-    i += 1;
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    cfs_session_pods = pods_api
-      .list(&params)
-      .await
-      .map_err(|e| Error::K8sError(format!("{e}")))?;
-  }
-
-  if cfs_session_pods.items.is_empty() {
-    return Err(Error::K8sError(format!(
-      "Pod for cfs session {} missing. Aborting operation",
+  let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
+    Error::K8sError(format!(
+      "Pod related to CFS session '{}' has no name",
       cfs_session_name
-    )));
-  }
-
-  if cfs_session_pods.items.len() > 1 {
-    return Err(Error::K8sError(format!(
-      "Multiple pods found for cfs session '{}'. Using the first one.",
-      cfs_session_name
-    )));
-  }
-
-  let cfs_session_pod = cfs_session_pods.items.first().unwrap();
-
-  let cfs_session_pod_name = cfs_session_pod.name().unwrap();
+    ))
+  })?;
 
   log::info!(
     "Fetching logs from container '{}' in namespace/pod '{}/{}'",
@@ -861,7 +768,7 @@ pub async fn get_container_logs_stream(
     cfs_session_pod_name,
   );
 
-  let container_opt = get_container(cfs_session_pod, container_name);
+  let container_opt = get_container(&cfs_session_pod, container_name);
 
   if container_opt.is_none() {
     return Err(Error::K8sError(format!(
@@ -871,7 +778,7 @@ pub async fn get_container_logs_stream(
   }
 
   // Waiting for container to start
-  let container = get_container(cfs_session_pod, container_name).ok_or(
+  let container = get_container(&cfs_session_pod, container_name).ok_or(
     Error::K8sError(format!(
       "Container '{}' not found in pod '{}'",
       container_name, cfs_session_pod_name,
@@ -881,14 +788,14 @@ pub async fn get_container_logs_stream(
   let mut i = 0;
   let max = 600;
 
-  while (is_container_state_unkown(cfs_session_pod, &container.name)
-    || is_container_state_waiting(cfs_session_pod, &container.name))
+  while (is_container_state_unkown(&cfs_session_pod, &container.name)
+    || is_container_state_waiting(&cfs_session_pod, &container.name))
     && i <= max
   {
     log::debug!(
       "Container name: '{}' container state {:?}",
       container.name,
-      container_status(cfs_session_pod, &container.name)
+      container_status(&cfs_session_pod, &container.name)
     );
     println!(
       "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
@@ -901,8 +808,8 @@ pub async fn get_container_logs_stream(
     tokio::time::sleep(time::Duration::from_secs(2)).await;
   }
 
-  if is_container_state_unkown(cfs_session_pod, &container.name)
-    || is_container_state_waiting(cfs_session_pod, &container.name)
+  if is_container_state_unkown(&cfs_session_pod, &container.name)
+    || is_container_state_waiting(&cfs_session_pod, &container.name)
   {
     return Err(
       Error::K8sError(format!(
@@ -938,14 +845,14 @@ pub fn get_container_status(
 ) -> Option<ContainerStatus> {
   pod
     .status
-    .clone()
-    .unwrap()
-    .container_statuses
+    .as_ref()
+    .and_then(|status| status.container_statuses.as_ref())
     .and_then(|status_vec| {
       status_vec
-        .into_iter()
+        .iter()
         .find(|container_status| container_status.name.eq(container_name))
     })
+    .cloned()
 }
 
 pub async fn attach_cfs_session_container_target_k8s_service_name(
@@ -991,7 +898,11 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
   let console_operator_pod = &pods.items[0].clone();
 
   let console_operator_pod_name =
-    console_operator_pod.metadata.name.clone().unwrap();
+    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
+      Error::K8sError(
+        "Pod related to console operation has no name".to_string(),
+      )
+    })?;
 
   let attached = pods_fabric
         .exec(
@@ -1005,8 +916,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
                 .container("cray-console-operator")
                 .stderr(false),
         )
-        .await
-        .unwrap();
+        .await?;
 
   let mut output = get_output(attached).await;
   log::info!("{output}");
@@ -1017,8 +927,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   output
     .strip_prefix("ansible_host: ")
-    .unwrap()
-    .strip_suffix("-service.ims.svc.cluster.local")
+    .and_then(|v| v.strip_suffix("-service.ims.svc.cluster.local"))
     .unwrap();
 
   println!("{output}");
@@ -1052,7 +961,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
         );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
-    pods = pods_fabric.list(&params).await.unwrap();
+    pods = pods_fabric.list(&params).await?;
   }
 
   if pods.items.is_empty() {
@@ -1067,7 +976,11 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
   log::info!("Connecting to console ansible target container");
 
   let console_operator_pod_name =
-    console_operator_pod.metadata.name.clone().unwrap();
+    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
+      Error::K8sError(
+        "Pod related to console operation has no name".to_string(),
+      )
+    })?;
 
   let command = vec!["bash"]; // Enter the container and open conman to access node's console
                               // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
@@ -1102,7 +1015,9 @@ pub async fn get_output(mut attached: AttachedProcess) -> String {
     .collect::<Vec<_>>()
     .await
     .join("");
+
   attached.join().await.unwrap();
+
   out
 }
 
@@ -1136,7 +1051,10 @@ pub async fn delete_session_pod(
     .map_err(|e| Error::K8sError(e.to_string()))?;
   let cfs_session_pod = &pods.items[0].clone();
 
-  let cfs_session_pod_name = cfs_session_pod.metadata.name.clone().unwrap();
+  let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
+    Error::K8sError("Pod related to CFS session has no name".to_string())
+  })?;
+
   log::info!("Pod to delete: {}", cfs_session_pod_name);
 
   // Delete Pod

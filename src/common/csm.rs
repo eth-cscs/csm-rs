@@ -19,9 +19,7 @@ pub async fn process_get_http_request(
   let client = if std::env::var("SOCKS5").is_ok() {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-    // rest client to authenticate
+    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
     client_builder.proxy(socks5proxy).build()?
   } else {
     client_builder.build()?

@@ -62,20 +62,18 @@ pub mod http_client {
     repo_name: &str,
     shasta_root_cert: &[u8],
   ) -> Result<Vec<Value>, Error> {
-    let client_builder = reqwest::Client::builder().add_root_certificate(
-      reqwest::Certificate::from_pem(shasta_root_cert).unwrap(),
-    );
+    let client_builder = reqwest::Client::builder()
+      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
     // Build client
     let client = if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy =
-        reqwest::Proxy::all(std::env::var("SOCKS5").unwrap()).unwrap();
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
 
       // rest client to authenticate
-      client_builder.proxy(socks5proxy).build().unwrap()
+      client_builder.proxy(socks5proxy).build()?
     } else {
-      client_builder.build().unwrap()
+      client_builder.build()?
     };
 
     let api_url = format!(
@@ -124,14 +122,19 @@ pub mod http_client {
     .await?;
 
     let ref_details_opt = all_ref_vec.into_iter().find(|ref_details| {
-      ref_details["ref"].as_str().unwrap()
+      ref_details.get("ref").and_then(Value::as_str).unwrap()
         == format!("refs/heads/{}", branch_name)
     });
 
     match ref_details_opt {
-      Some(ref_details) => {
-        Ok(ref_details["object"]["sha"].as_str().unwrap().to_string())
-      }
+      Some(ref_details) => Ok(
+        ref_details
+          .get("object")
+          .and_then(|object| object.get("sha"))
+          .and_then(Value::as_str)
+          .map(str::to_string)
+          .unwrap(),
+      ),
       None => Err(Error::Message("SHA for branch not found".to_string())),
     }
   }
@@ -145,7 +148,7 @@ pub mod http_client {
     gitea_token: &str,
     shasta_root_cert: &[u8],
     site_name: &str,
-  ) -> Result<Value, reqwest::Error> {
+  ) -> Result<Value, Error> {
     let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/";
     let gitea_external_base_url =
       format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
@@ -171,9 +174,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -184,13 +185,15 @@ pub mod http_client {
 
     log::debug!("Request to {}", api_url);
 
-    client
-      .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
-      .send()
-      .await?
-      .json()
-      .await
+    Ok(
+      client
+        .get(api_url)
+        .header("Authorization", format!("token {}", gitea_token))
+        .send()
+        .await?
+        .json()
+        .await?,
+    )
   }
 
   /// Returns the commit id (sha) related to a tag name
@@ -211,7 +214,7 @@ pub mod http_client {
       .trim_start_matches(&external_vcs_base_url)
       .split('/')
       .next()
-      .unwrap();
+      .ok_or_else(|| Error::Message("Invalid repo URL".to_string()))?;
 
     let api_url = format!(
       "https://api.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/{}/tags/{}",
@@ -226,9 +229,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -297,9 +298,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -325,7 +324,7 @@ pub mod http_client {
         .await
         .map_err(|error| Error::NetError(error))
     } else {
-      let payload = response.text().await.unwrap();
+      let payload = response.text().await?;
       Err(Error::CsmError(serde_json::json!({ "message": payload })))
     }
   }
@@ -335,7 +334,7 @@ pub mod http_client {
     repo_name: &str,
     gitea_token: &str,
     shasta_root_cert: &[u8],
-  ) -> core::result::Result<Value, reqwest::Error> {
+  ) -> core::result::Result<Value, Error> {
     let repo_url =
       gitea_api_base_url.to_owned() + "/api/v1/repos" + repo_name + "/commits";
 
@@ -347,9 +346,7 @@ pub mod http_client {
     // Build client
     if std::env::var("SOCKS5").is_ok() {
       // socks5 proxy
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5").unwrap())?;
-
-      // rest client to authenticate
+      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
       client = client_builder.proxy(socks5proxy).build()?;
     } else {
       client = client_builder.build()?;
@@ -370,7 +367,10 @@ pub mod http_client {
         .cmp(&b["commit"]["committer"]["date"].to_string())
     });
 
-    Ok(resp.last().unwrap().clone())
+    resp
+      .last()
+      .ok_or_else(|| Error::Message("No commits found".to_string()))
+      .cloned()
   }
 
   pub async fn get_last_commit_from_url(
@@ -378,7 +378,7 @@ pub mod http_client {
     repo_url: &str,
     gitea_token: &str,
     shasta_root_cert: &[u8],
-  ) -> core::result::Result<Value, reqwest::Error> {
+  ) -> core::result::Result<Value, Error> {
     let repo_name = repo_url
       .trim_start_matches("https://api-gw-service-nmn.local/vcs/")
       .trim_end_matches(".git");

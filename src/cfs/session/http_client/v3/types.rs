@@ -12,6 +12,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::Error;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsSessionGetResponseList {
   pub sessions: Vec<CfsSessionGetResponse>,
@@ -278,8 +280,7 @@ impl Into<FrontEndStatus> for Status {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsSessionGetResponse {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub name: Option<String>,
+  pub name: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub configuration: Option<Configuration>,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -329,28 +330,28 @@ impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
 impl CfsSessionGetResponse {
   /// Get start time
   pub fn get_start_time(&self) -> Option<String> {
-    self.status.as_ref().and_then(|status| {
-      status
-        .session
-        .as_ref()
-        .and_then(|session| session.start_time.clone())
-    })
+    self
+      .status
+      .as_ref()
+      .and_then(|status| status.session.as_ref())
+      .and_then(|session| session.start_time.clone())
   }
 
   /// Returns list of result_ids
   pub fn get_result_id_vec(&self) -> Vec<String> {
-    if let Some(status) = &self.status {
-      status
-        .artifacts
-        .as_ref()
-        .unwrap_or(&Vec::new())
-        .into_iter()
-        .filter(|artifact| artifact.result_id.is_some())
-        .map(|artifact| artifact.result_id.clone().unwrap())
-        .collect()
-    } else {
-      Vec::new()
-    }
+    self
+      .status
+      .as_ref()
+      .map(|status| {
+        status
+          .artifacts
+          .clone()
+          .unwrap_or_default()
+          .iter()
+          .filter_map(|artifact| artifact.result_id.clone())
+          .collect::<Vec<String>>()
+      })
+      .unwrap_or_default()
   }
 
   /// Returns list of result_ids
@@ -360,24 +361,9 @@ impl CfsSessionGetResponse {
       .cloned()
   }
 
-  /* /// Returns list of result_ids
-  pub fn get_result_id(&self) -> Option<String> {
-      self.status.as_ref().and_then(|status| {
-          status.artifacts.as_ref().and_then(|artifacts| {
-              artifacts
-                  .first()
-                  .and_then(|artifact| artifact.result_id.clone())
-          })
-      })
-  } */
-
   /// Returns list of targets (either groups or xnames)
   pub fn get_targets(&self) -> Option<Vec<String>> {
-    Some(
-      self
-        .get_target_hsm()
-        .unwrap_or(self.get_target_xname().unwrap()),
-    )
+    self.get_target_hsm().or_else(|| self.get_target_xname())
   }
 
   /// Returns list of HSM groups targeted
@@ -428,17 +414,14 @@ impl CfsSessionGetResponse {
 
   /// Returns 'true' if CFS session succeeded
   pub fn is_success(&self) -> bool {
-    self
-      .status
-      .as_ref()
-      .unwrap()
-      .session
-      .as_ref()
-      .unwrap()
-      .succeeded
-      .as_ref()
-      .unwrap()
-      == "true"
+    self.status.as_ref().is_some_and(|status| {
+      status.session.as_ref().is_some_and(|session| {
+        session
+          .succeeded
+          .as_ref()
+          .is_some_and(|succeeded| succeeded.as_str() == "true")
+      })
+    })
   }
 }
 
@@ -543,57 +526,73 @@ impl CfsSessionPostRequest {
   pub fn new(
     name: String,
     configuration_name: String,
-    configuration_limit: Option<String>,
-    ansible_limit: Option<String>,
-    ansible_config: Option<String>,
-    ansible_verbosity: Option<u8>,
-    ansible_passthrough: Option<String>,
+    configuration_limit_opt: Option<String>,
+    ansible_limit_opt: Option<String>,
+    ansible_config_opt: Option<String>,
+    ansible_verbosity_opt: Option<u8>,
+    ansible_passthrough_opt: Option<String>,
     is_target_definition_image: bool,
-    groups_name: Option<Vec<String>>,
-    base_image_id: Option<String>,
-    tags: Option<HashMap<String, String>>,
+    groups_name_opt: Option<Vec<String>>,
+    base_image_id_opt: Option<String>,
+    tags_opt: Option<HashMap<String, String>>,
     debug_on_failure: bool,
-    result_image_name: Option<String>,
-  ) -> Self {
+    result_image_name_opt: Option<String>,
+  ) -> Result<Self, Error> {
     // This code is fine... the fact that I put Self behind a variable is ok, since image param
     // is not a default param, then doing things differently is not an issue. I checked with
     // other Rust developers in their discord https://discord.com/channels/442252698964721669/448238009733742612/1081686300182188207
     let mut cfs_session = Self {
       name,
       configuration_name,
-      configuration_limit,
-      ansible_config,
-      ansible_limit,
-      ansible_verbosity,
-      ansible_passthrough,
+      configuration_limit: configuration_limit_opt,
+      ansible_config: ansible_config_opt,
+      ansible_limit: ansible_limit_opt,
+      ansible_verbosity: ansible_verbosity_opt,
+      ansible_passthrough: ansible_passthrough_opt,
       ..Default::default()
     };
 
     if is_target_definition_image {
-      let target_groups: Vec<Group> = groups_name
-        .unwrap()
-        .into_iter()
-        .map(|group_name| Group {
-          name: group_name,
-          members: vec![base_image_id.as_ref().unwrap().to_string()],
+      // Validation
+      let base_image_id = base_image_id_opt.ok_or_else(|| {
+        Error::Message(
+          "Can't create a CFS session to build an image without base image id"
+            .to_string(),
+        )
+      })?;
+
+      let result_image_name = result_image_name_opt.ok_or_else(|| {
+        Error::Message("Can't create a CFS sessions to build an image without result image name".to_string())
+      })?;
+      // End validation
+
+      let target_groups: Vec<Group> = groups_name_opt
+        .map(|group_vec| {
+          group_vec
+            .into_iter()
+            .map(|group_name| Group {
+              name: group_name,
+              members: vec![base_image_id.clone()],
+            })
+            .collect::<Vec<Group>>()
         })
-        .collect();
+        .unwrap_or_default();
 
       cfs_session.target.definition = Some("image".to_string());
       cfs_session.target.groups = Some(target_groups);
       cfs_session.target.image_map = Some(vec![ImageMap {
-                            source_id: base_image_id.expect("ERROR - can't create a CFS session to build an image without base image id"),
-                            result_name: result_image_name.expect("ERROR - can't create a CFS sessions to build an image without result image name"),
-                        }]);
+        source_id: base_image_id,
+        result_name: result_image_name,
+      }]);
     } else {
       cfs_session.target.definition = Some("dynamic".to_string());
       cfs_session.target.groups = None;
       cfs_session.target.image_map = Some(Vec::new());
     }
 
-    cfs_session.tags = tags;
+    cfs_session.tags = tags_opt;
     cfs_session.debug_on_failure = debug_on_failure;
 
-    cfs_session
+    Ok(cfs_session)
   }
 }

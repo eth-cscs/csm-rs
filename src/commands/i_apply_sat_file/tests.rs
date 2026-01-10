@@ -35,7 +35,10 @@ fn test_get_ref_name() {
   let ref_name_processed_vec: Vec<String> = Vec::new();
   let next_image_to_process: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -60,7 +63,10 @@ fn test_get_next_image_to_process_1() {
 
   let next_image_to_process: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -95,7 +101,10 @@ fn test_get_next_image_to_process_2() {
   let ref_name_processed_vec: Vec<String> = Vec::new();
   let next_image_to_process: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -140,7 +149,10 @@ fn test_get_next_image_to_process_3() {
 
   let next_image_to_process_1: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -148,7 +160,10 @@ fn test_get_next_image_to_process_3() {
 
   let next_image_to_process_2: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -187,7 +202,10 @@ fn test_get_next_image_to_process_4() {
 
   let next_image_to_process_1: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -195,7 +213,10 @@ fn test_get_next_image_to_process_4() {
 
   let next_image_to_process_2: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 
@@ -203,7 +224,10 @@ fn test_get_next_image_to_process_4() {
 
   let next_image_to_process_3: Option<serde_yaml::Value> =
     get_next_image_in_sat_file_to_process(
-      image_yaml_vec["images"].as_sequence().unwrap(),
+      image_yaml_vec
+        .get("images")
+        .and_then(serde_yaml::Value::as_sequence)
+        .unwrap(),
       &ref_name_processed_vec,
     );
 

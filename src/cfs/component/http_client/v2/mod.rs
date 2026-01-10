@@ -171,7 +171,7 @@ pub async fn get_multiple(
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message.unwrap() {
+    match message? {
       Ok(mut cfs_component_vec) => {
         component_vec.append(&mut cfs_component_vec);
       }
@@ -252,7 +252,7 @@ pub async fn get_parallel(
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message.unwrap() {
+    match message? {
       Ok(mut cfs_component_vec) => component_vec.append(&mut cfs_component_vec),
       Err(error) => return Err(error),
     }

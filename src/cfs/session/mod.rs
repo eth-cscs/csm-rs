@@ -12,6 +12,30 @@ use crate::{
   error::Error,
 };
 
+pub async fn get_one(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  session_name: &String,
+) -> Result<CfsSessionGetResponse, Error> {
+  let cfs_session_vec = cfs::session::http_client::v2::get(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    None,
+    None,
+    None,
+    Some(session_name),
+    None,
+  )
+  .await?;
+
+  if cfs_session_vec.len() == 1 {
+    Ok(cfs_session_vec.first().unwrap().clone()) // FIX: remove this clone?
+  } else {
+    Err(Error::SessionNotFound(session_name.to_string()))
+  }
+}
 /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
 /// Returns list of CFS sessions ordered by start time.
 /// This methods filter by either HSM group name or HSM group members or both
@@ -38,11 +62,7 @@ pub async fn get_and_sort(
   .await?;
 
   // Sort CFS sessions by start time order ASC
-  cfs_session_vec.sort_by(|a, b| {
-    a.get_start_time()
-      .unwrap()
-      .cmp(&b.get_start_time().unwrap())
-  });
+  cfs_session_vec.sort_by(|a, b| a.get_start_time().cmp(&b.get_start_time()));
 
   Ok(cfs_session_vec)
 }
@@ -92,7 +112,7 @@ pub async fn i_post_sync(
   )
   .await?;
 
-  let cfs_session_name: String = cfs_session.name.unwrap();
+  let cfs_session_name: String = cfs_session.name;
 
   // FIXME: refactor becase this code is duplicated in command `manta apply sat-file` and also in
   // `manta logs`
@@ -105,12 +125,11 @@ pub async fn i_post_sync(
     )
     .await?;
 
-    let client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-      .await
-      .unwrap();
+    let client =
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets).await?;
 
     let _ =
-      i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await;
+      i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
 
   // User does not want the CFS logs but we still need to wayt the CFS session to
@@ -124,20 +143,13 @@ pub async fn i_post_sync(
   .await?;
 
   // Get most recent CFS session status
-  let cfs_session: CfsSessionGetResponse = get_and_sort(
+  let cfs_session: CfsSessionGetResponse = get_one(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    None,
-    None,
-    None,
-    Some(&cfs_session_name),
-    None,
+    &cfs_session_name,
   )
-  .await?
-  .first()
-  .unwrap()
-  .clone();
+  .await?;
 
   Ok(cfs_session)
 }

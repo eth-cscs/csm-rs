@@ -55,8 +55,6 @@ pub async fn exec(
       );
     } else {
       return Err(Error::Message("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8".to_string()));
-      /* log::error!("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg <tasna>:a100:4:epyc:10:instinct:8");
-      std::process::exit(1); */
     }
   }
 
@@ -77,64 +75,47 @@ pub async fn exec(
   // PREPREQUISITES - GET DATA - TARGET HSM
 
   match hsm::group::http_client::get(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        Some(&[target_hsm_group_name]),
-        None
-    ).await
-    /* match hsm::group::http_client::get(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        Some(&target_hsm_group_name.to_string()),
-    )
-    .await */
-    {
-        Ok(_) => log::debug!("Target HSM group {} exists, good.", target_hsm_group_name),
-        Err(_) => {
-            if create_target_hsm_group {
-                log::info!("Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.", target_hsm_group_name.to_string());
-                if nodryrun {
-                    let group = Group{
-                        label: target_hsm_group_name.to_string(),
-                        description: None,
-                        tags: None,
-                        members: None,
-                        exclusive_group: Some("false".to_string())
-                    };
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    Some(&[target_hsm_group_name]),
+    None,
+  )
+  .await
+  {
+    Ok(_) => {
+      log::debug!("Target HSM group {} exists, good.", target_hsm_group_name)
+    }
+    Err(_) => {
+      if create_target_hsm_group {
+        log::info!("Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.", target_hsm_group_name.to_string());
+        if nodryrun {
+          let group = Group {
+            label: target_hsm_group_name.to_string(),
+            description: None,
+            tags: None,
+            members: None,
+            exclusive_group: Some("false".to_string()),
+          };
 
-                    let _ = hsm::group::http_client::post(
-                        shasta_token,
-                        shasta_base_url,
-                        shasta_root_cert,
-                        group,
-                    )
-                    .await?;
-                    /* hsm::group::http_client::create_new_hsm_group(
-                        shasta_token,
-                        shasta_base_url,
-                        shasta_root_cert,
-                        target_hsm_group_name,
-                        &[],
-                        "false",
-                        "",
-                        &[],
-                    )
-                    .await
-                    .expect("Unable to create new target HSM group"); */
-                } else {
-                    return Err(Error::Message("Dryrun selected, cannot create the new group and continue.".to_string()));
-                    /* log::error!("Dryrun selected, cannot create the new group and continue.");
-                    std::process::exit(1); */
-                }
-            } else {
-                return Err(Error::Message(format!("Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.", target_hsm_group_name.to_string())));
-                /* log::error!("Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.", target_hsm_group_name.to_string());
-                std::process::exit(1); */
-            }
+          let _ = hsm::group::http_client::post(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            group,
+          )
+          .await?;
+        } else {
+          return Err(Error::Message(
+            "Dryrun selected, cannot create the new group and continue."
+              .to_string(),
+          ));
         }
-    };
+      } else {
+        return Err(Error::Message(format!("Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.", target_hsm_group_name.to_string())));
+      }
+    }
+  };
 
   // Get target HSM group members
   let target_hsm_group_member_vec: Vec<String> =
@@ -145,13 +126,6 @@ pub async fn exec(
       &[target_hsm_group_name],
     )
     .await?;
-  /* hsm::group::utils::get_member_vec_from_hsm_group_name(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      target_hsm_group_name,
-  )
-  .await; */
 
   // Get HSM hw component counters for target HSM
   let mut target_hsm_node_hw_component_count_vec: Vec<(
@@ -186,25 +160,14 @@ pub async fn exec(
   // PREPREQUISITES - GET DATA - PARENT HSM
 
   // Get target HSM group members
-  let parent_hsm_group_member_vec: Vec<String> = /* get_member_vec_from_group_name_vec(shasta_token, vec![parent_hsm_group_name.to_string()])
-        .await
-        .unwrap(); */
+  let parent_hsm_group_member_vec: Vec<String> =
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-            &[parent_hsm_group_name],
-        )
-        .await?;
-
-  /* let parent_hsm_group_member_vec: Vec<String> =
-  hsm::group::utils::get_member_vec_from_hsm_group_name(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      parent_hsm_group_name,
-  )
-  .await; */
+      &[parent_hsm_group_name],
+    )
+    .await?;
 
   // Get HSM hw component counters for parent HSM
   let mut parent_hsm_node_hw_component_count_vec: Vec<(
@@ -259,8 +222,6 @@ pub async fn exec(
       return Err(Error::Message(
         "There are not enough resources to fulfill user request.".to_string(),
       ));
-      /* eprintln!("ERROR - there are not enough resources to fulfill user request.");
-      std::process::exit(1); */
     }
   }
 
@@ -305,14 +266,6 @@ pub async fn exec(
   } else {
     // The target HSM group will never be empty, the way the pattern works it'll always
     // contain at least one node, so there is no need to add code to delete it if it's empty.
-    /* let _ = backend
-    .update_group_members(
-        shasta_token,
-        target_hsm_group_name,
-        &target_hsm_group_member_vec,
-        &target_hsm_node_vec,
-    )
-    .await; */
     let _ = hsm::group::utils::update_hsm_group_members(
       shasta_token,
       shasta_base_url,
@@ -343,14 +296,6 @@ pub async fn exec(
     // if there are still nodes there and, delete it after moving out the resources.
     let parent_group_will_be_empty =
       &target_hsm_group_member_vec.len() == &parent_hsm_group_member_vec.len();
-    /* let _ = backend
-    .update_group_members(
-        shasta_token,
-        parent_hsm_group_name,
-        &parent_hsm_group_member_vec,
-        &parent_hsm_node_vec,
-    )
-    .await; */
     let _ = hsm::group::utils::update_hsm_group_members(
       shasta_token,
       shasta_base_url,

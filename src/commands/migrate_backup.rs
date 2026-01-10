@@ -2,6 +2,7 @@ use crate::commands::migrate_restore;
 use crate::error::Error;
 use crate::{bos, cfs, hsm, ims};
 use humansize::DECIMAL;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -16,40 +17,6 @@ pub async fn exec(
   /* prehook: Option<&String>,
   posthook: Option<&String>, */
 ) -> Result<(), Error> {
-  /* println!(
-      "Migrate backup \n BOS Template: {}\n Destination folder: {}\n Pre-hook: {}\n Post-hook: {}\n",
-      bos.unwrap(),
-      destination.unwrap(),
-      &prehook.unwrap_or(&"none".to_string()),
-      &posthook.unwrap_or(&"none".to_string()),
-  );
-  if prehook.is_some() {
-      match crate::common::hooks::check_hook_perms(prehook).await {
-          Ok(_r) => log::debug!("Pre-hook script exists and is executable."),
-          Err(e) => {
-              log::error!("{}. File: {}", e, &prehook.unwrap());
-              exit(2);
-          }
-      };
-      println!("Running the pre-hook {}", &prehook.unwrap());
-      match crate::common::hooks::run_hook(prehook).await {
-          Ok(_code) => log::debug!("Pre-hook script completed ok. RT={}", _code),
-          Err(_error) => {
-              log::error!("{}", _error);
-              exit(2);
-          }
-      };
-  }
-  if posthook.is_some() {
-      match crate::common::hooks::check_hook_perms(posthook).await {
-          Ok(_) => log::debug!("Post-hook script exists and is executable."),
-          Err(e) => {
-              log::error!("{}. File: {}", e, &posthook.unwrap());
-              exit(2);
-          }
-      };
-  } */
-
   let dest_path = Path::new(destination.unwrap());
   let bucket_name = "boot-images";
   let files2download = ["manifest.json", "initrd", "kernel", "rootfs"];
@@ -76,17 +43,10 @@ pub async fn exec(
     shasta_root_cert,
     bos,
   )
-  .await
-  .unwrap();
+  .await?;
 
-  bos::template::utils::filter(
-    &mut bos_templates,
-    None,
-    &Vec::new(),
-    &Vec::new(),
-    // None,
-    None,
-  );
+  let _ =
+    bos::template::utils::filter(&mut bos_templates, None, &[], &[], None);
 
   let mut download_counter = 1;
 
@@ -95,8 +55,8 @@ pub async fn exec(
     std::process::exit(1);
   } else {
     // BOS ------------------------------------------------------------------------------------
-    let bos_file = File::create(&bos_file_path)
-      .expect("bos.json file could not be created.");
+    let bos_file = File::create(&bos_file_path)?;
+
     println!(
       "Downloading BOS session template {} to {} [{}/{}]",
       &bos.unwrap(),
@@ -111,8 +71,7 @@ pub async fn exec(
 
     // HSM group -----------------------------------------------------------------------------
 
-    let hsm_file =
-      File::create(&hsm_file_path).expect("HSM file could not be created.");
+    let hsm_file = File::create(&hsm_file_path)?;
     println!(
       "Downloading HSM configuration in bos template {} to {} [{}/{}]",
       &bos.unwrap(),
@@ -122,62 +81,49 @@ pub async fn exec(
     );
     download_counter += 1;
 
-    let hsm_group_name = bos_templates[0]
-      .boot_sets
-      .as_ref()
-      .unwrap()
-      .get("compute")
-      .unwrap()
-      .node_groups
-      .as_ref()
-      .unwrap()[0]
-      .clone()
-      .replace('\"', "");
+    let hsm_group_name = bos_templates
+      .first()
+      .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
+      .and_then(|boot_sets| boot_sets.get("compute"))
+      .and_then(|compute_boot_set| compute_boot_set.node_groups.as_ref())
+      .and_then(|node_groups| node_groups.first())
+      .map(|node_group| node_group.replace('\"', ""))
+      .unwrap();
 
-    let hsm_group_json = match hsm::group::http_client::get(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            Some(&[&hsm_group_name]),
-            None,
-        )
-        .await
-        {
-            Ok(_t) => _t,
-            Err(e) => panic!(
-                "Error while fetching the HSM configuration description in JSON format: {}",
-                e
-            ),
-        };
+    let hsm_group_json = hsm::group::http_client::get(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      Some(&[&hsm_group_name]),
+      None,
+    )
+    .await?;
 
     log::debug!("{:#?}", &hsm_group_json);
     let _hsmjson = serde_json::to_writer_pretty(&hsm_file, &hsm_group_json);
 
     // CFS ------------------------------------------------------------------------------------
-    let configuration_name = &bos_templates[0]
-      .cfs
-      .as_ref()
-      .unwrap()
-      .configuration
-      .as_ref()
-      .unwrap()
-      .to_owned();
+    let configuration_name: &String = &bos_templates
+      .first()
+      .and_then(|first_bos_template| first_bos_template.cfs.as_ref())
+      .and_then(|cfs_value| cfs_value.configuration.as_ref())
+      .unwrap();
+
     let cfs_configurations = cfs::configuration::http_client::v3::get(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       Some(&configuration_name),
     )
-    .await
-    .unwrap();
+    .await?;
+
     let cfs_file_name =
       String::from(configuration_name.clone().as_str()) + ".json";
     let cfs_file_path = dest_path.join(&cfs_file_name);
-    let cfs_file = File::create(&cfs_file_path)
-      .expect("cfs.json file could not be created.");
+    let cfs_file = File::create(&cfs_file_path)?;
+
     println!(
       "Downloading CFS configuration {} to {} [{}/{}]",
-      // cn.clone().as_str(),
       &configuration_name,
       &cfs_file_path.clone().to_string_lossy(),
       &download_counter,
@@ -187,10 +133,15 @@ pub async fn exec(
     // Save to file only the first one returned, we don't expect other BOS templates in the array
     let _cfsjson =
       serde_json::to_writer_pretty(&cfs_file, &cfs_configurations[0]);
+
     download_counter += 1;
 
     // Image ----------------------------------------------------------------------------------
-    for boot_sets_value in bos_templates[0].boot_sets.as_ref().unwrap().values()
+    for boot_sets_value in bos_templates
+      .first()
+      .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
+      .map(HashMap::values)
+      .unwrap()
     {
       if let Some(path) = &boot_sets_value.path {
         let image_id_related_to_bos_sessiontemplate = path
@@ -205,9 +156,9 @@ pub async fn exec(
         let ims_file_name = String::from(
           image_id_related_to_bos_sessiontemplate.clone().as_str(),
         ) + "-ims.json";
+
         let ims_file_path = dest_path.join(&ims_file_name);
-        let ims_file = File::create(&ims_file_path)
-          .expect("ims.json file could not be created.");
+        let ims_file = File::create(&ims_file_path)?;
 
         println!(
           "Downloading IMS image record {} to {} [{}/{}]",
@@ -225,8 +176,7 @@ pub async fn exec(
         .await
         {
           Ok(ims_record) => {
-            serde_json::to_writer_pretty(&ims_file, &ims_record)
-              .expect("Unable to write new ims record image.json file");
+            serde_json::to_writer_pretty(&ims_file, &ims_record)?;
             let image_id =
               image_id_related_to_bos_sessiontemplate.clone().to_string();
             log::info!(
@@ -291,7 +241,7 @@ pub async fn exec(
             println!("\tIMS file: {}", &ims_file_path.to_string_lossy());
             let ims_image_name = migrate_restore::get_image_name_from_ims_file(
               &ims_file_path.clone().to_string_lossy().to_string(),
-            );
+            )?;
             println!("\tImage name: {}", ims_image_name);
             for file in files2download {
               let dest = String::from(destination.unwrap());
@@ -309,19 +259,6 @@ pub async fn exec(
       }
     }
   }
-
-  /* if posthook.is_some() {
-      println!("Running the post-hook {}", &posthook.unwrap());
-      match crate::common::hooks::run_hook(posthook).await {
-          Ok(_code) => {
-              log::debug!("Post-hook script completed ok. RT={}", _code)
-          }
-          Err(_error) => {
-              log::error!("{}", _error);
-              exit(2);
-          }
-      };
-  } */
 
   Ok(())
 }

@@ -86,9 +86,9 @@ impl BosSessionTemplate {
   /// Returns HSM group names related to the BOS sessiontemplate
   pub fn get_target_hsm(&self) -> Vec<String> {
     self
+      .clone()
       .boot_sets
-      .as_ref()
-      .unwrap()
+      .unwrap_or_default()
       .iter()
       .flat_map(|(_, boot_param)| {
         boot_param.node_groups.clone().unwrap_or(Vec::new())
@@ -98,9 +98,9 @@ impl BosSessionTemplate {
 
   pub fn get_target_xname(&self) -> Vec<String> {
     self
+      .clone()
       .boot_sets
-      .as_ref()
-      .unwrap()
+      .unwrap_or_default()
       .iter()
       .flat_map(|(_, boot_param)| {
         boot_param.node_list.clone().unwrap_or(Vec::new())
@@ -109,7 +109,7 @@ impl BosSessionTemplate {
   }
 
   pub fn get_confguration(&self) -> Option<String> {
-    self.cfs.as_ref().unwrap().configuration.clone()
+    self.cfs.as_ref().and_then(|cfs| cfs.configuration.clone())
   }
 
   /// Returns all paths related to this BOS sessiontemplate
@@ -117,29 +117,36 @@ impl BosSessionTemplate {
     self
       .boot_sets
       .as_ref()
-      .unwrap()
-      .iter()
-      .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
-      .collect()
+      .map(|boot_sets| {
+        boot_sets
+          .iter()
+          .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
+          .collect()
+      })
+      .unwrap_or_default()
   }
 
   /// Returns all images related to this BOS sessiontemplate
   pub fn get_image_vec(&self) -> Vec<String> {
     self
+      .clone()
       .boot_sets
       .as_ref()
-      .unwrap()
-      .iter()
-      .map(|(_, boot_param)| {
-        boot_param
-          .path
-          .clone()
-          .unwrap_or_default()
-          .trim_start_matches("s3://boot-images/")
-          .trim_end_matches("/manifest.json")
-          .to_string()
+      .map(|boot_sets| {
+        boot_sets
+          .iter()
+          .map(|(_, boot_param)| {
+            boot_param
+              .path
+              .clone()
+              .unwrap_or_default()
+              .trim_start_matches("s3://boot-images/")
+              .trim_end_matches("/manifest.json")
+              .to_string()
+          })
+          .collect()
       })
-      .collect()
+      .unwrap_or_default()
   }
 
   pub fn new_for_hsm_group(
@@ -168,9 +175,6 @@ impl BosSessionTemplate {
       r#type: Some(ims_image_type.clone()),
       etag: Some(ims_image_etag),
       kernel_parameters: Some(kernel_params),
-      // kernel_parameters: Some(
-      //     "ip=dhcp quiet ksocklnd.skip_mr_route_setup=1 cxi_core.disable_default_svc=0 cxi_core.enable_fgfc=1 cxi_core.disable_default_svc=0 cxi_core.sct_pid_mask=0xf spire_join_token=${SPIRE_JOIN_TOKEN}".to_string(),
-      // ),
       network: Some("nmn".to_string()),
       node_list: None,
       node_roles_groups: None,

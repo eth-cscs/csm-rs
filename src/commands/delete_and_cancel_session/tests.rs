@@ -175,7 +175,7 @@ fn test_is_cfs_configuration_used_to_build_image_true() {
   };
 
   let cfs_session = CfsSessionGetResponse {
-    name: Some("cfs_session_1".to_string()),
+    name: "cfs_session_1".to_string(),
     configuration: Some(cfs_config),
     ansible: None,
     target: Some(target),
@@ -207,7 +207,7 @@ fn test_is_cfs_configuration_used_to_build_image_false() {
   };
 
   let cfs_session = CfsSessionGetResponse {
-    name: Some("cfs_session_1".to_string()),
+    name: "cfs_session_1".to_string(),
     configuration: Some(cfs_config),
     ansible: None,
     target: None,
@@ -248,7 +248,7 @@ fn test_is_cfs_configuration_used_to_build_image_false_2() {
   };
 
   let cfs_session = CfsSessionGetResponse {
-    name: Some("cfs_session_1".to_string()),
+    name: "cfs_session_1".to_string(),
     configuration: Some(cfs_config),
     ansible: None,
     target: Some(target),
@@ -275,22 +275,6 @@ fn test_is_cfs_configuration_used_to_build_image_false_2() {
   );
 }
 
-/* /// Validate CFS session type dynamic:
-/// - check CFS configuration related to CFS session is not a desired configuration
-pub fn is_cfs_configuration_a_desired_configuration(
-    cfs_component_vec: &Vec<ComponentResponse>,
-    cfs_configuration_name: &str,
-) -> bool {
-    // - check CFS configuration related to CFS session is not a desired configuration
-    cfs_component_vec.iter().any(|cfs_component| {
-        cfs_component
-            .desired_config
-            .as_ref()
-            .unwrap()
-            .eq(&cfs_configuration_name)
-    })
-} */
-
 /// Validate CFS session type dynamic:
 /// - check CFS configuration related to CFS session is a desired configuration used by a node or
 /// hsm group different than the provided one.
@@ -307,10 +291,9 @@ pub fn is_cfs_configuration_a_desired_configuration_of_other(
     .filter(|cfs_component| {
       cfs_component
         .desired_config
-        .as_ref()
-        .unwrap()
-        .eq(&cfs_configuration_name)
-        && !xname_vec.contains(&cfs_component.id.as_ref().unwrap().as_str())
+        .eq(&Some(cfs_configuration_name.to_string()))
+        && !xname_vec
+          .contains(&cfs_component.id.as_ref().map(String::as_str).unwrap())
     })
     .map(|cfs_component| cfs_component.id.clone().unwrap())
     .collect()
@@ -323,27 +306,13 @@ pub fn is_cfs_configuration_used_to_build_image(
   cfs_session_name: &str,
   cfs_configuration_name: &str,
 ) -> Vec<String> {
-  /* cfs_session_vec
-  .iter()
-  .filter(|cfs_session| {
-      cfs_session
-                  .get_configuration_name()
-                  .unwrap()
-                  .eq(&cfs_configuration_name)
-              // NOTE: No need the below condition because current CFS session to delete is suppossedly still running
-              // therefore not yet finished and as a consequence it won't have a result_id
-              // value
-                  && cfs_session.name.as_ref().unwrap().eq(&cfs_session_name)
-  })
-  .any(|cfs_session| !cfs_session.get_result_id_vec().is_empty()) */
   cfs_session_vec
     .iter()
     .filter(|cfs_session| {
       cfs_session
         .get_configuration_name()
-        .unwrap()
-        .eq(&cfs_configuration_name)
-        && cfs_session.name.as_ref().unwrap().eq(&cfs_session_name)
+        .eq(&Some(cfs_configuration_name.to_string()))
+        && cfs_session.name.eq(&cfs_session_name)
         && cfs_session.is_target_def_image()
         && cfs_session.is_success()
     })

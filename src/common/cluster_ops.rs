@@ -70,16 +70,12 @@ pub async fn get_details(
       let target_groups = cfs_session_value
         .target
         .as_ref()
-        .unwrap()
-        .groups
-        .as_ref()
+        .and_then(|target| target.groups.as_ref())
         .unwrap();
       let ansible_limit = cfs_session_value
         .ansible
         .as_ref()
-        .unwrap()
-        .limit
-        .as_ref()
+        .and_then(|ansible| ansible.limit.as_ref())
         .unwrap();
 
       // Check CFS session is linkged to HSM GROUP name or any of its members
@@ -103,9 +99,7 @@ pub async fn get_details(
               &most_recent_cfs_session
                 .configuration
                 .as_ref()
-                .unwrap()
-                .name
-                .clone()
+                .and_then(|configuration| configuration.name.as_ref())
                 .unwrap(),
             ),
           )
