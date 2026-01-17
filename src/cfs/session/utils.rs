@@ -88,7 +88,7 @@ pub fn filter(
     "HSM groups to filter from: {:?}",
     hsm_group_name_available_vec
   );
-  log::info!("Xnames to filter from: {:?}", xname_available_vec);
+  log::debug!("Xnames to filter from: {:?}", xname_available_vec);
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)?.compile_matcher();

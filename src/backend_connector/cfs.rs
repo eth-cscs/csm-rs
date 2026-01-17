@@ -248,7 +248,7 @@ impl CfsTrait for Csm {
         log::info!(
           "Find image ID related to CFS configuration {} in CFS session {}",
           cfs_session.configuration_name().unwrap(),
-          cfs_session.name.as_ref().unwrap()
+          cfs_session.name
         );
 
         let new_image_id_opt = if cfs_session

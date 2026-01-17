@@ -124,7 +124,8 @@ impl ClusterTemplateTrait for Csm {
       hsm_group_name_vec,
       hsm_member_vec,
       limit_number_opt,
-    );
+    )
+    .map_err(|e| Error::Message(e.to_string()))?;
 
     Ok(
       bos_sessiontemplate_vec
