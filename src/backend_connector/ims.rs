@@ -1,8 +1,6 @@
 use manta_backend_dispatcher::{
   error::Error,
-  interfaces::{
-    get_images_and_details::GetImagesAndDetailsTrait, ims::ImsTrait,
-  },
+  interfaces::{ims::GetImagesAndDetailsTrait, ims::ImsTrait},
   types::ims::{Image as FrontEndImage, PatchImage},
 };
 
