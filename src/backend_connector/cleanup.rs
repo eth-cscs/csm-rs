@@ -11,37 +11,12 @@ use manta_backend_dispatcher::{
 use super::Csm;
 
 impl DeleteConfigurationsAndDataRelatedTrait for Csm {
-  /* async fn delete_data_related_to_cfs_configuration(
-    &self,
-    shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
-    hsm_name_available_vec: &[&str],
-    configuration_name_pattern: Option<&str>,
-    since_opt: Option<NaiveDateTime>,
-    until_opt: Option<NaiveDateTime>,
-    assume_yes: bool,
-  ) -> Result<(), Error> {
-    crate::commands::i_delete_data_related_to_cfs_configuration::exec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      &hsm_name_available_vec,
-      configuration_name_pattern,
-      since_opt,
-      until_opt,
-      assume_yes,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
-  } */
-
   async fn get_data_to_delete(
     &self,
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_name_available_vec: &[&str],
+    hsm_name_available_vec: &[String],
     configuration_name_pattern_opt: Option<&str>,
     since_opt: Option<NaiveDateTime>,
     until_opt: Option<NaiveDateTime>,

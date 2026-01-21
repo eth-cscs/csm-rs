@@ -103,8 +103,8 @@ impl ClusterTemplateTrait for Csm {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    hsm_group_name_vec: &[&str],
-    hsm_member_vec: &[&str],
+    hsm_group_name_vec: &[String],
+    hsm_member_vec: &[String],
     bos_sessiontemplate_name_opt: Option<&str>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {

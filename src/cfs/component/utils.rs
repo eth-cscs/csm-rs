@@ -33,7 +33,7 @@ pub async fn update_component_list_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  xnames: Vec<String>,
+  xnames: &[String],
   desired_configuration: &str,
   enabled: bool,
 ) -> Result<(), Error> {

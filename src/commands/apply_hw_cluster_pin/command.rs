@@ -123,7 +123,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      &[target_hsm_group_name],
+      &[target_hsm_group_name.to_string()],
     )
     .await?;
 
@@ -165,7 +165,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      &[parent_hsm_group_name],
+      &[parent_hsm_group_name.to_string()],
     )
     .await?;
 

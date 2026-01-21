@@ -77,8 +77,8 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
-  hsm_group_name_available_vec: &[&str],
-  xname_available_vec: &[&str],
+  hsm_group_name_available_vec: &[String],
+  xname_available_vec: &[String],
   type_opt: Option<&String>,
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
@@ -113,9 +113,9 @@ pub fn filter(
     }) || cfs_session
       .get_target_xname()
       .is_some_and(|target_xname_vec| {
-        target_xname_vec.iter().any(|target_xname| {
-          xname_available_vec.contains(&target_xname.as_str())
-        })
+        target_xname_vec
+          .iter()
+          .any(|target_xname| xname_available_vec.contains(&target_xname))
       })
   });
 

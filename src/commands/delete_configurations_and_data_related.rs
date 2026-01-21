@@ -21,7 +21,7 @@ pub async fn get_data_to_delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_available_vec: &[&str],
+  hsm_name_available_vec: &[String],
   configuration_name_pattern_opt: Option<&str>,
   since_opt: Option<NaiveDateTime>,
   until_opt: Option<NaiveDateTime>,
@@ -93,10 +93,7 @@ pub async fn get_data_to_delete(
   // pattern
   cfs::configuration::utils::filter(
     &mut cfs_configuration_vec,
-    &xname_from_groups_vec
-      .iter()
-      .map(|s| s.as_str())
-      .collect::<Vec<&str>>(),
+    &xname_from_groups_vec,
     &mut cfs_session_to_delete_vec,
     &mut bos_sessiontemplate_to_delete_vec,
     &cfs_component_vec,

@@ -1150,7 +1150,7 @@ pub fn filter_product_catalog_images(
 pub fn validate_sat_file_images_section(
   image_yaml_vec: &Vec<Value>,
   configuration_yaml_vec: &Vec<Value>,
-  hsm_group_available_vec: &[&str],
+  hsm_group_available_vec: &[String],
   cray_product_catalog: &BTreeMap<String, String>,
   image_vec: Vec<ims::image::http_client::types::Image>,
   configuration_vec: Vec<CfsConfigurationResponse>,
@@ -1475,7 +1475,7 @@ pub fn validate_sat_file_images_section(
               && !hsm_group.eq_ignore_ascii_case("Application_UAN")
           })
         {
-          if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
+          if !hsm_group_available_vec.contains(&hsm_group) {
             return Err(Error::Message(format!
                (
                "HSM group '{}' in image '{}' not allowed, List of HSM groups available:\n{:?}. Exit",
@@ -1523,7 +1523,7 @@ pub async fn validate_sat_file_session_template_section(
   image_yaml_vec_opt: Option<&Vec<Value>>,
   configuration_yaml_vec_opt: Option<&Vec<Value>>,
   session_template_yaml_vec_opt: Option<&Vec<Value>>,
-  hsm_group_available_vec: &[&str],
+  hsm_group_available_vec: &[String],
 ) -> Result<(), Error> {
   // Validate 'session_template' section in SAT file
   log::info!("Validate 'session_template' section in SAT file");
@@ -1582,7 +1582,7 @@ pub async fn validate_sat_file_session_template_section(
       };
 
     for hsm_group in bos_session_template_hsm_groups {
-      if !hsm_group_available_vec.contains(&hsm_group.as_str()) {
+      if !hsm_group_available_vec.contains(&hsm_group) {
         return Err(Error::Message(format!(
            "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
            hsm_group,
@@ -1822,7 +1822,7 @@ pub async fn process_session_template_section_in_sat_file(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   ref_name_processed_hashmap: HashMap<String, String>,
-  hsm_group_available_vec: &[&str],
+  hsm_group_available_vec: &[String],
   sat_file_yaml: Value,
   reboot: bool,
   dry_run: bool,
@@ -2034,7 +2034,7 @@ pub async fn process_session_template_section_in_sat_file(
       // Validate/check HSM groups in YAML file session_templates.bos_parameters.boot_sets.<parameter>.node_groups matches with
       // Check hsm groups in SAT file includes the hsm_group_param
       for node_group in node_groups_opt.clone().unwrap_or_default() {
-        if !hsm_group_available_vec.contains(&node_group.as_str()) {
+        if !hsm_group_available_vec.contains(&node_group) {
           return Err(Error::Message(format!("User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit", node_group)));
         }
       }
@@ -2260,7 +2260,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_group_available_vec: &[&str],
+  hsm_group_available_vec: &[String],
   image_reference: &str,
   is_image_id: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {

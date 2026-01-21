@@ -530,7 +530,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_vec: &[&str],
+  hsm_name_vec: &[String],
 ) -> Result<Vec<String>, Error> {
   log::info!("Get xnames from HSM groups");
   log::debug!("Get xnames from HSM groups: {:?}", hsm_name_vec);

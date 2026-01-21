@@ -36,10 +36,7 @@ pub async fn validate_target_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      &hsm_groups_user_has_access
-        .iter()
-        .map(|g| g.as_str())
-        .collect::<Vec<&str>>(),
+      &hsm_groups_user_has_access,
     )
     .await?;
   /* let all_xnames_user_has_access = hsm::group::utils::get_member_vec_from_hsm_name_vec(

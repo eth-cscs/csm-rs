@@ -14,18 +14,6 @@ impl GroupTrait for Csm {
     &self,
     auth_token: &str,
   ) -> Result<Vec<FrontEndGroup>, Error> {
-    /* let mut group_vec = self
-      .get_all_groups(auth_token)
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
-
-    let available_groups_name =
-      self.get_group_name_available(auth_token).await?;
-
-    group_vec.retain(|group| available_groups_name.contains(&group.label));
-
-    Ok(group_vec) */
-
     let hsm_group_vec = hsm::group::utils::get_group_available(
       auth_token,
       &self.base_url,
@@ -80,7 +68,7 @@ impl GroupTrait for Csm {
   async fn get_member_vec_from_group_name_vec(
     &self,
     auth_token: &str,
-    hsm_group_name_vec: &[&str],
+    hsm_group_name_vec: &[String],
   ) -> Result<Vec<String>, Error> {
     // FIXME: try to merge functions get_member_vec_from_hsm_name_vec_2 and get_member_vec_from_hsm_name_vec
     hsm::group::utils::get_member_vec_from_hsm_name_vec(

@@ -27,7 +27,7 @@ pub async fn exec(
   k8s_api_url: &str,
   shasta_k8s_secrets: serde_json::Value,
   sat_template_file_yaml: serde_yaml::Value,
-  hsm_group_available_vec: &[&str],
+  hsm_group_available_vec: &[String],
   ansible_verbosity_opt: Option<u8>,
   ansible_passthrough_opt: Option<&str>,
   gitea_base_url: &str,
@@ -142,7 +142,7 @@ pub async fn exec(
     for hw_component_pattern in hw_component_pattern_vec {
       let target_hsm_group_name = hw_component_pattern
         .get("target")
-        .and_then(Value::as_str)
+        .and_then(|v| v.as_str())
         .unwrap();
       let parent_hsm_group_name = hw_component_pattern
         .get("parent")
@@ -162,7 +162,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            target_hsm_group_name,
+            &target_hsm_group_name,
             parent_hsm_group_name,
             pattern,
             true,
@@ -180,7 +180,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            &[target_hsm_group_name],
+            &[target_hsm_group_name.to_string()],
           )
           .await?;
         let new_target_hsm_group_members_vec: Vec<String> = nodes
@@ -205,7 +205,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
-            target_hsm_group_name,
+            &target_hsm_group_name,
             &hsm_group_members_vec
               .iter()
               .map(String::as_str)

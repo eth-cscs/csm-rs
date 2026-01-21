@@ -18,15 +18,10 @@ use manta_backend_dispatcher::{
     K8sAuth, K8sDetails,
   },
 };
-use serde_json::Value;
 
 use super::Csm;
-use crate::{
-  common::{
-    jwt_ops, kubernetes,
-    vault::http_client::fetch_shasta_k8s_secrets_from_vault,
-  },
-  hsm,
+use crate::common::{
+  jwt_ops, kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
 };
 
 impl CfsTrait for Csm {
@@ -222,11 +217,8 @@ impl CfsTrait for Csm {
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       None,
-      &hsm_group_name_vec
-        .iter()
-        .map(|s| s.as_str())
-        .collect::<Vec<&str>>(),
-      &xname_vec.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+      &hsm_group_name_vec,
+      &xname_vec,
       type_opt,
       limit_number_opt,
       jwt_ops::is_user_admin(shasta_token),
@@ -407,7 +399,7 @@ impl CfsTrait for Csm {
     shasta_root_cert: &[u8],
     configuration_name: Option<&str>,
     configuration_name_pattern: Option<&str>,
-    hsm_group_name_vec: &[&str],
+    hsm_group_name_vec: &[String],
     since_opt: Option<NaiveDateTime>,
     until_opt: Option<NaiveDateTime>,
     limit_number_opt: Option<&u8>,
@@ -547,60 +539,12 @@ impl CfsTrait for Csm {
     ))
   }
 
-  /* /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
-  async fn get_sessions_by_xname(
-    &self,
-    shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
-    xname_vec: &[&str],
-    _limit_opt: Option<u8>,
-    after_id_opt: Option<String>,
-    min_age_opt: Option<String>,
-    max_age_opt: Option<String>,
-    _status_opt: Option<String>,
-    _name_contains_opt: Option<String>,
-    is_succeded_opt: Option<bool>,
-    _tags_opt: Option<String>,
-  ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    // Get local/backend CFS sessions
-    let mut local_cfs_session_vec = crate::cfs::session::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      after_id_opt.as_ref(),
-      min_age_opt.as_ref(),
-      max_age_opt.as_ref(),
-      None,
-      is_succeded_opt,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
-
-    crate::cfs::session::utils::filter(
-      &mut local_cfs_session_vec,
-      None,
-      (&[], &xname_vec),
-      None,
-      true,
-    )
-    .map_err(|e| Error::Message(e.to_string()))?;
-
-    // Convert to manta session
-    let border_session_vec = local_cfs_session_vec
-      .into_iter()
-      .map(|cfs_session| cfs_session.into())
-      .collect::<Vec<CfsSessionGetResponse>>();
-
-    Ok(border_session_vec)
-  } */
-
   async fn update_runtime_configuration(
     &self,
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
-    xnames: Vec<String>,
+    xnames: &[String],
     desired_configuration: &str,
     enabled: bool,
   ) -> Result<(), Error> {

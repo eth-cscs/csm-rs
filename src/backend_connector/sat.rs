@@ -18,7 +18,7 @@ impl SatTrait for Csm {
     k8s_api_url: &str,
     shasta_k8s_secrets: serde_json::Value,
     sat_template_file_yaml: serde_yaml::Value,
-    hsm_group_available_vec: &[&str],
+    hsm_group_available_vec: &[String],
     ansible_verbosity_opt: Option<u8>,
     ansible_passthrough_opt: Option<&str>,
     gitea_base_url: &str,

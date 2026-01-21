@@ -6,8 +6,8 @@ use globset::Glob;
 pub fn filter(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   configuration_name_pattern_opt: Option<&str>,
-  target_hsm_group_name_vec: &[&str],
-  xname_vec: &[&str],
+  target_hsm_group_name_vec: &[String],
+  xname_vec: &[String],
   // cfs_configuration_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<BosSessionTemplate>, Error> {
@@ -41,7 +41,7 @@ pub fn filter(
         || !bos_sessiontemplate_target_xname.is_empty()
           && bos_sessiontemplate_target_xname
             .iter()
-            .all(|target_xname| xname_vec.contains(&target_xname.as_str()))
+            .all(|target_xname| xname_vec.contains(target_xname))
     });
   }
 

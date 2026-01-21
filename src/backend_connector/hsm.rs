@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use hostlist_parser::parse;
 use manta_backend_dispatcher::{
   error::Error,

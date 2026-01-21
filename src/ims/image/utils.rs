@@ -16,7 +16,7 @@ pub async fn get_fuzzy(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_available_vec: &[&str],
+  hsm_name_available_vec: &[String],
   image_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
@@ -49,7 +49,7 @@ pub async fn get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_available_vec: &[&str],
+  hsm_name_available_vec: &[String],
   image_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
@@ -101,7 +101,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   image_vec: &mut Vec<Image>,
-  hsm_group_name_vec: &[&str],
+  hsm_group_name_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<(Image, String, String, bool)>, Error> {
   if let Some(limit_number) = limit_number_opt {
@@ -118,8 +118,6 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     hsm_group_name_vec,
   )
   .await?;
-
-  let xname_vec: Vec<&str> = xname_vec.iter().map(|g| g.as_str()).collect();
 
   // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
@@ -267,7 +265,7 @@ pub async fn get_image_available_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  hsm_name_available_vec: &[&str],
+  hsm_name_available_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
   let mut image_vec: Vec<Image> = super::http_client::get(
@@ -303,10 +301,7 @@ pub async fn get_image_available_vec(
     &mut bos_sessiontemplate_vec,
     None,
     hsm_name_available_vec,
-    &xname_from_group_vec
-      .iter()
-      .map(|g| g.as_str())
-      .collect::<Vec<&str>>(),
+    &xname_from_group_vec,
     None,
   );
 
@@ -328,10 +323,7 @@ pub async fn get_image_available_vec(
     &mut cfs_session_vec,
     None,
     hsm_name_available_vec,
-    &xname_from_group_vec
-      .iter()
-      .map(|g| g.as_str())
-      .collect::<Vec<&str>>(),
+    &xname_from_group_vec,
     None,
     None,
     true,

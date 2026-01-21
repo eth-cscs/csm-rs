@@ -55,8 +55,8 @@ pub async fn get_details(
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
       None,
-      &[hsm_group_name],
-      &xname_vec.iter().map(|x| x.as_str()).collect::<Vec<&str>>(),
+      &[hsm_group_name.to_string()],
+      &xname_vec,
       None,
       None,
       true,
@@ -81,9 +81,9 @@ pub async fn get_details(
       // Check CFS session is linkged to HSM GROUP name or any of its members
       if target_groups
         .iter()
-        .map(|target_group| target_group.name.as_ref())
-        .collect::<Vec<&str>>()
-        .contains(&hsm_group_name)
+        .map(|target_group| target_group.name.clone())
+        .collect::<Vec<String>>()
+        .contains(&hsm_group_name.to_string())
         || ansible_limit.contains(&hsm_group_members)
       {
         most_recent_cfs_session = cfs_session_value;

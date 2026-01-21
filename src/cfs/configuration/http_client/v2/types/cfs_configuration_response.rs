@@ -251,9 +251,11 @@ impl CfsConfigurationResponse {
           .and_then(serde_yaml::Value::as_str)
           .map(str::to_string)
           .unwrap();
-        let repo_url = layer_yaml.get("git").and_then(|git| git.get("url"))
-            .and_then(serde_yaml::Value::as_str)
-            .map(str::to_string)
+        let repo_url = layer_yaml
+          .get("git")
+          .and_then(|git| git.get("url"))
+          .and_then(serde_yaml::Value::as_str)
+          .map(str::to_string)
           .unwrap();
         let layer = Layer::new(
           repo_url,
