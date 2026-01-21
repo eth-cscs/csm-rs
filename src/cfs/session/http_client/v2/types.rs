@@ -38,7 +38,7 @@ impl CfsSessionGetResponse {
 impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
   fn from(value: FrontEndCfsSessionGetResponse) -> Self {
     CfsSessionGetResponse {
-      name: value.name.unwrap(),
+      name: value.name,
       configuration: value.configuration.map(Configuration::from),
       ansible: value.ansible.map(Ansible::from),
       target: value.target.map(Target::from),
@@ -51,7 +51,7 @@ impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
 impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
   fn into(self) -> FrontEndCfsSessionGetResponse {
     FrontEndCfsSessionGetResponse {
-      name: Some(self.name),
+      name: self.name,
       configuration: self
         .configuration
         .map(|configuration| configuration.into()),
