@@ -411,8 +411,6 @@ impl CfsTrait for Csm {
         hsm_group_name_vec.to_vec(),
       );
 
-    dbg!(&hsm_group_name_vec);
-
     crate::cfs::configuration::utils::get_and_filter(
       shasta_token,
       shasta_base_url,

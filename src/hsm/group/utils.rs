@@ -128,7 +128,7 @@ pub async fn add_member(
     auth_token,
     base_url,
     root_cert,
-    Some(&[&group_label]),
+    Some(&[group_label.to_string()]),
     None,
   )
   .await?;
@@ -539,13 +539,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
-    Some(
-      hsm_name_vec
-        .iter()
-        .map(|c| &**c)
-        .collect::<Vec<&str>>()
-        .as_slice(),
-    ),
+    Some(hsm_name_vec),
     None,
   )
   .await?;

@@ -143,7 +143,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
-      Some(&[hsm_name]),
+      Some(&[hsm_name.to_string()]),
       None,
     )
     .await
@@ -167,14 +167,14 @@ impl GroupTrait for Csm {
   async fn get_groups(
     &self,
     auth_token: &str,
-    hsm_name_vec: Option<&[&str]>,
+    hsm_name_vec_opt: Option<&[String]>,
   ) -> Result<Vec<FrontEndGroup>, Error> {
     // Get all HSM groups
     let hsm_group_backend_vec = hsm::group::http_client::get(
       auth_token,
       &self.base_url,
       &self.root_cert,
-      hsm_name_vec,
+      hsm_name_vec_opt,
       None,
     )
     .await

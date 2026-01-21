@@ -98,8 +98,8 @@ pub async fn get(
   auth_token: &str,
   base_url: &str,
   root_cert: &[u8],
-  label_vec_opt: Option<&[&str]>,
-  tag_vec_opt: Option<&[&str]>,
+  label_vec_opt: Option<&[String]>,
+  tag_vec_opt: Option<&[String]>,
 ) -> Result<Vec<Group>, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
