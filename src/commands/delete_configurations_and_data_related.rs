@@ -78,6 +78,7 @@ pub async fn get_data_to_delete(
     ),
     bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
   )?;
+
   let duration = start.elapsed();
   log::info!(
     "Time elapsed to fetch information from backend: {:?}",

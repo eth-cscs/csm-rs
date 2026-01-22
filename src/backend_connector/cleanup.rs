@@ -31,11 +31,18 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     ),
     Error,
   > {
+    //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
+    //wide operations instead of using roles
+    let hsm_name_available_vec =
+      crate::hsm::group::hacks::filter_system_hsm_group_names(
+        hsm_name_available_vec.to_vec(),
+      );
+
     crate::commands::delete_configurations_and_data_related::get_data_to_delete(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      hsm_name_available_vec,
+      &hsm_name_available_vec,
       configuration_name_pattern_opt,
       since_opt,
       until_opt,
