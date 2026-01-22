@@ -404,13 +404,6 @@ impl CfsTrait for Csm {
     until_opt: Option<NaiveDateTime>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
-    let hsm_group_name_vec =
-      crate::hsm::group::hacks::filter_system_hsm_group_names(
-        hsm_group_name_vec.to_vec(),
-      );
-
     crate::cfs::configuration::utils::get_and_filter(
       shasta_token,
       shasta_base_url,
@@ -424,7 +417,6 @@ impl CfsTrait for Csm {
     )
     .await
     .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
-    // .map_err(|e| Error::Message(e.to_string()))
     .map_err(|e: crate::error::Error| {
       let manta_error: manta_backend_dispatcher::error::Error = e.into();
       manta_error

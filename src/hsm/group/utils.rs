@@ -93,7 +93,7 @@ pub async fn get_group_name_available(
 
     realm_access_role_filtered_vec.sort();
 
-    Ok(realm_access_role_vec)
+    Ok(realm_access_role_filtered_vec)
   } else {
     log::debug!("User is admin, getting all HSM groups in the system");
     let all_hsm_groups_rslt = hsm::group::http_client::get_all(
