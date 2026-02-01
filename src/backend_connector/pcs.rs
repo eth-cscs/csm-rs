@@ -1,18 +1,22 @@
 use manta_backend_dispatcher::{
-  error::Error, interfaces::pcs::PCSTrait,
-  types::pcs::power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
+  error::Error,
+  interfaces::pcs::PCSTrait,
+  types::pcs::{
+    power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
+    transitions::types::TransitionResponse,
+  },
 };
-use serde_json::Value;
+
+use crate::pcs;
 
 use super::Csm;
-use crate::pcs;
 
 impl PCSTrait for Csm {
   async fn power_on_sync(
     &self,
     auth_token: &str,
     nodes: &[String],
-  ) -> Result<Value, Error> {
+  ) -> Result<TransitionResponse, Error> {
     let operation = "on";
 
     pcs::transitions::http_client::post_block(
@@ -23,7 +27,8 @@ impl PCSTrait for Csm {
       &nodes.to_vec(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map(|transition| transition.into())
+    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_off_sync(
@@ -31,7 +36,7 @@ impl PCSTrait for Csm {
     auth_token: &str,
     nodes: &[String],
     force: bool,
-  ) -> Result<serde_json::Value, Error> {
+  ) -> Result<TransitionResponse, Error> {
     let operation = if force { "force-off" } else { "soft-off" };
 
     pcs::transitions::http_client::post_block(
@@ -42,7 +47,8 @@ impl PCSTrait for Csm {
       &nodes.to_vec(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map(|transition| transition.into())
+    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_reset_sync(
@@ -50,7 +56,7 @@ impl PCSTrait for Csm {
     auth_token: &str,
     nodes: &[String],
     force: bool,
-  ) -> Result<serde_json::Value, Error> {
+  ) -> Result<TransitionResponse, Error> {
     let operation = if force {
       "hard-restart"
     } else {
@@ -65,7 +71,8 @@ impl PCSTrait for Csm {
       &nodes.to_vec(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map(|transition| transition.into())
+    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_status(
