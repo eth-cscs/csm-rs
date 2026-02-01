@@ -139,7 +139,7 @@ pub async fn exec(
     &target_hsm_group_member_vec,
     mem_lcm,
   )
-  .await;
+  .await?;
 
   // Sort nodes hw counters by node name
   target_hsm_node_hw_component_count_vec.sort_by_key(
@@ -181,7 +181,7 @@ pub async fn exec(
     &parent_hsm_group_member_vec,
     mem_lcm,
   )
-  .await;
+  .await?;
 
   // Sort nodes hw counters by node name
   parent_hsm_node_hw_component_count_vec.sort_by_key(

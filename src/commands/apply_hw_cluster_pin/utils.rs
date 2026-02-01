@@ -618,7 +618,7 @@ pub async fn get_hsm_node_hw_component_counter(
   user_defined_hw_component_vec: &[String],
   hsm_group_member_vec: &[String],
   mem_lcm: u64,
-) -> Vec<(String, HashMap<String, usize>)> {
+) -> Result<Vec<(String, HashMap<String, usize>)>, Error> {
   // Get HSM group members hw configurfation based on user input
 
   let start = Instant::now();
@@ -657,40 +657,38 @@ pub async fn get_hsm_node_hw_component_counter(
   }
 
   while let Some(message) = tasks.join_next().await {
-    if let Ok(Ok(mut node_hw_component_vec_tuple)) = message {
-      node_hw_component_vec_tuple.1.sort();
+    let mut node_hw_component_vec_tuple = message??;
 
-      let mut node_hw_component_count_hashmap: HashMap<String, usize> =
-        HashMap::new();
+    node_hw_component_vec_tuple.1.sort();
 
-      for node_hw_property_vec in node_hw_component_vec_tuple.1 {
-        let count = node_hw_component_count_hashmap
-          .entry(node_hw_property_vec)
-          .or_insert(0);
-        *count += 1;
-      }
+    let mut node_hw_component_count_hashmap: HashMap<String, usize> =
+      HashMap::new();
 
-      let node_memory_total_capacity: u64 =
-        node_hw_component_vec_tuple.2.iter().sum();
-
-      node_hw_component_count_hashmap.insert(
-        "memory".to_string(),
-        (node_memory_total_capacity / mem_lcm)
-          .try_into()
-          .unwrap_or(0),
-      );
-
-      target_hsm_node_hw_component_count_vec.push((
-        node_hw_component_vec_tuple.0,
-        node_hw_component_count_hashmap,
-      ));
-    } else {
-      log::error!("Failed procesing/fetching node hw information");
+    for node_hw_property_vec in node_hw_component_vec_tuple.1 {
+      let count = node_hw_component_count_hashmap
+        .entry(node_hw_property_vec)
+        .or_insert(0);
+      *count += 1;
     }
+
+    let node_memory_total_capacity: u64 =
+      node_hw_component_vec_tuple.2.iter().sum();
+
+    node_hw_component_count_hashmap.insert(
+      "memory".to_string(),
+      (node_memory_total_capacity / mem_lcm)
+        .try_into()
+        .unwrap_or(0),
+    );
+
+    target_hsm_node_hw_component_count_vec.push((
+      node_hw_component_vec_tuple.0,
+      node_hw_component_count_hashmap,
+    ));
   }
 
   let duration = start.elapsed();
   log::info!("Time elapsed to calculate hw components is: {:?}", duration);
 
-  target_hsm_node_hw_component_count_vec
+  Ok(target_hsm_node_hw_component_count_vec)
 }

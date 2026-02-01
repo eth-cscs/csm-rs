@@ -348,36 +348,28 @@ pub async fn get_node_details(
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message? {
-      Ok(node_membership) => {
-        let node_details = NodeDetails {
-          xname: "".to_string(),
-          nid: "".to_string(),
-          hsm: node_membership.group_labels.join(", "),
-          power_status: "".to_string(),
-          desired_configuration: "".to_string(),
-          configuration_status: "".to_string(),
-          enabled: "".to_string(),
-          error_count: "".to_string(),
-          boot_image_id: "".to_string(),
-          boot_configuration: "".to_string(),
-          kernel_params: "".to_string(),
-        };
+    let node_membership = message??;
 
-        node_details_map
-          .entry(node_membership.id.clone())
-          .and_modify(|node_details: &mut NodeDetails| {
-            node_details.hsm = node_membership.group_labels.join(", ")
-          })
-          .or_insert(node_details);
-      }
-      Err(e) => {
-        log::error!(
-          "ERROR - could not get node membership from HSM\nReason:\n{:#?}",
-          e
-        );
-      }
-    }
+    let node_details = NodeDetails {
+      xname: "".to_string(),
+      nid: "".to_string(),
+      hsm: node_membership.group_labels.join(", "),
+      power_status: "".to_string(),
+      desired_configuration: "".to_string(),
+      configuration_status: "".to_string(),
+      enabled: "".to_string(),
+      error_count: "".to_string(),
+      boot_image_id: "".to_string(),
+      boot_configuration: "".to_string(),
+      kernel_params: "".to_string(),
+    };
+
+    node_details_map
+      .entry(node_membership.id.clone())
+      .and_modify(|node_details: &mut NodeDetails| {
+        node_details.hsm = node_membership.group_labels.join(", ")
+      })
+      .or_insert(node_details);
   }
 
   let duration = start.elapsed();

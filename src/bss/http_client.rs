@@ -100,14 +100,11 @@ pub async fn get_multiple(
         &node_vec,
       )
       .await
-      .unwrap()
     });
   }
 
   while let Some(message) = tasks.join_next().await {
-    if let Ok(mut node_status_vec) = message {
-      boot_params_vec.append(&mut node_status_vec);
-    }
+    boot_params_vec.append(&mut message??);
   }
 
   let duration = start.elapsed();

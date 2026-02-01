@@ -171,16 +171,7 @@ pub async fn get_multiple(
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message? {
-      Ok(mut cfs_component_vec) => {
-        component_vec.append(&mut cfs_component_vec);
-      }
-      Err(e) => {
-        return Err(Error::Message(e.to_string()));
-        /* eprintln!("{}", e);
-        std::process::exit(1); */
-      }
-    }
+    component_vec.append(&mut message??);
   }
 
   let duration = start.elapsed();
@@ -252,10 +243,7 @@ pub async fn get_parallel(
   }
 
   while let Some(message) = tasks.join_next().await {
-    match message? {
-      Ok(mut cfs_component_vec) => component_vec.append(&mut cfs_component_vec),
-      Err(error) => return Err(error),
-    }
+    component_vec.append(&mut message??);
   }
 
   let duration = start.elapsed();
