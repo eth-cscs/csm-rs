@@ -239,7 +239,12 @@ impl CfsTrait for Csm {
       if cfs_session.is_target_def_image() && cfs_session.is_success() {
         log::info!(
           "Find image ID related to CFS configuration {} in CFS session {}",
-          cfs_session.configuration_name().unwrap(),
+          cfs_session.configuration_name().ok_or_else(|| {
+            Error::Message(
+              "ERROR - could not get configuration name from CFS session"
+                .to_string(),
+            )
+          })?,
           cfs_session.name
         );
 
@@ -269,12 +274,11 @@ impl CfsTrait for Csm {
           )
           .await;
 
-          // if new_image_id_vec_rslt.is_ok() && new_image_id_vec_rslt.as_ref().unwrap().first().is_some()
           if let Ok(Some(new_image)) = new_image_vec_rslt
             .as_ref()
             .map(|new_image_vec| new_image_vec.first())
           {
-            Some(new_image.clone().id.unwrap_or("".to_string()))
+            Some(new_image.clone().id.unwrap_or_default())
           } else {
             None
           }
