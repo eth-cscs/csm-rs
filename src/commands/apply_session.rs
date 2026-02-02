@@ -20,7 +20,6 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  // k8s_api_url: &str,
   cfs_conf_sess_name: Option<&str>,
   playbook_yaml_file_name_opt: Option<&str>,
   hsm_group: Option<&str>,
@@ -30,12 +29,9 @@ pub async fn exec(
   ansible_verbosity: Option<&str>,
   ansible_passthrough: Option<&str>,
   // watch_logs: bool,
-  /* kafka_audit: &backend_dispatcher::types::kafka::Kafka,
-  k8s: &backend_dispatcher::types::K8sDetails, */
 ) -> Result<(String, String), Error> {
-  /* let included: HashSet<String>;
-  let excluded: HashSet<String>; */
   let mut xname_list: Vec<&str>;
+
   // Check andible limit matches the nodes in hsm_group
   let hsm_group_list;
 
@@ -47,9 +43,7 @@ pub async fn exec(
   // Neither hsm_group (both config file or cli arg) nor ansible_limit provided --> ERROR since we don't know the target nodes to apply the session to
   // NOTE: hsm group can be assigned either by config file or cli arg
   if ansible_limit.is_none() && hsm_group.is_none() && hsm_group.is_none() {
-    // TODO: move this logic to clap in order to manage error messages consistently??? can/should I??? Maybe I should look for input params in the config file if not provided by user???
-    eprintln!("Need to specify either ansible-limit or hsm-group or both. (hsm-group value can be provided by cli param or in config file)");
-    std::process::exit(1);
+    return Err(Error::Message("Need to specify either ansible-limit or hsm-group or both. (hsm-group value can be provided by cli param or in config file)".to_string()));
   }
 
   // * End validation input params
@@ -106,8 +100,7 @@ pub async fn exec(
         )
         .await
       {
-        eprintln!("xname/s invalid. Exit");
-        std::process::exit(1);
+        return Err(Error::Message("xname/s invalid. Exit".to_string()));
       }
     } else {
       // hsm_group provided but no ansible_limit provided --> target nodes are the ones from hsm_group
@@ -225,10 +218,9 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // Check each node if it has a CFS session already running
   for node in nodes_list {
     if nodes_in_running_or_pending_cfs_session.contains(&node) {
-      eprintln!(
-                "The node '{}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting", node
-            );
-      std::process::exit(1);
+      return Err(Error::Message(format!(
+         "The node '{}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting", node
+      )));
     }
   }
 
@@ -278,8 +270,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     if hsm_component_status_state.eq("On")
       || hsm_component_status_state.eq("Standby")
     {
-      log::info!("There is an CFS session scheduled to run on this node. Pleas try again later. Aborting");
-      std::process::exit(0);
+      return Err(Error::Message("There is an CFS session scheduled to run on this node. Pleas try again later. Aborting".to_string()));
     }
   }
 

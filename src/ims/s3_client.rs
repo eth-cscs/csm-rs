@@ -28,12 +28,12 @@ pub async fn s3_auth(
   let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
     // socks5 proxy
     log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env).unwrap();
+    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
 
     // rest client to authenticate
-    client_builder.proxy(socks5proxy).build().unwrap()
+    client_builder.proxy(socks5proxy).build()?
   } else {
-    client_builder.build().unwrap()
+    client_builder.build()?
   };
 
   let api_url = shasta_base_url.to_owned() + "/sts/token";
@@ -51,37 +51,41 @@ pub async fn s3_auth(
       ))
     })?;
 
-  let sts_value = resp.json::<serde_json::Value>().await.unwrap();
+  let sts_value = resp.json::<serde_json::Value>().await?;
 
   log::debug!("-- STS Token retrieved --");
   log::debug!("Debug - STS token:\n{:#?}", sts_value);
+
   // SET AUTH ENVS
-  std::env::set_var(
-    "AWS_SESSION_TOKEN",
-    sts_value
-      .pointer("/Credentials/SessionToken")
-      .and_then(Value::as_str)
-      .unwrap(),
-  );
-  std::env::set_var(
-    "AWS_ACCESS_KEY_ID",
-    sts_value
-      .pointer("/Credentials/AccessKeyId")
-      .and_then(Value::as_str)
-      .unwrap(),
-  );
-  std::env::set_var(
-    "AWS_SECRET_ACCESS_KEY",
-    sts_value
-      .pointer("/Credentials/SecretAccessKey")
-      .and_then(Value::as_str)
-      .unwrap(),
-  );
+  let session_token = sts_value
+    .pointer("/Credentials/SessionToken")
+    .and_then(Value::as_str)
+    .ok_or_else(|| {
+      Error::Message("Missing SessionToken in STS response".to_string())
+    })?;
+
+  let access_key_id = sts_value
+    .pointer("/Credentials/AccessKeyId")
+    .and_then(Value::as_str)
+    .ok_or_else(|| {
+      Error::Message("Missing AccessKeyId in STS response".to_string())
+    })?;
+
+  let secret_access_key = sts_value
+    .pointer("/Credentials/SecretAccessKey")
+    .and_then(Value::as_str)
+    .ok_or_else(|| {
+      Error::Message("Missing SecretAccessKey in STS response".to_string())
+    })?;
+
+  std::env::set_var("AWS_SESSION_TOKEN", session_token);
+  std::env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+  std::env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
 
   Ok(sts_value)
 }
 
-async fn setup_client(sts_value: &Value) -> Client {
+async fn setup_client(sts_value: &Value) -> Result<Client, Error> {
   use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
 
   // Default provider fallback to us-east-1 since CSM doesn't use the concept of regions
@@ -97,7 +101,8 @@ async fn setup_client(sts_value: &Value) -> Client {
     http_connector.enforce_http(false);
 
     let socks_http_connector = hyper_socks2::SocksConnector {
-      proxy_addr: socks5_env.to_string().parse::<hyper::Uri>().unwrap(), // scheme is required by HttpConnector
+      proxy_addr: hyper::Uri::try_from(&socks5_env)
+        .map_err(|e| Error::Message(e.to_string()))?, // scheme is required by HttpConnector
       auth: None,
       connector: http_connector.clone(),
     };
@@ -112,9 +117,13 @@ async fn setup_client(sts_value: &Value) -> Client {
           .get("Credentials")
           .and_then(|credentials| credentials.get("EndpointURL"))
           .and_then(Value::as_str)
-          .unwrap(),
+          .ok_or_else(|| {
+            Error::Message("Missing EndpointURL in STS response".to_string())
+          })?,
       )
-      .app_name(aws_config::AppName::new("manta").unwrap())
+      .app_name(aws_config::AppName::new("manta").map_err(|e| {
+        Error::Message(format!("Error setting app name: {}", e))
+      })?)
       // .no_credentials()
       .load()
       .await;
@@ -126,10 +135,13 @@ async fn setup_client(sts_value: &Value) -> Client {
           .get("Credentials")
           .and_then(|credentials| credentials.get("EndpointURL"))
           .and_then(Value::as_str)
-          .unwrap(),
+          .ok_or_else(|| {
+            Error::Message("Missing EndpointURL in STS response".to_string())
+          })?,
       )
-      .app_name(aws_config::AppName::new("manta").unwrap())
-      // .no_credentials()
+      .app_name(aws_config::AppName::new("manta").map_err(|e| {
+        Error::Message(format!("Error setting app name: {}", e))
+      })?)
       .load()
       .await;
   }
@@ -141,7 +153,8 @@ async fn setup_client(sts_value: &Value) -> Client {
       .force_path_style(true)
       .build(),
   );
-  client
+
+  Ok(client)
 }
 /// Gets the size of a given object in S3
 /// path of the object: s3://bucket/key
@@ -151,11 +164,14 @@ pub async fn s3_get_object_size(
   key: &str,
   bucket: &str,
 ) -> Result<i64, Error> {
-  let client = setup_client(sts_value).await;
+  let client = setup_client(sts_value).await?;
+
   match client.get_object().bucket(bucket).key(key).send().await {
-    Ok(object) => Ok(object.content_length().unwrap()),
+    Ok(object) => Ok(object.content_length().ok_or_else(|| {
+      Error::Message("Error, content length not found".to_string())
+    })?),
     Err(e) => Err(Error::Message(format!(
-      "Error, unable to get object size from s3. Error msg: {}",
+      "Error, unable to get object from s3. Error msg: {}",
       e
     ))),
   }
@@ -179,9 +195,15 @@ pub async fn s3_download_object(
   bucket: &str,
   destination_path: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await;
+  let client = setup_client(sts_value).await?;
 
-  let filename = Path::new(object_path).file_name().unwrap();
+  let filename = Path::new(object_path).file_name().ok_or_else(|| {
+    Error::Message(format!(
+      "Error getting filename from S3 object path: {}",
+      object_path
+    ))
+  })?;
+
   let file_path = Path::new(destination_path).join(filename);
   log::debug!("Create directory '{}'", destination_path);
 
@@ -220,9 +242,17 @@ pub async fn s3_download_object(
       ))
     })?;
 
-  let bar_size = object.content_length().unwrap();
+  let bar_size = object.content_length().ok_or_else(|| {
+    Error::Message("ERROR - could not get S3 object size.".to_string())
+  })?;
+
   let bar = ProgressBar::new(bar_size as u64);
-  bar.set_style(ProgressStyle::with_template(BAR_FORMAT).unwrap());
+  bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
+    Error::Message(format!(
+      "ERROR - Could not create progress bar.\nReason:\n{}",
+      e.to_string()
+    ))
+  })?);
 
   while let Some(bytes) = object.body.try_next().await.map_err(|e| {
     Error::Message(format!(
@@ -233,7 +263,9 @@ pub async fn s3_download_object(
     let bytes = file.write(&bytes)?;
     bar.inc(bytes as u64);
   }
+
   bar.finish();
+
   Ok(file_path.to_string_lossy().to_string())
 }
 
@@ -253,27 +285,27 @@ pub async fn s3_upload_object(
   bucket: &str,
   file_path: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await;
+  let client = setup_client(sts_value).await?;
 
   let body = ByteStream::from_path(Path::new(&file_path)).await?;
 
-  match client
+  let put_s3_object = client
     .put_object()
     .bucket(bucket)
     .key(object_path)
     .body(body)
     .send()
     .await
-  {
-    Ok(put_object_output) => {
-      log::debug!("Uploaded file '{}' successfully", &file_path);
-      Ok(put_object_output.e_tag.unwrap())
-    }
-    Err(error) => Err(Error::Message(format!(
-      "Error uploading file {}: {}",
-      &file_path, error
-    ))),
-  }
+    .map_err(|e| {
+      Error::Message(format!(
+        "ERROR - could not upload S3 object.\nReason:\n{}",
+        e.to_string()
+      ))
+    })?;
+
+  put_s3_object.e_tag.ok_or_else(|| {
+    Error::Message("ERROR - could not get ETag from upload.".to_string())
+  })
 }
 
 /// Removes an object from S3
@@ -290,7 +322,7 @@ pub async fn s3_remove_object(
   object_path: &str,
   bucket: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await;
+  let client = setup_client(sts_value).await?;
 
   match client
     .delete_object()
@@ -330,7 +362,7 @@ pub async fn s3_multipart_upload_object(
   use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
   use aws_smithy_types::byte_stream::Length;
 
-  let client = setup_client(sts_value).await;
+  let client = setup_client(sts_value).await?;
 
   //In bytes, minimum chunk size of 5MB. Increase CHUNK_SIZE to send larger chunks.
   const CHUNK_SIZE: u64 = 1024 * 1024 * 5;
@@ -350,7 +382,9 @@ pub async fn s3_multipart_upload_object(
       ))
     })?;
 
-  let upload_id = multipart_upload_res.upload_id().unwrap();
+  let upload_id = multipart_upload_res.upload_id().ok_or_else(|| {
+    Error::Message("ERROR - Could not get upload ID.".to_string())
+  })?;
 
   // Get details of the upload, this is needed because multipart uploads
   // are tricky and have a minimum chunk size of 5MB
@@ -373,7 +407,12 @@ pub async fn s3_multipart_upload_object(
   }
 
   let bar = ProgressBar::new(file_size);
-  bar.set_style(ProgressStyle::with_template(BAR_FORMAT).unwrap());
+  bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
+    Error::Message(format!(
+      "ERROR - Could not create progress bar.\nReason:\n{}",
+      e.to_string()
+    ))
+  })?);
 
   if file_size == 0 {
     return Err(Error::Message("Bad file size.".to_string()));
@@ -405,8 +444,10 @@ pub async fn s3_multipart_upload_object(
           e
         ))
       })?;
+
     //Chunk index needs to start at 0, but part numbers start at 1.
     let part_number = (chunk_index as i32) + 1;
+
     let upload_part_res = client
       .upload_part()
       .key(object_path)
@@ -422,9 +463,14 @@ pub async fn s3_multipart_upload_object(
           e.to_string()
         ))
       })?;
+
     upload_parts.push(
       CompletedPart::builder()
-        .e_tag(upload_part_res.e_tag.unwrap_or_default())
+        .e_tag(upload_part_res.e_tag.ok_or_else(|| {
+          Error::Message(
+            "ERROR - could not get ETag from upload part.".to_string(),
+          )
+        })?)
         .part_number(part_number)
         .build(),
     );
@@ -436,7 +482,7 @@ pub async fn s3_multipart_upload_object(
       .set_parts(Some(upload_parts))
       .build();
 
-  let _complete_multipart_upload_res = client
+  let complete_multipart_upload_res = client
     .complete_multipart_upload()
     .bucket(bucket)
     .key(object_path)
@@ -453,5 +499,7 @@ pub async fn s3_multipart_upload_object(
 
   bar.finish();
 
-  Ok(_complete_multipart_upload_res.e_tag.clone().unwrap())
+  complete_multipart_upload_res.e_tag.ok_or_else(|| {
+    Error::Message("ERROR - could not get ETag from upload.".to_string())
+  })
 }

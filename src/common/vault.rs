@@ -49,7 +49,9 @@ pub mod http_client {
             .and_then(|auth| auth.get("client_token"))
             .and_then(Value::as_str)
             .map(String::from)
-            .unwrap(),
+            .ok_or_else(|| {
+              Error::Message("ERROR - JWT auth token not valid".to_string())
+            })?,
         );
       }
       Err(e) => {
@@ -122,7 +124,11 @@ pub mod http_client {
         .and_then(|data| data.get("token"))
         .and_then(Value::as_str)
         .map(String::from)
-        .unwrap(),
+        .ok_or_else(|| {
+          Error::Message(
+            "ERROR - VCS token not found in vault secret".to_string(),
+          )
+        })?,
     ) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
   }
 
