@@ -2039,7 +2039,7 @@ pub async fn validate_sat_file_session_template_section(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  image_yaml_vec_opt: Option<&Vec<Value>>,
+  image_yaml_vec: &[image::Image],
   configuration_yaml_vec: &[configuration::Configuration],
   session_template_yaml_vec: &[sessiontemplate::SessionTemplate],
   hsm_group_available_vec: &[String],
@@ -2098,13 +2098,9 @@ pub async fn validate_sat_file_session_template_section(
       // image with images[].ref_name
       log::info!("Searching ref_name '{}' in SAT file", ref_name_to_find,);
 
-      let image_ref_name_found = image_yaml_vec_opt.is_some_and(|image_vec| {
-        image_vec.iter().any(|image| {
-          image.get("ref_name").is_some_and(|ref_name| {
-            ref_name.as_str().eq(&Some(ref_name_to_find))
-          })
-        })
-      });
+      let image_ref_name_found = image_yaml_vec
+        .iter()
+        .any(|image| image.ref_name.eq(&Some(ref_name_to_find).cloned()));
 
       if !image_ref_name_found {
         return Err(Error::Message(format!(
@@ -2129,13 +2125,9 @@ pub async fn validate_sat_file_session_template_section(
           session_template_yaml.name
         );
 
-        let mut image_found = image_yaml_vec_opt.is_some_and(|image_vec| {
-          image_vec.iter().any(|image| {
-            image.get("name").is_some_and(|name| {
-              name.as_str().eq(&Some(image_name_substr_to_find))
-            })
-          })
-        });
+        let mut image_found = image_yaml_vec
+          .iter()
+          .any(|image| image.name.eq(image_name_substr_to_find));
 
         if !image_found {
           // image not found in SAT file, looking in CSM
