@@ -6,6 +6,7 @@ use manta_backend_dispatcher::{
   error::Error,
   interfaces::cfs::CfsTrait,
   types::{
+    K8sAuth, K8sDetails,
     bos::session_template::BosSessionTemplate,
     bss::BootParameters,
     cfs::{
@@ -15,7 +16,6 @@ use manta_backend_dispatcher::{
       session::{CfsSessionGetResponse, CfsSessionPostRequest},
     },
     ims::Image as FrontEndImage,
-    K8sAuth, K8sDetails,
   },
 };
 
@@ -168,8 +168,8 @@ impl CfsTrait for Csm {
 
       if hsm_group_available_vec.is_empty() {
         eprintln!(
-              "ERROR - None of the requested xnames are available in the target HSM groups"
-            );
+          "ERROR - None of the requested xnames are available in the target HSM groups"
+        );
         std::process::exit(1);
       }
 
@@ -500,7 +500,7 @@ impl CfsTrait for Csm {
     let (log_stream_git_clone, exit_code) =
       kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
         client.clone(),
-        cfs_session_name,
+        cfs_session_name.to_string(),
         timestamps,
       )
       .await
@@ -518,7 +518,7 @@ impl CfsTrait for Csm {
     let log_stream_inventory =
       kubernetes::get_cfs_session_container_inventory_logs_stream(
         client.clone(),
-        cfs_session_name,
+        cfs_session_name.to_string(),
         timestamps,
       )
       .await
@@ -527,7 +527,7 @@ impl CfsTrait for Csm {
     let log_stream_ansible =
       kubernetes::get_cfs_session_container_ansible_logs_stream(
         client,
-        cfs_session_name,
+        cfs_session_name.to_string(),
         timestamps,
       )
       .await

@@ -1,5 +1,5 @@
 [package]
-edition = "2021"
+edition = "2024"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
 name = "csm-rs"
 description = "A library for Shasta"
@@ -13,9 +13,9 @@ publish = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-manta-backend-dispatcher = "0.20.0"
+# manta-backend-dispatcher = "0.20.0"
 
-# manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
+manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
 # manta-backend-dispatcher = { git = "https://github.com/eth-cscs/manta-backend-dispatcher", branch="feature/power-status" } # Only for development purposes
 
 strum = { version = "0.27.1", default-features = false }

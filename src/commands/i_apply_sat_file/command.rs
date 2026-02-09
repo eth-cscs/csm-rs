@@ -7,7 +7,10 @@ use crate::{
     self,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   },
-  commands::{apply_hw_cluster_pin, i_apply_sat_file::utils},
+  commands::{
+    apply_hw_cluster_pin,
+    i_apply_sat_file::utils::{self, configuration, image, sessiontemplate},
+  },
   common::kubernetes::{self},
   error::Error,
   hsm::group::utils::update_hsm_group_members,
@@ -99,19 +102,63 @@ pub async fn exec(
     duration
   );
 
+  let configuration_struct_vec: Vec<configuration::Configuration> =
+    serde_yaml::from_value(serde_yaml::Value::Sequence(
+      configuration_vec
+        .iter()
+        .map(|c| serde_yaml::to_value(c).unwrap())
+        .collect(),
+    ))?;
+
+  let image_struct_vec: Vec<image::Image> =
+    serde_yaml::from_value(serde_yaml::Value::Sequence(
+      image_vec
+        .iter()
+        .map(|i| serde_yaml::to_value(i).unwrap())
+        .collect(),
+    ))?;
+
+  let bos_session_template_struct_vec: Vec<sessiontemplate::SessionTemplate> =
+    if let Some(bos_session_template_yaml_vec) =
+      bos_session_template_yaml_vec_opt
+    {
+      serde_yaml::from_value(serde_yaml::Value::Sequence(
+        bos_session_template_yaml_vec
+          .iter()
+          .map(|s| serde_yaml::to_value(s).unwrap())
+          .collect(),
+      ))?
+    } else {
+      Vec::new()
+    };
+
   // VALIDATION
   //
   // Validate 'configurations' section
   utils::validate_sat_file_configurations_section(
+    &configuration_struct_vec,
+    &image_struct_vec,
+    &bos_session_template_struct_vec,
+  )?;
+  /* utils::validate_sat_file_configurations_section(
     configuration_yaml_vec_opt,
     image_yaml_vec_opt,
     bos_session_template_yaml_vec_opt,
-  )?;
+  )?; */
 
   // Validate 'images' section
-  utils::validate_sat_file_images_section(
+  /* utils::validate_sat_file_images_section(
     image_yaml_vec_opt.unwrap_or(&Vec::new()),
     configuration_yaml_vec_opt.unwrap_or(&Vec::new()),
+    hsm_group_available_vec,
+    &cray_product_catalog,
+    image_vec,
+    configuration_vec,
+    ims_recipe_vec,
+  )?; */
+  utils::validate_sat_file_images_section(
+    &image_struct_vec,
+    &configuration_struct_vec,
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec,
@@ -152,7 +199,12 @@ pub async fn exec(
       if let Some(pattern) =
         hw_component_pattern.get("pattern").and_then(Value::as_str)
       {
-        log::info!("Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'", pattern, target_hsm_group_name, parent_hsm_group_name);
+        log::info!(
+          "Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'",
+          pattern,
+          target_hsm_group_name,
+          parent_hsm_group_name
+        );
         // When applying a SAT file, I'm assuming the user doesn't want to create new HSM groups or delete empty parent hsm groups
         // But this could be changed.
         if dry_run {
@@ -261,7 +313,7 @@ pub async fn exec(
   // List of image.ref_name already processed
   let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
-  let cfs_session_created_hashmap: HashMap<String, serde_yaml::Value> =
+  let cfs_session_created_hashmap: HashMap<String, image::Image> =
     utils::i_import_images_section_in_sat_file(
       shasta_token,
       shasta_base_url,
@@ -270,7 +322,7 @@ pub async fn exec(
       site_name,
       k8s_api_url,
       &mut ref_name_processed_hashmap,
-      image_yaml_vec_opt.unwrap_or(&Vec::new()),
+      &image_struct_vec,
       &cray_product_catalog,
       ansible_verbosity_opt,
       ansible_passthrough_opt,

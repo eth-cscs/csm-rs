@@ -7,7 +7,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use anyhow::Result;
-use aws_sdk_s3::{primitives::ByteStream, Client};
+use aws_sdk_s3::{Client, primitives::ByteStream};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::error::Error;
@@ -78,9 +78,11 @@ pub async fn s3_auth(
       Error::Message("Missing SecretAccessKey in STS response".to_string())
     })?;
 
-  std::env::set_var("AWS_SESSION_TOKEN", session_token);
-  std::env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-  std::env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+  unsafe {
+    std::env::set_var("AWS_SESSION_TOKEN", session_token);
+    std::env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+    std::env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+  }
 
   Ok(sts_value)
 }

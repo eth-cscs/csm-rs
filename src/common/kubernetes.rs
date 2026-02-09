@@ -7,12 +7,12 @@ use k8s_openapi::api::core::v1::{ConfigMap, Container, ContainerStatus, Pod};
 use kube::api::DeleteParams;
 use kube::runtime::reflector::Lookup;
 use kube::{
+  Api,
   api::{AttachParams, AttachedProcess},
   config::{
     AuthInfo, Cluster, Context, KubeConfigOptions, Kubeconfig, NamedAuthInfo,
     NamedCluster, NamedContext,
   },
-  Api,
 };
 
 use serde::{Deserialize, Serialize};
@@ -351,10 +351,10 @@ pub async fn i_print_init_container_logs(
 ) -> Result<(), Error> {
   let mut log_stream = get_init_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.to_string(),
     init_container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await?
@@ -370,15 +370,15 @@ pub async fn i_print_init_container_logs(
 
 pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
-  cfs_session_name: &str,
+  cfs_session_name: String,
   timestamps: bool,
 ) -> Result<(impl AsyncBufRead, i32), Error> {
   get_init_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.to_string(),
     "git-clone",
     "services",
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await
@@ -393,10 +393,10 @@ pub async fn i_print_container_logs(
 ) -> Result<(), Error> {
   let mut log_stream = get_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.to_string(),
     container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await?
@@ -411,15 +411,15 @@ pub async fn i_print_container_logs(
 
 pub async fn get_cfs_session_container_inventory_logs_stream(
   client: kube::Client,
-  cfs_session_name: &str,
+  cfs_session_name: String,
   timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.clone(),
     "inventory",
     "services",
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await
@@ -427,15 +427,15 @@ pub async fn get_cfs_session_container_inventory_logs_stream(
 
 pub async fn get_cfs_session_container_ansible_logs_stream(
   client: kube::Client,
-  cfs_session_name: &str,
+  cfs_session_name: String,
   timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.to_string(),
     "ansible",
     "services",
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await
@@ -448,10 +448,10 @@ pub async fn get_cfs_session_container_teardown_logs_stream(
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
-    cfs_session_name,
+    cfs_session_name.to_string(),
     "teardown",
     "services",
-    format!("cfsession={}", cfs_session_name).as_str(),
+    format!("cfsession={}", cfs_session_name),
     timestamps,
   )
   .await
@@ -667,16 +667,16 @@ pub async fn get_init_container_and_wait_to_ready(
 
 pub async fn get_init_container_logs_stream(
   client: kube::Client,
-  cfs_session_name: &str,
+  cfs_session_name: String,
   init_container_name: &str,
   namespace: &str,
-  label_selector: &str,
+  label_selector: String,
   timestamps: bool,
 ) -> Result<(impl AsyncBufRead, i32), Error> {
   let pods_api: Api<Pod> = Api::namespaced(client, namespace);
 
   let cfs_session_pod =
-    &get_pod_and_wait_items(&pods_api, cfs_session_name, label_selector)
+    &get_pod_and_wait_items(&pods_api, &cfs_session_name, &label_selector)
       .await?;
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
@@ -743,16 +743,17 @@ pub async fn get_init_container_logs_stream(
 
 pub async fn get_container_logs_stream(
   client: kube::Client,
-  cfs_session_name: &str,
+  cfs_session_name: String,
   container_name: &str,
   namespace: &str,
-  label_selector: &str,
+  label_selector: String,
   timestamps: bool,
 ) -> Result<impl AsyncBufRead, Error> {
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, namespace);
 
   let cfs_session_pod =
-    get_pod_and_wait_items(&pods_api, cfs_session_name, label_selector).await?;
+    get_pod_and_wait_items(&pods_api, &cfs_session_name, &label_selector)
+      .await?;
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
     Error::K8sError(format!(
@@ -875,11 +876,11 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
     println!(
-            "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-            cfs_session_name,
-            i + 1,
-            max
-        );
+      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
+      cfs_session_name,
+      i + 1,
+      max
+    );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
     pods = pods_fabric
@@ -954,11 +955,11 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
     println!(
-            "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-            cfs_session_name,
-            i + 1,
-            max
-        );
+      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
+      cfs_session_name,
+      i + 1,
+      max
+    );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
     pods = pods_fabric.list(&params).await?;
@@ -983,8 +984,8 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
     })?;
 
   let command = vec!["bash"]; // Enter the container and open conman to access node's console
-                              // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
-                              // terminal session
+  // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
+  // terminal session
 
   pods_fabric
     .exec(
