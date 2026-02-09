@@ -172,7 +172,7 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     image_yaml_vec_opt,
-    configuration_yaml_vec_opt,
+    &configuration_struct_vec,
     bos_session_template_yaml_vec_opt,
     hsm_group_available_vec,
   )

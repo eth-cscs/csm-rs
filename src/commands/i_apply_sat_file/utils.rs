@@ -2040,7 +2040,7 @@ pub async fn validate_sat_file_session_template_section(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   image_yaml_vec_opt: Option<&Vec<Value>>,
-  configuration_yaml_vec_opt: Option<&Vec<Value>>,
+  configuration_yaml_vec: &[configuration::Configuration],
   session_template_yaml_vec_opt: Option<&Vec<Value>>,
   hsm_group_available_vec: &[String],
 ) -> Result<(), Error> {
@@ -2300,12 +2300,10 @@ pub async fn validate_sat_file_session_template_section(
       );
 
       let mut configuration_found =
-        configuration_yaml_vec_opt.is_some_and(|configuration_yaml_vec| {
-          configuration_yaml_vec.iter().any(|configuration_yaml| {
-            configuration_yaml
-              .get("name")
-              .eq(&Some(configuration_to_find_value))
-          })
+        configuration_yaml_vec.iter().any(|configuration_yaml| {
+          configuration_yaml
+            .name
+            .eq(&configuration_to_find_value.as_str().unwrap())
         });
 
       if !configuration_found {
