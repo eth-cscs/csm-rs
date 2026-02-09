@@ -173,7 +173,7 @@ pub async fn exec(
     shasta_root_cert,
     image_yaml_vec_opt,
     &configuration_struct_vec,
-    bos_session_template_yaml_vec_opt,
+    &bos_session_template_struct_vec,
     hsm_group_available_vec,
   )
   .await?;
