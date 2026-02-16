@@ -168,7 +168,9 @@ pub async fn exec(
   )
   .await?;
   println!("\nUpdating IMS image record with the new location in s3...");
-  log::debug!("Updating image record with location of the newly generated manifest.json data");
+  log::debug!(
+    "Updating image record with location of the newly generated manifest.json data"
+  );
   ims_update_image_add_manifest(
     shasta_token,
     shasta_base_url,
@@ -213,7 +215,9 @@ pub async fn exec(
   )
   .await?;
 
-  println!("\nDone, the image bundle, HSM group, CFS configuration and BOS sessiontemplate have been restored.");
+  println!(
+    "\nDone, the image bundle, HSM group, CFS configuration and BOS sessiontemplate have been restored."
+  );
 
   // ========================================================================================================
 
@@ -261,22 +265,22 @@ async fn create_bos_sessiontemplate(
       std::process::exit(2)
     } else {
       match bos::template::http_client::v2::delete(
-                shasta_token,
-                shasta_base_url,
-                shasta_root_cert,
-                &bos_sessiontemplate_name,
-            )
-            .await
-            {
-                Ok(_) => log::debug!(
-                    "Ok BOS session template {}, deleted.",
-                    &bos_sessiontemplate_name
-                ),
-                Result::Err(err1) => panic!(
-                    "Error, unable to delete BOS session template. Cannot continue. Error: {}",
-                    err1
-                ),
-            };
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        &bos_sessiontemplate_name,
+      )
+      .await
+      {
+        Ok(_) => log::debug!(
+          "Ok BOS session template {}, deleted.",
+          &bos_sessiontemplate_name
+        ),
+        Result::Err(err1) => panic!(
+          "Error, unable to delete BOS session template. Cannot continue. Error: {}",
+          err1
+        ),
+      };
     }
   }
 
@@ -299,23 +303,23 @@ async fn create_bos_sessiontemplate(
   log::debug!("BOS sessiontemplate modified:\n{:#?}", &bos_sessiontemplate);
 
   match bos::template::http_client::v2::put(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        &bos_sessiontemplate,
-        &bos_sessiontemplate_name,
-    )
-    .await
-    {
-        Ok(_result) => println!(
-            "Ok, BOS session template {} created successfully.",
-            &bos_sessiontemplate_name
-        ),
-        Err(e1) => panic!(
-            "Error, unable to create BOS sesiontemplate. Error returned by CSM API: {}",
-            e1
-        ),
-    }
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &bos_sessiontemplate,
+    &bos_sessiontemplate_name,
+  )
+  .await
+  {
+    Ok(_result) => println!(
+      "Ok, BOS session template {} created successfully.",
+      &bos_sessiontemplate_name
+    ),
+    Err(e1) => panic!(
+      "Error, unable to create BOS sesiontemplate. Error returned by CSM API: {}",
+      e1
+    ),
+  }
 
   Ok(())
 }
@@ -388,26 +392,26 @@ async fn create_cfs_config(
   log::debug!("CFS config:\n{:#?}", &cfs_configuration);
 
   match cfs::configuration::http_client::v3::put(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        &cfs_configuration,
-        cfs_config_name.as_str(),
-    )
-    .await
-    {
-        Ok(result) => {
-            log::debug!("Ok, result: {:#?}", result);
-            println!(
-                "Ok, CFS configuration {} created successfully.",
-                &cfs_config_name
-            );
-        }
-        Err(e1) => panic!(
-            "Error, unable to create CFS configuration. Error returned by CSM API: {}",
-            e1
-        ),
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &cfs_configuration,
+    cfs_config_name.as_str(),
+  )
+  .await
+  {
+    Ok(result) => {
+      log::debug!("Ok, result: {:#?}", result);
+      println!(
+        "Ok, CFS configuration {} created successfully.",
+        &cfs_config_name
+      );
     }
+    Err(e1) => panic!(
+      "Error, unable to create CFS configuration. Error returned by CSM API: {}",
+      e1
+    ),
+  }
 
   Ok(())
 }
@@ -421,19 +425,29 @@ async fn ims_update_image_add_manifest(
   ims_image_name: &String,
   ims_image_id: &String,
 ) {
-  match get_fuzzy(shasta_token,
-                         shasta_base_url,
-                         shasta_root_cert,
-                         &["".to_string()], // hsm_group_name
-                         Some(ims_image_name.clone().as_str()),
-                         None).await {
-        Ok(_vector) => {
-            if _vector.is_empty() {
-                panic!("Error: there are no images stored with id {} in IMS. Unable to update the image manifest", &ims_image_id);
-            }
-        },
-        Err(error) =>  panic!("Error: Unable to determine if there are other images in IMS with the name {}. Error code: {}", &ims_image_name, &error),
-    };
+  match get_fuzzy(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    &["".to_string()], // hsm_group_name
+    Some(ims_image_name.clone().as_str()),
+    None,
+  )
+  .await
+  {
+    Ok(_vector) => {
+      if _vector.is_empty() {
+        panic!(
+          "Error: there are no images stored with id {} in IMS. Unable to update the image manifest",
+          &ims_image_id
+        );
+      }
+    }
+    Err(error) => panic!(
+      "Error: Unable to determine if there are other images in IMS with the name {}. Error code: {}",
+      &ims_image_name, &error
+    ),
+  };
 
   let _ims_record = ims::image::http_client::types::Image {
     name: ims_image_name.clone().to_string(),
@@ -888,7 +902,10 @@ pub async fn create_hsm_group_from_file(
                   }
                   Err(e) => {
                     log::error!("Error message {}", e);
-                    panic!("Second error creating a new HSM group. Bailing out. Error returned: '{}'", e)
+                    panic!(
+                      "Second error creating a new HSM group. Bailing out. Error returned: '{}'",
+                      e
+                    )
                   }
                 }
               }
@@ -905,7 +922,9 @@ pub async fn create_hsm_group_from_file(
             std::process::exit(2);
           }
         } else if error.to_string().to_lowercase().contains("400") {
-          eprintln!("Unable to create the group, the API returned code 400. This usually means the HSM file is malformed, or has incorrect xnames for this site in it.");
+          eprintln!(
+            "Unable to create the group, the API returned code 400. This usually means the HSM file is malformed, or has incorrect xnames for this site in it."
+          );
           std::process::exit(2);
         }
       }

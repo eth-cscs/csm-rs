@@ -2,8 +2,8 @@ use core::time;
 
 use k8s_openapi::api::core::v1::Pod;
 use kube::{
-  api::{AttachParams, AttachedProcess},
   Api,
+  api::{AttachParams, AttachedProcess},
 };
 use serde_json::Value;
 use tokio_stream::StreamExt;
@@ -58,8 +58,8 @@ pub async fn get_container_attachment_to_conman(
     output_json.get("podname").and_then(Value::as_str).unwrap();
 
   let command = vec!["conman", "-j", xname]; // Enter the container and open conman to access node's console
-                                             // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
-                                             // terminal session
+  // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
+  // terminal session
 
   log::info!("Console pod name: {}", console_pod_name,);
 
@@ -106,11 +106,11 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
     println!(
-            "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-            cfs_session_name,
-            i + 1,
-            max
-        );
+      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
+      cfs_session_name,
+      i + 1,
+      max
+    );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
     pods = pods_fabric.list(&params).await?;
@@ -180,11 +180,11 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
     println!(
-            "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-            cfs_session_name,
-            i + 1,
-            max
-        );
+      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
+      cfs_session_name,
+      i + 1,
+      max
+    );
     i += 1;
     tokio::time::sleep(time::Duration::from_secs(2)).await;
     pods = pods_fabric.list(&params).await?;
@@ -207,8 +207,8 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     })?;
 
   let command = vec!["bash"]; // Enter the container and open conman to access node's console
-                              // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
-                              // terminal session
+  // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
+  // terminal session
 
   pods_fabric
     .exec(

@@ -288,7 +288,9 @@ impl BootParameters {
     }
 
     if change == false {
-      log::debug!("No value change in kernel params. Checking is either new params have been added or removed");
+      log::debug!(
+        "No value change in kernel params. Checking is either new params have been added or removed"
+      );
       if new_params.len() != params.len() {
         log::info!("num kernel parameters have changed");
         change = true;
@@ -350,7 +352,9 @@ impl BootParameters {
     }
 
     if change == false {
-      log::debug!("No value change in kernel params. Checking is either new params have been added or removed");
+      log::debug!(
+        "No value change in kernel params. Checking is either new params have been added or removed"
+      );
       if new_params.len() != params.len() {
         log::info!("num kernel parameters have changed");
         change = true;
@@ -459,7 +463,10 @@ impl BootParameters {
       // NOTE: do not use --> `params.entry(key).or_insert(new_value);` otherwise, I don't know
       // how do we know if the key already exists or not
       if params.contains_key(key) {
-        log::info!("key '{}' already exists, the new kernel parameter won't be added since it already exists", key);
+        log::info!(
+          "key '{}' already exists, the new kernel parameter won't be added since it already exists",
+          key
+        );
       } else {
         log::info!(
           "key '{}' not found, adding new kernel param with value '{}'",

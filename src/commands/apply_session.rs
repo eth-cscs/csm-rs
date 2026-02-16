@@ -219,7 +219,8 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   for node in nodes_list {
     if nodes_in_running_or_pending_cfs_session.contains(&node) {
       return Err(Error::Message(format!(
-         "The node '{}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting", node
+        "The node '{}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting",
+        node
       )));
     }
   }

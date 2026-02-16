@@ -1,7 +1,7 @@
 pub mod http_client {
 
   use crate::error::Error;
-  use serde_json::{json, Value};
+  use serde_json::{Value, json};
 
   pub async fn auth_oidc_jwt(
     vault_base_url: &str,

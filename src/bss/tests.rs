@@ -13,21 +13,21 @@ fn test_get_image_id_from_s3_path() {
 #[test]
 fn test_get_image_id_from_s3_path_2() {
   assert_eq!(
-            get_image_id_from_s3_path(
-                "craycps-s3:s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs:3dfae8d1fa3bb2bfb18152b4f9940ad0-667:dvs:api-gw-service-nmn.local:300:nmn0,hsn0:0",
-            ),
-            Some("59e0180a-3fdd-4936-bba7-14ba914ffd34")
-        );
+    get_image_id_from_s3_path(
+      "craycps-s3:s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs:3dfae8d1fa3bb2bfb18152b4f9940ad0-667:dvs:api-gw-service-nmn.local:300:nmn0,hsn0:0",
+    ),
+    Some("59e0180a-3fdd-4936-bba7-14ba914ffd34")
+  );
 }
 
 #[test]
 fn test_get_image_id_from_s3_path_3() {
   assert_eq!(
-            get_image_id_from_s3_path(
-                "url=s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs,etag=3dfae8d1fa3bb2bfb18152b4f9940ad0-667 bos_update_frequency=4h",
-            ),
-            Some("59e0180a-3fdd-4936-bba7-14ba914ffd34")
-        );
+    get_image_id_from_s3_path(
+      "url=s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs,etag=3dfae8d1fa3bb2bfb18152b4f9940ad0-667 bos_update_frequency=4h",
+    ),
+    Some("59e0180a-3fdd-4936-bba7-14ba914ffd34")
+  );
 }
 
 #[test]

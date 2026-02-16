@@ -160,8 +160,8 @@ pub async fn get_parallel(
   let pipe_size = 15;
 
   log::debug!(
-        "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
-    );
+    "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
+  );
 
   let mut component_vec = Vec::new();
 
@@ -179,8 +179,8 @@ pub async fn get_parallel(
   for sub_node_list in node_vec.chunks(num_xnames_per_request) {
     let num_nodes_in_flight = sub_node_list.len();
     log::info!(
-            "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
-        );
+      "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
+    );
 
     let shasta_token_string = shasta_token.to_string();
     let shasta_base_url_string = shasta_base_url.to_string();

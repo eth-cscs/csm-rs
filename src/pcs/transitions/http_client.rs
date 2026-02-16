@@ -237,7 +237,14 @@ pub async fn wait_to_complete(
 
     eprintln!(
       "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
-      transition.operation, transition.transition_status, transition.task_counts.failed, transition.task_counts.in_progress, transition.task_counts.succeeded, transition.task_counts.total, i, max_attempt
+      transition.operation,
+      transition.transition_status,
+      transition.task_counts.failed,
+      transition.task_counts.in_progress,
+      transition.task_counts.succeeded,
+      transition.task_counts.total,
+      i,
+      max_attempt
     );
 
     tokio::time::sleep(time::Duration::from_secs(3)).await;

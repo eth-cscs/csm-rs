@@ -9,7 +9,9 @@ use crate::{
   },
   commands::{
     apply_hw_cluster_pin,
-    i_apply_sat_file::utils::{self, configuration, image, sessiontemplate},
+    i_apply_sat_file::utils::{
+      self, SatFile, configuration, image, sessiontemplate,
+    },
   },
   common::kubernetes::{self},
   error::Error,
@@ -102,35 +104,18 @@ pub async fn exec(
     duration
   );
 
+  let sat_file_struct: SatFile = serde_yaml::from_str(
+    &serde_yaml::to_string(&sat_template_file_yaml).unwrap(),
+  )?;
+
   let configuration_struct_vec: Vec<configuration::Configuration> =
-    serde_yaml::from_value(serde_yaml::Value::Sequence(
-      configuration_vec
-        .iter()
-        .map(|c| serde_yaml::to_value(c).unwrap())
-        .collect(),
-    ))?;
+    sat_file_struct.configurations.unwrap_or_default();
 
   let image_struct_vec: Vec<image::Image> =
-    serde_yaml::from_value(serde_yaml::Value::Sequence(
-      image_vec
-        .iter()
-        .map(|i| serde_yaml::to_value(i).unwrap())
-        .collect(),
-    ))?;
+    sat_file_struct.images.unwrap_or_default();
 
   let bos_session_template_struct_vec: Vec<sessiontemplate::SessionTemplate> =
-    if let Some(bos_session_template_yaml_vec) =
-      bos_session_template_yaml_vec_opt
-    {
-      serde_yaml::from_value(serde_yaml::Value::Sequence(
-        bos_session_template_yaml_vec
-          .iter()
-          .map(|s| serde_yaml::to_value(s).unwrap())
-          .collect(),
-      ))?
-    } else {
-      Vec::new()
-    };
+    sat_file_struct.session_templates.unwrap_or_default();
 
   // VALIDATION
   //
@@ -140,22 +125,8 @@ pub async fn exec(
     &image_struct_vec,
     &bos_session_template_struct_vec,
   )?;
-  /* utils::validate_sat_file_configurations_section(
-    configuration_yaml_vec_opt,
-    image_yaml_vec_opt,
-    bos_session_template_yaml_vec_opt,
-  )?; */
 
   // Validate 'images' section
-  /* utils::validate_sat_file_images_section(
-    image_yaml_vec_opt.unwrap_or(&Vec::new()),
-    configuration_yaml_vec_opt.unwrap_or(&Vec::new()),
-    hsm_group_available_vec,
-    &cray_product_catalog,
-    image_vec,
-    configuration_vec,
-    ims_recipe_vec,
-  )?; */
   utils::validate_sat_file_images_section(
     &image_struct_vec,
     &configuration_struct_vec,
@@ -291,7 +262,6 @@ pub async fn exec(
         gitea_token,
         &cray_product_catalog,
         configuration_yaml,
-        // tag,
         dry_run,
         site_name,
         overwrite,

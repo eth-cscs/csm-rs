@@ -47,9 +47,9 @@ pub async fn create_new_configuration(
   if !cfs_configuration_vec.is_empty() {
     if overwrite {
       log::info!(
-          "CFS configuration '{}' already exists but 'overwrite' has been enabled",
-          configuration_name
-        );
+        "CFS configuration '{}' already exists but 'overwrite' has been enabled",
+        configuration_name
+      );
     } else {
       log::warn!(
         "CFS configuration '{}' already exists, cancel the process",

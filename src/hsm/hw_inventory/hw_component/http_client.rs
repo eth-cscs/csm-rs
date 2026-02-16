@@ -41,12 +41,12 @@ pub async fn get(
       .map_err(|error| Error::NetError(error));
 
     match payload.unwrap().pointer("/Nodes/0") {
-            Some(node_value) => Ok(NodeSummary::from_csm_value(node_value.clone())),
-            None => Err(Error::Message(format!(
-                "ERROR - json section '/Node' missing in json response API for node '{}'",
-                xname
-            ))),
-        }
+      Some(node_value) => Ok(NodeSummary::from_csm_value(node_value.clone())),
+      None => Err(Error::Message(format!(
+        "ERROR - json section '/Node' missing in json response API for node '{}'",
+        xname
+      ))),
+    }
   } else {
     let e = response
       .text()

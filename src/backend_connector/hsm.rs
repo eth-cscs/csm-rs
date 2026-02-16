@@ -8,13 +8,13 @@ use manta_backend_dispatcher::{
     redfish_endpoint::RedfishEndpointTrait,
   },
   types::{
+    Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
+    HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
+    NodeMetadataArray,
     hsm::inventory::{
       ComponentEthernetInterface,
       RedfishEndpointArray as FrontEndRedfishEndpointArray,
     },
-    Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
-    HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
-    NodeMetadataArray,
   },
 };
 use regex::Regex;

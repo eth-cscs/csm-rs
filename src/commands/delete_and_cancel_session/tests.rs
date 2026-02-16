@@ -191,12 +191,14 @@ fn test_is_cfs_configuration_used_to_build_image_true() {
   let cfs_configuration_name = "cfs_config_1";
   let cfs_session_name = "cfs_session_1";
 
-  assert!(is_cfs_configuration_used_to_build_image(
-    &cfs_session_vec,
-    cfs_session_name,
-    cfs_configuration_name
-  )
-  .is_empty());
+  assert!(
+    is_cfs_configuration_used_to_build_image(
+      &cfs_session_vec,
+      cfs_session_name,
+      cfs_configuration_name
+    )
+    .is_empty()
+  );
 }
 
 #[test]

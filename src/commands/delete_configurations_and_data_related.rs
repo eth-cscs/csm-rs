@@ -241,7 +241,10 @@ pub async fn get_data_to_delete(
 
       eprintln!(
         "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
-        cfs_configuration_name, cfs_configuration_name, nodes_using_cfs_configuration_as_dessired_configuration_vec.join(", "));
+        cfs_configuration_name,
+        cfs_configuration_name,
+        nodes_using_cfs_configuration_as_dessired_configuration_vec.join(", ")
+      );
     }
 
     image_id_vec.dedup();
@@ -332,9 +335,9 @@ pub async fn get_data_to_delete(
   {
     // We can't decide if CFS configuration and derivatives can be deleted.
     log::error!(
-        "Delete configuration - Not enough information to proceed. Could not find information related to CFS configurations '{}'",
-        cfs_configuration_name_vec.join(", ")
-      );
+      "Delete configuration - Not enough information to proceed. Could not find information related to CFS configurations '{}'",
+      cfs_configuration_name_vec.join(", ")
+    );
     return Err(Error::ConfigurationDerivativesNotFound(
       cfs_configuration_name_vec.join(", "),
     ));
@@ -434,7 +437,12 @@ pub async fn delete(
       .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
-        log::warn!("Could not delete CFS session {} attempt {} of {}, trying again in 2 seconds...", cfs_session_name, counter, max_attempts);
+        log::warn!(
+          "Could not delete CFS session {} attempt {} of {}, trying again in 2 seconds...",
+          cfs_session_name,
+          counter,
+          max_attempts
+        );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
@@ -469,7 +477,12 @@ pub async fn delete(
       .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
-        log::warn!("Could not delete BOS sessiontemplate {} attempt {} of {}, trying again in 2 seconds...", bos_sessiontemplate_name, counter, max_attempts);
+        log::warn!(
+          "Could not delete BOS sessiontemplate {} attempt {} of {}, trying again in 2 seconds...",
+          bos_sessiontemplate_name,
+          counter,
+          max_attempts
+        );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
@@ -501,7 +514,12 @@ pub async fn delete(
       .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
-        log::warn!("Could not delete CFS configuration {} attempt {} of {}, trying again in 2 seconds...", cfs_configuration, counter, max_attempts);
+        log::warn!(
+          "Could not delete CFS configuration {} attempt {} of {}, trying again in 2 seconds...",
+          cfs_configuration,
+          counter,
+          max_attempts
+        );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {

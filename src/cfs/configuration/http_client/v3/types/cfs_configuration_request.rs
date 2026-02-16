@@ -278,9 +278,10 @@ impl CfsConfigurationRequest {
             log::debug!("tag details:\n{:#?}", tag_details);
             tag_details
           } else {
-            return Err(Error::Message(
-                            format!("ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}", git_tag, cfs_configuration_name, tag_details_rslt)
-                        ));
+            return Err(Error::Message(format!(
+              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
+              git_tag, cfs_configuration_name, tag_details_rslt
+            )));
           };
 
           // Assumming user sets an existing tag name. It could be an annotated tag
@@ -378,9 +379,10 @@ impl CfsConfigurationRequest {
           .and_then(|product| product.get("configuration"));
 
         if product_details_opt.is_none() {
-          return Err(Error::Message(
-                        format!("Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog", product_name, product_version)
-                    ));
+          return Err(Error::Message(format!(
+            "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
+            product_name, product_version
+          )));
         }
 
         let product_details = product_details_opt.unwrap().clone();
@@ -459,9 +461,9 @@ impl CfsConfigurationRequest {
         );
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message(
-                    format!("ERROR - configurations section in SAT file error - CFS configuration layer error")
-                ));
+        return Err(Error::Message(format!(
+          "ERROR - configurations section in SAT file error - CFS configuration layer error"
+        )));
       }
     }
 

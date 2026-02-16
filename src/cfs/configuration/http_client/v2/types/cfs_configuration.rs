@@ -78,9 +78,16 @@ impl LayerDetails {
 impl fmt::Display for LayerDetails {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
-            f,
-            "\n - name: {}\n - repo name: {}\n - commit id: {}\n - commit date: {}\n - author: {}\n - branch: {}\n - tag: {}\n - playbook: {}",
-            self.name, self.repo_name, self.commit_id, self.commit_date, self.author, self.branch, self.tag, self.playbook
-        )
+      f,
+      "\n - name: {}\n - repo name: {}\n - commit id: {}\n - commit date: {}\n - author: {}\n - branch: {}\n - tag: {}\n - playbook: {}",
+      self.name,
+      self.repo_name,
+      self.commit_id,
+      self.commit_date,
+      self.author,
+      self.branch,
+      self.tag,
+      self.playbook
+    )
   }
 }

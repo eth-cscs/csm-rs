@@ -103,7 +103,10 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
         target,
       ));
     } else {
-      log::warn!("BOS sessiontemplate '{:?}' not valid, check fields 'path' and 'cfs.configuration' have valid values. Path field should have 's3://boot-images/' as prefix and '/manifest.json' as sufix", bos_sessiontemplate.name);
+      log::warn!(
+        "BOS sessiontemplate '{:?}' not valid, check fields 'path' and 'cfs.configuration' have valid values. Path field should have 's3://boot-images/' as prefix and '/manifest.json' as sufix",
+        bos_sessiontemplate.name
+      );
     }
   }
 

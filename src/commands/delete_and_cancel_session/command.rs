@@ -127,9 +127,9 @@ async fn delete_images(
     if !is_image_boot_node {
       if dry_run {
         println!(
-                    "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{}'",
-                    image_id
-                );
+          "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{}'",
+          image_id
+        );
       } else {
         ims::image::http_client::delete(
           shasta_token,

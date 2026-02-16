@@ -61,7 +61,11 @@ pub async fn validate_target_hsm_members(
         .collect(),
     )
   } else {
-    return Err(Error::Message(format!("Can't access all or any of the HSM members '{}'.\nPlease choose members form the list of HSM groups below:\n{}\nExit", hsm_group_members_opt.join(", "), hsm_groups_user_has_access.join(", "))));
+    return Err(Error::Message(format!(
+      "Can't access all or any of the HSM members '{}'.\nPlease choose members form the list of HSM groups below:\n{}\nExit",
+      hsm_group_members_opt.join(", "),
+      hsm_groups_user_has_access.join(", ")
+    )));
   }
 }
 

@@ -44,17 +44,19 @@ fn test_validate_groups_tenant() {
     "my_group_cn".to_string(),
   ];
 
-  assert!(hsm::group::hacks::validate_groups(
-    &cfs_session_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>(),
-    &auth_token_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>()
-  )
-  .is_empty());
+  assert!(
+    hsm::group::hacks::validate_groups(
+      &cfs_session_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &auth_token_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+    )
+    .is_empty()
+  );
 }
 
 #[test]
@@ -108,17 +110,19 @@ fn test_validate_groups_admin() {
     "my_group_cn".to_string(),
   ];
 
-  assert!(hsm::group::hacks::validate_groups(
-    &cfs_session_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>(),
-    &auth_token_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>()
-  )
-  .is_empty());
+  assert!(
+    hsm::group::hacks::validate_groups(
+      &cfs_session_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &auth_token_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+    )
+    .is_empty()
+  );
 }
 
 #[test]
@@ -140,15 +144,17 @@ fn test_validate_groups_admin_2() {
     "my_group_cn".to_string(),
   ];
 
-  assert!(hsm::group::hacks::validate_groups(
-    &cfs_session_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>(),
-    &auth_token_groups
-      .iter()
-      .map(String::as_str)
-      .collect::<Vec<&str>>()
-  )
-  .is_empty());
+  assert!(
+    hsm::group::hacks::validate_groups(
+      &cfs_session_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>(),
+      &auth_token_groups
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+    )
+    .is_empty()
+  );
 }

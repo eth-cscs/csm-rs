@@ -275,10 +275,12 @@ impl CfsConfigurationResponse {
         cfs_configuration.add_layer(layer);
       } else {
         // Product layer
-        let repo_url =
-          format!(
+        let repo_url = format!(
           "https://api-gw-service-nmn.local/vcs/cray/{}-config-management.git",
-          layer_yaml.get("name").and_then(serde_yaml::Value::as_str).unwrap()
+          layer_yaml
+            .get("name")
+            .and_then(serde_yaml::Value::as_str)
+            .unwrap()
         );
         let layer = Layer::new(
           repo_url,

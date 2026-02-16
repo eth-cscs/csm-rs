@@ -58,7 +58,9 @@ pub enum Error {
   ConfigurationNameNotDefined(String),
   #[error("CSM-RS > CFS Configuration already exists: {0}")]
   ConfigurationAlreadyExists(String),
-  #[error("CSM-RS > CFS Configuration used as a runtime configuration for a cluster and/or used to build an image used to boot node(s)")]
+  #[error(
+    "CSM-RS > CFS Configuration used as a runtime configuration for a cluster and/or used to build an image used to boot node(s)"
+  )]
   ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed,
   #[error("CSM-RS > Session '{0}' not found")]
   SessionNotFound(String),

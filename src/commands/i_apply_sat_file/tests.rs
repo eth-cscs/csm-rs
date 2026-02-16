@@ -317,8 +317,8 @@ fn test_render_sat_file_yaml_template_with_yaml_values_file() {
 /// Result: FAIL
 /// Reason: Configuration assigned to an image could not be found
 #[test]
-fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in_old_image_format(
-) {
+fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in_old_image_format()
+ {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
@@ -352,16 +352,18 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
 
   let ims_recipes = vec![];
 
-  assert!(validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
-    hsm_group_available_vec,
-    cray_product_catalog,
-    image_vec_in_csm,
-    configuration_vec_in_csm,
-    ims_recipes
-  )
-  .is_err());
+  assert!(
+    validate_sat_file_images_section(
+      image_vec_in_sat_file,
+      configuration_vec_in_sat_file,
+      hsm_group_available_vec,
+      cray_product_catalog,
+      image_vec_in_csm,
+      configuration_vec_in_csm,
+      ims_recipes
+    )
+    .is_err()
+  );
 }
 
 /// Test SAT file
@@ -409,16 +411,18 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
 
   let ims_recipes = vec![];
 
-  assert!(validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
-    hsm_group_available_vec,
-    cray_product_catalog,
-    image_vec_in_csm,
-    configuration_vec_in_csm,
-    ims_recipes
-  )
-  .is_ok());
+  assert!(
+    validate_sat_file_images_section(
+      image_vec_in_sat_file,
+      configuration_vec_in_sat_file,
+      hsm_group_available_vec,
+      cray_product_catalog,
+      image_vec_in_csm,
+      configuration_vec_in_csm,
+      ims_recipes
+    )
+    .is_ok()
+  );
 }
 
 /// Test SAT file
@@ -471,16 +475,18 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
 
   let ims_recipes = vec![];
 
-  assert!(validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
-    hsm_group_available_vec,
-    cray_product_catalog,
-    image_vec_in_csm,
-    configuration_vec_in_csm,
-    ims_recipes
-  )
-  .is_ok());
+  assert!(
+    validate_sat_file_images_section(
+      image_vec_in_sat_file,
+      configuration_vec_in_sat_file,
+      hsm_group_available_vec,
+      cray_product_catalog,
+      image_vec_in_csm,
+      configuration_vec_in_csm,
+      ims_recipes
+    )
+    .is_ok()
+  );
 }
 
 /// Test SAT file
@@ -523,16 +529,18 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
 
   let ims_recipes = vec![];
 
-  assert!(validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
-    hsm_group_available_vec,
-    cray_product_catalog,
-    image_vec_in_csm,
-    configuration_vec_in_csm,
-    ims_recipes
-  )
-  .is_err());
+  assert!(
+    validate_sat_file_images_section(
+      image_vec_in_sat_file,
+      configuration_vec_in_sat_file,
+      hsm_group_available_vec,
+      cray_product_catalog,
+      image_vec_in_csm,
+      configuration_vec_in_csm,
+      ims_recipes
+    )
+    .is_err()
+  );
 }
 
 /// Test SAT file
@@ -540,8 +548,8 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
 /// Result: FAIL
 /// Reason: Base image recipe assigned to an image could not be found in Cray/HPE product catalog
 #[test]
-fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_found_in_cray_product_catalog(
-) {
+fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_found_in_cray_product_catalog()
+ {
   let mut cray_product_catalog = BTreeMap::<String, String>::new();
   cray_product_catalog.insert("cos".to_string(), "2.2.101:\n  configuration:\n    clone_url: https://vcs.alps.cscs.ch/vcs/cray/cos-config-management.git\n    commit: 7f71cdc5d58f7879dc431b3fd6330296dcb3f7ee\n    import_branch: cray/cos/2.2.101\n    import_date: 2022-06-01 17:57:17.019149\n    ssh_url: git@vcs.alps.cscs.ch:cray/cos-config-management.git\n  images:\n    cray-shasta-compute-sles15sp3.x86_64-2.2.38:\n      id: d737e902-c002-4269-a408-6baa0fb31b4d\n  recipes:\n    cray-shasta-compute-sles15sp3.x86_64-2.2.38:\n      id: 2ffe10da-67f5-47b7-b7fb-de25381498f0".to_string());
 
@@ -595,8 +603,8 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
 /// Result: FAIL
 /// Reason: Base IMS recipe assigned to an image could not be found
 #[test]
-fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be_found(
-) {
+fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be_found()
+ {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
@@ -655,8 +663,8 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
 /// Result: PASS
 /// Reason: Base IMS recipe assigned to an image found in CSM
 #[test]
-fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_found(
-) {
+fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_found()
+ {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(

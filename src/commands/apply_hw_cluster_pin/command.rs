@@ -88,7 +88,10 @@ pub async fn exec(
     }
     Err(_) => {
       if create_target_hsm_group {
-        log::info!("Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.", target_hsm_group_name.to_string());
+        log::info!(
+          "Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.",
+          target_hsm_group_name.to_string()
+        );
         if nodryrun {
           let group = Group {
             label: target_hsm_group_name.to_string(),
@@ -112,7 +115,10 @@ pub async fn exec(
           ));
         }
       } else {
-        return Err(Error::Message(format!("Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.", target_hsm_group_name.to_string())));
+        return Err(Error::Message(format!(
+          "Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.",
+          target_hsm_group_name.to_string()
+        )));
       }
     }
   };
@@ -313,18 +319,30 @@ pub async fn exec(
     .await;
     if parent_group_will_be_empty {
       if delete_empty_parent_hsm_group {
-        log::info!("Parent HSM group {} is now empty and the option to delete empty groups has been selected, removing it.",parent_hsm_group_name);
+        log::info!(
+          "Parent HSM group {} is now empty and the option to delete empty groups has been selected, removing it.",
+          parent_hsm_group_name
+        );
         // match backend.delete_group(shasta_token, parent_hsm_group_name).await {
-        match hsm::group::http_client::delete_group(shasta_token,
-                                                                      shasta_base_url,
-                                                                      shasta_root_cert,
-                                                                      &parent_hsm_group_name.to_string())
-                    .await {
-                    Ok(_) => log::info!("HSM group removed successfully."),
-                    Err(e2) => log::debug!("Error removing the HSM group. This always fails, ignore please. Reported: {}", e2)
-                };
+        match hsm::group::http_client::delete_group(
+          shasta_token,
+          shasta_base_url,
+          shasta_root_cert,
+          &parent_hsm_group_name.to_string(),
+        )
+        .await
+        {
+          Ok(_) => log::info!("HSM group removed successfully."),
+          Err(e2) => log::debug!(
+            "Error removing the HSM group. This always fails, ignore please. Reported: {}",
+            e2
+          ),
+        };
       } else {
-        log::debug!("Parent HSM group {} is now empty and the option to delete empty groups has NOT been selected, will not remove it.",parent_hsm_group_name)
+        log::debug!(
+          "Parent HSM group {} is now empty and the option to delete empty groups has NOT been selected, will not remove it.",
+          parent_hsm_group_name
+        )
       }
     }
   }

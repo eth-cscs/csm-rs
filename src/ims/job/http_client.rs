@@ -207,10 +207,7 @@ pub async fn get(
     .map_err(Error::NetError)?;
 
   if job_id_opt.is_some() {
-    Ok(vec![response
-      .json::<Job>()
-      .await
-      .map_err(Error::NetError)?])
+    Ok(vec![response.json::<Job>().await.map_err(Error::NetError)?])
   } else {
     response.json().await.map_err(Error::NetError)
   }
