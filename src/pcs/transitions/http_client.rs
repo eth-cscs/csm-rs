@@ -1,11 +1,10 @@
 use std::time;
 
-use serde_json::Value;
-
 use crate::{
   error::Error,
   pcs::transitions::types::{
-    Location, Operation, TransitionResponse, TransitionResponseList,
+    Location, Operation, TaskCounts, TransitionResponse,
+    TransitionResponseList, TransitionStartOutput,
   },
 };
 
@@ -112,7 +111,7 @@ pub async fn post(
   shasta_root_cert: &[u8],
   operation: &str,
   xname_vec: &Vec<String>,
-) -> Result<TransitionResponse, Error> {
+) -> Result<TransitionStartOutput, Error> {
   log::info!("Create PCS transition '{}' on {:?}", operation, xname_vec);
 
   //Create request payload
@@ -165,7 +164,7 @@ pub async fn post(
   if response.status().is_success() {
     Ok(
       response
-        .json::<TransitionResponse>()
+        .json::<TransitionStartOutput>()
         .await
         .map_err(|e| Error::NetError(e))?,
     )

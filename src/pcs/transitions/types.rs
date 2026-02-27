@@ -3,6 +3,7 @@ use manta_backend_dispatcher::types::pcs::transitions::types::{
   Task as FrontEndTask, TaskCounts as FrontEndTaskCounts,
   Transition as FrontEndTransition,
   TransitionResponse as FrontEndTransitionResponse,
+  TransitionStartOutput as FrontEndTransitionStartOutput,
 };
 
 use strum_macros::Display;
@@ -118,6 +119,7 @@ impl From<FrontEndTransition> for Transition {
     }
   }
 }
+
 impl Into<FrontEndTransition> for Transition {
   fn into(self) -> FrontEndTransition {
     FrontEndTransition {
@@ -132,9 +134,11 @@ impl Into<FrontEndTransition> for Transition {
 pub struct TaskCounts {
   pub total: usize,
   pub new: usize,
+  #[serde(rename = "in-progress")]
   pub in_progress: usize,
   pub failed: usize,
   pub succeeded: usize,
+  #[serde(rename = "un-supported")]
   pub un_supported: usize,
 }
 
@@ -263,5 +267,30 @@ impl From<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
 impl Into<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
   fn into(self) -> Vec<FrontEndTransitionResponse> {
     self.transitions.into_iter().map(|v| v.into()).collect()
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransitionStartOutput {
+  #[serde(rename = "transitionID")]
+  pub transition_id: String,
+  pub operation: Operation,
+}
+
+impl From<FrontEndTransitionStartOutput> for TransitionStartOutput {
+  fn from(value: FrontEndTransitionStartOutput) -> Self {
+    TransitionStartOutput {
+      transition_id: value.transition_id,
+      operation: Operation::from(value.operation),
+    }
+  }
+}
+
+impl Into<FrontEndTransitionStartOutput> for TransitionStartOutput {
+  fn into(self) -> FrontEndTransitionStartOutput {
+    FrontEndTransitionStartOutput {
+      transition_id: self.transition_id,
+      operation: self.operation.into(),
+    }
   }
 }

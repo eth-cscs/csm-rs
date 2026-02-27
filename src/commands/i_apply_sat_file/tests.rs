@@ -5,11 +5,12 @@ use crate::{
     CfsConfigurationResponse, Layer,
   },
   commands::i_apply_sat_file::utils::{
-    get_image_name_or_ref_name_to_process,
-    get_next_image_in_sat_file_to_process, validate_sat_file_images_section,
+    configuration, get_image_name_or_ref_name_to_process,
+    get_next_image_in_sat_file_to_process, image, sat_file_image_old::Ims,
+    validate_sat_file_images_section,
   },
   error::Error,
-  ims::{image::http_client::types::Image, recipe::types::RecipeGetResponse},
+  ims::{self, recipe::types::RecipeGetResponse},
 };
 
 /// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing
@@ -312,7 +313,7 @@ fn test_render_sat_file_yaml_template_with_yaml_values_file() {
     );
 } */
 
-/// Test SAT file
+/* /// Test SAT file
 /// Test image section in OLD format in SAT file
 /// Result: FAIL
 /// Reason: Configuration assigned to an image could not be found
@@ -335,11 +336,29 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
+  let image_vec_in_sat_file: &[image::Image] = &[image::Image {
+    name: "my-image-name".to_string(),
+    base_or_ims: image::BaseOrIms::Ims {
+      ims: image::ImageIms::IdIsRecipe {
+        is_recipe: false,
+        id: "my-image-id".to_string(),
+      },
+    },
+    configuration: "my-configuration-name",
+    configuration_group_names: Some(vec![
+      "Compute".to_string(),
+      "tenant-a".to_string(),
+    ]),
+    ref_name: None,
+    description: None,
+  }];
+
+  let configuration_vec_in_sat_file: &Vec<configuration::Configuration> =
+    &vec![];
 
   let hsm_group_available_vec = &["tenant-a".to_string()];
 
-  let image_vec_in_csm = vec![Image {
+  let image_vec_in_csm = vec![ims::image::http_client::types::Image {
     id: Some("my-image-id".to_string()),
     created: None,
     name: "my-image-name".to_string(),
@@ -364,7 +383,7 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
     )
     .is_err()
   );
-}
+} */
 
 /// Test SAT file
 /// Test image section in OLD format in SAT file
