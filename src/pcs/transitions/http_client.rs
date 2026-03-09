@@ -3,8 +3,8 @@ use std::time;
 use crate::{
   error::Error,
   pcs::transitions::types::{
-    Location, Operation, TaskCounts, TransitionResponse,
-    TransitionResponseList, TransitionStartOutput,
+    Location, Operation, TransitionResponse, TransitionResponseList,
+    TransitionStartOutput,
   },
 };
 

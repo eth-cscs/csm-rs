@@ -768,7 +768,7 @@ async fn ims_register_image(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
-  ims_image_name: &String,
+  ims_image_name: &str,
   overwrite: bool,
 ) -> anyhow::Result<String> {
   let ims_record = Image {
@@ -785,7 +785,7 @@ async fn ims_register_image(
     shasta_base_url,
     shasta_root_cert,
     &["".to_string()], // hsm_group_name
-    Some(ims_image_name.clone().as_str()),
+    ims_image_name,
     None,
   )
   .await?;

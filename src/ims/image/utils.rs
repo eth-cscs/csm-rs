@@ -50,7 +50,7 @@ pub async fn get_by_name(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   hsm_name_available_vec: &[String],
-  image_name_opt: Option<&str>,
+  image_name: &str,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
   let mut image_available_vec: Vec<Image> = get_image_available_vec(
@@ -63,8 +63,46 @@ pub async fn get_by_name(
   )
   .await?;
 
-  if let Some(image_name) = image_name_opt {
-    image_available_vec.retain(|image| image.name.eq(image_name));
+  image_available_vec.retain(|image| image.name.eq(image_name));
+
+  if let Some(limit_number) = limit_number_opt {
+    // Limiting the number of results to return to client
+    image_available_vec = image_available_vec[image_available_vec
+      .len()
+      .saturating_sub(*limit_number as usize)..]
+      .to_vec();
+  }
+
+  Ok(image_available_vec.to_vec())
+}
+
+/// Get Image using exact name match among the images available to the user based on the HSM groups
+/// the user has access to. If no image is found with the exact name match, then, an error will be
+/// returned.
+pub async fn try_get_by_name(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  hsm_name_available_vec: &[String],
+  image_name: &str,
+  limit_number_opt: Option<&u8>,
+) -> Result<Vec<Image>, Error> {
+  // Get images available to the user
+  let mut image_available_vec: Vec<Image> = get_image_available_vec(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    hsm_name_available_vec,
+    None, // NOTE: don't put any limit here since we may be looking in a large number of
+          // HSM groups and we will filter the results by image name below
+  )
+  .await?;
+
+  image_available_vec.retain(|image| image.name.eq(image_name));
+
+  // If image name is provided, we try to find an image with the exact name match
+  if image_available_vec.is_empty() {
+    return Err(Error::ImageNotFound(image_name.to_string()));
   }
 
   if let Some(limit_number) = limit_number_opt {
@@ -257,10 +295,15 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   Ok(image_detail_vec)
 }
 
-/// Returns a list of images with the cfs
-/// configuration related to that image struct and the target groups booting that image
-/// This list is filtered by the HSM groups the user has access to
-/// Exception are images containing 'generic' in their names since those could be used by anyone
+/// Returns a list of images available to the user based on the HSM groups the user has access to.
+/// The method defines the images available to the user based on the following rules:
+///  - If image is related to a BOS sessiontemplate related to a HSM group the user has access to, then, the image will be available to the user
+///  - If image was created using a CFS session with HSM groups related to the user, then the image will be available to the user
+///  - If image name contains HSM group the user is working on, then, the image will be available
+///  to the user (NOTE: this is a bad practice because this is a free text prone to human errors
+///  but we are extending the rules that defines if a user has access to an image because CSCS
+///  staff deletes CFS sessions and BOS sessiontemplates so we may miss images related to the user
+///  if we don't extend the rules)
 pub async fn get_image_available_vec(
   shasta_token: &str,
   shasta_base_url: &str,

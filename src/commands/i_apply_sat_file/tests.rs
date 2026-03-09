@@ -10,7 +10,9 @@ use crate::{
     validate_sat_file_images_section,
   },
   error::Error,
-  ims::{self, recipe::types::RecipeGetResponse},
+  ims::{
+    self, image::http_client::types::Image, recipe::types::RecipeGetResponse,
+  },
 };
 
 /// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing
@@ -393,7 +395,7 @@ fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in
 fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               ims:
@@ -407,8 +409,8 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -432,8 +434,8 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
 
   assert!(
     validate_sat_file_images_section(
-      image_vec_in_sat_file,
-      configuration_vec_in_sat_file,
+      image_vec_in_sat_file.as_slice(),
+      configuration_vec_in_sat_file.as_slice(),
       hsm_group_available_vec,
       cray_product_catalog,
       image_vec_in_csm,
@@ -452,7 +454,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
 fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               ims:
@@ -466,7 +468,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> = vec![];
 
   let hsm_group_available_vec = &["tenant-a".to_string()];
 
@@ -496,8 +498,8 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
 
   assert!(
     validate_sat_file_images_section(
-      image_vec_in_sat_file,
-      configuration_vec_in_sat_file,
+      image_vec_in_sat_file.as_slice(),
+      configuration_vec_in_sat_file.as_slice(),
       hsm_group_available_vec,
       cray_product_catalog,
       image_vec_in_csm,
@@ -517,7 +519,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
 {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               ims:
@@ -531,7 +533,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> = vec![];
 
   let hsm_group_available_vec = &["tenant-a".to_string()];
 
@@ -550,8 +552,8 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
 
   assert!(
     validate_sat_file_images_section(
-      image_vec_in_sat_file,
-      configuration_vec_in_sat_file,
+      image_vec_in_sat_file.as_slice(),
+      configuration_vec_in_sat_file.as_slice(),
       hsm_group_available_vec,
       cray_product_catalog,
       image_vec_in_csm,
@@ -572,7 +574,7 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
   let mut cray_product_catalog = BTreeMap::<String, String>::new();
   cray_product_catalog.insert("cos".to_string(), "2.2.101:\n  configuration:\n    clone_url: https://vcs.alps.cscs.ch/vcs/cray/cos-config-management.git\n    commit: 7f71cdc5d58f7879dc431b3fd6330296dcb3f7ee\n    import_branch: cray/cos/2.2.101\n    import_date: 2022-06-01 17:57:17.019149\n    ssh_url: git@vcs.alps.cscs.ch:cray/cos-config-management.git\n  images:\n    cray-shasta-compute-sles15sp3.x86_64-2.2.38:\n      id: d737e902-c002-4269-a408-6baa0fb31b4d\n  recipes:\n    cray-shasta-compute-sles15sp3.x86_64-2.2.38:\n      id: 2ffe10da-67f5-47b7-b7fb-de25381498f0".to_string());
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -588,8 +590,8 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -605,8 +607,8 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
   let ims_recipes = vec![];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -626,7 +628,7 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
  {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -641,8 +643,8 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -665,8 +667,8 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
   }];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -686,7 +688,7 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
  {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -701,8 +703,8 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -725,8 +727,8 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
   }];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -746,7 +748,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
 {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -761,8 +763,8 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -785,8 +787,8 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
   let ims_recipes = vec![];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -806,7 +808,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
 {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -821,8 +823,8 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -845,8 +847,8 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
   let ims_recipes = vec![];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -865,7 +867,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
 fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -880,8 +882,8 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> =
-    &serde_yaml::from_str(
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
+    serde_yaml::from_str(
       r#"
             - name: my-configuration-name
             "#,
@@ -904,8 +906,8 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
   let ims_recipes = vec![];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,
@@ -924,7 +926,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
 fn test_sat_file_image_section_pass_if_configuration_missing() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
+  let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
     r#"
             - name: my-image-name
               base:
@@ -935,7 +937,7 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
   )
   .unwrap();
 
-  let configuration_vec_in_sat_file: &Vec<serde_yaml::Value> = &vec![];
+  let configuration_vec_in_sat_file: Vec<configuration::Configuration> = vec![];
 
   let hsm_group_available_vec = &["tenant-a".to_string()];
 
@@ -953,8 +955,8 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
   let ims_recipes = vec![];
 
   let validation_rslt: Result<(), Error> = validate_sat_file_images_section(
-    image_vec_in_sat_file,
-    configuration_vec_in_sat_file,
+    image_vec_in_sat_file.as_slice(),
+    configuration_vec_in_sat_file.as_slice(),
     hsm_group_available_vec,
     &cray_product_catalog,
     image_vec_in_csm,

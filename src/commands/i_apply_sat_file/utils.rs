@@ -2197,12 +2197,23 @@ pub async fn validate_sat_file_session_template_section(
             session_template_yaml.name
           );
 
-          image_found = ims::image::utils::get_fuzzy(
+          /* image_found = ims::image::utils::get_fuzzy(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
             hsm_group_available_vec,
             Some(image_name_substr_to_find.as_str()),
+            Some(&1),
+          )
+          .await
+          .is_ok(); */
+
+          image_found = ims::image::utils::try_get_by_name(
+            shasta_token,
+            shasta_base_url,
+            shasta_root_cert,
+            hsm_group_available_vec,
+            image_name_substr_to_find,
             Some(&1),
           )
           .await
@@ -2760,12 +2771,23 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .await
     .map(|image_vec| image_vec.first().cloned().unwrap())
   } else {
-    ims::image::utils::get_fuzzy(
+    /* ims::image::utils::get_fuzzy(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
       hsm_group_available_vec,
       Some(&image_reference),
+      Some(&1),
+    )
+    .await
+    .map(|image_vec| image_vec.first().cloned().unwrap()) */
+
+    ims::image::utils::try_get_by_name(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_available_vec,
+      &image_reference,
       Some(&1),
     )
     .await
