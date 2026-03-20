@@ -106,6 +106,8 @@ pub async fn get_data_to_delete(
     keep_generic_sessions,
   )?;
 
+  let mut cfs_configuration_vec_filtered = cfs_configuration_vec.clone();
+
   // Get CFS configurations related with BOS sessiontemplate
   let cfs_configuration_name_from_bos_sessiontemplate_value_iter =
     bos_sessiontemplate_to_delete_vec
@@ -120,19 +122,20 @@ pub async fn get_data_to_delete(
     .map(|cfs_session| cfs_session.configuration_name().unwrap_or_default());
 
   // Get list of CFS configuration names related to CFS sessions and BOS sessiontemplates
-  let mut cfs_configuration_name_vec: Vec<String> =
+  let mut cfs_configuration_from_bos_st_and_cfs_session_name_vec: Vec<String> =
     cfs_configuration_name_from_bos_sessiontemplate_value_iter
       .chain(cfs_configuration_name_from_cfs_sessions)
       .map(str::to_string)
       .collect();
 
-  cfs_configuration_name_vec.sort();
-  cfs_configuration_name_vec.dedup();
+  cfs_configuration_from_bos_st_and_cfs_session_name_vec.sort();
+  cfs_configuration_from_bos_st_and_cfs_session_name_vec.dedup();
 
   // Get list of CFS configuration serde values related to CFS sessions and BOS
   // sessiontemplates
-  cfs_configuration_vec.retain(|cfs_configuration| {
-    cfs_configuration_name_vec.contains(&cfs_configuration.name)
+  cfs_configuration_vec_filtered.retain(|cfs_configuration| {
+    cfs_configuration_from_bos_st_and_cfs_session_name_vec
+      .contains(&cfs_configuration.name)
   });
 
   // Get image ids from CFS sessions related to CFS configuration to delete
@@ -267,7 +270,7 @@ pub async fn get_data_to_delete(
   // Get final list of CFS configuration serde values related to CFS sessions and BOS
   // sessiontemplates and excluding the CFS sessions to keep (in case user decides to
   // force the deletion operation)
-  cfs_configuration_vec.retain(|cfs_configuration_value| {
+  cfs_configuration_vec_filtered.retain(|cfs_configuration_value| {
     !cfs_configuration_name_used_to_configure_nodes_vec
       .contains(&cfs_configuration_value.name)
   });
@@ -297,10 +300,12 @@ pub async fn get_data_to_delete(
   } else {
     // We are safe to delete, none of the data selected for deletion is currently used as
     // neither configure nor boot the nodes
-    cfs_configuration_name_vec.retain(|cfs_configuration_name| {
-      !cfs_configuration_name_used_to_configure_nodes_vec
-        .contains(&cfs_configuration_name.to_string())
-    });
+    cfs_configuration_from_bos_st_and_cfs_session_name_vec.retain(
+      |cfs_configuration_name| {
+        !cfs_configuration_name_used_to_configure_nodes_vec
+          .contains(&cfs_configuration_name.to_string())
+      },
+    );
 
     image_id_vec.retain(|image_id| {
       !image_id_used_to_boot_nodes_vec.contains(&image_id.to_string())
@@ -335,11 +340,19 @@ pub async fn get_data_to_delete(
   {
     // We can't decide if CFS configuration and derivatives can be deleted.
     log::error!(
-      "Delete configuration - Not enough information to proceed. Could not find information related to CFS configurations '{}'",
-      cfs_configuration_name_vec.join(", ")
+      "Delete configuration - Not enough information to proceed. Could not find enough information related to CFS configurations '{}' to decide is user his allowed to proceed",
+      cfs_configuration_vec
+        .iter()
+        .map(|cfs_configuration| cfs_configuration.name.clone())
+        .collect::<Vec<String>>()
+        .join(", "),
     );
     return Err(Error::ConfigurationDerivativesNotFound(
-      cfs_configuration_name_vec.join(", "),
+      cfs_configuration_vec
+        .iter()
+        .map(|cfs_configuration| cfs_configuration.name.clone())
+        .collect::<Vec<String>>()
+        .join(", "),
     ));
   }
 
@@ -347,9 +360,9 @@ pub async fn get_data_to_delete(
     cfs_session_to_delete_vec,
     bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec,
     image_id_vec,
-    cfs_configuration_name_vec,
+    cfs_configuration_from_bos_st_and_cfs_session_name_vec,
     cfs_session_cfs_configuration_image_id_tuple_filtered_vec,
-    cfs_configuration_vec,
+    cfs_configuration_vec_filtered,
   ))
 }
 
