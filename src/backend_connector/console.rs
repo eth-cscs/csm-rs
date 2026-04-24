@@ -14,8 +14,8 @@ use crate::{
 };
 
 impl ConsoleTrait for Csm {
-  type T = Box<dyn AsyncWrite + Unpin>;
-  type U = Box<dyn AsyncRead + Unpin>;
+  type T = Box<dyn AsyncWrite + Unpin + Send>;
+  type U = Box<dyn AsyncRead + Unpin + Send>;
 
   async fn attach_to_node_console(
     &self,
@@ -25,7 +25,7 @@ impl ConsoleTrait for Csm {
     term_width: u16,
     term_height: u16,
     k8s: &K8sDetails,
-  ) -> Result<(Box<dyn AsyncWrite + Unpin>, Box<dyn AsyncRead + Unpin>), Error>
+  ) -> Result<(Box<dyn AsyncWrite + Unpin + Send>, Box<dyn AsyncRead + Unpin + Send>), Error>
   {
     let shasta_k8s_secrets = match &k8s.authentication {
       K8sAuth::Native {
@@ -67,8 +67,8 @@ impl ConsoleTrait for Csm {
     println!("Use &. key combination to exit the console.",);
 
     Ok((
-      Box::new(attached.stdin().unwrap()),
-      Box::new(attached.stdout().unwrap()),
+      Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,
+      Box::new(attached.stdout().unwrap()) as Box<dyn AsyncRead + Unpin + Send>,
     ))
   }
 
@@ -80,7 +80,7 @@ impl ConsoleTrait for Csm {
     term_width: u16,
     term_height: u16,
     k8s: &K8sDetails,
-  ) -> Result<(Box<dyn AsyncWrite + Unpin>, Box<dyn AsyncRead + Unpin>), Error>
+  ) -> Result<(Box<dyn AsyncWrite + Unpin + Send>, Box<dyn AsyncRead + Unpin + Send>), Error>
   {
     let shasta_k8s_secrets = match &k8s.authentication {
       K8sAuth::Native {
@@ -125,8 +125,8 @@ impl ConsoleTrait for Csm {
     println!("Use &. key combination to exit the console.",);
 
     Ok((
-      Box::new(attached.stdin().unwrap()),
-      Box::new(attached.stdout().unwrap()),
+      Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,
+      Box::new(attached.stdout().unwrap()) as Box<dyn AsyncRead + Unpin + Send>,
     ))
   }
 }
