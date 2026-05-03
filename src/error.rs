@@ -98,20 +98,36 @@ impl Into<MantaError> for crate::error::Error {
       Error::RequestError { response, payload } => {
         MantaError::RequestError { response, payload }
       }
-      // Error::CsmError(e) => MantaError::CsmError(e),
-      Error::CsmError(serde_value) => {
-        if serde_value.get("title")
-          == Some(&Value::String("Session not found.".to_string()))
-        {
-          MantaError::SessionNotFound
-        } else if serde_value.get("title")
-          == Some(&Value::String("Configuration not found".to_string()))
-        {
-          MantaError::ConfigurationNotFound
-        } else {
-          MantaError::CsmError(serde_value)
-        }
+      Error::CsmError(v) => MantaError::CsmError(v),
+      // Variants with direct dispatcher equivalents
+      Error::Message(s) => MantaError::Message(s),
+      Error::ConsoleError(s) => MantaError::ConsoleError(s),
+      Error::ConfigurationAlreadyExists(s) => MantaError::ConfigurationAlreadyExistsError(s),
+      Error::SessionNotFound(_) => MantaError::SessionNotFound,
+      Error::ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed => {
+        MantaError::Conflict(
+          Error::ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed
+            .to_string(),
+        )
       }
+      // Not-found variants mapped to NotFound
+      Error::ImageNotFound(s) => MantaError::NotFound(format!("Image '{s}'")),
+      Error::GroupNotFound(s) => MantaError::NotFound(format!("Group '{s}'")),
+      Error::HsmComponentNotFound(s) => MantaError::NotFound(format!("HSM component '{s}'")),
+      Error::ImsKeyNotFound(s) => MantaError::NotFound(format!("IMS key '{s}'")),
+      Error::ConfigurationDerivativesNotFound(s) => {
+        MantaError::NotFound(format!("No derivatives for CFS configuration '{s}'"))
+      }
+      // K8s variants collapsed to K8sError
+      Error::K8sError(s) => MantaError::K8sError(s),
+      Error::K8sCredentialMissingError(s) => {
+        MantaError::K8sError(format!("field '{s}' missing in k8s credentials"))
+      }
+      Error::K8sCredentialNotStringError(s) => {
+        MantaError::K8sError(format!("'{s}' value not a string"))
+      }
+      Error::K8sExecError(e) => MantaError::K8sError(e.to_string()),
+      // Technical/internal errors — preserve message text
       _ => MantaError::Message(self.to_string()),
     }
   }

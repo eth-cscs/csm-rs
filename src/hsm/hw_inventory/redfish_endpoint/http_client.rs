@@ -89,7 +89,7 @@ pub async fn get(
   };
 
   let api_url: String =
-    format!("{}/{}", base_url, "/smd/hsm/v2/Inventory/RedfishEndpoints");
+    base_url.to_owned() + "/smd/hsm/v2/Inventory/RedfishEndpoints";
 
   let response = client
     .get(api_url)
@@ -196,7 +196,7 @@ pub async fn post(
   };
 
   let api_url: String =
-    format!("{}/{}", base_url, "/smd/hsm/v2/Inventory/RedfishEndpoints");
+    base_url.to_owned() + "/smd/hsm/v2/Inventory/RedfishEndpoints";
 
   let response = client
     .post(api_url)

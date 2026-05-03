@@ -222,8 +222,8 @@ impl ComponentTrait for Csm {
     id: &str,
   ) -> Result<Value, Error> {
     hsm::component::http_client::delete_one(
-      auth_token,
       &self.base_url,
+      auth_token,
       &self.root_cert,
       id,
     )
@@ -459,19 +459,30 @@ impl RedfishEndpointTrait for Csm {
   }
   async fn get_redfish_endpoints(
     &self,
-    _auth_token: &str,
-    _id: Option<&str>,
-    _fqdn: Option<&str>,
-    _type: Option<&str>,
-    _uuid: Option<&str>,
-    _macaddr: Option<&str>,
-    _ip_address: Option<&str>,
-    _last_status: Option<&str>,
+    auth_token: &str,
+    id: Option<&str>,
+    fqdn: Option<&str>,
+    r#type: Option<&str>,
+    uuid: Option<&str>,
+    macaddr: Option<&str>,
+    ip_address: Option<&str>,
+    last_status: Option<&str>,
   ) -> Result<FrontEndRedfishEndpointArray, Error> {
-    Err(Error::Message(
-      "Get redfish endpoint command not implemented for this backend"
-        .to_string(),
-    ))
+    hsm::hw_inventory::redfish_endpoint::http_client::get(
+      auth_token,
+      &self.base_url,
+      &self.root_cert,
+      id,
+      fqdn,
+      r#type,
+      uuid,
+      macaddr,
+      ip_address,
+      last_status,
+    )
+    .await
+    .map(|arr| arr.into())
+    .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn add_redfish_endpoint(

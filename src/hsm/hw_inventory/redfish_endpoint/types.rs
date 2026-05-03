@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DiscoveryInfo {
-  #[serde(rename(serialize = "LastAttempt"))]
+  #[serde(rename = "LastAttempt")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub last_attempt: Option<String>,
-  #[serde(rename(serialize = "LastStatus"))]
+  #[serde(rename = "LastStatus")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub last_status: Option<String>,
-  #[serde(rename(serialize = "RedfishVersion"))]
+  #[serde(rename = "RedfishVersion")]
   #[serde(skip_serializing_if = "Option::is_none")]
   redfish_version: Option<String>,
 }
@@ -41,54 +41,54 @@ impl Into<FrontEndDiscoveryInfo> for DiscoveryInfo {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishEndpoint {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Hostname"))]
+  #[serde(rename = "Hostname")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hostname: Option<String>,
-  #[serde(rename(serialize = "Domain"))]
+  #[serde(rename = "Domain")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub domain: Option<String>,
-  #[serde(rename(serialize = "FQDN"))]
+  #[serde(rename = "FQDN")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fqdn: Option<String>,
-  #[serde(rename(serialize = "Enabled"))]
+  #[serde(rename = "Enabled")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub enabled: Option<bool>,
-  #[serde(rename(serialize = "UUID"))]
+  #[serde(rename = "UUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub uuid: Option<String>,
-  #[serde(rename(serialize = "User"))]
+  #[serde(rename = "User")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub user: Option<String>,
-  #[serde(rename(serialize = "Password"))]
+  #[serde(rename = "Password")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub password: Option<String>,
-  #[serde(rename(serialize = "UseSSDP"))]
+  #[serde(rename = "UseSSDP")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub use_ssdp: Option<bool>,
-  #[serde(rename(serialize = "MacRequired"))]
+  #[serde(rename = "MacRequired")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mac_required: Option<bool>,
-  #[serde(rename(serialize = "MACAddr"))]
+  #[serde(rename = "MACAddr")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mac_addr: Option<String>,
-  #[serde(rename(serialize = "IPAddress"))]
+  #[serde(rename = "IPAddress")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ip_address: Option<String>,
-  #[serde(rename(serialize = "RediscoveryOnUpdate"))]
+  #[serde(rename = "RediscoveryOnUpdate")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub rediscover_on_update: Option<bool>,
-  #[serde(rename(serialize = "TemplateID"))]
+  #[serde(rename = "TemplateID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub template_id: Option<String>,
-  #[serde(rename(serialize = "DiscoveryInfo"))]
+  #[serde(rename = "DiscoveryInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub discovery_info: Option<DiscoveryInfo>,
 }
@@ -143,7 +143,7 @@ impl Into<FrontEndRedfishEndpoint> for RedfishEndpoint {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishEndpointArray {
-  #[serde(rename(serialize = "RedfishEndpoints"))]
+  #[serde(rename = "RedfishEndpoints")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redfish_endpoints: Option<Vec<RedfishEndpoint>>,
 }
