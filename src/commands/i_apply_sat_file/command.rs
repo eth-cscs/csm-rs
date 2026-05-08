@@ -102,6 +102,7 @@ pub async fn exec(
       None
     )
   )?;
+
   let duration = start.elapsed();
   log::info!(
     "Time elapsed to fetch information from backend: {:?}",

@@ -59,6 +59,20 @@ pub async fn get(
       let payload =
         serde_json::from_slice(&bytes).map_err(Error::SerdeJsonError)?;
       Ok(payload)
+
+      /* let payload: Vec<Value> =
+        serde_json::from_slice(&bytes)?;
+
+      for value in payload {
+        println!("{}", serde_json::to_string_pretty(&value)?);
+        let test: Result<CfsConfigurationResponse, serde_json::Error> = serde_json::from_value(value);
+        if let Err(value) = test {
+          println!("{}", value);
+          std::process::exit(0);
+        }
+      }
+
+      Ok(Vec::new()) */
     }
   } else {
     if let Ok(json) = serde_json::from_slice::<Value>(&bytes) {

@@ -555,7 +555,7 @@ pub async fn get_configuration_layer_details(
     };
 
   Ok(LayerDetails::new(
-    &layer.name,
+    layer.name,
     layer
       .clone_url
       .trim_start_matches(

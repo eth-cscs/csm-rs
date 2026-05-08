@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Layer {
-  pub name: String,
+  pub name: Option<String>,
   // #[serde(rename = "cloneUrl")]
   pub clone_url: String,
   pub source: Option<String>,

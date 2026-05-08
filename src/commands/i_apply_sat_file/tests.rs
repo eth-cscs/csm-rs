@@ -487,7 +487,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
     layers: vec![Layer {
       clone_url: "fake-url".to_string(),
       commit: None,
-      name: "my-layer-name".to_string(),
+      name: Some("my-layer-name".to_string()),
       playbook: "my-playbook".to_string(),
       branch: None,
     }],

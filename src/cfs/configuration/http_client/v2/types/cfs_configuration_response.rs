@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Layer {
-  pub name: String,
+  pub name: Option<String>,
   #[serde(rename = "cloneUrl")]
   pub clone_url: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -176,7 +176,7 @@ impl Layer {
   pub fn new(
     clone_url: String,
     commit: Option<String>,
-    name: String,
+    name: Option<String>,
     playbook: String,
     branch: Option<String>,
   ) -> Self {
@@ -260,7 +260,7 @@ impl CfsConfigurationResponse {
         let layer = Layer::new(
           repo_url,
           None,
-          repo_name,
+          Some(repo_name),
           layer_yaml
             .get("playbook")
             .and_then(serde_yaml::Value::as_str)
@@ -285,11 +285,11 @@ impl CfsConfigurationResponse {
         let layer = Layer::new(
           repo_url,
           None,
-          layer_yaml["product"]
+          Some(layer_yaml["product"]
             .get("name")
             .and_then(serde_yaml::Value::as_str)
             .unwrap_or_default()
-            .to_string(),
+            .to_string()),
           layer_yaml
             .get("playbook")
             .and_then(serde_yaml::Value::as_str)
