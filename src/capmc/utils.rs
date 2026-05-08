@@ -11,6 +11,7 @@ pub async fn wait_nodes_to_power_on(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: Vec<String>,
   reason: Option<String>,
 ) -> Result<Value, Error> {
@@ -18,6 +19,7 @@ pub async fn wait_nodes_to_power_on(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &xname_vec,
   )
   .await?;
@@ -42,6 +44,7 @@ pub async fn wait_nodes_to_power_on(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec.clone(),
       reason.clone(),
     )
@@ -53,6 +56,7 @@ pub async fn wait_nodes_to_power_on(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_vec,
     )
     .await?;
@@ -86,6 +90,7 @@ pub async fn wait_nodes_to_power_off(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: Vec<String>,
   reason_opt: Option<String>,
   force: bool,
@@ -103,6 +108,7 @@ pub async fn wait_nodes_to_power_off(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec.clone(),
       reason_opt.clone(),
       force,
@@ -115,6 +121,7 @@ pub async fn wait_nodes_to_power_off(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_vec,
     )
     .await?;

@@ -19,21 +19,15 @@ pub async fn s3_auth(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
   // STS
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = shasta_base_url.to_owned() + "/sts/token";
@@ -87,7 +81,10 @@ pub async fn s3_auth(
   Ok(sts_value)
 }
 
-async fn setup_client(sts_value: &Value) -> Result<Client, Error> {
+async fn setup_client(
+  sts_value: &Value,
+  socks5_proxy: Option<&str>,
+) -> Result<Client, Error> {
   use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
 
   // Default provider fallback to us-east-1 since CSM doesn't use the concept of regions
@@ -96,14 +93,14 @@ async fn setup_client(sts_value: &Value) -> Result<Client, Error> {
       .or_else("us-east-1");
   let config: SdkConfig;
 
-  if let Ok(socks5_env) = std::env::var("SOCKS5") {
+  if let Some(socks5_env) = socks5_proxy {
     log::debug!("SOCKS5 enabled");
 
     let mut http_connector: HttpConnector = hyper::client::HttpConnector::new();
     http_connector.enforce_http(false);
 
     let socks_http_connector = hyper_socks2::SocksConnector {
-      proxy_addr: hyper::Uri::try_from(&socks5_env)
+      proxy_addr: hyper::Uri::try_from(socks5_env)
         .map_err(|e| Error::Message(e.to_string()))?, // scheme is required by HttpConnector
       auth: None,
       connector: http_connector.clone(),
@@ -163,10 +160,11 @@ async fn setup_client(sts_value: &Value) -> Result<Client, Error> {
 /// returns i64 or error
 pub async fn s3_get_object_size(
   sts_value: &Value,
+  socks5_proxy: Option<&str>,
   key: &str,
   bucket: &str,
 ) -> Result<i64, Error> {
-  let client = setup_client(sts_value).await?;
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   match client.get_object().bucket(bucket).key(key).send().await {
     Ok(object) => Ok(object.content_length().ok_or_else(|| {
@@ -193,11 +191,12 @@ pub async fn s3_get_object_size(
 ///   * Box<dyn Error>: descriptive error if not possible to download or to store the object
 pub async fn s3_download_object(
   sts_value: &Value,
+  socks5_proxy: Option<&str>,
   object_path: &str,
   bucket: &str,
   destination_path: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await?;
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   let filename = Path::new(object_path).file_name().ok_or_else(|| {
     Error::Message(format!(
@@ -283,11 +282,12 @@ pub async fn s3_download_object(
 ///   * Box<dyn Error>: descriptive error if not possible to upload the object
 pub async fn s3_upload_object(
   sts_value: &Value,
+  socks5_proxy: Option<&str>,
   object_path: &str,
   bucket: &str,
   file_path: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await?;
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   let body = ByteStream::from_path(Path::new(&file_path)).await?;
 
@@ -321,10 +321,11 @@ pub async fn s3_upload_object(
 ///   * Box<dyn Error>: descriptive error if not possible to upload the object
 pub async fn s3_remove_object(
   sts_value: &Value,
+  socks5_proxy: Option<&str>,
   object_path: &str,
   bucket: &str,
 ) -> Result<String, Error> {
-  let client = setup_client(sts_value).await?;
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   match client
     .delete_object()
@@ -356,6 +357,7 @@ pub async fn s3_remove_object(
 ///   * Box<dyn Error>: descriptive error if not possible to upload the object
 pub async fn s3_multipart_upload_object(
   sts_value: &Value,
+  socks5_proxy: Option<&str>,
   object_path: &str,
   bucket: &str,
   file_path: &str,
@@ -364,7 +366,7 @@ pub async fn s3_multipart_upload_object(
   use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
   use aws_smithy_types::byte_stream::Length;
 
-  let client = setup_client(sts_value).await?;
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   //In bytes, minimum chunk size of 5MB. Increase CHUNK_SIZE to send larger chunks.
   const CHUNK_SIZE: u64 = 1024 * 1024 * 5;

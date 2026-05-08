@@ -33,6 +33,7 @@ impl HardwareInventory for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       xname,
     )
     .await
@@ -57,6 +58,7 @@ impl HardwareInventory for Csm {
       &auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       xname,
     )
     .await
@@ -72,6 +74,7 @@ impl HardwareInventory for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       hw_inventory.into(),
     )
     .await
@@ -88,6 +91,7 @@ impl ComponentTrait for Csm {
     hsm::component::http_client::get(
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       auth_token,
       None,
       Some("Node"),
@@ -172,6 +176,7 @@ impl ComponentTrait for Csm {
     hsm::component::http_client::get(
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       auth_token,
       id,
       r#type,
@@ -210,6 +215,7 @@ impl ComponentTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       component_backend,
     )
     .await
@@ -225,6 +231,7 @@ impl ComponentTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       id,
     )
     .await
@@ -255,6 +262,7 @@ impl ComponentTrait for Csm {
       let hsm_component_vec = hsm::component::http_client::get_all_nodes(
         &self.base_url,
         &self.root_cert,
+        self.socks5_proxy.as_deref(),
         shasta_token,
         Some("true"),
       )
@@ -328,6 +336,7 @@ impl ComponentTrait for Csm {
       let hsm_components = hsm::component::http_client::get(
         &self.base_url,
         &self.root_cert,
+        self.socks5_proxy.as_deref(),
         shasta_token,
         None,
         None,
@@ -472,6 +481,7 @@ impl RedfishEndpointTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       id,
       fqdn,
       r#type,

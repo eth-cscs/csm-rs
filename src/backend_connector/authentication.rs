@@ -34,6 +34,7 @@ impl AuthenticationTrait for Csm {
       &self.root_cert,
       username,
       password,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
@@ -44,7 +45,7 @@ impl AuthenticationTrait for Csm {
   }
 
   async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
-    authentication::validate_api_token(&self.base_url, token, &self.root_cert)
+    authentication::validate_api_token(&self.base_url, token, &self.root_cert, self.socks5_proxy.as_deref())
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }

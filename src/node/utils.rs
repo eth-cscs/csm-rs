@@ -16,12 +16,14 @@ pub async fn validate_target_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group_members_opt: &[&str],
 ) -> Result<Vec<String>, Error> {
   let hsm_groups_user_has_access = hsm::group::utils::get_group_name_available(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
   )
   .await?;
   /* let hsm_groups_user_has_access = config_show::get_hsm_name_available_from_jwt_or_all(
@@ -36,6 +38,7 @@ pub async fn validate_target_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &hsm_groups_user_has_access,
     )
     .await?;
@@ -119,6 +122,7 @@ pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xnames: &[&str],
   hsm_group_name_opt: Option<&str>,
 ) -> Result<bool, Error> {
@@ -128,6 +132,7 @@ pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         hsm_group_name,
       )
       .await?
@@ -153,6 +158,7 @@ pub async fn get_node_details(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_list: Vec<String>,
 ) -> Result<Vec<NodeDetails>, Error> {
   let start = Instant::now();
@@ -168,6 +174,7 @@ pub async fn get_node_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_list,
     ),
     // Get boot params to get the boot image id for each node
@@ -175,6 +182,7 @@ pub async fn get_node_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_list,
     ),
     // Get HSM component status (needed to get NIDS)
@@ -182,6 +190,7 @@ pub async fn get_node_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_list,
     ),
     // Get CFS sessions
@@ -189,6 +198,7 @@ pub async fn get_node_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       None,
       None,
       None,
@@ -212,6 +222,7 @@ pub async fn get_node_details(
     let shasta_token_string = shasta_token.to_string();
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
+    let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
     let components_status = components_status_rslt.as_ref().unwrap();
 
@@ -345,6 +356,7 @@ pub async fn get_node_details(
         &shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
+        socks5_proxy_opt.as_deref(),
         &xname,
       )
       .await

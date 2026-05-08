@@ -9,20 +9,15 @@ pub async fn process_get_http_request(
   shasta_token: &str,
   api_url: String,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
   // Build client
-  // Set SOCKS5 proxy if needed. User can set SOCKS5 proxy using the 'SOCKS5' environment
-  // variable with the actual proxy URI
-  let client = if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   // Call to CSM API

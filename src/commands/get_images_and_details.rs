@@ -17,6 +17,7 @@ pub async fn get_images_and_details(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group_name_vec: &[String],
   id_opt: Option<&str>,
   limit_number: Option<&u8>,
@@ -25,6 +26,7 @@ pub async fn get_images_and_details(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     id_opt,
   )
   .await?;
@@ -34,6 +36,7 @@ pub async fn get_images_and_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &mut image_vec,
       hsm_group_name_vec,
       limit_number,

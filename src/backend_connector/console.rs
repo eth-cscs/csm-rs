@@ -39,7 +39,7 @@ impl ConsoleTrait for Csm {
         base_url,
         // secret_path: _secret_path,
       } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name)
+        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(e.to_string()))?
       }
@@ -50,6 +50,7 @@ impl ConsoleTrait for Csm {
         &xname.to_string(),
         &k8s.api_url,
         shasta_k8s_secrets,
+        self.socks5_proxy.as_deref(),
       )
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -94,7 +95,7 @@ impl ConsoleTrait for Csm {
         base_url,
         // secret_path: _secret_path,
       } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name)
+        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(e.to_string()))?
       }
@@ -105,6 +106,7 @@ impl ConsoleTrait for Csm {
         &session_name.to_string(),
         &k8s.api_url,
         shasta_k8s_secrets,
+        self.socks5_proxy.as_deref(),
       )
       .await
       .map_err(|e| Error::Message(e.to_string()))?;

@@ -10,13 +10,14 @@ use super::types::{
 pub async fn get_all(
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   auth_token: &str,
   nid_only: Option<&str>,
 ) -> Result<ComponentArray, Error> {
   get(
-    base_url, root_cert, auth_token, None, None, None, None, None, None, None,
+    base_url, root_cert, socks5_proxy, auth_token, None, None, None, None,
     None, None, None, None, None, None, None, None, None, None, None, None,
-    nid_only,
+    None, None, None, nid_only,
   )
   .await
 }
@@ -24,12 +25,14 @@ pub async fn get_all(
 pub async fn get_all_nodes(
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   auth_token: &str,
   nid_only: Option<&str>,
 ) -> Result<ComponentArray, Error> {
   get(
     base_url,
     root_cert,
+    socks5_proxy,
     auth_token,
     None,
     Some("Node"),
@@ -69,9 +72,10 @@ pub async fn get_and_filter(
   auth_token: &str,
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_list: &[String],
 ) -> Result<Vec<Component>, Error> {
-  let mut component_vec = get_all(base_url, root_cert, auth_token, None)
+  let mut component_vec = get_all(base_url, root_cert, socks5_proxy, auth_token, None)
     .await?
     .components
     .unwrap_or_default();
@@ -81,12 +85,10 @@ pub async fn get_and_filter(
   Ok(component_vec)
 }
 
-/// Get all components
-/// NOTE: nid is a comma separated list of NIDs like "1,2,3". Value "nid0001,nid0002,nid0003" is not
-/// valid values
 pub async fn get(
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   auth_token: &str,
   id: Option<&str>,
   r#type: Option<&str>,
@@ -112,20 +114,11 @@ pub async fn get(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
-  // Create query parameters
-  // NID query params
   let mut nid_vec_query = nid.map(|nids| {
     nids
       .split(",")
@@ -133,7 +126,6 @@ pub async fn get(
       .collect::<Vec<(&str, Option<&str>)>>()
   });
 
-  // All other query params
   let mut query_params = vec![
     ("id", id),
     ("type", r#type),
@@ -176,14 +168,11 @@ pub async fn get(
         let error_payload = response.text().await?;
         let error = Error::Message(error_payload);
         return Err(error);
-
-        // return Err(Error::Message(response.text().await?));
       }
       _ => {
         let error_payload = response.text().await?;
         let error = Error::Message(error_payload);
         return Err(error);
-        // return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
   }
@@ -198,21 +187,15 @@ pub async fn get_one(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Component, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String =
@@ -223,19 +206,9 @@ pub async fn get_one(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
@@ -251,22 +224,15 @@ pub async fn post(
   auth_token: &str,
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component: ComponentArrayPostArray,
-  // ) -> Result<ComponentArray, Error> {
 ) -> Result<(), Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String = base_url.to_owned() + "/hsm/v2/State/Components";
@@ -281,28 +247,13 @@ pub async fn post(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
   }
-
-  /* response
-  .json()
-  .await
-  .map_err(|error| Error::NetError(error)) */
 
   Ok(())
 }
@@ -311,21 +262,15 @@ pub async fn post_query(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component: ComponentArrayPostQuery,
 ) -> Result<ComponentArray, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String = base_url.to_owned() + "/hsm/v2/State/Components";
@@ -340,19 +285,9 @@ pub async fn post_query(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
@@ -368,21 +303,15 @@ pub async fn post_bynid_query(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component: ComponentArrayPostByNidQuery,
 ) -> Result<ComponentArray, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String =
@@ -398,19 +327,9 @@ pub async fn post_bynid_query(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
@@ -426,22 +345,16 @@ pub async fn put(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname: &str,
   component: ComponentPut,
 ) -> Result<(), Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String =
@@ -457,19 +370,9 @@ pub async fn put(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
@@ -485,21 +388,15 @@ pub async fn delete_one(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Value, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String =
@@ -514,19 +411,9 @@ pub async fn delete_one(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }
@@ -542,20 +429,14 @@ pub async fn delete(
   base_url: &str,
   auth_token: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url: String = format!("{}/{}", base_url, "hsm/v2/State/Componnets");
@@ -569,19 +450,9 @@ pub async fn delete(
   if !response.status().is_success() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
-        /* let error_payload = response.text().await?;
-        let error = Error::RequestError {
-            response: e,
-            payload: error_payload,
-        };
-        return Err(error); */
-
         return Err(Error::Message(response.text().await?));
       }
       _ => {
-        /* let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error); */
         return Err(Error::CsmError(response.json::<Value>().await?));
       }
     }

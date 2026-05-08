@@ -13,6 +13,7 @@ pub async fn post_customize(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_root_archive_name: &str,
   artifact_id: &str,
   public_key_id: &str,
@@ -47,20 +48,13 @@ pub async fn post_customize(
     arch: None,
   };
 
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
 
@@ -94,22 +88,16 @@ pub async fn post(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_job: &Job,
 ) -> Result<Job, Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
 
@@ -132,6 +120,7 @@ pub async fn post_sync(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_job: &Job,
 ) -> Result<Job, Error> {
   log::info!("Create IMS job");
@@ -141,7 +130,7 @@ pub async fn post_sync(
   );
 
   let ims_job: Job =
-    post(shasta_token, shasta_base_url, shasta_root_cert, ims_job).await?;
+    post(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, ims_job).await?;
 
   let ims_job_id = ims_job.id.unwrap();
 
@@ -150,6 +139,7 @@ pub async fn post_sync(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_job_id,
   )
   .await?;
@@ -159,6 +149,7 @@ pub async fn post_sync(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(&ims_job_id),
   )
   .await?
@@ -174,22 +165,16 @@ pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   job_id_opt: Option<&str>,
 ) -> Result<Vec<Job>, Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = if let Some(job_id) = job_id_opt {
     shasta_base_url.to_owned() + "/ims/v3/jobs/" + job_id

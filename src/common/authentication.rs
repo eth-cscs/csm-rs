@@ -8,18 +8,15 @@ pub async fn validate_api_token(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<(), Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
   // Build client
-  let client = if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
@@ -41,6 +38,7 @@ pub async fn get_token_from_shasta_endpoint(
   shasta_root_cert: &[u8],
   username: &str,
   password: &str,
+  socks5_proxy: Option<&str>,
 ) -> Result<String, Error> {
   let mut params = HashMap::new();
   params.insert("grant_type", "password");
@@ -48,19 +46,14 @@ pub async fn get_token_from_shasta_endpoint(
   params.insert("username", username);
   params.insert("password", password);
 
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
   // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = format!(
     "{}/realms/shasta/protocol/openid-connect/token",

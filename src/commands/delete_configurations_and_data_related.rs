@@ -21,6 +21,7 @@ pub async fn get_data_to_delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   configuration_name_pattern_opt: Option<&str>,
   since_opt: Option<NaiveDateTime>,
@@ -43,6 +44,7 @@ pub async fn get_data_to_delete(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_name_available_vec,
     )
     .await?;
@@ -59,24 +61,28 @@ pub async fn get_data_to_delete(
     cfs::component::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
     cfs::configuration::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
     cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
     bos::template::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
-    bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
   )?;
 
   let duration = start.elapsed();
@@ -374,6 +380,7 @@ pub async fn delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   cfs_configuration_name_vec: &[String],
   image_id_vec: &[String],
   cfs_session_name_vec: &[String],
@@ -388,6 +395,7 @@ pub async fn delete(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &image_id,
     )
     .await;
@@ -406,6 +414,7 @@ pub async fn delete(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
   )
   .await?;
@@ -420,6 +429,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &bos_session_id,
       )
       .await?;
@@ -445,6 +455,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &cfs_session_name,
       )
       .await;
@@ -485,6 +496,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &bos_sessiontemplate_name,
       )
       .await;
@@ -522,6 +534,7 @@ pub async fn delete(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         cfs_configuration,
       )
       .await;

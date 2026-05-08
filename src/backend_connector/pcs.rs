@@ -23,6 +23,7 @@ impl PCSTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       operation,
       &nodes.to_vec(),
     )
@@ -43,6 +44,7 @@ impl PCSTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       operation,
       &nodes.to_vec(),
     )
@@ -67,6 +69,7 @@ impl PCSTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       operation,
       &nodes.to_vec(),
     )
@@ -90,6 +93,7 @@ impl PCSTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       nodes_opt,
       power_state_filter,
       management_state_filter,

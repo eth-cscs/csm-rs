@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, process::exit};
 
 use serde_json::Value;
 
@@ -17,6 +17,7 @@ pub async fn get_group_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Vec<Group>, Error> {
   const ADMIN_ROLE_NAME: &str = "pa_admin";
 
@@ -24,6 +25,7 @@ pub async fn get_group_available(
     shasta_auth_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
   )
   .await
   .map_err(|e| Error::Message(e.to_string()))?;
@@ -37,6 +39,7 @@ pub async fn get_group_available(
       shasta_auth_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
     )
     .await?;
 
@@ -59,6 +62,7 @@ pub async fn get_group_name_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Vec<String>, Error> {
   log::debug!("Get HSM names available from JWT or all");
 
@@ -71,9 +75,6 @@ pub async fn get_group_name_available(
   if !realm_access_role_vec.contains(&ADMIN_ROLE_NAME.to_string()) {
     log::debug!("User is not admin, getting HSM groups available from JWT");
 
-    // remove keycloak roles not related with HSM groups
-    /* realm_access_role_vec
-    .retain(|role| !role.eq("offline_access") && !role.eq("uma_authorization")); */
     let realm_access_role_vec = hsm::group::hacks::filter_keycloak_roles(
       realm_access_role_vec
         .iter()
@@ -96,21 +97,29 @@ pub async fn get_group_name_available(
     Ok(realm_access_role_filtered_vec)
   } else {
     log::debug!("User is admin, getting all HSM groups in the system");
-    let all_hsm_groups_rslt = hsm::group::http_client::get_all(
+    let all_hsm_groups = hsm::group::http_client::get_all(
       shasta_auth_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
     )
-    .await;
-
-    let mut all_hsm_groups = all_hsm_groups_rslt?
+    .await?
       .iter()
       .map(|hsm_value| hsm_value.label.clone())
       .collect::<Vec<String>>();
 
-    all_hsm_groups.sort();
+    // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
+    // the roles to check if a user has access to individual compute nodes
+    //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
+    //wide operations instead of using roles
+    let mut all_hsm_groups_filtered =
+      hsm::group::hacks::filter_system_hsm_group_names(
+        all_hsm_groups.clone(),
+      );
 
-    Ok(all_hsm_groups)
+    all_hsm_groups_filtered.sort();
+
+    Ok(all_hsm_groups_filtered)
   }
 }
 
@@ -120,6 +129,7 @@ pub async fn add_member(
   auth_token: &str,
   base_url: &str,
   root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   group_label: &str,
   new_member: &str,
 ) -> Result<Vec<String>, Error> {
@@ -128,6 +138,7 @@ pub async fn add_member(
     auth_token,
     base_url,
     root_cert,
+    socks5_proxy,
     Some(&[group_label.to_string()]),
     None,
   )
@@ -147,6 +158,7 @@ pub async fn add_member(
       auth_token,
       base_url,
       root_cert,
+      socks5_proxy,
       group_label,
       member,
     )
@@ -170,6 +182,7 @@ pub async fn remove_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   target_hsm_group_name: &str,
   new_target_hsm_members: Vec<&str>,
   dryrun: bool,
@@ -179,6 +192,7 @@ pub async fn remove_hsm_members(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     new_target_hsm_members.as_slice(),
     Some(&target_hsm_group_name.to_string()),
   )
@@ -195,6 +209,7 @@ pub async fn remove_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       target_hsm_group_name,
     )
     .await?;
@@ -221,6 +236,7 @@ pub async fn remove_hsm_members(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         target_hsm_group_name,
         xname,
       )
@@ -236,16 +252,18 @@ pub async fn migrate_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   target_hsm_group_name: &str,
   parent_hsm_group_name: &str,
   new_target_hsm_members: &[&str],
-  nodryrun: bool,
+  dryrun: bool,
 ) -> Result<(Vec<String>, Vec<String>), Error> {
   // Check nodes are valid xnames and they belong to parent HSM group
   if let Ok(false) = validate_xnames_format_and_membership_agaisnt_single_hsm(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     new_target_hsm_members,
     Some(&parent_hsm_group_name.to_string()),
   )
@@ -262,6 +280,7 @@ pub async fn migrate_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       target_hsm_group_name,
     )
     .await?;
@@ -279,6 +298,7 @@ pub async fn migrate_hsm_members(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       parent_hsm_group_name,
     )
     .await?;
@@ -292,8 +312,8 @@ pub async fn migrate_hsm_members(
 
   // *********************************************************************************************************
   // UPDATE HSM GROUP MEMBERS IN CSM
-  if !nodryrun {
-    let target_hsm_group = serde_json::json!({
+  if dryrun {
+    /* let target_hsm_group = serde_json::json!({
         "label": target_hsm_group_name,
         "decription": "",
         "members": target_hsm_group_member_vec,
@@ -301,7 +321,7 @@ pub async fn migrate_hsm_members(
     });
 
     println!(
-      "Target HSM group:\n{}",
+      "Target group:\n{}",
       serde_json::to_string_pretty(&target_hsm_group)?
     );
 
@@ -313,11 +333,11 @@ pub async fn migrate_hsm_members(
     });
 
     println!(
-      "Parent HSM group:\n{}",
+      "Parent group:\n{}",
       serde_json::to_string_pretty(&parent_hsm_group)?
     );
 
-    println!("dry-run enabled, changes not persisted.");
+    println!("dry-run enabled, changes not persisted."); */
   } else {
     for xname in new_target_hsm_members {
       let member = Member {
@@ -328,6 +348,7 @@ pub async fn migrate_hsm_members(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         target_hsm_group_name,
         member,
       )
@@ -337,6 +358,7 @@ pub async fn migrate_hsm_members(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         parent_hsm_group_name,
         xname,
       )
@@ -352,6 +374,7 @@ pub async fn update_hsm_group_members(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group_name: &str,
   old_target_hsm_group_members: &[&str],
   new_target_hsm_group_members: &[&str],
@@ -363,6 +386,7 @@ pub async fn update_hsm_group_members(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         hsm_group_name,
         old_member,
       )
@@ -381,6 +405,7 @@ pub async fn update_hsm_group_members(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         hsm_group_name,
         member,
       )
@@ -397,10 +422,11 @@ pub async fn get_xname_map_and_filter_by_xname_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: Vec<&str>,
 ) -> Result<HashMap<String, Vec<String>>, Error> {
   let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
       .await?;
 
   let mut xname_map: HashMap<String, Vec<String>> = HashMap::new();
@@ -425,10 +451,11 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_vec: &[&str],
 ) -> Result<HashMap<String, Vec<String>>, Error> {
   let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
       .await?;
 
   Ok(filter_by_hsm_group_name_and_convert_to_map(
@@ -443,10 +470,11 @@ pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   member_vec: &[&str],
 ) -> Result<HashMap<String, Vec<String>>, Error> {
   let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert)
+    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
       .await?;
 
   Ok(filter_by_hsm_group_members_and_convert_to_map(
@@ -530,6 +558,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_vec: &[String],
 ) -> Result<Vec<String>, Error> {
   log::info!("Get xnames from HSM groups");
@@ -539,6 +568,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(hsm_name_vec),
     None,
   )
@@ -598,6 +628,7 @@ pub async fn get_member_vec_from_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group: &str,
 ) -> Result<Vec<String>, Error> {
   // Take all nodes for all hsm_groups found and put them in a Vec
@@ -606,6 +637,7 @@ pub async fn get_member_vec_from_hsm_group_name(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_group,
     )
     .await?

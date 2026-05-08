@@ -18,6 +18,7 @@ pub async fn get_details(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group_name: &str,
 ) -> Result<Vec<ClusterDetails>, Error> {
   let mut clusters_details = vec![];
@@ -27,6 +28,7 @@ pub async fn get_details(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(&hsm_group_name.to_string()),
   )
   .await?;
@@ -44,6 +46,7 @@ pub async fn get_details(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       None,
       None,
       None,
@@ -95,6 +98,7 @@ pub async fn get_details(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             Some(
               &most_recent_cfs_session
                 .configuration

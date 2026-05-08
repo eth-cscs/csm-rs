@@ -13,6 +13,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   target_hsm_group_name: &str,
   parent_hsm_group_name: &str,
   pattern: &str,
@@ -78,6 +79,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(&[target_hsm_group_name.to_string()]),
     None,
   )
@@ -105,6 +107,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             group,
           )
           .await?;
@@ -129,6 +132,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &[target_hsm_group_name.to_string()],
     )
     .await?;
@@ -141,6 +145,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &user_defined_target_hsm_hw_component_vec,
     &target_hsm_group_member_vec,
     mem_lcm,
@@ -171,6 +176,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &[parent_hsm_group_name.to_string()],
     )
     .await?;
@@ -183,6 +189,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &user_defined_target_hsm_hw_component_vec,
     &parent_hsm_group_member_vec,
     mem_lcm,
@@ -276,6 +283,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       target_hsm_group_name,
       &target_hsm_group_member_vec
         .iter()
@@ -306,6 +314,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       parent_hsm_group_name,
       &parent_hsm_group_member_vec
         .iter()
@@ -328,6 +337,7 @@ pub async fn exec(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           &parent_hsm_group_name.to_string(),
         )
         .await

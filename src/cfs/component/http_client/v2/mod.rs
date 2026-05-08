@@ -12,6 +12,7 @@ pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   components_ids: Option<&str>,
   status: Option<&str>,
 ) -> Result<Vec<Component>, Error> {
@@ -19,16 +20,9 @@ pub async fn get(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = shasta_base_url.to_owned() + "/cfs/v2/components";
@@ -59,29 +53,24 @@ pub async fn get_all(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Vec<Component>, Error> {
-  get(shasta_token, shasta_base_url, shasta_root_cert, None, None).await
+  get(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, None, None).await
 }
 
 pub async fn get_single_component(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component_id: &str,
 ) -> Result<Component, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url =
@@ -115,6 +104,7 @@ pub async fn get_multiple(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   node_vec: &[String],
 ) -> Result<Vec<Component>, Error> {
   let start = Instant::now();
@@ -149,6 +139,7 @@ pub async fn get_multiple(
     let shasta_token_string = shasta_token.to_string();
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
+    let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
     let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
 
@@ -161,6 +152,7 @@ pub async fn get_multiple(
         &shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
+        socks5_proxy_opt.as_deref(),
         Some(&hsm_subgroup_nodes_string),
         None,
       )
@@ -187,6 +179,7 @@ pub async fn get_parallel(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   node_vec: &[String],
 ) -> Result<Vec<Component>, Error> {
   let start = Instant::now();
@@ -220,6 +213,7 @@ pub async fn get_parallel(
     let shasta_token_string = shasta_token.to_string();
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
+    let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
     let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
 
@@ -232,6 +226,7 @@ pub async fn get_parallel(
         &shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
+        socks5_proxy_opt.as_deref(),
         None,
         Some(&hsm_subgroup_nodes_string),
         None,
@@ -256,6 +251,7 @@ pub async fn get_query(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   configuration_name: Option<&str>,
   components_ids: Option<&str>,
   status: Option<&str>,
@@ -265,16 +261,9 @@ pub async fn get_query(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = shasta_base_url.to_owned() + "/cfs/v2/components";
@@ -310,21 +299,15 @@ pub async fn put_component(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component: Component,
 ) -> Result<Component, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = shasta_base_url.to_owned()
@@ -357,14 +340,20 @@ pub async fn put_component_list(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component_list: Vec<Component>,
 ) -> Result<Vec<Component>, Error> {
   let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
 
   for component in component_list {
-    let result =
-      put_component(shasta_token, shasta_base_url, shasta_root_cert, component)
-        .await;
+    let result = put_component(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      component,
+    )
+    .await;
     result_vec.push(result);
   }
 
@@ -376,21 +365,15 @@ pub async fn delete_single_component(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   component_id: &str,
 ) -> Result<Component, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url =

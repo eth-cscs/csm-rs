@@ -12,7 +12,7 @@ impl BootParametersTrait for Csm {
     auth_token: &str,
   ) -> Result<Vec<FrontEndBootParameters>, Error> {
     let boot_parameter_vec =
-      bss::http_client::get_all(auth_token, &self.base_url, &self.root_cert)
+      bss::http_client::get_all(auth_token, &self.base_url, &self.root_cert, self.socks5_proxy.as_deref())
         .await
         .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -33,6 +33,7 @@ impl BootParametersTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       nodes,
     )
     .await
@@ -55,6 +56,7 @@ impl BootParametersTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       boot_parameters.clone().into(),
     )
     .map_err(|e| Error::Message(e.to_string()))
@@ -69,6 +71,7 @@ impl BootParametersTrait for Csm {
       &self.base_url,
       auth_token,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       &boot_parameter.clone().into(),
     )
     .await

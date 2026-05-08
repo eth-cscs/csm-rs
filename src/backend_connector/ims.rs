@@ -16,6 +16,7 @@ impl ImsTrait for Csm {
       shasta_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       image_id_opt,
     )
     .await
@@ -33,6 +34,7 @@ impl ImsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map(|image_vec| image_vec.into_iter().map(|image| image.into()).collect())
@@ -61,6 +63,7 @@ impl ImsTrait for Csm {
       shasta_token,
       self.base_url.as_str(),
       self.root_cert.as_slice(),
+      self.socks5_proxy.as_deref(),
       &image_id.to_string(),
       &image.clone().into(),
     )
@@ -81,6 +84,7 @@ impl ImsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       image_id,
     )
     .await
@@ -112,6 +116,7 @@ impl GetImagesAndDetailsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       hsm_group_name_vec,
       id_opt,
       limit_number,

@@ -446,6 +446,7 @@ pub async fn create_cfs_configuration_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   gitea_base_url: &str,
   gitea_token: &str,
   cray_product_catalog: &BTreeMap<String, String>,
@@ -467,6 +468,7 @@ pub async fn create_cfs_configuration_from_sat_file(
       sat_file_configuration_yaml,
       cray_product_catalog,
       site_name,
+      socks5_proxy,
     )
     .await?;
 
@@ -491,6 +493,7 @@ pub async fn create_cfs_configuration_from_sat_file(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &cfs_configuration,
       &cfs_configuration_name,
       overwrite,
@@ -503,6 +506,7 @@ pub async fn create_cfs_configuration_struct_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   gitea_base_url: &str,
   gitea_token: &str,
   cray_product_catalog: &BTreeMap<String, String>,
@@ -524,6 +528,7 @@ pub async fn create_cfs_configuration_struct_from_sat_file(
       sat_file_configuration_yaml,
       cray_product_catalog,
       site_name,
+      socks5_proxy,
     )
     .await?;
 
@@ -548,6 +553,7 @@ pub async fn create_cfs_configuration_struct_from_sat_file(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &cfs_configuration,
       &cfs_configuration_name,
       overwrite,
@@ -704,6 +710,7 @@ pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   vault_base_url: &str,
   site_name: &str,
   k8s_api_url: &str,
@@ -744,6 +751,7 @@ pub async fn i_import_images_section_in_sat_file(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
@@ -786,6 +794,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   vault_base_url: &str,
   site_name: &str,
   k8s_api_url: &str,
@@ -805,6 +814,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     image_yaml,
     ref_name_image_id_hashmap,
     cray_product_catalog,
@@ -825,6 +835,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       vault_base_url,
       site_name,
       k8s_api_url,
+      socks5_proxy,
       &cfs_session,
       watch_logs,
       timestamps,
@@ -873,6 +884,7 @@ async fn get_session_from_image_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   // image_yaml: Value,
   image_yaml: &image::Image,
   ref_name_image_id_hashmap: &HashMap<String, String>,
@@ -920,6 +932,7 @@ async fn get_session_from_image_yaml(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &image_yaml,
     ref_name_image_id_hashmap,
     cray_product_catalog,
@@ -952,6 +965,7 @@ async fn process_sat_file_image_product_type_ims_recipe(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   recipe_id: &str,
   image_name: &str,
   dry_run: bool,
@@ -964,6 +978,7 @@ async fn process_sat_file_image_product_type_ims_recipe(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       root_ims_key_name,
     )
     .await?
@@ -1011,6 +1026,7 @@ async fn process_sat_file_image_product_type_ims_recipe(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &ims_job,
     )
     .await?
@@ -1128,6 +1144,7 @@ async fn process_sat_file_image_ims_type_recipe(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   recipe_name: &str,
   image_name: &String,
   dry_run: bool,
@@ -1139,6 +1156,7 @@ async fn process_sat_file_image_ims_type_recipe(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       None,
     )
     .await?;
@@ -1170,6 +1188,7 @@ async fn process_sat_file_image_ims_type_recipe(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       root_ims_key_name,
     )
     .await?
@@ -1214,6 +1233,7 @@ async fn process_sat_file_image_ims_type_recipe(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &ims_job,
     )
     .await?
@@ -2095,6 +2115,7 @@ pub async fn validate_sat_file_session_template_section(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_yaml_vec: &[image::Image],
   configuration_yaml_vec: &[configuration::Configuration],
   session_template_yaml_vec: &[sessiontemplate::SessionTemplate],
@@ -2212,6 +2233,7 @@ pub async fn validate_sat_file_session_template_section(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             hsm_group_available_vec,
             image_name_substr_to_find,
             Some(&1),
@@ -2246,6 +2268,7 @@ pub async fn validate_sat_file_session_template_section(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           Some(image_id.as_str()),
         )
         .await
@@ -2292,6 +2315,7 @@ pub async fn validate_sat_file_session_template_section(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         Some(&session_template_yaml.configuration),
       )
       .await
@@ -2313,6 +2337,7 @@ pub async fn process_session_template_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ref_name_processed_hashmap: HashMap<String, String>,
   hsm_group_available_vec: &[String],
   sat_file_yaml: Value,
@@ -2352,6 +2377,7 @@ pub async fn process_session_template_section_in_sat_file(
               shasta_token,
               shasta_base_url,
               shasta_root_cert,
+              socks5_proxy,
               &hsm_group_available_vec,
               &image_reference,
               is_image_id,
@@ -2403,6 +2429,7 @@ pub async fn process_session_template_section_in_sat_file(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             &hsm_group_available_vec,
             &image_reference,
             is_image_id,
@@ -2440,6 +2467,7 @@ pub async fn process_session_template_section_in_sat_file(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         Some(&bos_session_template_configuration_name),
       )
       .await?;
@@ -2555,6 +2583,7 @@ pub async fn process_session_template_section_in_sat_file(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           &node_list.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
         )
         .await?;
@@ -2625,6 +2654,7 @@ pub async fn process_session_template_section_in_sat_file(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &create_bos_session_template_payload,
         &bos_sessiontemplate_name,
       )
@@ -2674,6 +2704,7 @@ pub async fn process_session_template_section_in_sat_file(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           bos_session,
         )
         .await?;
@@ -2757,6 +2788,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_group_available_vec: &[String],
   image_reference: &str,
   is_image_id: bool,
@@ -2766,6 +2798,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       Some(&image_reference),
     )
     .await
@@ -2786,6 +2819,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_group_available_vec,
       &image_reference,
       Some(&1),
@@ -2927,6 +2961,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           &product_recipe_id,
           &image_name,
           dry_run,
@@ -2969,6 +3004,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   // image_yaml: &Value,
   image_yaml: &image::Image,
   ref_name_image_id_hashmap: &HashMap<String, String>,
@@ -3009,6 +3045,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             name,
             image_name,
             dry_run,
@@ -3101,6 +3138,7 @@ async fn get_base_image_id_from_sat_file_image_yaml(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           &product_recipe_id,
           &image_name,
           dry_run,

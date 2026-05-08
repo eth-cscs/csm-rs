@@ -10,6 +10,7 @@ pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_id_opt: Option<&str>,
 ) -> Result<Vec<Image>, Error> {
   log::info!(
@@ -20,16 +21,9 @@ pub async fn get(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url = if let Some(image_id) = image_id_opt {
@@ -74,8 +68,9 @@ pub async fn get_all(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<Vec<Image>, Error> {
-  get(shasta_token, shasta_base_url, shasta_root_cert, None).await
+  get(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, None).await
 }
 
 /// Register a new image in IMS --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
@@ -83,22 +78,16 @@ pub async fn post(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_image: &Image,
 ) -> Result<Value, Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = shasta_base_url.to_owned() + "/ims/v3/images";
 
@@ -123,22 +112,16 @@ pub async fn delete(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_id: &str,
 ) -> Result<(), Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   // SOFT DELETION
   let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + image_id;
@@ -191,23 +174,17 @@ pub async fn patch(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_image_id: &String,
   ims_link: &PatchImage,
 ) -> Result<(), Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + &ims_image_id;
 

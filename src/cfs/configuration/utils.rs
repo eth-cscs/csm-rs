@@ -26,6 +26,7 @@ pub async fn create_new_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   configuration: &CfsConfigurationRequest,
   configuration_name: &str,
   overwrite: bool,
@@ -37,6 +38,7 @@ pub async fn create_new_configuration(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(configuration_name),
   )
   .await
@@ -70,6 +72,7 @@ pub async fn create_new_configuration(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &configuration.clone().into(),
     configuration_name,
   )
@@ -213,6 +216,7 @@ pub async fn get_and_filter(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   configuration_name: Option<&str>,
   configuration_name_pattern: Option<&str>,
   hsm_group_name_vec: &[String],
@@ -230,6 +234,7 @@ pub async fn get_and_filter(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_group_name_vec,
     )
     .await?;
@@ -244,22 +249,26 @@ pub async fn get_and_filter(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       configuration_name,
     ),
     cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
     ),
     bos::template::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
     ),
     cfs::component::http_client::v2::get_parallel(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_from_groups_vec,
     ),
   )?;
@@ -289,6 +298,7 @@ pub async fn get_derivatives(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   configuration_name: &str,
 ) -> Result<
   (
@@ -305,17 +315,20 @@ pub async fn get_derivatives(
     cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy,
     ),
     bos::template::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy,
     ),
     ims::image::http_client::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy,
     )
   )?;
 
@@ -366,6 +379,7 @@ pub async fn get_configuration_layer_details(
   gitea_token: &str,
   layer: Layer,
   site_name: &str,
+  socks5_proxy: Option<&str>,
 ) -> Result<LayerDetails, Error> {
   let commit_id: String =
     layer.commit.clone().unwrap_or("Not defined".to_string());
@@ -378,6 +392,7 @@ pub async fn get_configuration_layer_details(
     gitea_token,
     &layer.clone_url,
     shasta_root_cert,
+    socks5_proxy,
   )
   .await;
 
@@ -447,6 +462,7 @@ pub async fn get_configuration_layer_details(
         &tag_name,
         gitea_token,
         shasta_root_cert,
+        socks5_proxy,
         site_name,
       )
       .await?;
@@ -530,6 +546,7 @@ pub async fn get_configuration_layer_details(
         commit_id,
         gitea_token,
         shasta_root_cert,
+        socks5_proxy,
         site_name,
       )
       .await?

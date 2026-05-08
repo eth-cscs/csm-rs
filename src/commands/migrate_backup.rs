@@ -12,6 +12,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   bos: Option<&str>,
   destination: Option<&str>,
   /* prehook: Option<&String>,
@@ -41,6 +42,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     bos,
   )
   .await?;
@@ -94,6 +96,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       Some(&[hsm_group_name.to_string()]),
       None,
     )
@@ -113,6 +116,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       Some(&configuration_name),
     )
     .await?;
@@ -171,6 +175,7 @@ pub async fn exec(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           Some(&image_id_related_to_bos_sessiontemplate),
         )
         .await
@@ -188,6 +193,7 @@ pub async fn exec(
               shasta_token,
               shasta_base_url,
               shasta_root_cert,
+              socks5_proxy,
             )
             .await
             {
@@ -203,6 +209,7 @@ pub async fn exec(
               let src = image_id.clone() + "/" + file;
               let object_size = ims::s3_client::s3_get_object_size(
                 &sts_value,
+                socks5_proxy,
                 &src,
                 bucket_name,
               )
@@ -219,6 +226,7 @@ pub async fn exec(
               );
               match ims::s3_client::s3_download_object(
                 &sts_value,
+                socks5_proxy,
                 &src,
                 bucket_name,
                 &dest,

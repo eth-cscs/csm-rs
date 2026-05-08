@@ -4,6 +4,7 @@ pub async fn update_component_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname: &str,
   desired_configuration: &str,
   enabled: bool,
@@ -24,6 +25,7 @@ pub async fn update_component_desired_configuration(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     component,
   )
   .await;
@@ -33,6 +35,7 @@ pub async fn update_component_list_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xnames: &[String],
   desired_configuration: &str,
   enabled: bool,
@@ -59,6 +62,7 @@ pub async fn update_component_list_desired_configuration(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     component_list,
   )
   .await?;

@@ -19,6 +19,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   group_available_vec: Vec<Group>,
   cfs_session: &CfsSessionGetResponse,
   cfs_component_vec: &[Component],
@@ -53,6 +54,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
     )
     .await?;
 
@@ -65,6 +67,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec,
       Some(cfs_component_vec.to_vec()),
       retry_policy,
@@ -81,6 +84,7 @@ pub async fn exec(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &image_created_by_cfs_session_vec,
         &bos_bootparameters_vec,
         dry_run,
@@ -102,6 +106,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &cfs_session_name,
     )
     .await?;
@@ -114,6 +119,7 @@ async fn delete_images(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_created_by_cfs_session_vec: &[&str],
   bss_bootparameters_vec_opt: &[BootParameters],
   dry_run: bool,
@@ -135,6 +141,7 @@ async fn delete_images(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           image_id,
         )
         .await?;
@@ -154,6 +161,7 @@ async fn cancel_session(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: Vec<String>,
   cfs_component_vec_opt: Option<Vec<Component>>,
   retry_policy: u64,
@@ -198,6 +206,7 @@ async fn cancel_session(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       cfs_component_vec,
     )
     .await?;

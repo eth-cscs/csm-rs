@@ -44,6 +44,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       &session.clone().into(),
     )
     .await
@@ -72,6 +73,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       session_name_opt,
       limit_opt,
       after_id_opt,
@@ -124,6 +126,7 @@ impl CfsTrait for Csm {
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        self.socks5_proxy.as_deref(),
       )
       .await
       // .map_err(|e| Error::Message(e.to_string()))?;
@@ -201,6 +204,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       min_age_opt,
       max_age_opt,
       status_opt,
@@ -269,6 +273,7 @@ impl CfsTrait for Csm {
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            self.socks5_proxy.as_deref(),
             // hsm_group_name_vec,
             image_id,
           )
@@ -346,6 +351,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       group_available_vec,
       &cfs_session,
       &cfs_component_vec,
@@ -369,6 +375,7 @@ impl CfsTrait for Csm {
             gitea_token,
             gitea_base_url,
             shasta_root_cert,
+            self.socks5_proxy.as_deref(),
             repo_name_vec,
             local_git_commit_vec,
             playbook_file_name_opt,
@@ -387,6 +394,7 @@ impl CfsTrait for Csm {
         auth_token,
         base_url,
         root_cert,
+        self.socks5_proxy.as_deref(),
         configuration_name_opt.map(|elem| elem.as_str()),
       )
       .await
@@ -412,6 +420,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       configuration_name,
       configuration_name_pattern,
       &hsm_group_name_vec,
@@ -441,6 +450,7 @@ impl CfsTrait for Csm {
       gitea_token,
       layer.into(),
       site_name,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map(|layer_details| layer_details.into())
@@ -461,6 +471,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       &configuration.clone().into(),
       configuration_name,
       overwrite,
@@ -487,13 +498,13 @@ impl CfsTrait for Csm {
         serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
       }
       K8sAuth::Vault { base_url } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name)
+        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(format!("{e}")))?
       }
     };
 
-    let client = kubernetes::get_client(&k8s.api_url, shasta_k8s_secrets)
+    let client = kubernetes::get_client(&k8s.api_url, shasta_k8s_secrets, self.socks5_proxy.as_deref())
       .await
       .map_err(|e| Error::Message(format!("{e}")))?;
 
@@ -555,6 +566,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       xnames,
       desired_configuration,
       enabled,
@@ -582,6 +594,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       configuration_name,
     )
     .await
@@ -623,6 +636,7 @@ impl CfsTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       configuration_name,
       components_ids,
       status,

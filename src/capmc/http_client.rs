@@ -11,6 +11,7 @@ pub mod node_power_off {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -19,20 +20,13 @@ pub mod node_power_off {
 
     let power_off = PowerStatus::new(reason_opt, xname_vec, force, None);
 
-    let client;
-
     let client_builder = reqwest::Client::builder()
       .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-    // Build client
-    if std::env::var("SOCKS5").is_ok() {
-      // socks5 proxy
-      log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-      client = client_builder.proxy(socks5proxy).build()?;
-    } else {
-      client = client_builder.build()?;
-    }
+    let client = match socks5_proxy {
+      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      None => client_builder.build()?,
+    };
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_off";
 
@@ -54,6 +48,7 @@ pub mod node_power_off {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -63,6 +58,7 @@ pub mod node_power_off {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_vec,
     )
     .await?;
@@ -71,6 +67,7 @@ pub mod node_power_off {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec,
       reason_opt,
       force,
@@ -92,6 +89,7 @@ pub mod node_power_on {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason: Option<String>,
   ) -> Result<Value, Error> {
@@ -102,16 +100,9 @@ pub mod node_power_on {
     let client_builder = reqwest::Client::builder()
       .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-    // Build client
-    let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-      // socks5 proxy
-      log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-      // rest client to authenticate
-      client_builder.proxy(socks5proxy).build()?
-    } else {
-      client_builder.build()?
+    let client = match socks5_proxy {
+      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      None => client_builder.build()?,
     };
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_on";
@@ -134,6 +125,7 @@ pub mod node_power_on {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason: Option<String>,
   ) -> Result<Value, Error> {
@@ -142,6 +134,7 @@ pub mod node_power_on {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &xname_vec,
     )
     .await?;
@@ -150,6 +143,7 @@ pub mod node_power_on {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec,
       reason,
     )
@@ -170,26 +164,20 @@ pub mod node_power_reset {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason: Option<String>,
     force: bool,
   ) -> Result<Value, Error> {
     let node_restart = PowerStatus::new(reason, xname_vec, force, None);
 
-    let client;
-
     let client_builder = reqwest::Client::builder()
       .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-    // Build client
-    if std::env::var("SOCKS5").is_ok() {
-      // socks5 proxy
-      log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-      client = client_builder.proxy(socks5proxy).build()?;
-    } else {
-      client = client_builder.build()?;
-    }
+    let client = match socks5_proxy {
+      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      None => client_builder.build()?,
+    };
 
     let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_reinit";
 
@@ -209,6 +197,7 @@ pub mod node_power_reset {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -219,6 +208,7 @@ pub mod node_power_reset {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec.clone(),
       reason_opt.clone(),
       force,
@@ -229,6 +219,7 @@ pub mod node_power_reset {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       xname_vec,
       reason_opt,
     )
@@ -241,6 +232,7 @@ pub mod node_power_reset {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xnames: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -253,6 +245,7 @@ pub mod node_power_reset {
       let shasta_token_string = shasta_token.to_string();
       let shasta_base_url_string = shasta_base_url.to_string();
       let shasta_root_cert_vec = shasta_root_cert.to_vec();
+      let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
       let reason_cloned = reason_opt.clone();
 
       tasks.spawn(async move {
@@ -260,6 +253,7 @@ pub mod node_power_reset {
           &shasta_token_string,
           &shasta_base_url_string,
           &shasta_root_cert_vec,
+          socks5_proxy_opt.as_deref(),
           vec![xname],
           reason_cloned,
           force,
@@ -286,6 +280,7 @@ pub mod node_power_status {
     shasta_token: &str,
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
+    socks5_proxy: Option<&str>,
     xnames: &Vec<String>,
   ) -> core::result::Result<Value, Error> {
     log::info!("Checking nodes status: {:?}", xnames);
@@ -293,20 +288,13 @@ pub mod node_power_status {
     let node_status_payload =
       NodeStatus::new(None, Some(xnames.clone()), Some("redfish".to_string()));
 
-    let client;
-
     let client_builder = reqwest::Client::builder()
       .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-    // Build client
-    if std::env::var("SOCKS5").is_ok() {
-      // socks5 proxy
-      log::debug!("SOCKS5 enabled");
-      let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-      client = client_builder.proxy(socks5proxy).build()?;
-    } else {
-      client = client_builder.build()?;
-    }
+    let client = match socks5_proxy {
+      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      None => client_builder.build()?,
+    };
 
     let url_api =
       shasta_base_url.to_owned() + "/capmc/capmc/v1/get_xname_status";

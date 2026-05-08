@@ -10,6 +10,7 @@ pub async fn wait_ims_job_to_finish(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_job_id: &str,
 ) -> Result<(), Error> {
   let mut i = 0;
@@ -19,6 +20,7 @@ pub async fn wait_ims_job_to_finish(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       Some(ims_job_id),
     )
     .await?

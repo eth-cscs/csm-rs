@@ -54,6 +54,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   bos_file: Option<&str>,
   cfs_file: Option<&str>,
   hsm_file: Option<&str>,
@@ -143,6 +144,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_image_name,
     overwrite_image,
   )
@@ -162,6 +164,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_image_id,
     &mut ims_image_manifest,
     &vec_backup_image_files,
@@ -175,6 +178,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_image_name,
     &ims_image_id,
   )
@@ -185,6 +189,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &backup_hsm_file,
     overwrite_group,
   )
@@ -197,6 +202,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &backup_cfs_file,
     overwrite_configuration,
   )
@@ -209,6 +215,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &backup_bos_file,
     &ims_image_id,
     overwrite_template,
@@ -228,6 +235,7 @@ async fn create_bos_sessiontemplate(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   bos_file: &String,
   ims_image_id: &String,
   overwrite: bool,
@@ -246,6 +254,7 @@ async fn create_bos_sessiontemplate(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         Some(&bos_sessiontemplate_name),
     )
     .await
@@ -268,6 +277,7 @@ async fn create_bos_sessiontemplate(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &bos_sessiontemplate_name,
       )
       .await
@@ -306,6 +316,7 @@ async fn create_bos_sessiontemplate(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &bos_sessiontemplate,
     &bos_sessiontemplate_name,
   )
@@ -330,6 +341,7 @@ async fn create_cfs_config(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   cfs_file: &String,
   overwrite: bool,
 ) -> Result<(), Error> {
@@ -346,6 +358,7 @@ async fn create_cfs_config(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     Some(&cfs_config_name),
   )
   .await
@@ -367,6 +380,7 @@ async fn create_cfs_config(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       cfs_config_name.as_str(),
     )
     .await
@@ -395,6 +409,7 @@ async fn create_cfs_config(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &cfs_configuration,
     cfs_config_name.as_str(),
   )
@@ -422,6 +437,7 @@ async fn ims_update_image_add_manifest(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_image_name: &String,
   ims_image_id: &String,
 ) {
@@ -429,6 +445,7 @@ async fn ims_update_image_add_manifest(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &["".to_string()], // hsm_group_name
     Some(ims_image_name.clone().as_str()),
     None,
@@ -483,6 +500,7 @@ async fn ims_update_image_add_manifest(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_image_id.to_string(),
     &rec,
   )
@@ -503,6 +521,7 @@ async fn s3_upload_image_artifacts(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_image_id: &String,
   ims_image_manifest: &mut ImageManifest,
   vec_image_files: &Vec<String>,
@@ -515,6 +534,7 @@ async fn s3_upload_image_artifacts(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
   )
   .await
   {
@@ -554,6 +574,7 @@ async fn s3_upload_image_artifacts(
     if fs::metadata(file).unwrap().len() > 1024 * 1024 * 5 {
       etag = match ims::s3_client::s3_multipart_upload_object(
         &sts_value,
+        socks5_proxy,
         &full_object_path,
         bucket_name,
         file,
@@ -569,6 +590,7 @@ async fn s3_upload_image_artifacts(
     } else {
       etag = match ims::s3_client::s3_upload_object(
         &sts_value,
+        socks5_proxy,
         &full_object_path,
         bucket_name,
         file,
@@ -654,6 +676,7 @@ async fn s3_upload_image_artifacts(
 
   match ims::s3_client::s3_upload_object(
     &sts_value,
+    socks5_proxy,
     &manifest_full_object_path,
     bucket_name,
     &new_manifest_file_path.to_owned().to_string_lossy(),
@@ -768,6 +791,7 @@ async fn ims_register_image(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   ims_image_name: &str,
   overwrite: bool,
 ) -> anyhow::Result<String> {
@@ -784,6 +808,7 @@ async fn ims_register_image(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &["".to_string()], // hsm_group_name
     ims_image_name,
     None,
@@ -801,6 +826,7 @@ async fn ims_register_image(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &ims_record,
   )
   .await?;
@@ -838,6 +864,7 @@ pub async fn create_hsm_group_from_file(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_file: &String,
   overwrite: bool,
 ) -> Result<(), Error> {
@@ -856,6 +883,7 @@ pub async fn create_hsm_group_from_file(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &group.label,
       &group_members_opt.unwrap_or_default(),
       &group.exclusive_group.clone().unwrap(),
@@ -879,6 +907,7 @@ pub async fn create_hsm_group_from_file(
               shasta_token,
               shasta_base_url,
               shasta_root_cert,
+              socks5_proxy,
               &group.label,
             )
             .await
@@ -890,6 +919,7 @@ pub async fn create_hsm_group_from_file(
                   shasta_token,
                   shasta_base_url,
                   shasta_root_cert,
+                  socks5_proxy,
                   group.clone(),
                 )
                 .await

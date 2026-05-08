@@ -27,6 +27,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   vault_base_url: &str,
   site_name: &str,
   k8s_api_url: &str,
@@ -70,7 +71,7 @@ pub async fn exec(
 
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
   let kube_client =
-    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets).await?;
+    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
@@ -84,17 +85,20 @@ pub async fn exec(
     cfs::configuration::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
     ims::image::http_client::get_all(
       shasta_token,
       shasta_base_url,
-      shasta_root_cert
+      shasta_root_cert,
+      socks5_proxy
     ),
     ims::recipe::http_client::get(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       None
     )
   )?;
@@ -142,6 +146,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &image_struct_vec,
     &configuration_struct_vec,
     &bos_session_template_struct_vec,
@@ -185,6 +190,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             &target_hsm_group_name,
             parent_hsm_group_name,
             pattern,
@@ -203,6 +209,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             &[target_hsm_group_name.to_string()],
           )
           .await?;
@@ -228,6 +235,7 @@ pub async fn exec(
             shasta_token,
             shasta_base_url,
             shasta_root_cert,
+            socks5_proxy,
             &target_hsm_group_name,
             &hsm_group_members_vec
               .iter()
@@ -258,6 +266,7 @@ pub async fn exec(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         gitea_base_url,
         gitea_token,
         &cray_product_catalog,
@@ -288,6 +297,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
@@ -315,6 +325,7 @@ pub async fn exec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     ref_name_processed_hashmap,
     hsm_group_available_vec,
     sat_template_file_yaml,

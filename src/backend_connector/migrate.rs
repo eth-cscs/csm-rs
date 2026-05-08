@@ -27,6 +27,7 @@ impl MigrateRestoreTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       bos_file,
       cfs_file,
       hsm_file,
@@ -55,6 +56,7 @@ impl MigrateBackupTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       bos,
       destination,
     )

@@ -16,6 +16,7 @@ pub async fn get_fuzzy(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   image_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
@@ -24,6 +25,7 @@ pub async fn get_fuzzy(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     hsm_name_available_vec,
     None, // NOTE: don't put any limit here since we may be looking in a large number of
           // HSM groups and we will filter the results by image name below
@@ -49,6 +51,7 @@ pub async fn get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   image_name: &str,
   limit_number_opt: Option<&u8>,
@@ -57,6 +60,7 @@ pub async fn get_by_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     hsm_name_available_vec,
     None, // NOTE: don't put any limit here since we may be looking in a large number of
           // HSM groups and we will filter the results by image name below
@@ -83,6 +87,7 @@ pub async fn try_get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   image_name: &str,
   limit_number_opt: Option<&u8>,
@@ -92,6 +97,7 @@ pub async fn try_get_by_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     hsm_name_available_vec,
     None, // NOTE: don't put any limit here since we may be looking in a large number of
           // HSM groups and we will filter the results by image name below
@@ -138,6 +144,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   image_vec: &mut Vec<Image>,
   hsm_group_name_vec: &[String],
   limit_number_opt: Option<&u8>,
@@ -153,6 +160,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     hsm_group_name_vec,
   )
   .await?;
@@ -164,6 +172,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       None,
     )
     .await?;
@@ -183,6 +192,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
     None,
     None,
@@ -216,6 +226,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     hsm_group_name_vec,
   )
   .await?;
@@ -224,6 +235,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &hsm_member_vec,
   )
   .await
@@ -308,6 +320,7 @@ pub async fn get_image_available_vec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
@@ -315,6 +328,7 @@ pub async fn get_image_available_vec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
   )
   .await?;
@@ -326,6 +340,7 @@ pub async fn get_image_available_vec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
   )
   .await?;
@@ -335,6 +350,7 @@ pub async fn get_image_available_vec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_name_available_vec,
     )
     .await?;
@@ -353,6 +369,7 @@ pub async fn get_image_available_vec(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
     None,
     None,

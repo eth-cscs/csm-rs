@@ -46,6 +46,7 @@ pub struct K8sDetails {
 pub async fn get_client(
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
+  socks5_proxy: Option<&str>,
 ) -> Result<kube::Client, Error> {
   let k8s_credential_name = "certificate-authority-data";
 
@@ -154,20 +155,14 @@ pub async fn get_client(
       .await
       .map_err(|e| Error::K8sError(e.to_string()))?;
 
-  let client = if let Ok(socks5_address) = std::env::var("SOCKS5") {
-    log::info!("K8s SOCKS5 enabled");
-    let socks5_proxy_uri = socks5_address.parse::<Uri>().map_err(|_| {
+  if let Some(socks5_address) = socks5_proxy {
+    config.proxy_url = Some(socks5_address.parse::<Uri>().map_err(|_| {
       Error::Message("Could not parse socks5_proxy".to_string())
-    })?;
+    })?);
+  }
 
-    config.proxy_url = Some(socks5_proxy_uri);
-
-    kube::Client::try_from(config)
-      .map_err(|e| Error::K8sError(e.to_string()))?
-  } else {
-    kube::Client::try_from(config)
-      .map_err(|e| Error::K8sError(e.to_string()))?
-  };
+  let client = kube::Client::try_from(config)
+    .map_err(|e| Error::K8sError(e.to_string()))?;
 
   Ok(client)
 }
@@ -1029,16 +1024,18 @@ pub async fn delete_session_pod(
   // vault_role_id: &str,
   k8s_api_url: &str,
   cfs_session_name: &str,
+  socks5_proxy: Option<&str>,
 ) -> Result<(), Error> {
   let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
     vault_base_url,
     shasta_token,
     site_name,
     // vault_role_id,
+    socks5_proxy,
   )
   .await?;
 
-  let client = get_client(k8s_api_url, shasta_k8s_secrets).await?;
+  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, "services");
 

@@ -8,23 +8,15 @@ pub async fn get(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
 ) -> Result<PowerCapTaskInfo, Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-
-    // rest client to authenticate
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url = format!("{}/power-control/v1/power-cap", shasta_base_url);
 
@@ -54,24 +46,16 @@ pub async fn get_task_id(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   task_id: &str,
 ) -> Result<PowerCapTaskInfo, Error> {
-  let client;
-
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  if std::env::var("SOCKS5").is_ok() {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-
-    // rest client to authenticate
-    client = client_builder.proxy(socks5proxy).build()?;
-  } else {
-    client = client_builder.build()?;
-  }
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
+  };
 
   let api_url =
     format!("{}/power-control/v1/power-cap/{}", shasta_base_url, task_id);
@@ -102,6 +86,7 @@ pub async fn post_snapshot(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: Vec<&str>,
 ) -> Result<PowerCapTaskInfo, Error> {
   log::info!("Create PCS power snapshot for nodes:\n{:?}", xname_vec);
@@ -110,16 +95,9 @@ pub async fn post_snapshot(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url =
@@ -151,6 +129,7 @@ pub async fn patch(
   shasta_base_url: &str,
   shasta_token: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   power_cap: Vec<PowerCapComponent>,
 ) -> Result<PowerCapTaskInfo, Error> {
   log::info!("Create PCS power cap:\n{:#?}", power_cap);
@@ -159,16 +138,9 @@ pub async fn patch(
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let api_url =

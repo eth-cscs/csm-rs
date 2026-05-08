@@ -36,6 +36,7 @@ impl ApplySessionTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       // k8s_api_url,
       cfs_conf_sess_name,
       playbook_yaml_file_name_opt,
@@ -66,6 +67,7 @@ impl ClusterSessionTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       bos_session.into(),
     )
     .await
@@ -86,6 +88,7 @@ impl ClusterTemplateTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       bos_session_template_id_opt,
     )
     .await
@@ -113,6 +116,7 @@ impl ClusterTemplateTrait for Csm {
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        self.socks5_proxy.as_deref(),
         bos_sessiontemplate_name_opt.map(|value| value),
       )
       .await
@@ -145,6 +149,7 @@ impl ClusterTemplateTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map(|bos_session_template_vec| {
@@ -168,6 +173,7 @@ impl ClusterTemplateTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       &bos_template.clone().into(),
       bos_template_name,
     )
@@ -187,6 +193,7 @@ impl ClusterTemplateTrait for Csm {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      self.socks5_proxy.as_deref(),
       bos_template_id,
     )
     .await

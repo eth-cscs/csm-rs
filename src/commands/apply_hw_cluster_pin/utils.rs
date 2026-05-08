@@ -522,6 +522,7 @@ pub async fn get_node_hw_component_count(
   shasta_token: String,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   hsm_member: &str,
   user_defined_hw_profile_vec: Vec<String>,
 ) -> Result<(String, Vec<String>, Vec<u64>), Error> {
@@ -530,6 +531,7 @@ pub async fn get_node_hw_component_count(
       &shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_member,
     )
     .await?;
@@ -615,6 +617,7 @@ pub async fn get_hsm_node_hw_component_counter(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   user_defined_hw_component_vec: &[String],
   hsm_group_member_vec: &[String],
   mem_lcm: u64,
@@ -631,6 +634,8 @@ pub async fn get_hsm_node_hw_component_counter(
   // List of node hw component counters belonging to target hsm group
   let mut target_hsm_node_hw_component_count_vec = Vec::new();
 
+  let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
+
   // Get HW inventory details for parent HSM group
   for hsm_member in hsm_group_member_vec.to_owned() {
     let shasta_token_string = shasta_token.to_string(); // TODO: make it static
@@ -638,6 +643,7 @@ pub async fn get_hsm_node_hw_component_counter(
     let shasta_root_cert_vec = shasta_root_cert.to_vec(); // TODO: make it static
     let user_defined_hw_component_vec =
       user_defined_hw_component_vec.to_owned();
+    let socks5_proxy_opt = socks5_proxy_opt.clone();
 
     let permit = Arc::clone(&sem).acquire_owned().await;
 
@@ -649,6 +655,7 @@ pub async fn get_hsm_node_hw_component_counter(
         shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
+        socks5_proxy_opt.as_deref(),
         &hsm_member,
         user_defined_hw_component_vec,
       )

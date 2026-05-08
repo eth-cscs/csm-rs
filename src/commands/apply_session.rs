@@ -20,6 +20,7 @@ pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   cfs_conf_sess_name: Option<&str>,
   playbook_yaml_file_name_opt: Option<&str>,
   hsm_group: Option<&str>,
@@ -73,6 +74,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       hsm_group_value,
     )
     .await
@@ -95,6 +97,7 @@ pub async fn exec(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,
+          socks5_proxy,
           &xname_list,
           hsm_group,
         )
@@ -134,6 +137,7 @@ pub async fn exec(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       Some(&xname_list.join(",")), // Convert Hashset to String with comma separator, need to convert to Vec first following https://stackoverflow.com/a/47582249/1918003
       Some(ansible_verbosity.map(|s| s.parse::<u8>().unwrap_or(2))).unwrap(),
       ansible_passthrough,
@@ -153,6 +157,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   limit: Option<&str>,
   ansible_verbosity: Option<u8>,
   ansible_passthrough: Option<&str>,
@@ -162,6 +167,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     None,
     None,
     None,
@@ -239,6 +245,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         &xname,
       )
       .await?;
@@ -247,6 +254,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &[xname.clone()],
     )
     .await?;
@@ -279,6 +287,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     gitea_token,
     gitea_base_url,
     shasta_root_cert,
+    socks5_proxy,
     repo_name_vec,
     repo_last_commit_id_vec,
     playbook_yaml_file_name_opt,
@@ -291,6 +300,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
+      socks5_proxy,
       &cfs_configuration,
       cfs_configuration_name,
     )
@@ -319,6 +329,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
+    socks5_proxy,
     &session,
   )
   .await?

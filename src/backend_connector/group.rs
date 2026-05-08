@@ -18,6 +18,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
@@ -39,6 +40,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))
@@ -53,6 +55,7 @@ impl GroupTrait for Csm {
       &auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       group.clone().into(),
     )
     .await
@@ -75,6 +78,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       &hsm_group_name_vec,
     )
     .await
@@ -90,6 +94,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       hsm_name_vec,
     )
     .await
@@ -105,6 +110,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       member_vec,
     )
     .await
@@ -120,6 +126,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))?;
@@ -143,6 +150,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       Some(&[hsm_name.to_string()]),
       None,
     )
@@ -174,6 +182,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       hsm_name_vec_opt,
       None,
     )
@@ -199,6 +208,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       &label.to_string(),
     )
     .await
@@ -214,6 +224,7 @@ impl GroupTrait for Csm {
       shasta_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       hsm_name_vec,
     )
     .await
@@ -234,6 +245,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       group_label,
       member,
     )
@@ -254,6 +266,7 @@ impl GroupTrait for Csm {
         auth_token,
         &self.base_url,
         &self.root_cert,
+        self.socks5_proxy.as_deref(),
         group_label,
         new_member,
       )
@@ -274,6 +287,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       group_label,
       xname,
     )
@@ -292,6 +306,7 @@ impl GroupTrait for Csm {
       auth_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       group_name,
       members_to_remove,
       members_to_add,
@@ -307,15 +322,17 @@ impl GroupTrait for Csm {
     target_hsm_group_name: &str,
     parent_hsm_group_name: &str,
     new_target_hsm_members: &[&str],
+    dryrun: bool
   ) -> Result<(Vec<String>, Vec<String>), Error> {
     hsm::group::utils::migrate_hsm_members(
       shasta_token,
       &self.base_url,
       &self.root_cert,
+      self.socks5_proxy.as_deref(),
       target_hsm_group_name,
       parent_hsm_group_name,
       new_target_hsm_members,
-      true,
+      dryrun,
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))

@@ -7,21 +7,15 @@ pub async fn get_raw(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: &[String],
 ) -> Result<Vec<Value>, Error> {
   let client_builder = reqwest::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
-  // Build client
-  let client = if let Ok(socks5_env) = std::env::var("SOCKS5") {
-    // socks5 proxy
-    log::debug!("SOCKS5 enabled");
-    let socks5proxy = reqwest::Proxy::all(socks5_env)?;
-
-    // rest client to authenticate
-    client_builder.proxy(socks5proxy).build()?
-  } else {
-    client_builder.build()?
+  let client = match socks5_proxy {
+    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+    None => client_builder.build()?,
   };
 
   let url_params: Vec<_> =
@@ -61,6 +55,7 @@ pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
   xname_vec: &[String],
 ) -> Result<Vec<Value>, Error> {
   let chunk_size = 30;
@@ -73,8 +68,7 @@ pub async fn get(
     let shasta_token_string = shasta_token.to_string();
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
-
-    // let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
+    let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
     let node_vec = sub_node_list.to_vec();
 
@@ -83,6 +77,7 @@ pub async fn get(
         &shasta_token_string,
         &shasta_base_url_string,
         &shasta_root_cert_vec,
+        socks5_proxy_opt.as_deref(),
         &node_vec,
       )
       .await

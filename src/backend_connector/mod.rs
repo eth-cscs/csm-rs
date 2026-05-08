@@ -14,13 +14,15 @@ pub mod sat; // SatTrait, ApplyHwClusterPin
 pub struct Csm {
   pub(crate) base_url: String,
   pub(crate) root_cert: Vec<u8>,
+  pub(crate) socks5_proxy: Option<String>,
 }
 
 impl Csm {
-  pub fn new(base_url: &str, root_cert: &[u8]) -> Self {
+  pub fn new(base_url: &str, root_cert: &[u8], socks5_proxy: Option<&str>) -> Self {
     Self {
       base_url: base_url.to_string(),
       root_cert: root_cert.to_vec(),
+      socks5_proxy: socks5_proxy.map(str::to_owned),
     }
   }
 }

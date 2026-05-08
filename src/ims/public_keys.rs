@@ -11,12 +11,14 @@ pub mod http_client {
       shasta_token: &str,
       shasta_base_url: &str,
       shasta_root_cert: &[u8],
+      socks5_proxy: Option<&str>,
       username_opt: &str,
     ) -> Result<Option<Value>, Error> {
       let public_key_value_list = get(
         shasta_token,
         shasta_base_url,
         shasta_root_cert,
+        socks5_proxy,
         Some(username_opt),
       )
       .await?;
@@ -33,25 +35,17 @@ pub mod http_client {
       shasta_token: &str,
       shasta_base_url: &str,
       shasta_root_cert: &[u8],
+      socks5_proxy: Option<&str>,
       username_opt: Option<&str>,
     ) -> Result<Vec<Value>, Error> {
-      let client;
-
       let client_builder = reqwest::Client::builder().add_root_certificate(
         reqwest::Certificate::from_pem(shasta_root_cert)?,
       );
 
-      // Build client
-      if std::env::var("SOCKS5").is_ok() {
-        // socks5 proxy
-        log::debug!("SOCKS5 enabled");
-        let socks5proxy = reqwest::Proxy::all(std::env::var("SOCKS5")?)?;
-
-        // rest client to authenticate
-        client = client_builder.proxy(socks5proxy).build()?;
-      } else {
-        client = client_builder.build()?;
-      }
+      let client = match socks5_proxy {
+        Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+        None => client_builder.build()?,
+      };
 
       let api_url = shasta_base_url.to_owned() + "/ims/v3/public-keys";
 
