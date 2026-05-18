@@ -10,7 +10,7 @@ pub mod ims; // ImsTrait, GetImagesAndDetailsTrait
 pub mod migrate; // MigrateRestoreTrait, MigrateBackupTrait
 pub mod pcs; // PCSTrait
 pub mod sat; // SatTrait, ApplyHwClusterPin
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Csm {
   pub(crate) base_url: String,
   pub(crate) root_cert: Vec<u8>,

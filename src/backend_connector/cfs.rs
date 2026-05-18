@@ -234,7 +234,7 @@ impl CfsTrait for Csm {
     })?;
 
     if cfs_session_vec.is_empty() {
-      return Err(Error::Message("No CFS session found".to_string()));
+      return Err(Error::SessionNotFound);
     }
 
     for cfs_session in cfs_session_vec.iter_mut() {
