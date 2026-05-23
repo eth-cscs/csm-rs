@@ -1,6 +1,4 @@
-use serde_json::Value;
-
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::Membership;
 
@@ -10,38 +8,9 @@ pub async fn get_all(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Vec<Membership>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = format!("{}/smd/hsm/v2/memberships", shasta_base_url);
-
-  let response = client
-    .get(api_url.clone())
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(
-      response
-        .json::<Vec<Membership>>()
-        .await
-        .map_err(|error| Error::NetError(error))
-        .unwrap(),
-    )
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let url = format!("{}/smd/hsm/v2/memberships", shasta_base_url);
+  http::get_json(&client, &url, shasta_token).await
 }
 
 pub async fn get_xname(
@@ -52,36 +21,7 @@ pub async fn get_xname(
   xname: &str,
 ) -> Result<Membership, Error> {
   log::debug!("Get membership of node '{}'", xname);
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = format!("{}/smd/hsm/v2/memberships/{}", shasta_base_url, xname);
-
-  let response = client
-    .get(api_url.clone())
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(
-      response
-        .json::<Membership>()
-        .await
-        .map_err(|error| Error::NetError(error))
-        .unwrap(),
-    )
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let url = format!("{}/smd/hsm/v2/memberships/{}", shasta_base_url, xname);
+  http::get_json(&client, &url, shasta_token).await
 }

@@ -25,9 +25,9 @@ impl From<FrontEndPowerState> for PowerState {
     }
   }
 }
-impl Into<FrontEndPowerState> for PowerState {
-  fn into(self) -> FrontEndPowerState {
-    match self {
+impl From<PowerState> for FrontEndPowerState {
+  fn from(val: PowerState) -> Self {
+    match val {
       PowerState::On => FrontEndPowerState::On,
       PowerState::Off => FrontEndPowerState::Off,
       PowerState::Undefined => FrontEndPowerState::Undefined,
@@ -50,9 +50,9 @@ impl From<FrontEndManagementState> for ManagementState {
     }
   }
 }
-impl Into<FrontEndManagementState> for ManagementState {
-  fn into(self) -> FrontEndManagementState {
-    match self {
+impl From<ManagementState> for FrontEndManagementState {
+  fn from(val: ManagementState) -> Self {
+    match val {
       ManagementState::Unavailable => FrontEndManagementState::Unavailable,
       ManagementState::Available => FrontEndManagementState::Available,
     }
@@ -82,37 +82,37 @@ impl From<FrontEndPowerStatus> for PowerStatus {
     PowerStatus {
       xname: value.xname,
       //power_state_filter: value.power_state_filter.map( |v| PowerState::from(v)),
-      power_state: value.power_state.map(|v| PowerState::from(v)),
+      power_state: value.power_state.map(PowerState::from),
       management_state: value
         .management_state
-        .map(|v| ManagementState::from(v)),
+        .map(ManagementState::from),
       //management_state_filter: value.management_state_filter.map(|v| ManagementState::from(v)),
       error: value.error,
       supported_power_transitions: value
         .supported_power_transitions
         .into_iter()
-        .map(|v| Operation::from(v))
+        .map(Operation::from)
         .collect(),
       last_updated: value.last_updated,
     }
   }
 }
 
-impl Into<FrontEndPowerStatus> for PowerStatus {
-  fn into(self) -> FrontEndPowerStatus {
+impl From<PowerStatus> for FrontEndPowerStatus {
+  fn from(val: PowerStatus) -> Self {
     FrontEndPowerStatus {
-      xname: self.xname,
+      xname: val.xname,
       //power_state_filter: self.power_state_filter.map(|v| v.into()),
-      power_state: self.power_state.map(|v| v.into()),
-      management_state: self.management_state.map(|v| v.into()),
+      power_state: val.power_state.map(|v| v.into()),
+      management_state: val.management_state.map(|v| v.into()),
       //management_state_filter: self.management_state_filter.map( |v| v.into()),
-      error: self.error,
-      supported_power_transitions: self
+      error: val.error,
+      supported_power_transitions: val
         .supported_power_transitions
         .into_iter()
         .map(|v| v.into())
         .collect(),
-      last_updated: self.last_updated,
+      last_updated: val.last_updated,
     }
   }
 }
@@ -130,10 +130,10 @@ impl From<FrontEndPowerStatusAll> for PowerStatusAll {
   }
 }
 
-impl Into<FrontEndPowerStatusAll> for PowerStatusAll {
-  fn into(self) -> FrontEndPowerStatusAll {
+impl From<PowerStatusAll> for FrontEndPowerStatusAll {
+  fn from(val: PowerStatusAll) -> Self {
     FrontEndPowerStatusAll {
-      status: self.status.into_iter().map(Into::into).collect(),
+      status: val.status.into_iter().map(Into::into).collect(),
     }
   }
 }

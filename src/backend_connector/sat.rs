@@ -30,6 +30,7 @@ impl SatTrait for Csm {
     overwrite: bool,
     dry_run: bool,
   ) -> Result<(), Error> {
+    #[allow(deprecated)]
     crate::commands::i_apply_sat_file::command::exec(
       shasta_token,
       shasta_base_url,

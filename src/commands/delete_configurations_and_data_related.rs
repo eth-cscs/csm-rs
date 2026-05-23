@@ -396,7 +396,7 @@ pub async fn delete(
       shasta_base_url,
       shasta_root_cert,
       socks5_proxy,
-      &image_id,
+      image_id,
     )
     .await;
 
@@ -430,7 +430,7 @@ pub async fn delete(
         shasta_base_url,
         shasta_root_cert,
         socks5_proxy,
-        &bos_session_id,
+        bos_session_id,
       )
       .await?;
 
@@ -456,7 +456,7 @@ pub async fn delete(
         shasta_base_url,
         shasta_root_cert,
         socks5_proxy,
-        &cfs_session_name,
+        cfs_session_name,
       )
       .await;
 
@@ -497,7 +497,7 @@ pub async fn delete(
         shasta_base_url,
         shasta_root_cert,
         socks5_proxy,
-        &bos_sessiontemplate_name,
+        bos_sessiontemplate_name,
       )
       .await;
 
@@ -571,9 +571,7 @@ pub fn get_node_vec_booting_image(
   boot_param_vec: &[BootParameters],
 ) -> Vec<String> {
   let mut node_booting_image_vec = boot_param_vec
-    .iter()
-    .cloned()
-    .filter(|boot_param| boot_param.get_boot_image().eq(image_id))
+    .iter().filter(|&boot_param| boot_param.get_boot_image().eq(image_id)).cloned()
     .flat_map(|boot_param| boot_param.hosts)
     .collect::<Vec<_>>();
 

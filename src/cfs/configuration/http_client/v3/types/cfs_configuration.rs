@@ -66,17 +66,17 @@ impl From<FrontendLayerDetails> for LayerDetails {
   }
 }
 
-impl Into<FrontendLayerDetails> for LayerDetails {
-  fn into(self) -> FrontendLayerDetails {
+impl From<LayerDetails> for FrontendLayerDetails {
+  fn from(val: LayerDetails) -> Self {
     FrontendLayerDetails {
-      name: self.name,
-      repo_name: self.repo_name,
-      commit_id: self.commit_id,
-      author: self.author,
-      commit_date: self.commit_date,
-      branch: self.branch,
-      tag: self.tag,
-      playbook: self.playbook,
+      name: val.name,
+      repo_name: val.repo_name,
+      commit_id: val.commit_id,
+      author: val.author,
+      commit_date: val.commit_date,
+      branch: val.branch,
+      tag: val.tag,
+      playbook: val.playbook,
     }
   }
 }
@@ -94,7 +94,7 @@ impl LayerDetails {
     // most_recent_commit: bool,
   ) -> Self {
     Self {
-      name: name,
+      name,
       repo_name: String::from(repo_name),
       commit_id: String::from(commit_id),
       author: String::from(author),

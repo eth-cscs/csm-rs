@@ -1,6 +1,6 @@
-use serde_json::{Value, json};
+use serde_json::json;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::PowerStatusAll;
 
@@ -13,46 +13,16 @@ pub async fn post(
   power_state_filter_opt: Option<&str>,
   management_state_filter_opt: Option<&str>,
 ) -> Result<PowerStatusAll, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = format!("{}/power-control/v1/power-status", shasta_base_url);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let url = format!("{}/power-control/v1/power-status", shasta_base_url);
 
   let body = json!({
-      "xname": xname_vec_opt.map(|xname_vec| xname_vec.iter().map(|&x| x.to_string()).collect::<Vec<String>>()).unwrap_or_default(),
-      "powerStateFilter": power_state_filter_opt.unwrap_or(""),
-      "managementStateFilter": management_state_filter_opt.unwrap_or(""),
+    "xname": xname_vec_opt
+      .map(|v| v.iter().map(|&x| x.to_string()).collect::<Vec<String>>())
+      .unwrap_or_default(),
+    "powerStateFilter": power_state_filter_opt.unwrap_or(""),
+    "managementStateFilter": management_state_filter_opt.unwrap_or(""),
   });
 
-  let response = client
-    .post(&api_url)
-    .json(&body)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| {
-      println!("Failed POST query: {:?}", error);
-      Error::NetError(error)
-    })?;
-
-  if response.status().is_success() {
-    println!("Response is success");
-    response.json().await.map_err(|error| {
-      println!("{:?}", error);
-      Error::NetError(error)
-    })
-  } else {
-    println!("Response is failure");
-    let payload = response.json::<Value>().await.map_err(|error| {
-      println!("{:?}", error);
-      Error::NetError(error)
-    })?;
-
-    Err(Error::CsmError(payload))
-  }
+  http::post_json(&client, &url, shasta_token, &body).await
 }

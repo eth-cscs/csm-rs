@@ -65,29 +65,27 @@ pub async fn exec(
   overwrite_image: bool,
   overwrite_template: bool,
 ) -> Result<(), Error> {
-  if !PathBuf::from(&bos_file.unwrap()).exists() {
-    return Err(Error::Message(format!(
-      "Error, file {} does not exist or cannot be open.",
-      &bos_file.unwrap()
-    )));
+  fn require<'a>(opt: Option<&'a str>, name: &str) -> Result<&'a str, Error> {
+    opt.ok_or_else(|| {
+      Error::Message(format!("Error, --{} argument is required.", name))
+    })
   }
-  if !PathBuf::from(&cfs_file.unwrap()).exists() {
-    return Err(Error::Message(format!(
-      "Error, file {} does not exist or cannot be open.",
-      &cfs_file.unwrap()
-    )));
-  }
-  if !PathBuf::from(&ims_file.unwrap()).exists() {
-    return Err(Error::Message(format!(
-      "Error, file {} does not exist or cannot be open.",
-      &ims_file.unwrap()
-    )));
-  }
-  if !PathBuf::from(&hsm_file.unwrap()).exists() {
-    return Err(Error::Message(format!(
-      "Error, file {} does not exist or cannot be open.",
-      &hsm_file.unwrap()
-    )));
+
+  let bos_file = require(bos_file, "bos-file")?;
+  let cfs_file = require(cfs_file, "cfs-file")?;
+  let hsm_file = require(hsm_file, "hsm-file")?;
+  let ims_file = require(ims_file, "ims-file")?;
+  let image_dir = require(image_dir, "image-dir")?;
+
+  for (label, path) in
+    [("bos", bos_file), ("cfs", cfs_file), ("ims", ims_file), ("hsm", hsm_file)]
+  {
+    if !PathBuf::from(path).exists() {
+      return Err(Error::Message(format!(
+        "Error, {} file {} does not exist or cannot be open.",
+        label, path
+      )));
+    }
   }
 
   // ========================================================================================================
@@ -98,33 +96,24 @@ pub async fn exec(
     artifacts: vec![],
   };
 
-  let backup_ims_file = ims_file.map(str::to_string).unwrap();
-  let backup_cfs_file = cfs_file.map(str::to_string).unwrap();
-  let backup_bos_file = bos_file.map(str::to_string).unwrap();
-  let backup_hsm_file = hsm_file.map(str::to_string).unwrap();
+  let backup_ims_file = ims_file.to_string();
+  let backup_cfs_file = cfs_file.to_string();
+  let backup_bos_file = bos_file.to_string();
+  let backup_hsm_file = hsm_file.to_string();
 
   let ims_image_name: String = get_image_name_from_ims_file(&backup_ims_file)?;
   println!(" Image name: {}", ims_image_name);
 
-  println!(
-    "\tinitrd file: {}",
-    image_dir.map(|v| v.to_string() + "/initrd").unwrap()
-  );
-  println!(
-    "\tkernel file: {}",
-    image_dir.map(|v| v.to_string() + "/kernel").unwrap()
-  );
-  println!(
-    "\trootfs file: {}",
-    image_dir.map(|v| v.to_string() + "/rootfs").unwrap()
-  );
+  let initrd_path = format!("{}/initrd", image_dir);
+  let kernel_path = format!("{}/kernel", image_dir);
+  let rootfs_path = format!("{}/rootfs", image_dir);
+
+  println!("\tinitrd file: {}", initrd_path);
+  println!("\tkernel file: {}", kernel_path);
+  println!("\trootfs file: {}", rootfs_path);
 
   // These should come from the manifest, but let's assume these values are correct
-  let vec_backup_image_files = vec![
-    image_dir.map(|v| v.to_string() + "/initrd").unwrap(),
-    image_dir.map(|v| v.to_string() + "/kernel").unwrap(),
-    image_dir.map(|v| v.to_string() + "/rootfs").unwrap(),
-  ];
+  let vec_backup_image_files = vec![initrd_path, kernel_path, rootfs_path];
 
   for file in &vec_backup_image_files {
     if !PathBuf::from(&file).exists() {
@@ -245,7 +234,9 @@ async fn create_bos_sessiontemplate(
   let bos_json: BosSessionTemplate =
     serde_json::from_reader(BufReader::new(file_content))?;
 
-  let bos_sessiontemplate_name = bos_json.name.unwrap();
+  let bos_sessiontemplate_name = bos_json.name.ok_or_else(|| {
+    Error::Message("BOS sessiontemplate file is missing the 'name' field".to_string())
+  })?;
 
   // BOS sessiontemplates need the new ID of the image!
   log::debug!("BOS sessiontemplate name: {}", &bos_sessiontemplate_name);
@@ -570,9 +561,8 @@ async fn s3_upload_image_artifacts(
       "File {:?} ({}) to s3://{}/{}.",
       &file, &file_size, &bucket_name, &full_object_path
     );
-    let etag: String;
-    if fs::metadata(file).unwrap().len() > 1024 * 1024 * 5 {
-      etag = match ims::s3_client::s3_multipart_upload_object(
+    let etag: String = if fs::metadata(file).unwrap().len() > 1024 * 1024 * 5 {
+      match ims::s3_client::s3_multipart_upload_object(
         &sts_value,
         socks5_proxy,
         &full_object_path,
@@ -586,9 +576,9 @@ async fn s3_upload_image_artifacts(
           result
         }
         Err(error) => panic!("Unable to upload file to s3. Error {}", error),
-      };
+      }
     } else {
-      etag = match ims::s3_client::s3_upload_object(
+      match ims::s3_client::s3_upload_object(
         &sts_value,
         socks5_proxy,
         &full_object_path,
@@ -602,8 +592,8 @@ async fn s3_upload_image_artifacts(
           result
         }
         Err(error) => panic!("Unable to upload file to s3. Error {}", error),
-      };
-    }
+      }
+    };
 
     // I'm pretty sure there's a better way to do this...
     if file.contains("kernel") {
@@ -796,7 +786,7 @@ async fn ims_register_image(
   overwrite: bool,
 ) -> anyhow::Result<String> {
   let ims_record = Image {
-    name: ims_image_name.clone().to_string(),
+    name: ims_image_name.to_string(),
     id: None,
     created: None,
     link: None,
@@ -815,12 +805,11 @@ async fn ims_register_image(
   )
   .await?;
 
-  if !list_images_with_same_name.is_empty() {
-    if !overwrite {
+  if !list_images_with_same_name.is_empty()
+    && !overwrite {
       println!("Looks like you do not want to continue, bailing out.");
       std::process::exit(2)
     }
-  }
 
   let json_response = ims::image::http_client::post(
     shasta_token,

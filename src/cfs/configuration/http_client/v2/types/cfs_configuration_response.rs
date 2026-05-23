@@ -34,15 +34,15 @@ impl From<FrontendLayer> for Layer {
   }
 }
 
-impl Into<FrontendLayer> for Layer {
-  fn into(self) -> FrontendLayer {
+impl From<Layer> for FrontendLayer {
+  fn from(val: Layer) -> Self {
     FrontendLayer {
-      name: self.name,
-      clone_url: self.clone_url,
+      name: val.name,
+      clone_url: val.clone_url,
       source: None,
-      commit: self.commit,
-      playbook: self.playbook,
-      branch: self.branch,
+      commit: val.commit,
+      playbook: val.playbook,
+      branch: val.branch,
     }
   }
 }
@@ -71,13 +71,13 @@ impl From<FrontEndAdditionalInventory> for AdditionalInventory {
   }
 }
 
-impl Into<FrontEndAdditionalInventory> for AdditionalInventory {
-  fn into(self) -> FrontEndAdditionalInventory {
+impl From<AdditionalInventory> for FrontEndAdditionalInventory {
+  fn from(val: AdditionalInventory) -> Self {
     FrontEndAdditionalInventory {
-      clone_url: self.clone_url,
-      commit: self.commit,
-      name: self.name,
-      branch: self.branch,
+      clone_url: val.clone_url,
+      commit: val.commit,
+      name: val.name,
+      branch: val.branch,
     }
   }
 }
@@ -106,13 +106,13 @@ impl From<FrontendCfsConfigurationResponse> for CfsConfigurationResponse {
   }
 }
 
-impl Into<FrontendCfsConfigurationResponse> for CfsConfigurationResponse {
-  fn into(self) -> FrontendCfsConfigurationResponse {
+impl From<CfsConfigurationResponse> for FrontendCfsConfigurationResponse {
+  fn from(val: CfsConfigurationResponse) -> Self {
     FrontendCfsConfigurationResponse {
-      name: self.name,
-      last_updated: self.last_updated,
-      layers: self.layers.into_iter().map(Into::into).collect(),
-      additional_inventory: self.additional_inventory.map(Into::into),
+      name: val.name,
+      last_updated: val.last_updated,
+      layers: val.layers.into_iter().map(Into::into).collect(),
+      additional_inventory: val.additional_inventory.map(Into::into),
     }
   }
 }
@@ -136,11 +136,11 @@ impl From<FrontendCfsConfigurationVecResponse> for CfsConfigurationVecResponse {
   }
 }
 
-impl Into<FrontendCfsConfigurationVecResponse> for CfsConfigurationVecResponse {
-  fn into(self) -> FrontendCfsConfigurationVecResponse {
+impl From<CfsConfigurationVecResponse> for FrontendCfsConfigurationVecResponse {
+  fn from(val: CfsConfigurationVecResponse) -> Self {
     FrontendCfsConfigurationVecResponse {
-      configurations: self.configurations.into_iter().map(Into::into).collect(),
-      next: self.next.map(Into::into),
+      configurations: val.configurations.into_iter().map(Into::into).collect(),
+      next: val.next.map(Into::into),
     }
   }
 }
@@ -162,12 +162,12 @@ impl From<FrontendNext> for Next {
   }
 }
 
-impl Into<FrontendNext> for Next {
-  fn into(self) -> FrontendNext {
+impl From<Next> for FrontendNext {
+  fn from(val: Next) -> Self {
     FrontendNext {
-      limit: self.limit,
-      after_id: self.after_id,
-      in_use: self.in_use,
+      limit: val.limit,
+      after_id: val.after_id,
+      in_use: val.in_use,
     }
   }
 }

@@ -1,4 +1,5 @@
 use crate::{
+  common::http,
   error::Error,
   hsm::hw_inventory::ethernet_interfaces::types::EthernetInterface,
 };
@@ -12,17 +13,8 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   eht_interface: ComponentEthernetInterface,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?)
-    .use_rustls_tls();
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/hsm/v2/Inventory/EthernetInterfaces", base_url);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/Inventory/EthernetInterfaces", base_url);
 
   let response = client
     .post(api_url)
@@ -35,25 +27,20 @@ pub async fn post(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.text().await?;
         dbg!(&error_payload);
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn post_ip_addresses(
@@ -63,19 +50,10 @@ pub async fn post_ip_addresses(
   socks5_proxy: Option<&str>,
   eht_interface: ComponentEthernetInterface,
 ) -> Result<EthernetInterface, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?)
-    .use_rustls_tls();
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
-    "{}/{}/{}/IPAddresses",
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/hsm/v2/Inventory/EthernetInterfaces/{}/IPAddresses",
     base_url,
-    "hsm/v2/Inventory/EthernetInterfaces",
     eht_interface.component_id.as_ref().unwrap()
   );
 
@@ -90,24 +68,19 @@ pub async fn post_ip_addresses(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 // Get list of network interfaces
@@ -125,16 +98,11 @@ pub async fn get(
   olther_than: &str,
   newer_than: &str,
 ) -> Result<reqwest::Response, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    shasta_base_url.to_owned() + "/smd/hsm/v2/Inventory/EthernetInterfaces";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/smd/hsm/v2/Inventory/EthernetInterfaces",
+    shasta_base_url
+  );
 
   client
     .get(api_url)
@@ -176,15 +144,8 @@ pub async fn patch(
     component_id: Some(component_id.to_string()),
   };
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
     "{}/smd/hsm/v2/Inventory/EthernetInterfaces/{}",
     shasta_base_url, eth_interface_id
   );

@@ -23,11 +23,11 @@ impl From<FrontEndLink> for Link {
   }
 }
 
-impl Into<FrontEndLink> for Link {
-  fn into(self) -> FrontEndLink {
+impl From<Link> for FrontEndLink {
+  fn from(val: Link) -> Self {
     FrontEndLink {
-      rel: self.rel,
-      href: self.href,
+      rel: val.rel,
+      href: val.href,
     }
   }
 }
@@ -46,10 +46,10 @@ impl From<FrontEndCfs> for Cfs {
   }
 }
 
-impl Into<FrontEndCfs> for Cfs {
-  fn into(self) -> FrontEndCfs {
+impl From<Cfs> for FrontEndCfs {
+  fn from(val: Cfs) -> Self {
     FrontEndCfs {
-      configuration: self.configuration,
+      configuration: val.configuration,
     }
   }
 }
@@ -102,21 +102,21 @@ impl From<FrontEndBootSet> for BootSet {
   }
 }
 
-impl Into<FrontEndBootSet> for BootSet {
-  fn into(self) -> FrontEndBootSet {
+impl From<BootSet> for FrontEndBootSet {
+  fn from(val: BootSet) -> Self {
     FrontEndBootSet {
-      name: self.name,
-      path: self.path,
-      cfs: self.cfs.map(|cfs| cfs.into()),
-      r#type: self.r#type,
-      etag: self.etag,
-      kernel_parameters: self.kernel_parameters,
-      node_list: self.node_list,
-      node_roles_groups: self.node_roles_groups,
-      node_groups: self.node_groups,
-      arch: self.arch,
-      rootfs_provider: self.rootfs_provider,
-      rootfs_provider_passthrough: self.rootfs_provider_passthrough,
+      name: val.name,
+      path: val.path,
+      cfs: val.cfs.map(|cfs| cfs.into()),
+      r#type: val.r#type,
+      etag: val.etag,
+      kernel_parameters: val.kernel_parameters,
+      node_list: val.node_list,
+      node_roles_groups: val.node_roles_groups,
+      node_groups: val.node_groups,
+      arch: val.arch,
+      rootfs_provider: val.rootfs_provider,
+      rootfs_provider_passthrough: val.rootfs_provider_passthrough,
     }
   }
 }
@@ -165,18 +165,18 @@ impl From<FrontEndBosSessionTemplate> for BosSessionTemplate {
   }
 }
 
-impl Into<FrontEndBosSessionTemplate> for BosSessionTemplate {
-  fn into(self) -> FrontEndBosSessionTemplate {
+impl From<BosSessionTemplate> for FrontEndBosSessionTemplate {
+  fn from(val: BosSessionTemplate) -> Self {
     FrontEndBosSessionTemplate {
-      name: self.name,
-      tenant: self.tenant,
-      description: self.description,
-      enable_cfs: self.enable_cfs,
-      cfs: self.cfs.map(|cfs| cfs.into()),
-      boot_sets: self.boot_sets.map(|boot_sets| {
+      name: val.name,
+      tenant: val.tenant,
+      description: val.description,
+      enable_cfs: val.enable_cfs,
+      cfs: val.cfs.map(|cfs| cfs.into()),
+      boot_sets: val.boot_sets.map(|boot_sets| {
         boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
       }),
-      links: self
+      links: val
         .links
         .map(|links| links.into_iter().map(|link| link.into()).collect()),
     }
@@ -241,9 +241,7 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_set| {
-        boot_set
-          .iter()
-          .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
+        boot_set.values().map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()

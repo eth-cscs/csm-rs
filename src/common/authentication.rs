@@ -27,7 +27,7 @@ pub async fn validate_api_token(
 
   match resp_rslt {
     Ok(resp) => {
-      return Ok(resp.error_for_status().map(|_| ())?);
+      Ok(resp.error_for_status().map(|_| ())?)
     }
     Err(error) => Err(Error::Message(format!("Token is not valid: {}", error))),
   }

@@ -1,6 +1,6 @@
 pub mod http_client {
 
-  use crate::error::Error;
+  use crate::{common::http, error::Error};
   use serde_json::Value;
 
   pub fn get_repo_name_from_url(repo_url: &str) -> Result<String, Error> {
@@ -8,36 +8,36 @@ pub mod http_client {
       let gitea_internal_base_url =
         "https://api-gw-service-nmn.local/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_internal_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else if repo_url.starts_with("https://vcs.cmn.alps.cscs.ch") {
       let gitea_external_base_url = "https://vcs.cmn.alps.cscs.ch/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_external_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else if repo_url.starts_with("https://api.cmn.alps.cscs.ch") {
       let gitea_external_base_url = "https://api.cmn.alps.cscs.ch/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_external_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else {
-      return Err(Error::Message(
+      Err(Error::Message(
         "repo url provided does not match gitea internal or external URL"
           .to_string(),
-      ));
-    };
+      ))
+    }
   }
 
   /// Get all refs for a repository
@@ -64,14 +64,7 @@ pub mod http_client {
     shasta_root_cert: &[u8],
     socks5_proxy: Option<&str>,
   ) -> Result<Vec<Value>, Error> {
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
       "{}/api/v1/repos/cray/{}/git/refs",
       gitea_base_url, repo_name
@@ -84,13 +77,9 @@ pub mod http_client {
       .header("Authorization", format!("token {}", gitea_token))
       .send()
       .await
-      .map_err(|error| Error::NetError(error))?;
+      .map_err(Error::NetError)?;
 
-    if response.status().is_success() {
-      response.json().await.map_err(|e| Error::NetError(e))
-    } else {
-      Err(Error::Message(response.text().await?))
-    }
+    http::handle_json_or_text_response(response).await
   }
 
   /// Get most commit id (sha) pointed by a branch
@@ -153,28 +142,20 @@ pub mod http_client {
       .trim_start_matches(&gitea_external_base_url)
       .trim_end_matches(".git");
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url =
       format!("{}/repos/{}/tags/{}", gitea_api_base_url, repo_name, tag);
 
     log::debug!("Request to {}", api_url);
 
-    Ok(
-      client
-        .get(api_url)
-        .header("Authorization", format!("token {}", gitea_token))
-        .send()
-        .await?
-        .json()
-        .await?,
-    )
+    let response = client
+      .get(api_url)
+      .header("Authorization", format!("token {}", gitea_token))
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+
+    http::handle_json_or_text_response(response).await
   }
 
   /// Returns the commit id (sha) related to a tag name
@@ -203,26 +184,18 @@ pub mod http_client {
       site_name, repo_name, tag
     );
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
     log::debug!("Request to {}", api_url);
 
-    let response_rslt = client
-      .get(api_url.clone())
+    let response = client
+      .get(api_url)
       .header("Authorization", format!("token {}", gitea_token))
       .send()
-      .await;
+      .await
+      .map_err(Error::NetError)?;
 
-    match response_rslt {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(Error::NetError(error)),
-    }
+    http::handle_json_or_text_response(response).await
   }
 
   // Get commit details.
@@ -259,14 +232,7 @@ pub mod http_client {
     shasta_root_cert: &[u8],
     socks5_proxy: Option<&str>,
   ) -> Result<Value, crate::error::Error> {
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
       "{}api/v1/repos/{}/git/commits/{}",
       gitea_base_url, repo_name, commitid
@@ -281,12 +247,10 @@ pub mod http_client {
       .await?;
 
     if response.status().is_success() {
-      // Make sure we return a vec if user requesting a single value
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))
+      response.json().await.map_err(Error::NetError)
     } else {
+      // Bespoke: wraps the text body in a synthetic JSON object so callers
+      // can match on `CsmError`. Preserving the existing shape.
       let payload = response.text().await?;
       Err(Error::CsmError(serde_json::json!({ "message": payload })))
     }
@@ -302,13 +266,7 @@ pub mod http_client {
     let repo_url =
       gitea_api_base_url.to_owned() + "/api/v1/repos" + repo_name + "/commits";
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
     let mut resp: Vec<Value> = client
       .get(repo_url)

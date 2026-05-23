@@ -86,7 +86,7 @@ pub async fn exec(
         shasta_root_cert,
         socks5_proxy,
         &image_created_by_cfs_session_vec,
-        &bos_bootparameters_vec,
+        bos_bootparameters_vec,
         dry_run,
       )
       .await?;
@@ -107,7 +107,7 @@ pub async fn exec(
       shasta_base_url,
       shasta_root_cert,
       socks5_proxy,
-      &cfs_session_name,
+      cfs_session_name,
     )
     .await?;
   }
@@ -183,7 +183,7 @@ async fn cancel_session(
           cfs_component
             .id
             .as_ref()
-            .is_some_and(|id| xname_vec.contains(&id))
+            .is_some_and(|id| xname_vec.contains(id))
         })
         .cloned()
         .collect()

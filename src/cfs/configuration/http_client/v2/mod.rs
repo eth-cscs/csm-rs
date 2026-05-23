@@ -1,14 +1,15 @@
 pub mod types;
 
-use serde_json::Value;
-
 use crate::{
   cfs::configuration::http_client::v2::types::{
     cfs_configuration_request::CfsConfigurationRequest,
     cfs_configuration_response::CfsConfigurationResponse,
   },
+  common::http,
   error::Error,
 };
+
+const STUPID_LIMIT: i64 = 100000;
 
 pub async fn get(
   shasta_token: &str,
@@ -22,65 +23,31 @@ pub async fn get(
     configuration_name_opt.unwrap_or("all available")
   );
 
-  let stupid_limit = 100000;
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = if let Some(configuration_name) = configuration_name_opt
-  {
-    shasta_base_url.to_owned() + "/cfs/v2/configurations/" + configuration_name
+  let api_url = if let Some(name) = configuration_name_opt {
+    format!("{}/cfs/v2/configurations/{}", shasta_base_url, name)
   } else {
-    shasta_base_url.to_owned() + "/cfs/v2/configurations"
+    format!("{}/cfs/v2/configurations", shasta_base_url)
   };
 
-  let response = client
-    .get(api_url)
-    .query(&[("limit", stupid_limit)])
-    .bearer_auth(shasta_token)
-    .send()
+  if configuration_name_opt.is_some() {
+    let payload: CfsConfigurationResponse = http::get_json_with_query(
+      &client,
+      &api_url,
+      shasta_token,
+      &[("limit", STUPID_LIMIT)],
+    )
+    .await?;
+    Ok(vec![payload])
+  } else {
+    http::get_json_with_query(
+      &client,
+      &api_url,
+      shasta_token,
+      &[("limit", STUPID_LIMIT)],
+    )
     .await
-    .map_err(|error| Error::NetError(error))?;
-
-  let status = response.status();
-  let bytes = response.bytes().await.map_err(Error::NetError)?;
-
-  if status.is_success() {
-    if configuration_name_opt.is_some() {
-      let payload = serde_json::from_slice::<CfsConfigurationResponse>(&bytes)
-        .map_err(Error::SerdeJsonError)?;
-      Ok(vec![payload])
-    } else {
-      let payload =
-        serde_json::from_slice(&bytes).map_err(Error::SerdeJsonError)?;
-      Ok(payload)
-
-      /* let payload: Vec<Value> =
-        serde_json::from_slice(&bytes)?;
-
-      for value in payload {
-        println!("{}", serde_json::to_string_pretty(&value)?);
-        let test: Result<CfsConfigurationResponse, serde_json::Error> = serde_json::from_value(value);
-        if let Err(value) = test {
-          println!("{}", value);
-          std::process::exit(0);
-        }
-      }
-
-      Ok(Vec::new()) */
-    }
-  } else {
-    if let Ok(json) = serde_json::from_slice::<Value>(&bytes) {
-      Err(Error::CsmError(json))
-    } else {
-      let payload = String::from_utf8_lossy(&bytes).to_string();
-      Err(Error::Message(payload))
-    }
   }
 }
 
@@ -104,47 +71,20 @@ pub async fn put(
   log::info!("Create CFS configuration '{}'", configuration_name);
   log::debug!("Create CFS configuration request:\n{:#?}", configuration);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/cfs/v2/configurations/{}",
+    shasta_base_url, configuration_name
+  );
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url =
-    shasta_base_url.to_owned() + "/cfs/v2/configurations/" + configuration_name;
-
-  let request_payload = serde_json::json!({"layers": configuration.layers});
+  let request_payload = serde_json::json!({ "layers": configuration.layers });
 
   log::debug!(
     "CFS configuration request payload:\n{}",
     serde_json::to_string_pretty(&request_payload).unwrap()
   );
 
-  let response = client
-    .put(api_url)
-    .json(&request_payload)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))?,
-    )
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+  http::put_json(&client, &api_url, shasta_token, &request_payload).await
 }
 
 pub async fn delete(
@@ -156,32 +96,10 @@ pub async fn delete(
 ) -> Result<(), Error> {
   log::info!("Delete CFS configuration {:?}", configuration_id);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url =
-    shasta_base_url.to_owned() + "/cfs/v2/configurations/" + configuration_id;
-
-  let response = client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(())
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/cfs/v2/configurations/{}",
+    shasta_base_url, configuration_id
+  );
+  http::delete(&client, &api_url, shasta_token).await
 }

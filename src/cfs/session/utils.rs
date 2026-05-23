@@ -115,7 +115,7 @@ pub fn filter(
       .is_some_and(|target_xname_vec| {
         target_xname_vec
           .iter()
-          .any(|target_xname| xname_available_vec.contains(&target_xname))
+          .any(|target_xname| xname_available_vec.contains(target_xname))
       })
   });
 
@@ -152,7 +152,7 @@ pub fn filter_by_cofiguration(
   );
 
   cfs_session_vec.retain(|cfs_session| {
-    cfs_session.configuration_name().as_deref() == Some(cfs_configuration_name)
+    cfs_session.configuration_name() == Some(cfs_configuration_name)
   });
 }
 
@@ -177,7 +177,7 @@ pub fn find_cfs_session_related_to_image_id(
 /// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
 /// sessions
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
-  cfs_session_vec: &Vec<CfsSessionGetResponse>,
+  cfs_session_vec: &[CfsSessionGetResponse],
 ) -> Vec<(String, String, Vec<String>)> {
   let mut image_id_cfs_configuration_target_from_cfs_session: Vec<(
     String,
@@ -377,11 +377,7 @@ pub async fn get_list_xnames_related_to_session(
   };
 
   let target_xname_vec =
-    if let Some(target_xname) = cfs_session.get_target_xname() {
-      target_xname
-    } else {
-      vec![]
-    };
+    cfs_session.get_target_xname().unwrap_or_default();
 
   Ok([target_xname_vec, target_group_xname_vec].concat())
 }

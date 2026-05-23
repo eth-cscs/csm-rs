@@ -4,25 +4,16 @@ use crate::{error::Error, hsm};
 use serde_json::Value;
 use tokio::sync::Semaphore;
 
+/// `(node_xname, hw_component_name -> count)` for one node.
+pub type NodeHwComponentCount = (String, HashMap<String, usize>);
+
 // Returns a tuple (target_hsm, parent_hsm) with 2 list of nodes and its hardware components.
 // The left tuple element are the nodes moved from the
 pub fn resolve_hw_description_to_xnames(
-  mut target_hsm_node_hw_component_count_vec: Vec<(
-    String,
-    HashMap<String, usize>,
-  )>,
-  mut parent_hsm_node_hw_component_count_vec: Vec<(
-    String,
-    HashMap<String, usize>,
-  )>,
+  mut target_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
+  mut parent_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
   user_defined_target_hsm_hw_component_count_hashmap: HashMap<String, usize>,
-) -> Result<
-  (
-    Vec<(String, HashMap<String, usize>)>,
-    Vec<(String, HashMap<String, usize>)>,
-  ),
-  Error,
-> {
+) -> Result<(Vec<NodeHwComponentCount>, Vec<NodeHwComponentCount>), Error> {
   // *********************************************************************************************************
   // CALCULATE 'COMBINED HSM' WITH TARGET HSM AND PARENT HSM ELEMENTS COMBINED
   // NOTE: PARENT HSM may contain elements in TARGET HSM, we need to only add those xnames
@@ -108,27 +99,22 @@ pub fn get_best_candidate_in_hsm_pin(
   // Get node with highest normalized score (best candidate)
   let best_candidate: (String, f32) = hsm_score_vec.first().unwrap().clone();
 
-  if let Some(best_candiate) = hsm_hw_component_vec
+  hsm_hw_component_vec
     .iter()
-    .find(|(node, _)| node.eq(&best_candidate.0))
-  {
-    Some((best_candidate, best_candiate.1.clone()))
-  } else {
-    None
-  }
+    .find(|(node, _)| node.eq(&best_candidate.0)).map(|best_candiate| (best_candidate, best_candiate.1.clone()))
 }
 
 pub fn get_best_candidate_in_target_and_parent_hsm_pin(
   target_hsm_node_score_tuple_vec: &mut [(String, f32)],
   parent_hsm_node_score_tuple_vec: &mut [(String, f32)],
-  target_hsm_node_hw_component_count_vec: &mut Vec<(
+  target_hsm_node_hw_component_count_vec: &mut [(
     String,
     HashMap<String, usize>,
-  )>,
-  parent_hsm_node_hw_component_count_vec: &Vec<(
+  )],
+  parent_hsm_node_hw_component_count_vec: &[(
     String,
     HashMap<String, usize>,
-  )>,
+  )],
 ) -> Option<((String, f32), HashMap<String, usize>)> {
   // Get best candidate in 'target' HSM group
   let target_best_candidate_tuple = get_best_candidate_in_hsm_pin(
@@ -163,23 +149,16 @@ pub fn calculate_target_hsm_pin(
   // equivalent to target_hsm_node_hw_component_count_vec minus
   // hw_components_deltas_from_target_hsm_to_parent_hsm). Note hw componets needs to be grouped/filtered
   // based on user input
-  combination_target_parent_hsm_node_hw_component_count_vec: &mut Vec<(
-    String,
-    HashMap<String, usize>,
-  )>, // list
+  combination_target_parent_hsm_node_hw_component_count_vec: &mut Vec<
+    NodeHwComponentCount,
+  >, // list
   // of hw component counters in target HSM group
-  target_hsm_node_hw_component_count_vec: &mut Vec<(
-    String,
-    HashMap<String, usize>,
-  )>,
-  parent_hsm_node_hw_component_count_vec: &mut Vec<(
-    String,
-    HashMap<String, usize>,
-  )>,
+  target_hsm_node_hw_component_count_vec: &mut Vec<NodeHwComponentCount>,
+  parent_hsm_node_hw_component_count_vec: &mut Vec<NodeHwComponentCount>,
   hw_component_scarcity_scores_hashmap: &HashMap<String, f32>, // hw
                                                                // component type score for as much hsm groups related to the stakeholders using these
                                                                // nodes
-) -> Result<Vec<(String, HashMap<String, usize>)>, Error> {
+) -> Result<Vec<NodeHwComponentCount>, Error> {
   ////////////////////////////////
   // Initialize
 
@@ -395,9 +374,7 @@ pub fn calculate_hw_component_scarcity_scores(
   let total_num_hw_components: usize = hsm_node_hw_component_count
     .iter()
     .flat_map(|(_, hw_component_qty_hashmap)| {
-      hw_component_qty_hashmap
-        .iter()
-        .map(|(_, hw_component_qty)| hw_component_qty)
+      hw_component_qty_hashmap.values()
     })
     .sum();
 
@@ -637,7 +614,8 @@ pub async fn get_hsm_node_hw_component_counter(
   let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
   // Get HW inventory details for parent HSM group
-  for hsm_member in hsm_group_member_vec.to_owned() {
+  #[allow(clippy::unnecessary_to_owned)] // `hsm_member` is moved into the `async move` block below
+  for hsm_member in hsm_group_member_vec.iter().cloned() {
     let shasta_token_string = shasta_token.to_string(); // TODO: make it static
     let shasta_base_url_string = shasta_base_url.to_string(); // TODO: make it static
     let shasta_root_cert_vec = shasta_root_cert.to_vec(); // TODO: make it static

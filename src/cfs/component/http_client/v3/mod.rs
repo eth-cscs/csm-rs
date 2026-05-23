@@ -6,7 +6,9 @@ use serde_json::Value;
 use tokio::sync::Semaphore;
 use types::ComponentVec;
 
-use crate::{cfs::component::http_client::v3::types::Component, error::Error};
+use crate::{
+  cfs::component::http_client::v3::types::Component, common::http, error::Error,
+};
 
 /// Get CFS options
 /// Retutns a JSON object with the options available in the CFS API
@@ -16,35 +18,17 @@ pub async fn get_options(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/options";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/cfs/v3/options", shasta_base_url);
 
   let response = client
     .get(api_url)
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }
 
 pub async fn get(
@@ -55,15 +39,8 @@ pub async fn get(
   components_ids: Option<&str>,
   status: Option<&str>,
 ) -> Result<Vec<Component>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/components";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
 
   let response = client
     .get(api_url)
@@ -71,21 +48,11 @@ pub async fn get(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json::<ComponentVec>()
-      .await
-      .map(|component_vec| component_vec.components)
-      .map_err(|e| Error::NetError(e))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  let payload: ComponentVec =
+    http::handle_json_or_text_response(response).await?;
+  Ok(payload.components)
 }
 
 pub async fn get_single_by_id(
@@ -95,36 +62,18 @@ pub async fn get_single_by_id(
   socks5_proxy: Option<&str>,
   component_id: &str,
 ) -> Result<Component, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url =
-    shasta_base_url.to_owned() + "/cfs/v3/components/" + component_id;
+    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
 
   let response = client
     .get(api_url)
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }
 
 /// Get components data.
@@ -213,15 +162,8 @@ pub async fn get_query(
 ) -> Result<Vec<Component>, Error> {
   let stupid_limit = 100000;
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/components";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
 
   let response = client
     .get(api_url)
@@ -234,21 +176,11 @@ pub async fn get_query(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map(|component_vec: ComponentVec| component_vec.components)
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  let payload: ComponentVec =
+    http::handle_json_or_text_response(response).await?;
+  Ok(payload.components)
 }
 
 pub async fn patch_component(
@@ -258,17 +190,12 @@ pub async fn patch_component(
   socks5_proxy: Option<&str>,
   component: Component,
 ) -> Result<Vec<Value>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned()
-    + "/cfs/v3/components/"
-    + &component.clone().id.unwrap();
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/cfs/v3/components/{}",
+    shasta_base_url,
+    component.clone().id.unwrap()
+  );
 
   let response = client
     .patch(api_url)
@@ -276,20 +203,9 @@ pub async fn patch_component(
     .json(&component)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }
 
 pub async fn patch_component_list(
@@ -299,15 +215,8 @@ pub async fn patch_component_list(
   socks5_proxy: Option<&str>,
   component_list: Vec<Component>,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/components";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
 
   let response = client
     .patch(api_url)
@@ -315,15 +224,12 @@ pub async fn patch_component_list(
     .json(&component_list)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
   if response.status().is_success() {
     Ok(())
   } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
+    let payload = response.text().await.map_err(Error::NetError)?;
     Err(Error::Message(payload))
   }
 }
@@ -335,38 +241,13 @@ pub async fn put_component(
   socks5_proxy: Option<&str>,
   component: Component,
 ) -> Result<Component, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned()
-    + "/cfs/v3/components/"
-    + &component.clone().id.unwrap();
-
-  let response = client
-    .put(api_url)
-    .bearer_auth(shasta_token)
-    .json(&component)
-    .send()
-    .await
-    .map_err(|e| Error::NetError(e))?;
-
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/cfs/v3/components/{}",
+    shasta_base_url,
+    component.clone().id.unwrap()
+  );
+  http::put_json(&client, &api_url, shasta_token, &component).await
 }
 
 pub async fn put_component_list(
@@ -401,34 +282,16 @@ pub async fn delete_single_component(
   socks5_proxy: Option<&str>,
   component_id: &str,
 ) -> Result<Component, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url =
-    shasta_base_url.to_owned() + "/cfs/v3/components/" + component_id;
+    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
 
   let response = client
     .delete(api_url)
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }

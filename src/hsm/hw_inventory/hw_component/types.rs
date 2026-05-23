@@ -85,9 +85,9 @@ impl From<FrontEndArtifactType> for ArtifactType {
   }
 }
 
-impl Into<FrontEndArtifactType> for ArtifactType {
-  fn into(self) -> FrontEndArtifactType {
-    match self {
+impl From<ArtifactType> for FrontEndArtifactType {
+  fn from(val: ArtifactType) -> Self {
+    match val {
       ArtifactType::Memory => FrontEndArtifactType::Memory,
       ArtifactType::Processor => FrontEndArtifactType::Processor,
       ArtifactType::NodeAccel => FrontEndArtifactType::NodeAccel,
@@ -147,23 +147,23 @@ impl From<FrontEndNodeSummary> for NodeSummary {
   }
 }
 
-impl Into<FrontEndNodeSummary> for NodeSummary {
-  fn into(self) -> FrontEndNodeSummary {
+impl From<NodeSummary> for FrontEndNodeSummary {
+  fn from(val: NodeSummary) -> Self {
     FrontEndNodeSummary {
-      xname: self.xname,
-      r#type: self.r#type,
-      processors: self
+      xname: val.xname,
+      r#type: val.r#type,
+      processors: val
         .processors
         .into_iter()
         .map(ArtifactSummary::into)
         .collect(),
-      memory: self.memory.into_iter().map(ArtifactSummary::into).collect(),
-      node_accels: self
+      memory: val.memory.into_iter().map(ArtifactSummary::into).collect(),
+      node_accels: val
         .node_accels
         .into_iter()
         .map(ArtifactSummary::into)
         .collect(),
-      node_hsn_nics: self
+      node_hsn_nics: val
         .node_hsn_nics
         .into_iter()
         .map(ArtifactSummary::into)
@@ -257,17 +257,17 @@ impl From<FrontEndArtifactSummary> for ArtifactSummary {
     ArtifactSummary {
       xname: value.xname,
       r#type: value.r#type.into(),
-      info: value.info.map(|v| v),
+      info: value.info,
     }
   }
 }
 
-impl Into<FrontEndArtifactSummary> for ArtifactSummary {
-  fn into(self) -> FrontEndArtifactSummary {
+impl From<ArtifactSummary> for FrontEndArtifactSummary {
+  fn from(val: ArtifactSummary) -> Self {
     FrontEndArtifactSummary {
-      xname: self.xname,
-      r#type: self.r#type.into(),
-      info: self.info.map(|v| v),
+      xname: val.xname,
+      r#type: val.r#type.into(),
+      info: val.info,
     }
   }
 }
@@ -444,31 +444,31 @@ pub struct RedfishProcessorFRUInfo {
 impl From<FrontEndRedfishProcessorFRUInfo> for RedfishProcessorFRUInfo {
   fn from(value: FrontEndRedfishProcessorFRUInfo) -> Self {
     RedfishProcessorFRUInfo {
-      instruction_set: value.instruction_set.map(|v| v),
-      manufacturer: value.manufacturer.map(|v| v),
-      max_speed_mhz: value.max_speed_mhz.map(|v| v),
-      model: value.model.map(|v| v),
-      processor_architecture: value.processor_architecture.map(|v| v),
+      instruction_set: value.instruction_set,
+      manufacturer: value.manufacturer,
+      max_speed_mhz: value.max_speed_mhz,
+      model: value.model,
+      processor_architecture: value.processor_architecture,
       processor_id: None,
-      processor_type: value.processor_type.map(|v| v),
-      total_cores: value.total_cores.map(|v| v),
-      total_threads: value.total_threads.map(|v| v),
+      processor_type: value.processor_type,
+      total_cores: value.total_cores,
+      total_threads: value.total_threads,
     }
   }
 }
 
-impl Into<FrontEndRedfishProcessorFRUInfo> for RedfishProcessorFRUInfo {
-  fn into(self) -> FrontEndRedfishProcessorFRUInfo {
+impl From<RedfishProcessorFRUInfo> for FrontEndRedfishProcessorFRUInfo {
+  fn from(val: RedfishProcessorFRUInfo) -> Self {
     FrontEndRedfishProcessorFRUInfo {
-      instruction_set: self.instruction_set.map(|v| v),
-      manufacturer: self.manufacturer.map(|v| v),
-      max_speed_mhz: self.max_speed_mhz.map(|v| v),
-      model: self.model.map(|v| v),
-      processor_architecture: self.processor_architecture.map(|v| v),
+      instruction_set: val.instruction_set,
+      manufacturer: val.manufacturer,
+      max_speed_mhz: val.max_speed_mhz,
+      model: val.model,
+      processor_architecture: val.processor_architecture,
       processor_id: None, // FIXME: Implement From and Into traits for this field/type
-      processor_type: self.processor_type.map(|v| v),
-      total_cores: self.total_cores.map(|v| v),
-      total_threads: self.total_threads.map(|v| v),
+      processor_type: val.processor_type,
+      total_cores: val.total_cores,
+      total_threads: val.total_threads,
     }
   }
 }
@@ -493,9 +493,9 @@ pub struct HWInvByFRUProcessor {
 impl From<FrontEndHWInvByFRUProcessor> for HWInvByFRUProcessor {
   fn from(value: FrontEndHWInvByFRUProcessor) -> Self {
     HWInvByFRUProcessor {
-      fru_id: value.fru_id.map(|v| v),
-      r#type: value.r#type.map(|v| v),
-      fru_sub_type: value.fru_sub_type.map(|v| v),
+      fru_id: value.fru_id,
+      r#type: value.r#type,
+      fru_sub_type: value.fru_sub_type,
       hw_inventory_by_fru_type: value.hw_inventory_by_fru_type,
       processor_fru_info: RedfishProcessorFRUInfo::from(
         value.processor_fru_info,
@@ -504,14 +504,14 @@ impl From<FrontEndHWInvByFRUProcessor> for HWInvByFRUProcessor {
   }
 }
 
-impl Into<FrontEndHWInvByFRUProcessor> for HWInvByFRUProcessor {
-  fn into(self) -> FrontEndHWInvByFRUProcessor {
+impl From<HWInvByFRUProcessor> for FrontEndHWInvByFRUProcessor {
+  fn from(val: HWInvByFRUProcessor) -> Self {
     FrontEndHWInvByFRUProcessor {
-      fru_id: self.fru_id.map(|v| v),
-      r#type: self.r#type.map(|v| v),
-      fru_sub_type: self.fru_sub_type.map(|v| v),
-      hw_inventory_by_fru_type: self.hw_inventory_by_fru_type,
-      processor_fru_info: self.processor_fru_info.into(),
+      fru_id: val.fru_id,
+      r#type: val.r#type,
+      fru_sub_type: val.fru_sub_type,
+      hw_inventory_by_fru_type: val.hw_inventory_by_fru_type,
+      processor_fru_info: val.processor_fru_info.into(),
     }
   }
 }
@@ -559,37 +559,37 @@ pub struct RedfishMemoryFRUInfo {
 impl From<FrontEndRedfishMemoryFRUInfo> for RedfishMemoryFRUInfo {
   fn from(value: FrontEndRedfishMemoryFRUInfo) -> Self {
     RedfishMemoryFRUInfo {
-      base_module_type: value.base_module_type.map(|v| v),
-      bus_width_bits: value.bus_width_bits.map(|v| v),
-      capacity_mib: value.capacity_mib.map(|v| v),
-      data_width_bits: value.data_width_bits.map(|v| v),
-      error_correction: value.error_correction.map(|v| v),
-      manufacturer: value.manufacturer.map(|v| v),
-      memory_type: value.memory_type.map(|v| v),
-      memory_device_type: value.memory_device_type.map(|v| v),
-      operating_speed_mhz: value.operating_speed_mhz.map(|v| v),
-      part_number: value.part_number.map(|v| v),
-      rank_count: value.rank_count.map(|v| v),
-      serial_number: value.serial_number.map(|v| v),
+      base_module_type: value.base_module_type,
+      bus_width_bits: value.bus_width_bits,
+      capacity_mib: value.capacity_mib,
+      data_width_bits: value.data_width_bits,
+      error_correction: value.error_correction,
+      manufacturer: value.manufacturer,
+      memory_type: value.memory_type,
+      memory_device_type: value.memory_device_type,
+      operating_speed_mhz: value.operating_speed_mhz,
+      part_number: value.part_number,
+      rank_count: value.rank_count,
+      serial_number: value.serial_number,
     }
   }
 }
 
-impl Into<FrontEndRedfishMemoryFRUInfo> for RedfishMemoryFRUInfo {
-  fn into(self) -> FrontEndRedfishMemoryFRUInfo {
+impl From<RedfishMemoryFRUInfo> for FrontEndRedfishMemoryFRUInfo {
+  fn from(val: RedfishMemoryFRUInfo) -> Self {
     FrontEndRedfishMemoryFRUInfo {
-      base_module_type: self.base_module_type.map(|v| v),
-      bus_width_bits: self.bus_width_bits.map(|v| v),
-      capacity_mib: self.capacity_mib.map(|v| v),
-      data_width_bits: self.data_width_bits.map(|v| v),
-      error_correction: self.error_correction.map(|v| v),
-      manufacturer: self.manufacturer.map(|v| v),
-      memory_type: self.memory_type.map(|v| v),
-      memory_device_type: self.memory_device_type.map(|v| v),
-      operating_speed_mhz: self.operating_speed_mhz.map(|v| v),
-      part_number: self.part_number.map(|v| v),
-      rank_count: self.rank_count.map(|v| v),
-      serial_number: self.serial_number.map(|v| v),
+      base_module_type: val.base_module_type,
+      bus_width_bits: val.bus_width_bits,
+      capacity_mib: val.capacity_mib,
+      data_width_bits: val.data_width_bits,
+      error_correction: val.error_correction,
+      manufacturer: val.manufacturer,
+      memory_type: val.memory_type,
+      memory_device_type: val.memory_device_type,
+      operating_speed_mhz: val.operating_speed_mhz,
+      part_number: val.part_number,
+      rank_count: val.rank_count,
+      serial_number: val.serial_number,
     }
   }
 }
@@ -614,23 +614,23 @@ pub struct HWInvByFRUMemory {
 impl From<FrontEndHWInvByFRUMemory> for HWInvByFRUMemory {
   fn from(value: FrontEndHWInvByFRUMemory) -> Self {
     HWInvByFRUMemory {
-      fru_id: value.fru_id.map(|v| v),
-      r#type: value.r#type.map(|v| v),
-      fru_sub_type: value.fru_sub_type.map(|v| v),
+      fru_id: value.fru_id,
+      r#type: value.r#type,
+      fru_sub_type: value.fru_sub_type,
       hw_inventory_by_fru_type: value.hw_inventory_by_fru_type,
       memory_fru_info: RedfishMemoryFRUInfo::from(value.memory_fru_info),
     }
   }
 }
 
-impl Into<FrontEndHWInvByFRUMemory> for HWInvByFRUMemory {
-  fn into(self) -> FrontEndHWInvByFRUMemory {
+impl From<HWInvByFRUMemory> for FrontEndHWInvByFRUMemory {
+  fn from(val: HWInvByFRUMemory) -> Self {
     FrontEndHWInvByFRUMemory {
-      fru_id: self.fru_id.map(|v| v),
-      r#type: self.r#type.map(|v| v),
-      fru_sub_type: self.fru_sub_type.map(|v| v),
-      hw_inventory_by_fru_type: self.hw_inventory_by_fru_type,
-      memory_fru_info: self.memory_fru_info.into(),
+      fru_id: val.fru_id,
+      r#type: val.r#type,
+      fru_sub_type: val.fru_sub_type,
+      hw_inventory_by_fru_type: val.hw_inventory_by_fru_type,
+      memory_fru_info: val.memory_fru_info.into(),
     }
   }
 }
@@ -656,9 +656,9 @@ pub struct HWInvByFRUNodeAccel {
 impl From<FrontEndHWInvByFRUNodeAccel> for HWInvByFRUNodeAccel {
   fn from(value: FrontEndHWInvByFRUNodeAccel) -> Self {
     HWInvByFRUNodeAccel {
-      fru_id: value.fru_id.map(|v| v),
-      r#type: value.r#type.map(|v| v),
-      fru_sub_type: value.fru_sub_type.map(|v| v),
+      fru_id: value.fru_id,
+      r#type: value.r#type,
+      fru_sub_type: value.fru_sub_type,
       hw_inventory_by_fru_type: value.hw_inventory_by_fru_type,
       node_accel_fru_info: RedfishProcessorFRUInfo::from(
         value.node_accel_fru_info,
@@ -667,14 +667,14 @@ impl From<FrontEndHWInvByFRUNodeAccel> for HWInvByFRUNodeAccel {
   }
 }
 
-impl Into<FrontEndHWInvByFRUNodeAccel> for HWInvByFRUNodeAccel {
-  fn into(self) -> FrontEndHWInvByFRUNodeAccel {
+impl From<HWInvByFRUNodeAccel> for FrontEndHWInvByFRUNodeAccel {
+  fn from(val: HWInvByFRUNodeAccel) -> Self {
     FrontEndHWInvByFRUNodeAccel {
-      fru_id: self.fru_id.map(|v| v),
-      r#type: self.r#type.map(|v| v),
-      fru_sub_type: self.fru_sub_type.map(|v| v),
-      hw_inventory_by_fru_type: self.hw_inventory_by_fru_type,
-      node_accel_fru_info: self.node_accel_fru_info.into(),
+      fru_id: val.fru_id,
+      r#type: val.r#type,
+      fru_sub_type: val.fru_sub_type,
+      hw_inventory_by_fru_type: val.hw_inventory_by_fru_type,
+      node_accel_fru_info: val.node_accel_fru_info.into(),
     }
   }
 }
@@ -701,23 +701,23 @@ pub struct HSNNICFRUInfo {
 impl From<FrontEndHSNNICFRUInfo> for HSNNICFRUInfo {
   fn from(value: FrontEndHSNNICFRUInfo) -> Self {
     HSNNICFRUInfo {
-      manufacturer: value.manufacturer.map(|v| v),
-      model: value.model.map(|v| v),
-      part_number: value.part_number.map(|v| v),
-      sku: value.sku.map(|v| v),
-      serial_number: value.serial_number.map(|v| v),
+      manufacturer: value.manufacturer,
+      model: value.model,
+      part_number: value.part_number,
+      sku: value.sku,
+      serial_number: value.serial_number,
     }
   }
 }
 
-impl Into<FrontEndHSNNICFRUInfo> for HSNNICFRUInfo {
-  fn into(self) -> FrontEndHSNNICFRUInfo {
+impl From<HSNNICFRUInfo> for FrontEndHSNNICFRUInfo {
+  fn from(val: HSNNICFRUInfo) -> Self {
     FrontEndHSNNICFRUInfo {
-      manufacturer: self.manufacturer.map(|v| v),
-      model: self.model.map(|v| v),
-      part_number: self.part_number.map(|v| v),
-      sku: self.sku.map(|v| v),
-      serial_number: self.serial_number.map(|v| v),
+      manufacturer: val.manufacturer,
+      model: val.model,
+      part_number: val.part_number,
+      sku: val.sku,
+      serial_number: val.serial_number,
     }
   }
 }
@@ -742,23 +742,23 @@ pub struct HWInvByFRUHSNNIC {
 impl From<FrontEndHWInvByFRUHSNNIC> for HWInvByFRUHSNNIC {
   fn from(value: FrontEndHWInvByFRUHSNNIC) -> Self {
     HWInvByFRUHSNNIC {
-      fru_id: value.fru_id.map(|v| v),
-      r#type: value.r#type.map(|v| v),
-      fru_sub_type: value.fru_sub_type.map(|v| v),
+      fru_id: value.fru_id,
+      r#type: value.r#type,
+      fru_sub_type: value.fru_sub_type,
       hw_inventory_by_fru_type: value.hw_inventory_by_fru_type,
       hsn_nic_fru_info: HSNNICFRUInfo::from(value.hsn_nic_fru_info),
     }
   }
 }
 
-impl Into<FrontEndHWInvByFRUHSNNIC> for HWInvByFRUHSNNIC {
-  fn into(self) -> FrontEndHWInvByFRUHSNNIC {
+impl From<HWInvByFRUHSNNIC> for FrontEndHWInvByFRUHSNNIC {
+  fn from(val: HWInvByFRUHSNNIC) -> Self {
     FrontEndHWInvByFRUHSNNIC {
-      fru_id: self.fru_id.map(|v| v),
-      r#type: self.r#type.map(|v| v),
-      fru_sub_type: self.fru_sub_type.map(|v| v),
-      hw_inventory_by_fru_type: self.hw_inventory_by_fru_type,
-      hsn_nic_fru_info: self.hsn_nic_fru_info.into(),
+      fru_id: val.fru_id,
+      r#type: val.r#type,
+      fru_sub_type: val.fru_sub_type,
+      hw_inventory_by_fru_type: val.hw_inventory_by_fru_type,
+      hsn_nic_fru_info: val.hsn_nic_fru_info.into(),
     }
   }
 }
@@ -1027,17 +1027,17 @@ pub struct ProcessorSummary {
 impl From<FrontEndProcessorSummary> for ProcessorSummary {
   fn from(value: FrontEndProcessorSummary) -> Self {
     ProcessorSummary {
-      count: value.count.map(|v| v),
-      model: value.model.map(|v| v),
+      count: value.count,
+      model: value.model,
     }
   }
 }
 
-impl Into<FrontEndProcessorSummary> for ProcessorSummary {
-  fn into(self) -> FrontEndProcessorSummary {
+impl From<ProcessorSummary> for FrontEndProcessorSummary {
+  fn from(val: ProcessorSummary) -> Self {
     FrontEndProcessorSummary {
-      count: self.count.map(|v| v),
-      model: self.model.map(|v| v),
+      count: val.count,
+      model: val.model,
     }
   }
 }
@@ -1052,15 +1052,15 @@ pub struct MemorySummary {
 impl From<FrontEndMemorySummary> for MemorySummary {
   fn from(value: FrontEndMemorySummary) -> Self {
     MemorySummary {
-      total_system_memory_gib: value.total_system_memory_gib.map(|v| v),
+      total_system_memory_gib: value.total_system_memory_gib,
     }
   }
 }
 
-impl Into<FrontEndMemorySummary> for MemorySummary {
-  fn into(self) -> FrontEndMemorySummary {
+impl From<MemorySummary> for FrontEndMemorySummary {
+  fn from(val: MemorySummary) -> Self {
     FrontEndMemorySummary {
-      total_system_memory_gib: self.total_system_memory_gib.map(|v| v),
+      total_system_memory_gib: val.total_system_memory_gib,
     }
   }
 }
@@ -1090,25 +1090,25 @@ pub struct RedfishSystemLocationInfo {
 impl From<FrontEndRedfishSystemLocationInfo> for RedfishSystemLocationInfo {
   fn from(value: FrontEndRedfishSystemLocationInfo) -> Self {
     RedfishSystemLocationInfo {
-      id: value.id.map(|v| v),
-      name: value.name.map(|v| v),
-      description: value.description.map(|v| v),
-      hostname: value.hostname.map(|v| v),
+      id: value.id,
+      name: value.name,
+      description: value.description,
+      hostname: value.hostname,
       processor_summary: value.processor_summary.map(ProcessorSummary::from),
       memory_summary: value.memory_summary.map(MemorySummary::from),
     }
   }
 }
 
-impl Into<FrontEndRedfishSystemLocationInfo> for RedfishSystemLocationInfo {
-  fn into(self) -> FrontEndRedfishSystemLocationInfo {
+impl From<RedfishSystemLocationInfo> for FrontEndRedfishSystemLocationInfo {
+  fn from(val: RedfishSystemLocationInfo) -> Self {
     FrontEndRedfishSystemLocationInfo {
-      id: self.id.map(|v| v),
-      name: self.name.map(|v| v),
-      description: self.description.map(|v| v),
-      hostname: self.hostname.map(|v| v),
-      processor_summary: self.processor_summary.map(|v| v.into()),
-      memory_summary: self.memory_summary.map(|v| v.into()),
+      id: val.id,
+      name: val.name,
+      description: val.description,
+      hostname: val.hostname,
+      processor_summary: val.processor_summary.map(|v| v.into()),
+      memory_summary: val.memory_summary.map(|v| v.into()),
     }
   }
 }
@@ -1134,23 +1134,23 @@ impl From<FrontEndRedfishProcessorLocationInfo>
 {
   fn from(value: FrontEndRedfishProcessorLocationInfo) -> Self {
     RedfishProcessorLocationInfo {
-      id: value.id.map(|v| v),
-      name: value.name.map(|v| v),
-      description: value.description.map(|v| v),
-      socket: value.socket.map(|v| v),
+      id: value.id,
+      name: value.name,
+      description: value.description,
+      socket: value.socket,
     }
   }
 }
 
-impl Into<FrontEndRedfishProcessorLocationInfo>
-  for RedfishProcessorLocationInfo
+impl From<RedfishProcessorLocationInfo>
+  for FrontEndRedfishProcessorLocationInfo
 {
-  fn into(self) -> FrontEndRedfishProcessorLocationInfo {
+  fn from(val: RedfishProcessorLocationInfo) -> Self {
     FrontEndRedfishProcessorLocationInfo {
-      id: self.id.map(|v| v),
-      name: self.name.map(|v| v),
-      description: self.description.map(|v| v),
-      socket: self.socket.map(|v| v),
+      id: val.id,
+      name: val.name,
+      description: val.description,
+      socket: val.socket,
     }
   }
 }
@@ -1181,9 +1181,9 @@ impl From<FrontEndHWInvByLocProcessor> for HWInvByLocProcessor {
   fn from(value: FrontEndHWInvByLocProcessor) -> Self {
     HWInvByLocProcessor {
       id: value.id,
-      r#type: value.r#type.map(|v| v),
-      ordinal: value.ordinal.map(|v| v),
-      status: value.status.map(|v| v),
+      r#type: value.r#type,
+      ordinal: value.ordinal,
+      status: value.status,
       hw_inventory_by_location_type: value.hw_inventory_by_location_type,
       populated_fru: value.populated_fru.map(HWInvByFRUProcessor::from),
       processor_location_info: RedfishProcessorLocationInfo::from(
@@ -1193,16 +1193,16 @@ impl From<FrontEndHWInvByLocProcessor> for HWInvByLocProcessor {
   }
 }
 
-impl Into<FrontEndHWInvByLocProcessor> for HWInvByLocProcessor {
-  fn into(self) -> FrontEndHWInvByLocProcessor {
+impl From<HWInvByLocProcessor> for FrontEndHWInvByLocProcessor {
+  fn from(val: HWInvByLocProcessor) -> Self {
     FrontEndHWInvByLocProcessor {
-      id: self.id,
-      r#type: self.r#type.map(|v| v),
-      ordinal: self.ordinal.map(|v| v),
-      status: self.status.map(|v| v),
-      hw_inventory_by_location_type: self.hw_inventory_by_location_type,
-      populated_fru: self.populated_fru.map(|v| v.into()),
-      processor_location_info: self.processor_location_info.into(),
+      id: val.id,
+      r#type: val.r#type,
+      ordinal: val.ordinal,
+      status: val.status,
+      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
+      populated_fru: val.populated_fru.map(|v| v.into()),
+      processor_location_info: val.processor_location_info.into(),
     }
   }
 }
@@ -1235,9 +1235,9 @@ impl From<FrontEndHWInvByLocNodeAccel> for HWInvByLocNodeAccel {
   fn from(value: FrontEndHWInvByLocNodeAccel) -> Self {
     HWInvByLocNodeAccel {
       id: value.id,
-      r#type: value.r#type.map(|v| v),
-      ordinal: value.ordinal.map(|v| v),
-      status: value.status.map(|v| v),
+      r#type: value.r#type,
+      ordinal: value.ordinal,
+      status: value.status,
       hw_inventory_by_location_type: value.hw_inventory_by_location_type,
       populated_fru: value.populated_fru.map(HWInvByFRUNodeAccel::from),
       node_accel_location_info: value
@@ -1247,16 +1247,16 @@ impl From<FrontEndHWInvByLocNodeAccel> for HWInvByLocNodeAccel {
   }
 }
 
-impl Into<FrontEndHWInvByLocNodeAccel> for HWInvByLocNodeAccel {
-  fn into(self) -> FrontEndHWInvByLocNodeAccel {
+impl From<HWInvByLocNodeAccel> for FrontEndHWInvByLocNodeAccel {
+  fn from(val: HWInvByLocNodeAccel) -> Self {
     FrontEndHWInvByLocNodeAccel {
-      id: self.id,
-      r#type: self.r#type.map(|v| v),
-      ordinal: self.ordinal.map(|v| v),
-      status: self.status.map(|v| v),
-      hw_inventory_by_location_type: self.hw_inventory_by_location_type,
-      populated_fru: self.populated_fru.map(|v| v.into()),
-      node_accel_location_info: self.node_accel_location_info.map(|v| v.into()),
+      id: val.id,
+      r#type: val.r#type,
+      ordinal: val.ordinal,
+      status: val.status,
+      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
+      populated_fru: val.populated_fru.map(|v| v.into()),
+      node_accel_location_info: val.node_accel_location_info.map(|v| v.into()),
     }
   }
 }
@@ -1316,21 +1316,21 @@ pub struct MemoryLocation {
 impl From<FrontEndMemoryLocation> for MemoryLocation {
   fn from(value: FrontEndMemoryLocation) -> Self {
     MemoryLocation {
-      socket: value.socket.map(|v| v),
-      memory_controller: value.memory_controller.map(|v| v),
-      channel: value.channel.map(|v| v),
-      slot: value.slot.map(|v| v),
+      socket: value.socket,
+      memory_controller: value.memory_controller,
+      channel: value.channel,
+      slot: value.slot,
     }
   }
 }
 
-impl Into<FrontEndMemoryLocation> for MemoryLocation {
-  fn into(self) -> FrontEndMemoryLocation {
+impl From<MemoryLocation> for FrontEndMemoryLocation {
+  fn from(val: MemoryLocation) -> Self {
     FrontEndMemoryLocation {
-      socket: self.socket.map(|v| v),
-      memory_controller: self.memory_controller.map(|v| v),
-      channel: self.channel.map(|v| v),
-      slot: self.slot.map(|v| v),
+      socket: val.socket,
+      memory_controller: val.memory_controller,
+      channel: val.channel,
+      slot: val.slot,
     }
   }
 }
@@ -1354,21 +1354,21 @@ pub struct RedfishMemoryLocationInfo {
 impl From<FrontEndRedfishMemoryLocationInfo> for RedfishMemoryLocationInfo {
   fn from(value: FrontEndRedfishMemoryLocationInfo) -> Self {
     RedfishMemoryLocationInfo {
-      id: value.id.map(|v| v),
-      name: value.name.map(|v| v),
-      description: value.description.map(|v| v),
+      id: value.id,
+      name: value.name,
+      description: value.description,
       memory_location: value.memory_location.map(MemoryLocation::from),
     }
   }
 }
 
-impl Into<FrontEndRedfishMemoryLocationInfo> for RedfishMemoryLocationInfo {
-  fn into(self) -> FrontEndRedfishMemoryLocationInfo {
+impl From<RedfishMemoryLocationInfo> for FrontEndRedfishMemoryLocationInfo {
+  fn from(val: RedfishMemoryLocationInfo) -> Self {
     FrontEndRedfishMemoryLocationInfo {
-      id: self.id.map(|v| v),
-      name: self.name.map(|v| v),
-      description: self.description.map(|v| v),
-      memory_location: self.memory_location.map(|v| v.into()),
+      id: val.id,
+      name: val.name,
+      description: val.description,
+      memory_location: val.memory_location.map(|v| v.into()),
     }
   }
 }
@@ -1399,9 +1399,9 @@ impl From<FrontEndHWInvByLocMemory> for HWInvByLocMemory {
   fn from(value: FrontEndHWInvByLocMemory) -> Self {
     HWInvByLocMemory {
       id: value.id,
-      r#type: value.r#type.map(|v| v),
-      ordinal: value.ordinal.map(|v| v),
-      status: value.status.map(|v| v),
+      r#type: value.r#type,
+      ordinal: value.ordinal,
+      status: value.status,
       hw_inventory_by_location_type: value.hw_inventory_by_location_type,
       populated_fru: value.populated_fru.map(HWInvByFRUMemory::from),
       memory_location_info: RedfishMemoryLocationInfo::from(
@@ -1411,16 +1411,16 @@ impl From<FrontEndHWInvByLocMemory> for HWInvByLocMemory {
   }
 }
 
-impl Into<FrontEndHWInvByLocMemory> for HWInvByLocMemory {
-  fn into(self) -> FrontEndHWInvByLocMemory {
+impl From<HWInvByLocMemory> for FrontEndHWInvByLocMemory {
+  fn from(val: HWInvByLocMemory) -> Self {
     FrontEndHWInvByLocMemory {
-      id: self.id,
-      r#type: self.r#type.map(|v| v),
-      ordinal: self.ordinal.map(|v| v),
-      status: self.status.map(|v| v),
-      hw_inventory_by_location_type: self.hw_inventory_by_location_type,
-      populated_fru: self.populated_fru.map(|v| v.into()),
-      memory_location_info: self.memory_location_info.into(),
+      id: val.id,
+      r#type: val.r#type,
+      ordinal: val.ordinal,
+      status: val.status,
+      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
+      populated_fru: val.populated_fru.map(|v| v.into()),
+      memory_location_info: val.memory_location_info.into(),
     }
   }
 }
@@ -1474,19 +1474,19 @@ pub struct HSNNICLocationInfo {
 impl From<FrontEndHSNNICLocationInfo> for HSNNICLocationInfo {
   fn from(value: FrontEndHSNNICLocationInfo) -> Self {
     HSNNICLocationInfo {
-      id: value.id.map(|v| v),
-      name: value.name.map(|v| v),
-      description: value.description.map(|v| v),
+      id: value.id,
+      name: value.name,
+      description: value.description,
     }
   }
 }
 
-impl Into<FrontEndHSNNICLocationInfo> for HSNNICLocationInfo {
-  fn into(self) -> FrontEndHSNNICLocationInfo {
+impl From<HSNNICLocationInfo> for FrontEndHSNNICLocationInfo {
+  fn from(val: HSNNICLocationInfo) -> Self {
     FrontEndHSNNICLocationInfo {
-      id: self.id.map(|v| v),
-      name: self.name.map(|v| v),
-      description: self.description.map(|v| v),
+      id: val.id,
+      name: val.name,
+      description: val.description,
     }
   }
 }
@@ -1519,9 +1519,9 @@ impl From<FrontEndHWInvByLocHSNNIC> for HWInvByLocHSNNIC {
   fn from(value: FrontEndHWInvByLocHSNNIC) -> Self {
     HWInvByLocHSNNIC {
       id: value.id,
-      r#type: value.r#type.map(|v| v),
-      ordinal: value.ordinal.map(|v| v),
-      status: value.status.map(|v| v),
+      r#type: value.r#type,
+      ordinal: value.ordinal,
+      status: value.status,
       hw_inventory_by_location_type: value.hw_inventory_by_location_type,
       populated_fru: value.populated_fru.map(HWInvByFRUHSNNIC::from),
       hsn_nic_location_info: HSNNICLocationInfo::from(
@@ -1531,16 +1531,16 @@ impl From<FrontEndHWInvByLocHSNNIC> for HWInvByLocHSNNIC {
   }
 }
 
-impl Into<FrontEndHWInvByLocHSNNIC> for HWInvByLocHSNNIC {
-  fn into(self) -> FrontEndHWInvByLocHSNNIC {
+impl From<HWInvByLocHSNNIC> for FrontEndHWInvByLocHSNNIC {
+  fn from(val: HWInvByLocHSNNIC) -> Self {
     FrontEndHWInvByLocHSNNIC {
-      id: self.id,
-      r#type: self.r#type.map(|v| v),
-      ordinal: self.ordinal.map(|v| v),
-      status: self.status.map(|v| v),
-      hw_inventory_by_location_type: self.hw_inventory_by_location_type,
-      populated_fru: self.populated_fru.map(|v| v.into()),
-      hsn_nic_location_info: self.hsn_nic_location_info.into(),
+      id: val.id,
+      r#type: val.r#type,
+      ordinal: val.ordinal,
+      status: val.status,
+      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
+      populated_fru: val.populated_fru.map(|v| v.into()),
+      hsn_nic_location_info: val.hsn_nic_location_info.into(),
     }
   }
 }
@@ -1597,9 +1597,9 @@ impl From<FrontEndHWInvByLocNode> for HWInvByLocNode {
   fn from(value: FrontEndHWInvByLocNode) -> Self {
     HWInvByLocNode {
       id: value.id,
-      r#type: value.r#type.map(|v| v),
-      ordinal: value.ordinal.map(|v| v),
-      status: value.status.map(|v| v),
+      r#type: value.r#type,
+      ordinal: value.ordinal,
+      status: value.status,
       hw_inventory_by_location_type: value.hw_inventory_by_location_type,
       populated_fru: value.populated_fru.map(HWInvByFRUNode::from),
       node_location_info: value
@@ -1632,34 +1632,34 @@ impl From<FrontEndHWInvByLocNode> for HWInvByLocNode {
   }
 }
 
-impl Into<FrontEndHWInvByLocNode> for HWInvByLocNode {
-  fn into(self) -> FrontEndHWInvByLocNode {
+impl From<HWInvByLocNode> for FrontEndHWInvByLocNode {
+  fn from(val: HWInvByLocNode) -> Self {
     FrontEndHWInvByLocNode {
-      id: self.id,
-      r#type: self.r#type.map(|v| v),
-      ordinal: self.ordinal.map(|v| v),
-      status: self.status.map(|v| v),
-      hw_inventory_by_location_type: self.hw_inventory_by_location_type,
-      populated_fru: self.populated_fru.map(|v| v.into()),
-      node_location_info: self.node_location_info.map(|v| v.into()),
-      processors: self.processors.map(|processor_vec| {
+      id: val.id,
+      r#type: val.r#type,
+      ordinal: val.ordinal,
+      status: val.status,
+      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
+      populated_fru: val.populated_fru.map(|v| v.into()),
+      node_location_info: val.node_location_info.map(|v| v.into()),
+      processors: val.processors.map(|processor_vec| {
         processor_vec
           .into_iter()
           .map(|processor| processor.into())
           .collect()
       }),
-      node_accels: self.node_accels.map(|node_accel_vec| {
+      node_accels: val.node_accels.map(|node_accel_vec| {
         node_accel_vec
           .into_iter()
           .map(|node_accel| node_accel.into())
           .collect()
       }),
       drives: None,
-      memory: self.memory.map(|memory_vec| {
+      memory: val.memory.map(|memory_vec| {
         memory_vec.into_iter().map(|memory| memory.into()).collect()
       }),
       node_accel_risers: None,
-      node_hsn_nics: self.node_hsn_nics.map(|node_hsn_nic_vec| {
+      node_hsn_nics: val.node_hsn_nics.map(|node_hsn_nic_vec| {
         node_hsn_nic_vec.into_iter().map(|v| v.into()).collect()
       }),
     }
@@ -1988,8 +1988,8 @@ pub struct HWInventory {
 impl From<FrontEndHWInventory> for HWInventory {
   fn from(value: FrontEndHWInventory) -> Self {
     HWInventory {
-      xname: value.xname.map(|v| v),
-      format: value.format.map(|v| v),
+      xname: value.xname,
+      format: value.format,
       cabinets: None, // FIXME: Implement From and Into traits for this field/type
       chassis: None, // FIXME: Implement From and Into traits for this field/type
       compute_modules: None, // FIXME: Implement From and Into traits for this field/type
@@ -2030,11 +2030,11 @@ impl From<FrontEndHWInventory> for HWInventory {
   }
 }
 
-impl Into<FrontEndHWInventory> for HWInventory {
-  fn into(self) -> FrontEndHWInventory {
+impl From<HWInventory> for FrontEndHWInventory {
+  fn from(val: HWInventory) -> Self {
     FrontEndHWInventory {
-      xname: self.xname.map(|v| v),
-      format: self.format.map(|v| v),
+      xname: val.xname,
+      format: val.format,
       cabinets: None, // FIXME: Implement From and Into traits for this field/type
       chassis: None, // FIXME: Implement From and Into traits for this field/type
       compute_modules: None, // FIXME: Implement From and Into traits for this field/type
@@ -2044,23 +2044,23 @@ impl Into<FrontEndHWInventory> for HWInventory {
       mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
       mgmt_hl_switches: None, // FIXME: Implement From and Into traits for this field/type
       cdu_mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      nodes: self
+      nodes: val
         .nodes
         .map(|node_vec| node_vec.into_iter().map(|node| node.into()).collect()),
-      processors: self.processors.map(|processor_vec| {
+      processors: val.processors.map(|processor_vec| {
         processor_vec
           .into_iter()
           .map(|processor| processor.into())
           .collect()
       }),
-      node_accels: self.node_accels.map(|node_accel_vec| {
+      node_accels: val.node_accels.map(|node_accel_vec| {
         node_accel_vec
           .into_iter()
           .map(|node_accel| node_accel.into())
           .collect()
       }),
       drives: None, // FIXME: Implement From and Into traits for this field/type
-      memory: self.memory.map(|memory_vec| {
+      memory: val.memory.map(|memory_vec| {
         memory_vec.into_iter().map(|memory| memory.into()).collect()
       }),
       cabinet_pdus: None, // FIXME: Implement From and Into traits for this field/type
@@ -2095,23 +2095,23 @@ pub struct HWInvByFRUNode {
 impl From<FrontEndHWInvByFRUNode> for HWInvByFRUNode {
   fn from(value: FrontEndHWInvByFRUNode) -> Self {
     HWInvByFRUNode {
-      fru_id: value.fru_id.map(|v| v),
-      r#type: value.r#type.map(|v| v),
-      fru_sub_type: value.fru_sub_type.map(|v| v),
+      fru_id: value.fru_id,
+      r#type: value.r#type,
+      fru_sub_type: value.fru_sub_type,
       hw_inventory_by_fru_type: value.hw_inventory_by_fru_type,
       node_fru_info: RedfishSystemFRUInfo::from(value.node_fru_info),
     }
   }
 }
 
-impl Into<FrontEndHWInvByFRUNode> for HWInvByFRUNode {
-  fn into(self) -> FrontEndHWInvByFRUNode {
+impl From<HWInvByFRUNode> for FrontEndHWInvByFRUNode {
+  fn from(val: HWInvByFRUNode) -> Self {
     FrontEndHWInvByFRUNode {
-      fru_id: self.fru_id.map(|v| v),
-      r#type: self.r#type.map(|v| v),
-      fru_sub_type: self.fru_sub_type.map(|v| v),
-      hw_inventory_by_fru_type: self.hw_inventory_by_fru_type,
-      node_fru_info: self.node_fru_info.into(),
+      fru_id: val.fru_id,
+      r#type: val.r#type,
+      fru_sub_type: val.fru_sub_type,
+      hw_inventory_by_fru_type: val.hw_inventory_by_fru_type,
+      node_fru_info: val.node_fru_info.into(),
     }
   }
 }
@@ -2150,31 +2150,31 @@ pub struct RedfishSystemFRUInfo {
 impl From<FrontEndRedfishSystemFRUInfo> for RedfishSystemFRUInfo {
   fn from(value: FrontEndRedfishSystemFRUInfo) -> Self {
     RedfishSystemFRUInfo {
-      asset_tag: value.asset_tag.map(|v| v),
-      bios_version: value.bios_version.map(|v| v),
-      model: value.model.map(|v| v),
-      manufacturer: value.manufacturer.map(|v| v),
-      part_number: value.part_number.map(|v| v),
-      serial_number: value.serial_number.map(|v| v),
-      sku: value.sku.map(|v| v),
-      system_type: value.system_type.map(|v| v),
-      uuid: value.uuid.map(|v| v),
+      asset_tag: value.asset_tag,
+      bios_version: value.bios_version,
+      model: value.model,
+      manufacturer: value.manufacturer,
+      part_number: value.part_number,
+      serial_number: value.serial_number,
+      sku: value.sku,
+      system_type: value.system_type,
+      uuid: value.uuid,
     }
   }
 }
 
-impl Into<FrontEndRedfishSystemFRUInfo> for RedfishSystemFRUInfo {
-  fn into(self) -> FrontEndRedfishSystemFRUInfo {
+impl From<RedfishSystemFRUInfo> for FrontEndRedfishSystemFRUInfo {
+  fn from(val: RedfishSystemFRUInfo) -> Self {
     FrontEndRedfishSystemFRUInfo {
-      asset_tag: self.asset_tag.map(|v| v),
-      bios_version: self.bios_version.map(|v| v),
-      model: self.model.map(|v| v),
-      manufacturer: self.manufacturer.map(|v| v),
-      part_number: self.part_number.map(|v| v),
-      serial_number: self.serial_number.map(|v| v),
-      sku: self.sku.map(|v| v),
-      system_type: self.system_type.map(|v| v),
-      uuid: self.uuid.map(|v| v),
+      asset_tag: val.asset_tag,
+      bios_version: val.bios_version,
+      model: val.model,
+      manufacturer: val.manufacturer,
+      part_number: val.part_number,
+      serial_number: val.serial_number,
+      sku: val.sku,
+      system_type: val.system_type,
+      uuid: val.uuid,
     }
   }
 }
@@ -2213,15 +2213,15 @@ impl From<FrontEndNodeLocationInfo> for NodeLocationInfo {
   }
 }
 
-impl Into<FrontEndNodeLocationInfo> for NodeLocationInfo {
-  fn into(self) -> FrontEndNodeLocationInfo {
+impl From<NodeLocationInfo> for FrontEndNodeLocationInfo {
+  fn from(val: NodeLocationInfo) -> Self {
     FrontEndNodeLocationInfo {
-      id: self.id,
-      name: self.name,
-      description: self.description,
-      hostname: self.hostname,
-      processor_summary: self.processor_summary.map(|value| value.into()),
-      memory_summary: self.memory_summary.map(|value| value.into()),
+      id: val.id,
+      name: val.name,
+      description: val.description,
+      hostname: val.hostname,
+      processor_summary: val.processor_summary.map(|value| value.into()),
+      memory_summary: val.memory_summary.map(|value| value.into()),
     }
   }
 }
@@ -2268,9 +2268,9 @@ impl From<FrontEndHWInventoryByLocation> for HWInventoryByLocation {
   }
 }
 
-impl Into<FrontEndHWInventoryByLocation> for HWInventoryByLocation {
-  fn into(self) -> FrontEndHWInventoryByLocation {
-    match self {
+impl From<HWInventoryByLocation> for FrontEndHWInventoryByLocation {
+  fn from(val: HWInventoryByLocation) -> Self {
+    match val {
       HWInventoryByLocation::HWInvByLocNode(f) => {
         FrontEndHWInventoryByLocation::HWInvByLocNode(f.into())
       }
@@ -2315,10 +2315,10 @@ impl From<FrontEndHWInventoryByLocationList> for HWInventoryByLocationList {
   }
 }
 
-impl Into<FrontEndHWInventoryByLocationList> for HWInventoryByLocationList {
-  fn into(self) -> FrontEndHWInventoryByLocationList {
+impl From<HWInventoryByLocationList> for FrontEndHWInventoryByLocationList {
+  fn from(val: HWInventoryByLocationList) -> Self {
     FrontEndHWInventoryByLocationList {
-      hardware: self.hardware.map(|hardware_vec| {
+      hardware: val.hardware.map(|hardware_vec| {
         hardware_vec
           .into_iter()
           .map(|hardware_inventory_by_location| {

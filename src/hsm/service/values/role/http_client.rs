@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::Role;
 
@@ -9,27 +9,17 @@ pub async fn get(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Vec<String>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    shasta_base_url.to_owned() + "/smd/hsm/v2/service/values/role";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/smd/hsm/v2/service/values/role", shasta_base_url);
 
   let payload = client
     .get(api_url)
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?
+    .map_err(Error::NetError)?
     .json::<Role>()
     .await;
 
-  payload
-    .map(|role| role.role)
-    .map_err(|error| Error::NetError(error))
+  payload.map(|role| role.role).map_err(Error::NetError)
 }

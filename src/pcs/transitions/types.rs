@@ -28,11 +28,11 @@ impl From<FrontEndLocation> for Location {
     }
   }
 }
-impl Into<FrontEndLocation> for Location {
-  fn into(self) -> FrontEndLocation {
+impl From<Location> for FrontEndLocation {
+  fn from(val: Location) -> Self {
     FrontEndLocation {
-      xname: self.xname,
-      deputy_key: self.deputy_key,
+      xname: val.xname,
+      deputy_key: val.deputy_key,
     }
   }
 }
@@ -55,8 +55,10 @@ pub enum Operation {
   ForceOff,
 }
 
-impl Operation {
-  pub fn from_str(operation: &str) -> Result<Operation, Error> {
+impl std::str::FromStr for Operation {
+  type Err = Error;
+
+  fn from_str(operation: &str) -> Result<Self, Self::Err> {
     match operation {
       "on" => Ok(Operation::On),
       "off" => Ok(Operation::Off),
@@ -83,9 +85,9 @@ impl From<FrontEndOperation> for Operation {
     }
   }
 }
-impl Into<FrontEndOperation> for Operation {
-  fn into(self) -> FrontEndOperation {
-    match self {
+impl From<Operation> for FrontEndOperation {
+  fn from(val: Operation) -> Self {
+    match val {
       Operation::On => FrontEndOperation::On,
       Operation::Off => FrontEndOperation::Off,
       Operation::SoftOff => FrontEndOperation::SoftOff,
@@ -114,18 +116,18 @@ impl From<FrontEndTransition> for Transition {
       location: value
         .location
         .into_iter()
-        .map(|v| Location::from(v))
+        .map(Location::from)
         .collect(),
     }
   }
 }
 
-impl Into<FrontEndTransition> for Transition {
-  fn into(self) -> FrontEndTransition {
+impl From<Transition> for FrontEndTransition {
+  fn from(val: Transition) -> Self {
     FrontEndTransition {
-      operation: self.operation.into(),
-      task_deadline_minutes: self.task_deadline_minutes,
-      location: self.location.into_iter().map(|v| v.into()).collect(),
+      operation: val.operation.into(),
+      task_deadline_minutes: val.task_deadline_minutes,
+      location: val.location.into_iter().map(|v| v.into()).collect(),
     }
   }
 }
@@ -155,15 +157,15 @@ impl From<FrontEndTaskCounts> for TaskCounts {
   }
 }
 
-impl Into<FrontEndTaskCounts> for TaskCounts {
-  fn into(self) -> FrontEndTaskCounts {
+impl From<TaskCounts> for FrontEndTaskCounts {
+  fn from(val: TaskCounts) -> Self {
     FrontEndTaskCounts {
-      total: self.total,
-      new: self.new,
-      in_progress: self.in_progress,
-      failed: self.failed,
-      succeeded: self.succeeded,
-      un_supported: self.un_supported,
+      total: val.total,
+      new: val.new,
+      in_progress: val.in_progress,
+      failed: val.failed,
+      succeeded: val.succeeded,
+      un_supported: val.un_supported,
     }
   }
 }
@@ -189,17 +191,17 @@ impl From<FrontEndTask> for Task {
   }
 }
 
-impl Into<manta_backend_dispatcher::types::pcs::transitions::types::Task>
-  for Task
+impl From<Task>
+  for manta_backend_dispatcher::types::pcs::transitions::types::Task
 {
-  fn into(
-    self,
-  ) -> manta_backend_dispatcher::types::pcs::transitions::types::Task {
+  fn from(
+    val: Task,
+  ) -> Self {
     manta_backend_dispatcher::types::pcs::transitions::types::Task {
-      xname: self.xname,
-      task_status: self.task_status,
-      task_status_description: self.task_status_description,
-      error: self.error,
+      xname: val.xname,
+      task_status: val.task_status,
+      task_status_description: val.task_status_description,
+      error: val.error,
     }
   }
 }
@@ -229,21 +231,21 @@ impl From<FrontEndTransitionResponse> for TransitionResponse {
       transition_status: value.transition_status,
       operation: Operation::from(value.operation),
       task_counts: TaskCounts::from(value.task_counts),
-      tasks: value.tasks.into_iter().map(|v| Task::from(v)).collect(),
+      tasks: value.tasks.into_iter().map(Task::from).collect(),
     }
   }
 }
 
-impl Into<FrontEndTransitionResponse> for TransitionResponse {
-  fn into(self) -> FrontEndTransitionResponse {
+impl From<TransitionResponse> for FrontEndTransitionResponse {
+  fn from(val: TransitionResponse) -> Self {
     FrontEndTransitionResponse {
-      transition_id: self.transition_id,
-      create_time: self.create_time,
-      automatic_expiration_time: self.automatic_expiration_time,
-      transition_status: self.transition_status,
-      operation: self.operation.into(),
-      task_counts: self.task_counts.into(),
-      tasks: self.tasks.into_iter().map(|v| v.into()).collect(),
+      transition_id: val.transition_id,
+      create_time: val.create_time,
+      automatic_expiration_time: val.automatic_expiration_time,
+      transition_status: val.transition_status,
+      operation: val.operation.into(),
+      task_counts: val.task_counts.into(),
+      tasks: val.tasks.into_iter().map(|v| v.into()).collect(),
     }
   }
 }
@@ -258,15 +260,15 @@ impl From<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
     TransitionResponseList {
       transitions: value
         .into_iter()
-        .map(|v| TransitionResponse::from(v))
+        .map(TransitionResponse::from)
         .collect(),
     }
   }
 }
 
-impl Into<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
-  fn into(self) -> Vec<FrontEndTransitionResponse> {
-    self.transitions.into_iter().map(|v| v.into()).collect()
+impl From<TransitionResponseList> for Vec<FrontEndTransitionResponse> {
+  fn from(val: TransitionResponseList) -> Self {
+    val.transitions.into_iter().map(|v| v.into()).collect()
   }
 }
 
@@ -286,11 +288,11 @@ impl From<FrontEndTransitionStartOutput> for TransitionStartOutput {
   }
 }
 
-impl Into<FrontEndTransitionStartOutput> for TransitionStartOutput {
-  fn into(self) -> FrontEndTransitionStartOutput {
+impl From<TransitionStartOutput> for FrontEndTransitionStartOutput {
+  fn from(val: TransitionStartOutput) -> Self {
     FrontEndTransitionStartOutput {
-      transition_id: self.transition_id,
-      operation: self.operation.into(),
+      transition_id: val.transition_id,
+      operation: val.operation.into(),
     }
   }
 }

@@ -1,11 +1,10 @@
 pub mod types;
 
-use serde_json::Value;
-
 use crate::{
   cfs::session::http_client::v3::types::{
     CfsSessionGetResponse, CfsSessionGetResponseList, CfsSessionPostRequest,
   },
+  common::http,
   error::Error,
 };
 
@@ -25,83 +24,50 @@ pub async fn get(
   is_succeded_opt: Option<bool>,
   tags_opt: Option<String>,
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = if let Some(session_name) = session_name_opt {
-    shasta_base_url.to_owned() + "/cfs/v3/sessions/" + session_name
+  let api_url = if let Some(session_name) = session_name_opt {
+    format!("{}/cfs/v3/sessions/{}", shasta_base_url, session_name)
   } else {
-    shasta_base_url.to_owned() + "/cfs/v3/sessions"
+    format!("{}/cfs/v3/sessions", shasta_base_url)
   };
 
-  // Add params to request
-  let mut request_payload = Vec::new();
-
+  let mut query_params: Vec<(&str, String)> = Vec::new();
   if let Some(limit) = limit_opt {
-    request_payload.push(("limit", limit.to_string()));
+    query_params.push(("limit", limit.to_string()));
   }
-
   if let Some(after_id) = after_id_opt {
-    request_payload.push(("after_id", after_id.to_string()));
+    query_params.push(("after_id", after_id));
   }
-
   if let Some(min_age) = min_age_opt {
-    request_payload.push(("min_age", min_age));
+    query_params.push(("min_age", min_age));
   }
-
   if let Some(max_age) = max_age_opt {
-    request_payload.push(("max_age", max_age));
+    query_params.push(("max_age", max_age));
   }
-
   if let Some(status) = status_opt {
-    request_payload.push(("status", status));
+    query_params.push(("status", status));
   }
-
   if let Some(name_contains) = name_contains_opt {
-    request_payload.push(("name_contains", name_contains));
+    query_params.push(("name_contains", name_contains));
   }
-
   if let Some(is_succeded) = is_succeded_opt {
-    request_payload.push(("succeced", is_succeded.to_string()));
+    query_params.push(("succeced", is_succeded.to_string()));
   }
-
   if let Some(tags) = tags_opt {
-    request_payload.push(("tags", tags));
+    query_params.push(("tags", tags));
   }
 
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    // Make sure we return a vec if user requesting a single value
-    if session_name_opt.is_some() {
-      response
-        .json::<CfsSessionGetResponse>()
-        .await
-        .map(|payload| vec![payload])
-        .map_err(|error| Error::NetError(error))
-    } else {
-      response
-        .json::<CfsSessionGetResponseList>()
-        .await
-        .map(|payload| payload.sessions)
-        .map_err(|error| Error::NetError(error))
-    }
+  if session_name_opt.is_some() {
+    let payload: CfsSessionGetResponse =
+      http::get_json_with_query(&client, &api_url, shasta_token, &query_params)
+        .await?;
+    Ok(vec![payload])
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
+    let payload: CfsSessionGetResponseList =
+      http::get_json_with_query(&client, &api_url, shasta_token, &query_params)
+        .await?;
+    Ok(payload.sessions)
   }
 }
 
@@ -114,38 +80,9 @@ pub async fn post(
 ) -> Result<CfsSessionGetResponse, Error> {
   log::debug!("Session:\n{:#?}", session);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/sessions";
-
-  let response = client
-    .post(api_url)
-    .json(&session)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))?,
-    )
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/cfs/v3/sessions", shasta_base_url);
+  http::post_json(&client, &api_url, shasta_token, session).await
 }
 
 pub async fn delete(
@@ -157,30 +94,8 @@ pub async fn delete(
 ) -> Result<(), Error> {
   log::info!("Deleting CFS session id: {}", session_name);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/cfs/v3/sessions/" + session_name;
-
-  let response = client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(())
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/cfs/v3/sessions/{}", shasta_base_url, session_name);
+  http::delete(&client, &api_url, shasta_token).await
 }

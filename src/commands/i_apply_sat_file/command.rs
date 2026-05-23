@@ -20,7 +20,7 @@ use crate::{
 };
 
 #[deprecated(
-  since = "v0.86.2",
+  since = "0.86.2",
   note = "this function prints cfs session logs to stdout"
 )]
 pub async fn exec(
@@ -60,12 +60,12 @@ pub async fn exec(
     .and_then(Value::as_sequence);
 
   // Get images from SAT YAML file
-  let image_yaml_vec_opt = sat_template_file_yaml
+  let _image_yaml_vec_opt = sat_template_file_yaml
     .get("images")
     .and_then(Value::as_sequence);
 
   // Get images from SAT YAML file
-  let bos_session_template_yaml_vec_opt = sat_template_file_yaml
+  let _bos_session_template_yaml_vec_opt = sat_template_file_yaml
     .get("session_templates")
     .and_then(Value::as_sequence);
 
@@ -192,7 +192,7 @@ pub async fn exec(
             shasta_base_url,
             shasta_root_cert,
             socks5_proxy,
-            &target_hsm_group_name,
+            target_hsm_group_name,
             parent_hsm_group_name,
             pattern,
             true,
@@ -237,7 +237,7 @@ pub async fn exec(
             shasta_base_url,
             shasta_root_cert,
             socks5_proxy,
-            &target_hsm_group_name,
+            target_hsm_group_name,
             &hsm_group_members_vec
               .iter()
               .map(String::as_str)
@@ -293,6 +293,7 @@ pub async fn exec(
   // List of image.ref_name already processed
   let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
+  #[allow(deprecated)]
   let cfs_session_created_hashmap: HashMap<String, image::Image> =
     utils::i_import_images_section_in_sat_file(
       shasta_token,

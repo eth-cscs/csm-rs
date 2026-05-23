@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::{
   types::{Job, SshContainer},
@@ -18,12 +18,10 @@ pub async fn post_customize(
   artifact_id: &str,
   public_key_id: &str,
 ) -> Result<Value, Error> {
-  let ssh_container = SshContainer {
+  let ssh_container_list = vec![SshContainer {
     name: "jail".to_string(),
     jail: true,
-  };
-
-  let ssh_container_list = vec![ssh_container];
+  }];
 
   let ims_job = Job {
     job_type: "customize".to_string(),
@@ -48,38 +46,9 @@ pub async fn post_customize(
     arch: None,
   };
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
-
-  let response = client
-    .post(api_url)
-    .bearer_auth(shasta_token)
-    .json(&ims_job)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    // Make sure we return a vec if user requesting a single value
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let url = format!("{}/ims/v3/jobs", shasta_base_url);
+  http::post_json(&client, &url, shasta_token, &ims_job).await
 }
 
 /// Creates an IMS job, this method is asynchronous, meaning, it will returns when the server
@@ -91,15 +60,8 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   ims_job: &Job,
 ) -> Result<Job, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/ims/v3/jobs", shasta_base_url);
 
   client
     .post(api_url)
@@ -168,18 +130,12 @@ pub async fn get(
   socks5_proxy: Option<&str>,
   job_id_opt: Option<&str>,
 ) -> Result<Vec<Job>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = if let Some(job_id) = job_id_opt {
-    shasta_base_url.to_owned() + "/ims/v3/jobs/" + job_id
+    format!("{}/ims/v3/jobs/{}", shasta_base_url, job_id)
   } else {
-    shasta_base_url.to_owned() + "/ims/v3/jobs"
+    format!("{}/ims/v3/jobs", shasta_base_url)
   };
 
   let response = client

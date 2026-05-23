@@ -29,12 +29,12 @@ impl From<FrontEndDiscoveryInfo> for DiscoveryInfo {
   }
 }
 
-impl Into<FrontEndDiscoveryInfo> for DiscoveryInfo {
-  fn into(self) -> FrontEndDiscoveryInfo {
+impl From<DiscoveryInfo> for FrontEndDiscoveryInfo {
+  fn from(val: DiscoveryInfo) -> Self {
     FrontEndDiscoveryInfo {
-      last_attempt: self.last_attempt,
-      last_status: self.last_status,
-      redfish_version: self.redfish_version,
+      last_attempt: val.last_attempt,
+      last_status: val.last_status,
+      redfish_version: val.redfish_version,
     }
   }
 }
@@ -117,26 +117,26 @@ impl From<FrontEndRedfishEndpoint> for RedfishEndpoint {
   }
 }
 
-impl Into<FrontEndRedfishEndpoint> for RedfishEndpoint {
-  fn into(self) -> FrontEndRedfishEndpoint {
+impl From<RedfishEndpoint> for FrontEndRedfishEndpoint {
+  fn from(val: RedfishEndpoint) -> Self {
     FrontEndRedfishEndpoint {
-      id: self.id,
-      r#type: self.r#type,
-      name: self.name,
-      hostname: self.hostname,
-      domain: self.domain,
-      fqdn: self.fqdn,
-      enabled: self.enabled,
-      uuid: self.uuid,
-      user: self.user,
-      password: self.password,
-      use_ssdp: self.use_ssdp,
-      mac_required: self.mac_required,
-      mac_addr: self.mac_addr,
-      ip_address: self.ip_address,
-      rediscover_on_update: self.rediscover_on_update,
-      template_id: self.template_id,
-      discovery_info: self.discovery_info.map(|info| info.into()),
+      id: val.id,
+      r#type: val.r#type,
+      name: val.name,
+      hostname: val.hostname,
+      domain: val.domain,
+      fqdn: val.fqdn,
+      enabled: val.enabled,
+      uuid: val.uuid,
+      user: val.user,
+      password: val.password,
+      use_ssdp: val.use_ssdp,
+      mac_required: val.mac_required,
+      mac_addr: val.mac_addr,
+      ip_address: val.ip_address,
+      rediscover_on_update: val.rediscover_on_update,
+      template_id: val.template_id,
+      discovery_info: val.discovery_info.map(|info| info.into()),
     }
   }
 }
@@ -158,10 +158,10 @@ impl From<FrontEndRedfishEndpointArray> for RedfishEndpointArray {
   }
 }
 
-impl Into<FrontEndRedfishEndpointArray> for RedfishEndpointArray {
-  fn into(self) -> FrontEndRedfishEndpointArray {
+impl From<RedfishEndpointArray> for FrontEndRedfishEndpointArray {
+  fn from(val: RedfishEndpointArray) -> Self {
     FrontEndRedfishEndpointArray {
-      redfish_endpoints: self.redfish_endpoints.map(|endpoints| {
+      redfish_endpoints: val.redfish_endpoints.map(|endpoints| {
         endpoints
           .into_iter()
           .map(|endpoint| endpoint.into())

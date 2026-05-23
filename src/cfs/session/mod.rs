@@ -4,9 +4,12 @@ pub mod utils;
 use crate::cfs;
 use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
+#[allow(deprecated)]
+use crate::common::kubernetes::i_print_cfs_session_logs;
+
 use crate::{
   common::{
-    kubernetes::{self, i_print_cfs_session_logs},
+    kubernetes,
     vault::http_client::fetch_shasta_k8s_secrets_from_vault,
   },
   error::Error,
@@ -66,7 +69,7 @@ pub async fn get_and_sort(
   .await?;
 
   // Sort CFS sessions by start time order ASC
-  cfs_session_vec.sort_by(|a, b| a.get_start_time().cmp(&b.get_start_time()));
+  cfs_session_vec.sort_by_key(|a| a.get_start_time());
 
   Ok(cfs_session_vec)
 }
@@ -94,7 +97,7 @@ pub async fn post(
 /// Creates a CFS session and waits for it to finish.
 /// Optionally, it can also print the CFS session logs if `watch_logs` is set to true.
 #[deprecated(
-  since = "v0.42.3-beta.71",
+  since = "0.42.3-beta.71",
   note = "this function prints CFS logs to stdout"
 )]
 pub async fn i_post_sync(
@@ -137,8 +140,8 @@ pub async fn i_post_sync(
     let client =
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
-    let _ =
-      i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
+    #[allow(deprecated)]
+    i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
 
   // User does not want the CFS logs but we still need to wayt the CFS session to

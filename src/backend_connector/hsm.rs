@@ -55,7 +55,7 @@ impl HardwareInventory for Csm {
     _format: Option<&str>,
   ) -> Result<Value, Error> {
     hsm::hw_inventory::hw_component::http_client::get_query(
-      &auth_token,
+      auth_token,
       &self.base_url,
       &self.root_cert,
       self.socks5_proxy.as_deref(),
@@ -139,7 +139,7 @@ impl ComponentTrait for Csm {
       .unwrap_or_default()
       .iter()
       .filter(|&node_metadata| {
-        xname_available_vec.contains(&node_metadata.id.as_ref().unwrap())
+        xname_available_vec.contains(node_metadata.id.as_ref().unwrap())
       })
       .cloned()
       .collect();
@@ -298,7 +298,7 @@ impl ComponentTrait for Csm {
         }
       }
 
-      return Ok(xname_vec);
+      Ok(xname_vec)
     } else {
       log::debug!(
         "No regex found, getting xnames from list of NIDs or NIDs hostlist"
@@ -372,8 +372,8 @@ impl ComponentTrait for Csm {
 
       log::debug!("xname list:\n{:#?}", xname_vec);
 
-      return Ok(xname_vec);
-    };
+      Ok(xname_vec)
+    }
   }
 }
 

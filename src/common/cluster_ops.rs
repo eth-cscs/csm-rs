@@ -100,7 +100,7 @@ pub async fn get_details(
             shasta_root_cert,
             socks5_proxy,
             Some(
-              &most_recent_cfs_session
+              most_recent_cfs_session
                 .configuration
                 .as_ref()
                 .and_then(|configuration| configuration.name.as_ref())

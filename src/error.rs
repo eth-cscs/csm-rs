@@ -89,9 +89,9 @@ pub enum Error {
 }
 
 // Convert Error to manta_backend_dispatcher::error::Error
-impl Into<MantaError> for crate::error::Error {
-  fn into(self) -> MantaError {
-    match self {
+impl From<crate::error::Error> for MantaError {
+  fn from(val: crate::error::Error) -> Self {
+    match val {
       Error::IoError(e) => MantaError::IoError(e),
       Error::SerdeJsonError(e) => MantaError::SerdeError(e),
       Error::NetError(e) => MantaError::NetError(e),
@@ -128,7 +128,7 @@ impl Into<MantaError> for crate::error::Error {
       }
       Error::K8sExecError(e) => MantaError::K8sError(e.to_string()),
       // Technical/internal errors — preserve message text
-      _ => MantaError::Message(self.to_string()),
+      _ => MantaError::Message(val.to_string()),
     }
   }
 }

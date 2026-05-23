@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}, process::exit};
+use std::collections::{HashMap, HashSet};
 
 use serde_json::Value;
 
@@ -194,7 +194,7 @@ pub async fn remove_hsm_members(
     shasta_root_cert,
     socks5_proxy,
     new_target_hsm_members.as_slice(),
-    Some(&target_hsm_group_name.to_string()),
+    Some(target_hsm_group_name),
   )
   .await
   {
@@ -265,7 +265,7 @@ pub async fn migrate_hsm_members(
     shasta_root_cert,
     socks5_proxy,
     new_target_hsm_members,
-    Some(&parent_hsm_group_name.to_string()),
+    Some(parent_hsm_group_name),
   )
   .await
   {

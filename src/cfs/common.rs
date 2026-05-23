@@ -11,8 +11,7 @@ pub async fn health_check(
 ) -> Result<Value, Error> {
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
 
-  let response =
-    csm::process_get_http_request(shasta_token, api_url, shasta_root_cert, socks5_proxy)
-      .await;
-  response
+  
+  csm::process_get_http_request(shasta_token, api_url, shasta_root_cert, socks5_proxy)
+      .await
 }

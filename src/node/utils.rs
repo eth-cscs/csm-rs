@@ -64,11 +64,11 @@ pub async fn validate_target_hsm_members(
         .collect(),
     )
   } else {
-    return Err(Error::Message(format!(
+    Err(Error::Message(format!(
       "Can't access all or any of the HSM members '{}'.\nPlease choose members form the list of HSM groups below:\n{}\nExit",
       hsm_group_members_opt.join(", "),
       hsm_groups_user_has_access.join(", ")
-    )));
+    )))
   }
 }
 
@@ -246,7 +246,7 @@ pub async fn get_node_details(
     let desired_configuration = &component_details.desired_config;
     let configuration_status = &component_details.configuration_status;
     let enabled = component_details.enabled;
-    let error_count = component_details.error_count.clone();
+    let error_count = component_details.error_count;
 
     // Get node HSM details
     let node_hsm_info = node_hsm_info

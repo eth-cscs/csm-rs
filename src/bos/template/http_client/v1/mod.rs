@@ -1,7 +1,9 @@
 pub mod types;
 
 use crate::{
-  bos::template::http_client::v1::types::BosSessionTemplate, error::Error,
+  bos::template::http_client::v1::types::BosSessionTemplate,
+  common::http,
+  error::Error,
 };
 
 /// Get BOS session templates. Ref --> https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/
@@ -17,33 +19,20 @@ pub async fn get(
     bos_session_template_id_opt.unwrap_or(&"all available".to_string())
   );
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
+  let api_url = if let Some(id) = bos_session_template_id_opt {
+    format!("{}/bos/v1/sessiontemplate/{}", shasta_base_url, id)
+  } else {
+    format!("{}/bos/v1/sessiontemplate", shasta_base_url)
   };
 
-  let api_url =
-    if let Some(bos_session_template_id) = bos_session_template_id_opt {
-      shasta_base_url.to_owned()
-        + "/bos/v1/sessiontemplate/"
-        + bos_session_template_id
-    } else {
-      shasta_base_url.to_owned() + "/bos/v1/sessiontemplate"
-    };
-
-  let response = client.get(api_url).bearer_auth(shasta_token).send().await?;
-
   if bos_session_template_id_opt.is_none() {
-    response.json().await.map_err(Error::NetError)
+    http::get_json(&client, &api_url, shasta_token).await
   } else {
-    response
-      .json::<BosSessionTemplate>()
-      .await
-      .map(|cfs_configuration| vec![cfs_configuration])
-      .map_err(Error::NetError)
+    let single: BosSessionTemplate =
+      http::get_json(&client, &api_url, shasta_token).await?;
+    Ok(vec![single])
   }
 }
 
@@ -60,38 +49,10 @@ pub async fn post(
     serde_json::to_string_pretty(bos_template).unwrap()
   );
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_string() + "/bos/v1/sessiontemplate";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/bos/v1/sessiontemplate", shasta_base_url);
 
   log::debug!("API URL request: {}", api_url);
 
-  let response = client
-    .post(api_url)
-    .json(&bos_template)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))?,
-    )
-  } else {
-    let payload = response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
-  }
+  http::post_json(&client, &api_url, shasta_token, bos_template).await
 }

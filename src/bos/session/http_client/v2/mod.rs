@@ -1,9 +1,8 @@
 pub mod types;
 
-use serde_json::Value;
 use types::BosSession;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 pub async fn post(
   shasta_token: &str,
@@ -18,43 +17,16 @@ pub async fn post(
   );
   log::debug!("Create BOS session request:\n{:#?}", bos_session);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/bos/v2/sessions", shasta_base_url);
+  let created: BosSession =
+    http::post_json(&client, &api_url, shasta_token, &bos_session).await?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_string() + "/bos/v2/sessions";
-
-  let response = client
-    .post(api_url)
-    .json(&bos_session)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    let bos_session: BosSession = response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    log::info!(
-      "BOS session '{}' created successfully",
-      bos_session.name.as_deref().unwrap_or("unknown")
-    );
-    Ok(bos_session)
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+  log::info!(
+    "BOS session '{}' created successfully",
+    created.name.as_deref().unwrap_or("unknown")
+  );
+  Ok(created)
 }
 
 pub async fn get(
@@ -66,49 +38,20 @@ pub async fn get(
 ) -> Result<Vec<BosSession>, Error> {
   log::info!("Get BOS sessions '{}'", id_opt.unwrap_or("all available"));
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
+  let api_url = if let Some(id) = id_opt {
+    format!("{}/bos/v2/sessions/{}", shasta_base_url, id)
+  } else {
+    format!("{}/bos/v2/sessions", shasta_base_url)
   };
 
-  let mut api_url = shasta_base_url.to_string() + "/bos/v2/sessions";
-
-  if let Some(id) = id_opt {
-    api_url = api_url + "/" + id
-  }
-
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    // Make sure we return a vec if user requesting a single value
-    if id_opt.is_some() {
-      let payload = response
-        .json::<BosSession>()
-        .await
-        .map_err(|error| Error::NetError(error))?;
-
-      Ok(vec![payload])
-    } else {
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))
-    }
+  if id_opt.is_some() {
+    let single: BosSession =
+      http::get_json(&client, &api_url, shasta_token).await?;
+    Ok(vec![single])
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
+    http::get_json(&client, &api_url, shasta_token).await
   }
 }
 
@@ -119,32 +62,8 @@ pub async fn delete(
   socks5_proxy: Option<&str>,
   bos_session_id: &str,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url =
-    shasta_base_url.to_string() + "/bos/v2/sessions/" + bos_session_id;
-
-  let response = client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    Ok(())
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+    format!("{}/bos/v2/sessions/{}", shasta_base_url, bos_session_id);
+  http::delete(&client, &api_url, shasta_token).await
 }

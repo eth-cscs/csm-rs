@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::collections::BTreeMap;
 
 use crate::{
@@ -6,13 +8,11 @@ use crate::{
   },
   commands::i_apply_sat_file::utils::{
     configuration, get_image_name_or_ref_name_to_process,
-    get_next_image_in_sat_file_to_process, image, sat_file_image_old::Ims,
+    get_next_image_in_sat_file_to_process, image,
     validate_sat_file_images_section,
   },
   error::Error,
-  ims::{
-    self, image::http_client::types::Image, recipe::types::RecipeGetResponse,
-  },
+  ims::{image::http_client::types::Image, recipe::types::RecipeGetResponse},
 };
 
 /// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing

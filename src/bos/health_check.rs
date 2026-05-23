@@ -11,8 +11,7 @@ pub async fn get(
 ) -> Result<Value, Error> {
   let api_url = shasta_base_url.to_owned() + "/bos/v2/healthz";
 
-  let response =
-    csm::process_get_http_request(shasta_token, api_url, shasta_root_cert, socks5_proxy)
-      .await;
-  response
+  
+  csm::process_get_http_request(shasta_token, api_url, shasta_root_cert, socks5_proxy)
+      .await
 }

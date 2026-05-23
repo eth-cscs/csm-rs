@@ -3,7 +3,7 @@ use tokio::sync::Semaphore;
 use core::result::Result;
 use std::{sync::Arc, time::Instant};
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::BootParameters;
 
@@ -17,16 +17,8 @@ pub async fn get(
 ) -> Result<Vec<BootParameters>, Error> {
   log::info!("Get BSS bootparameters");
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let url_api =
-    format!("{}/bss/boot/v1/bootparameters", shasta_base_url.to_string());
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let url_api = format!("{}/bss/boot/v1/bootparameters", shasta_base_url);
 
   let params: Vec<_> = xnames.iter().map(|xname| ("name", xname)).collect();
 
@@ -36,20 +28,9 @@ pub async fn get(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json::<Vec<BootParameters>>()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }
 
 pub async fn get_all(
@@ -119,6 +100,8 @@ pub fn post(
   socks5_proxy: Option<&str>,
   boot_parameters: BootParameters,
 ) -> Result<(), Error> {
+  // NOTE: this is the only blocking (non-async) call in bss; the helper module
+  // is async-only, so we keep the inline reqwest::blocking client.
   let client_builder = reqwest::blocking::Client::builder()
     .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
 
@@ -134,7 +117,7 @@ pub fn post(
     .bearer_auth(auth_token)
     .json(&boot_parameters)
     .send()
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
   if response.status().is_success() {
     Ok(())
@@ -151,14 +134,7 @@ pub async fn put(
   socks5_proxy: Option<&str>,
   boot_parameters: BootParameters,
 ) -> Result<BootParameters, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url = format!("{}/bss/boot/v1/bootparameters", shasta_base_url);
 
   log::debug!(
@@ -172,7 +148,7 @@ pub async fn put(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
   if response.status().is_success() {
     Ok(response.json().await?)
@@ -188,14 +164,7 @@ pub async fn patch(
   socks5_proxy: Option<&str>,
   boot_parameters: &BootParameters,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url = format!("{}/bss/boot/v1/bootparameters", shasta_base_url);
 
   let response = client
@@ -204,7 +173,7 @@ pub async fn patch(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
   if response.status().is_success() {
     Ok(())

@@ -22,13 +22,7 @@ pub async fn s3_auth(
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
   // STS
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = shasta_base_url.to_owned() + "/sts/token";
 
@@ -183,9 +177,9 @@ pub async fn s3_get_object_size(
 /// - `sts_value` the temporary S3 token obtained from STS via `s3_auth()`
 /// - `object_path` path within the bucket in S3 of the object e.g. `392o1h-1-234-w1/manifest.json`
 /// - `bucket` bucket where the object is contained.
-/// - `destination_path` <p>path in the local filesystem where the file will be downloaded to
-///         e.g. `/tmp/my_images/392o1h-1-234-w1` the file will be downloaded then to
-///             `/tmp/my_images/392o1h-1-234-w1/manifest.json`</p>
+/// - `destination_path` path in the local filesystem where the file will be downloaded to,
+///   e.g. `/tmp/my_images/392o1h-1-234-w1` the file will be downloaded then to
+///   `/tmp/my_images/392o1h-1-234-w1/manifest.json`
 /// # Returns
 ///   * String: full path of the object downloaded OR
 ///   * Box<dyn Error>: descriptive error if not possible to download or to store the object
@@ -239,7 +233,7 @@ pub async fn s3_download_object(
     .map_err(|e| {
       Error::Message(format!(
         "ERROR - could not download S3 object.\nReason:\n{}",
-        e.to_string(),
+        e,
       ))
     })?;
 
@@ -251,14 +245,14 @@ pub async fn s3_download_object(
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
     Error::Message(format!(
       "ERROR - Could not create progress bar.\nReason:\n{}",
-      e.to_string()
+      e
     ))
   })?);
 
   while let Some(bytes) = object.body.try_next().await.map_err(|e| {
     Error::Message(format!(
       "ERROR - Could not finish s3 object download.\nReason:\n{}",
-      e.to_string()
+      e
     ))
   })? {
     let bytes = file.write(&bytes)?;
@@ -301,7 +295,7 @@ pub async fn s3_upload_object(
     .map_err(|e| {
       Error::Message(format!(
         "ERROR - could not upload S3 object.\nReason:\n{}",
-        e.to_string()
+        e
       ))
     })?;
 
@@ -382,7 +376,7 @@ pub async fn s3_multipart_upload_object(
     .map_err(|e| {
       Error::Message(format!(
         "ERROR - Could not create multipart object.\nReason:\n{}",
-        e.to_string()
+        e
       ))
     })?;
 
@@ -398,7 +392,7 @@ pub async fn s3_multipart_upload_object(
       Error::Message(format!(
         "ERROR - Could not get file size from '{}'.\nReason\n{}",
         file_path,
-        e.to_string()
+        e
       ))
     })?
     .len();
@@ -414,7 +408,7 @@ pub async fn s3_multipart_upload_object(
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
     Error::Message(format!(
       "ERROR - Could not create progress bar.\nReason:\n{}",
-      e.to_string()
+      e
     ))
   })?);
 
@@ -464,7 +458,7 @@ pub async fn s3_multipart_upload_object(
       .map_err(|e| {
         Error::Message(format!(
           "ERROR - could not upload to S3.\nReason:\n{}",
-          e.to_string()
+          e
         ))
       })?;
 
@@ -497,7 +491,7 @@ pub async fn s3_multipart_upload_object(
     .map_err(|e| {
       Error::Message(format!(
         "ERROR - could not upload to S3.\nReason:\n{}",
-        e.to_string()
+        e
       ))
     })?;
 

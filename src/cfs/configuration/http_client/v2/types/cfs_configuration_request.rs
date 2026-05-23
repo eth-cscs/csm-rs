@@ -52,16 +52,16 @@ impl From<FrontEndLayer> for Layer {
   }
 }
 
-impl Into<FrontEndLayer> for Layer {
-  fn into(self) -> FrontEndLayer {
+impl From<Layer> for FrontEndLayer {
+  fn from(val: Layer) -> Self {
     FrontEndLayer {
-      name: Some(self.name),
-      clone_url: Some(self.clone_url),
-      playbook: self.playbook,
-      commit: self.commit,
-      branch: self.branch,
+      name: Some(val.name),
+      clone_url: Some(val.clone_url),
+      playbook: val.playbook,
+      commit: val.commit,
+      branch: val.branch,
       source: None, // This field is not used in the backend
-      special_parameters: self.special_parameters.map(|special_parameters| {
+      special_parameters: val.special_parameters.map(|special_parameters| {
         special_parameters
           .into_iter()
           .map(|special_parameter| special_parameter.into())
@@ -86,10 +86,10 @@ impl From<FrontEndSpecialParameter> for SpecialParameter {
   }
 }
 
-impl Into<FrontEndSpecialParameter> for SpecialParameter {
-  fn into(self) -> FrontEndSpecialParameter {
+impl From<SpecialParameter> for FrontEndSpecialParameter {
+  fn from(val: SpecialParameter) -> Self {
     FrontEndSpecialParameter {
-      ims_required_dkms: self.ims_required_dkms,
+      ims_required_dkms: val.ims_required_dkms,
     }
   }
 }
@@ -117,11 +117,11 @@ impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
   }
 }
 
-impl Into<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
-  fn into(self) -> FrontEndCfsConfigurationRequest {
+impl From<CfsConfigurationRequest> for FrontEndCfsConfigurationRequest {
+  fn from(val: CfsConfigurationRequest) -> Self {
     FrontEndCfsConfigurationRequest {
       description: None,
-      layers: Some(self.layers.into_iter().map(Layer::into).collect()),
+      layers: Some(val.layers.into_iter().map(Layer::into).collect()),
       additional_inventory: None,
     }
   }
@@ -381,7 +381,9 @@ impl CfsConfigurationRequest {
         let commit_id_opt = if product_branch_value_opt.is_some() {
           // If branch is provided, then ignore the commit id in the CRAY products table
 
-          let commit = Some(
+          
+
+          Some(
             gitea::http_client::get_commit_pointed_by_branch(
               gitea_base_url,
               gitea_token,
@@ -391,9 +393,7 @@ impl CfsConfigurationRequest {
               product_branch_value_opt.and_then(Value::as_str).unwrap(),
             )
             .await?,
-          );
-
-          commit
+          )
         } else {
           product_details
             .get("commit")
@@ -428,9 +428,7 @@ impl CfsConfigurationRequest {
         );
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message(format!(
-          "ERROR - configurations section in SAT file error - CFS configuration layer error"
-        )));
+        return Err(Error::Message("ERROR - configurations section in SAT file error - CFS configuration layer error".to_string()));
       }
     }
 
@@ -468,8 +466,8 @@ impl CfsConfigurationRequest {
           )
         } else if let configuration::Git::GitTag { url, tag } = git {
           let tag_details_rslt = gitea::http_client::get_tag_details(
-            &url,
-            &tag,
+            url,
+            tag,
             gitea_token,
             shasta_root_cert,
             socks5_proxy,
@@ -522,57 +520,10 @@ impl CfsConfigurationRequest {
             None,
             None,
           )
-        } else if let configuration::Git::GitTag { url, tag } = git {
-          let tag_details_rslt = gitea::http_client::get_tag_details(
-            &url,
-            &tag,
-            gitea_token,
-            shasta_root_cert,
-            socks5_proxy,
-            site_name,
-          )
-          .await;
-
-          let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
-            tag_details
-          } else {
-            return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              tag, cfs_configuration_name, tag_details_rslt
-            )));
-          };
-
-          // Assumming user sets an existing tag name. It could be an annotated tag
-          // (different object than the commit id with its own sha value) or a
-          // lightweight tag (pointer to commit id, therefore the tag will have the
-          // same sha as the commit id it points to), either way CFS session will
-          // do a `git checkout` to the sha we found here, if an annotated tag, then,
-          // git is clever enough to take us to the final commit id, if it is a
-          // lighweight tag, then there is no problem because the sha is the same
-          // as the commit id
-          // NOTE: the `id` field is the tag's sha, note we are not taking the commit id
-          // the tag points to and we should not use sha because otherwise we won't be
-          // able to fetch the annotated tag using a commit sha through the Gitea APIs
-          let commit = tag_details
-            .get("id")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string)
-            .unwrap_or_default();
-
-          Layer::new(
-            url.to_string(),
-            Some(commit),
-            layer_yaml.name.clone().unwrap_or_default(),
-            playbook.to_string(),
-            None,
-            None,
-            None,
-          )
         } else {
-          return Err(Error::Message(format!(
-            "ERROR - configurations section in SAT file error - CFS configuration layer error - Git layer error - 'git' field should have 'url' field"
-          )));
+          return Err(Error::Message(
+            "ERROR - configurations section in SAT file error - CFS configuration layer error - Git layer error - 'git' field should have 'url' field".to_string()
+          ));
         };
 
         cfs_configuration.add_layer(layer);
@@ -595,7 +546,7 @@ impl CfsConfigurationRequest {
             serde_yaml::from_str::<Value>(product).unwrap();
 
           let product_details= cos_cray_product_catalog
-            .get(&version)
+            .get(version)
             .and_then(|product| product.get("configuration")).ok_or_else(|| Error::Message(format!(
               "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
               name, version.clone()
@@ -628,7 +579,9 @@ impl CfsConfigurationRequest {
             .map(str::to_string);
 
           // Create CFS configuration layer struct
-          let layer = Layer::new(
+          
+
+          Layer::new(
             repo_url,
             commit_id_opt,
             name.to_string(),
@@ -636,9 +589,7 @@ impl CfsConfigurationRequest {
             None,
             None,
             None,
-          );
-
-          layer
+          )
         } else if let configuration::Product::ProductVersionBranch {
           name,
           version,
@@ -692,13 +643,15 @@ impl CfsConfigurationRequest {
               shasta_root_cert,
               socks5_proxy,
               &repo_url,
-              &branch,
+              branch,
             )
             .await?,
           );
 
           // Create CFS configuration layer struct
-          let layer = Layer::new(
+          
+
+          Layer::new(
             repo_url,
             commit_id_opt,
             name.to_string(),
@@ -706,9 +659,7 @@ impl CfsConfigurationRequest {
             None,
             None,
             None,
-          );
-
-          layer
+          )
         } else if let configuration::Product::ProductVersionCommit {
           name,
           version,
@@ -756,7 +707,9 @@ impl CfsConfigurationRequest {
             .unwrap();
 
           // Create CFS configuration layer struct
-          let layer = Layer::new(
+          
+
+          Layer::new(
             repo_url,
             Some(commit.to_string()),
             name.to_string(),
@@ -764,20 +717,14 @@ impl CfsConfigurationRequest {
             None,
             None,
             None,
-          );
-
-          layer
+          )
         } else {
-          return Err(Error::Message(format!(
-            "ERROR - configurations section in SAT file error - CFS configuration layer error - Product layer error - 'product' field should have 'name' and 'version' fields"
-          )));
+          return Err(Error::Message("ERROR - configurations section in SAT file error - CFS configuration layer error - Product layer error - 'product' field should have 'name' and 'version' fields".to_string()));
         };
 
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message(format!(
-          "ERROR - configurations section in SAT file error - CFS configuration layer error"
-        )));
+        return Err(Error::Message("ERROR - configurations section in SAT file error - CFS configuration layer error".to_string()));
       }
     }
 

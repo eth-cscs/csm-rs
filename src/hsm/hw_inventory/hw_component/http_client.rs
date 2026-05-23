@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::{HWInventoryByLocationList, NodeSummary};
 
@@ -11,43 +11,26 @@ pub async fn get(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<NodeSummary, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", shasta_base_url);
 
-  let response = client
-    .get(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
+  let payload: Value =
+    http::handle_json_or_text_response(
+      client
+        .get(api_url)
+        .bearer_auth(shasta_token)
+        .send()
+        .await
+        .map_err(Error::NetError)?,
+    )
+    .await?;
 
-  if response.status().is_success() {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error));
-
-    match payload.unwrap().pointer("/Nodes/0") {
-      Some(node_value) => Ok(NodeSummary::from_csm_value(node_value.clone())),
-      None => Err(Error::Message(format!(
-        "ERROR - json section '/Node' missing in json response API for node '{}'",
-        xname
-      ))),
-    }
-  } else {
-    let e = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::Message(e.to_string()))
+  match payload.pointer("/Nodes/0") {
+    Some(node_value) => Ok(NodeSummary::from_csm_value(node_value.clone())),
+    None => Err(Error::Message(format!(
+      "ERROR - json section '/Node' missing in json response API for node '{}'",
+      xname
+    ))),
   }
 }
 
@@ -58,39 +41,12 @@ pub async fn get_query(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url = format!(
     "{}/smd/hsm/v2/Inventory/Hardware/Query/{}",
     shasta_base_url, xname
   );
-
-  let response = client
-    .get(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
-  }
+  http::get_json(&client, &api_url, shasta_token).await
 }
 
 pub async fn post(
@@ -100,16 +56,8 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   hw_inventory_by_location: HWInventoryByLocationList,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}", base_url, "/smd/hsm/v2/Inventory/Hardware");
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", base_url);
 
   let response = client
     .post(api_url)
@@ -122,22 +70,17 @@ pub async fn post(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
+        return Err(Error::CsmError(error_payload));
       }
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }

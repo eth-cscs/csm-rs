@@ -64,7 +64,7 @@ impl ImsTrait for Csm {
       self.base_url.as_str(),
       self.root_cert.as_slice(),
       self.socks5_proxy.as_deref(),
-      &image_id.to_string(),
+      image_id,
       &image.clone().into(),
     )
     .await

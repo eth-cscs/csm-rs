@@ -1,7 +1,7 @@
 use reqwest::Url;
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 pub async fn get_raw(
   shasta_token: &str,
@@ -10,13 +10,7 @@ pub async fn get_raw(
   socks5_proxy: Option<&str>,
   xname_vec: &[String],
 ) -> Result<Vec<Value>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let url_params: Vec<_> =
     xname_vec.iter().map(|xname| ("id", xname)).collect();
@@ -27,27 +21,16 @@ pub async fn get_raw(
   )
   .unwrap();
 
-  let response = client
-    .get(api_url.clone())
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .send()
-    .await?;
+  let response: Value =
+    http::get_json(&client, api_url.as_str(), shasta_token).await?;
 
-  if response.status().is_success() {
-    Ok(
-      response
-        .json::<Value>()
-        .await
-        .map_err(|error| Error::NetError(error))?
-        .get("Components")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default(),
-    )
-  } else {
-    let payload = response.json::<Value>().await?;
-    Err(Error::CsmError(payload))
-  }
+  Ok(
+    response
+      .get("Components")
+      .and_then(Value::as_array)
+      .cloned()
+      .unwrap_or_default(),
+  )
 }
 
 /// Fetches nodes/compnents details using HSM v2 ref --> https://apidocs.svc.cscs.ch/iaas/hardware-state-manager/operation/doComponentsGet/

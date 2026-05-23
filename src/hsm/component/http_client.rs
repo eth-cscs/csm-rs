@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{error::Error, hsm::component::types::Component};
+use crate::{common::http, error::Error, hsm::component::types::Component};
 
 use super::types::{
   ComponentArray, ComponentArrayPostArray, ComponentArrayPostByNidQuery,
@@ -111,13 +111,7 @@ pub async fn get(
   role_only: Option<&str>,
   nid_only: Option<&str>,
 ) -> Result<ComponentArray, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = http::build_client(root_cert, socks5_proxy)?;
 
   let mut nid_vec_query = nid.map(|nids| {
     nids
@@ -152,8 +146,7 @@ pub async fn get(
     query_params.append(&mut nid_vec_query);
   }
 
-  let api_url: String =
-    format!("{}/{}", base_url, "smd/hsm/v2/State/Components");
+  let api_url = format!("{}/smd/hsm/v2/State/Components", base_url);
 
   let response = client
     .get(api_url)
@@ -162,25 +155,7 @@ pub async fn get(
     .send()
     .await?;
 
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json::<ComponentArray>()
-    .await
-    .map_err(|e| Error::NetError(e))
+  http::handle_json_or_text_response(response).await
 }
 
 pub async fn get_one(
@@ -190,16 +165,8 @@ pub async fn get_one(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Component, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}/{}", base_url, "hsm/v2/State/Components", xname);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
 
   let response = client.get(api_url).bearer_auth(auth_token).send().await?;
 
@@ -214,10 +181,7 @@ pub async fn get_one(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn post(
@@ -227,15 +191,8 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   component: ComponentArrayPostArray,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = base_url.to_owned() + "/hsm/v2/State/Components";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components", base_url);
 
   let response = client
     .post(api_url)
@@ -265,15 +222,8 @@ pub async fn post_query(
   socks5_proxy: Option<&str>,
   component: ComponentArrayPostQuery,
 ) -> Result<ComponentArray, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = base_url.to_owned() + "/hsm/v2/State/Components";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components", base_url);
 
   let response = client
     .post(api_url)
@@ -293,10 +243,7 @@ pub async fn post_query(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn post_bynid_query(
@@ -306,16 +253,8 @@ pub async fn post_bynid_query(
   socks5_proxy: Option<&str>,
   component: ComponentArrayPostByNidQuery,
 ) -> Result<ComponentArray, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    base_url.to_owned() + "/hsm/v2/State/Components/ByNID/Query";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components/ByNID/Query", base_url);
 
   let response = client
     .post(api_url)
@@ -335,10 +274,7 @@ pub async fn post_bynid_query(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn put(
@@ -349,16 +285,8 @@ pub async fn put(
   xname: &str,
   component: ComponentPut,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}/{}", base_url, "hsm/v2/State/Components/", xname);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
 
   let response = client
     .put(api_url)
@@ -378,10 +306,7 @@ pub async fn put(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn delete_one(
@@ -391,16 +316,8 @@ pub async fn delete_one(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}/{}", base_url, "hsm/v2/State/Components", xname);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
 
   let response = client
     .delete(api_url)
@@ -419,10 +336,7 @@ pub async fn delete_one(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn delete(
@@ -431,15 +345,8 @@ pub async fn delete(
   root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!("{}/{}", base_url, "hsm/v2/State/Componnets");
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/hsm/v2/State/Componnets", base_url);
 
   let response = client
     .delete(api_url)
@@ -458,8 +365,5 @@ pub async fn delete(
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }

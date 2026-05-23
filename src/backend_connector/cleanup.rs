@@ -36,7 +36,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
       shasta_base_url,
       shasta_root_cert,
       self.socks5_proxy.as_deref(),
-      &hsm_name_available_vec,
+      hsm_name_available_vec,
       configuration_name_pattern_opt,
       since_opt,
       until_opt,

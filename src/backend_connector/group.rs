@@ -52,7 +52,7 @@ impl GroupTrait for Csm {
     group: FrontEndGroup,
   ) -> Result<FrontEndGroup, Error> {
     let group_csm = hsm::group::http_client::post(
-      &auth_token,
+      auth_token,
       &self.base_url,
       &self.root_cert,
       self.socks5_proxy.as_deref(),
@@ -79,7 +79,7 @@ impl GroupTrait for Csm {
       &self.base_url,
       &self.root_cert,
       self.socks5_proxy.as_deref(),
-      &hsm_group_name_vec,
+      hsm_group_name_vec,
     )
     .await
     .map_err(|e| Error::Message(e.to_string()))

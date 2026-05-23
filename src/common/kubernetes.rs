@@ -109,7 +109,7 @@ pub async fn get_client(
     client_certificate: None,
     client_certificate_data: Some(String::from(client_certificate_data)),
     client_key: None,
-    client_key_data: Some(SecretBox::try_from(client_key_data).unwrap()),
+    client_key_data: Some(SecretBox::from(client_key_data)),
     impersonate: None,
     impersonate_groups: None,
     auth_provider: None,
@@ -168,7 +168,7 @@ pub async fn get_client(
 }
 
 #[deprecated(
-  since = "v0.42.3-beta.71",
+  since = "0.42.3-beta.71",
   note = "this function prints CFS logs to stdout"
 )]
 pub async fn i_print_cfs_session_logs(
@@ -699,8 +699,7 @@ pub async fn get_init_container_logs_stream(
       Error::K8sError(format!(
         "Init container '{}' not in 'running' state. Aborting operation",
         init_container_name
-      ))
-      .into(),
+      )),
     );
   }
 
@@ -811,8 +810,7 @@ pub async fn get_container_logs_stream(
       Error::K8sError(format!(
         "Container '{}' not ready. Aborting operation",
         container_name
-      ))
-      .into(),
+      )),
     );
   }
 
@@ -902,7 +900,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   let attached = pods_fabric
         .exec(
-            &console_operator_pod_name,
+            console_operator_pod_name,
             vec![
                 "sh",
                 "-c",
@@ -984,7 +982,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   pods_fabric
     .exec(
-      &console_operator_pod_name,
+      console_operator_pod_name,
       command,
       &AttachParams::default()
         .container("sshd")

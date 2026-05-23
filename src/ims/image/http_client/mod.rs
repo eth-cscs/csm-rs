@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use types::{Image, PatchImage};
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 pub async fn get(
   shasta_token: &str,
@@ -18,18 +18,12 @@ pub async fn get(
     image_id_opt.unwrap_or("all available")
   );
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = if let Some(image_id) = image_id_opt {
-    shasta_base_url.to_owned() + "/ims/v3/images/" + image_id
+    format!("{}/ims/v3/images/{}", shasta_base_url, image_id)
   } else {
-    shasta_base_url.to_owned() + "/ims/v3/images"
+    format!("{}/ims/v3/images", shasta_base_url)
   };
 
   let response_rslt = client
@@ -46,7 +40,7 @@ pub async fn get(
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
         "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
+        e
       )),
     });
 
@@ -81,19 +75,12 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   ims_image: &Image,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/ims/v3/images", shasta_base_url);
 
   client
     .post(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
+    .bearer_auth(shasta_token)
     .json(&ims_image)
     .send()
     .await
@@ -115,17 +102,23 @@ pub async fn delete(
   socks5_proxy: Option<&str>,
   image_id: &str,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
+  // Map a NOT_FOUND status to the dedicated ImageNotFound variant so callers
+  // can distinguish "the image is already gone" from other failures.
+  let map_delete_err = |e: reqwest::Error| match e.status() {
+    Some(reqwest::StatusCode::NOT_FOUND) => {
+      Error::ImageNotFound(image_id.to_string())
+    }
+    Some(_) => Error::NetError(e),
+    None => Error::Message(format!(
+      "ERROR - Http response with no status code?.\nReason:\n{}",
+      e
+    )),
   };
 
   // SOFT DELETION
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + image_id;
-
+  let api_url = format!("{}/ims/v3/images/{}", shasta_base_url, image_id);
   client
     .delete(api_url)
     .bearer_auth(shasta_token)
@@ -134,21 +127,11 @@ pub async fn delete(
     .map_err(Error::NetError)?
     .error_for_status()
     .map(|_| ())
-    .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id.to_string())
-      }
-      Some(_) => Error::NetError(e),
-      None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
-      )),
-    })?;
+    .map_err(map_delete_err)?;
 
   // PERMANENT DELETION
   let api_url =
-    shasta_base_url.to_owned() + "/ims/v3/deleted/images/" + image_id;
-
+    format!("{}/ims/v3/deleted/images/{}", shasta_base_url, image_id);
   client
     .delete(api_url)
     .bearer_auth(shasta_token)
@@ -157,16 +140,7 @@ pub async fn delete(
     .map_err(Error::NetError)?
     .error_for_status()
     .map(|_| ())
-    .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id.to_string())
-      }
-      Some(_) => Error::NetError(e),
-      None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
-      )),
-    })
+    .map_err(map_delete_err)
 }
 
 /// update an IMS image record --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
@@ -175,22 +149,15 @@ pub async fn patch(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  ims_image_id: &String,
+  ims_image_id: &str,
   ims_link: &PatchImage,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + &ims_image_id;
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/ims/v3/images/{}", shasta_base_url, ims_image_id);
 
   client
     .patch(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
+    .bearer_auth(shasta_token)
     .json(&ims_link)
     .send()
     .await

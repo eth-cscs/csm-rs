@@ -36,7 +36,7 @@ pub async fn exec(
   // Check andible limit matches the nodes in hsm_group
   let hsm_group_list;
 
-  let cfs_configuration_name;
+  
 
   let hsm_groups_node_list;
 
@@ -65,7 +65,7 @@ pub async fn exec(
   }
   // * End Parse input params
 
-  cfs_configuration_name = cfs_conf_sess_name.unwrap();
+  let cfs_configuration_name = cfs_conf_sess_name.unwrap();
 
   // * Process/validate hsm group value (and ansible limit)
   if let Some(hsm_group_value) = hsm_group_value_opt {
@@ -123,7 +123,7 @@ pub async fn exec(
   xname_list.dedup();
 
   log::info!("Replacing '_' with '-' in repo name.");
-  let cfs_configuration_name = str::replace(&cfs_configuration_name, "_", "-");
+  let cfs_configuration_name = str::replace(cfs_configuration_name, "_", "-");
 
   // * Check nodes are ready to run, create CFS configuration and CFS session
   let cfs_session_name =
@@ -139,7 +139,7 @@ pub async fn exec(
       shasta_root_cert,
       socks5_proxy,
       Some(&xname_list.join(",")), // Convert Hashset to String with comma separator, need to convert to Vec first following https://stackoverflow.com/a/47582249/1918003
-      Some(ansible_verbosity.map(|s| s.parse::<u8>().unwrap_or(2))).unwrap(),
+      ansible_verbosity.map(|s| s.parse::<u8>().unwrap_or(2)),
       ansible_passthrough,
     )
     .await?;
@@ -196,7 +196,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         .as_ref()
         .and_then(|configuration| configuration.name.as_ref())
         .map(String::as_str)
-        == Some(&cfs_configuration_name)
+        == Some(cfs_configuration_name)
     })
     .flat_map(|cfs_session| {
       cfs_session
@@ -217,7 +217,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // NOTE: nodes can be a list of xnames or hsm group name
 
   // Convert limit (String with list of target nodes for new CFS session) into list of String
-  let limit_value = limit.clone().unwrap_or("");
+  let limit_value = limit.unwrap_or("");
   let nodes_list: Vec<&str> =
     limit_value.split(',').map(|node| node.trim()).collect();
 
@@ -255,11 +255,11 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       shasta_base_url,
       shasta_root_cert,
       socks5_proxy,
-      &[xname.clone()],
+      std::slice::from_ref(&xname),
     )
     .await?;
 
-    let hsm_component_status_state: &str = &hsm_component_status_rslt
+    let hsm_component_status_state: &str = hsm_component_status_rslt
       .first()
       .and_then(|v| v.get("State"))
       .and_then(Value::as_str)

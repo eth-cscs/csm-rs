@@ -4,6 +4,7 @@ pub mod node_power_off {
 
   use crate::{
     capmc::{self, types::PowerStatus, utils::wait_nodes_to_power_off},
+    common::http,
     error::Error,
   };
 
@@ -20,15 +21,8 @@ pub mod node_power_off {
 
     let power_off = PowerStatus::new(reason_opt, xname_vec, force, None);
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
-    let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_off";
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+    let api_url = format!("{}/capmc/capmc/v1/xname_off", shasta_base_url);
 
     Ok(
       client
@@ -82,6 +76,7 @@ pub mod node_power_on {
 
   use crate::{
     capmc::{self, types::PowerStatus, utils::wait_nodes_to_power_on},
+    common::http,
     error::Error,
   };
 
@@ -97,15 +92,8 @@ pub mod node_power_on {
 
     let power_on = PowerStatus::new(reason, xname_vec, false, None);
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
-    let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_on";
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+    let api_url = format!("{}/capmc/capmc/v1/xname_on", shasta_base_url);
 
     Ok(
       client
@@ -157,6 +145,7 @@ pub mod node_power_reset {
 
   use crate::{
     capmc::{self, types::PowerStatus},
+    common::http,
     error::Error,
   };
 
@@ -171,15 +160,8 @@ pub mod node_power_reset {
   ) -> Result<Value, Error> {
     let node_restart = PowerStatus::new(reason, xname_vec, force, None);
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
-    let api_url = shasta_base_url.to_owned() + "/capmc/capmc/v1/xname_reinit";
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+    let api_url = format!("{}/capmc/capmc/v1/xname_reinit", shasta_base_url);
 
     Ok(
       client
@@ -274,7 +256,11 @@ pub mod node_power_status {
 
   use serde_json::Value;
 
-  use crate::{capmc::types::NodeStatus, error::Error};
+  use crate::{
+    capmc::types::NodeStatus,
+    common::http,
+    error::Error,
+  };
 
   pub async fn post(
     shasta_token: &str,
@@ -288,16 +274,9 @@ pub mod node_power_status {
     let node_status_payload =
       NodeStatus::new(None, Some(xnames.clone()), Some("redfish".to_string()));
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let url_api =
-      shasta_base_url.to_owned() + "/capmc/capmc/v1/get_xname_status";
+      format!("{}/capmc/capmc/v1/get_xname_status", shasta_base_url);
 
     Ok(
       client

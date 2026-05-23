@@ -55,7 +55,7 @@ secrecy = { version = "0.10.0", default-features = false }
 termion = "2.0.1" # used by manta_console to enable terminal raw
 base64 = { version = "0.13.1", default-features = false }
 aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false }
-aws-config = { version = "1.1.2", default-features = false }
+aws-config = { version = "1.1.2", default-features = false, features = ["behavior-version-latest"] }
 aws-smithy-runtime = { version = "1.0.1" }
 aws-smithy-types = { version = "1.1.2", features = ["rt-tokio"] }
 globset = { version = "0.4.14", default-features = false }

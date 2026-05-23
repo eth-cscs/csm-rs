@@ -92,7 +92,7 @@ pub async fn exec(
       if create_target_hsm_group {
         log::info!(
           "Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.",
-          target_hsm_group_name.to_string()
+          target_hsm_group_name
         );
         if nodryrun {
           let group = Group {
@@ -120,7 +120,7 @@ pub async fn exec(
       } else {
         return Err(Error::Message(format!(
           "Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.",
-          target_hsm_group_name.to_string()
+          target_hsm_group_name
         )));
       }
     }
@@ -309,7 +309,7 @@ pub async fn exec(
     // The parent group might be out of resources after applying this, so it's safe to check
     // if there are still nodes there and, delete it after moving out the resources.
     let parent_group_will_be_empty =
-      &target_hsm_group_member_vec.len() == &parent_hsm_group_member_vec.len();
+      target_hsm_group_member_vec.len() == parent_hsm_group_member_vec.len();
     let _ = hsm::group::utils::update_hsm_group_members(
       shasta_token,
       shasta_base_url,

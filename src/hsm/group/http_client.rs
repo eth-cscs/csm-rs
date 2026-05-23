@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 use crate::{
+  common::http,
   error::Error,
   hsm::group::types::{Group, Member, Members},
 };
@@ -12,18 +13,12 @@ pub async fn get_raw(
   socks5_proxy: Option<&str>,
   group_name_opt: Option<&String>,
 ) -> Result<reqwest::Response, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = if let Some(group_name) = group_name_opt {
-    shasta_base_url.to_owned() + "/smd/hsm/v2/groups/" + group_name
+  let api_url = if let Some(group_name) = group_name_opt {
+    format!("{}/smd/hsm/v2/groups/{}", shasta_base_url, group_name)
   } else {
-    shasta_base_url.to_owned() + "/smd/hsm/v2/groups"
+    format!("{}/smd/hsm/v2/groups", shasta_base_url)
   };
 
   client
@@ -31,7 +26,7 @@ pub async fn get_raw(
     .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))
+    .map_err(Error::NetError)
 }
 
 pub async fn get_one(
@@ -41,16 +36,8 @@ pub async fn get_one(
   socks5_proxy: Option<&str>,
   label: &str,
 ) -> Result<Group, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}/{}", base_url, "smd/hsm/v2/groups", label);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/smd/hsm/v2/groups/{}", base_url, label);
 
   let response = client.get(api_url).bearer_auth(auth_token).send().await?;
 
@@ -58,24 +45,19 @@ pub async fn get_one(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn get(
@@ -86,15 +68,8 @@ pub async fn get(
   label_vec_opt: Option<&[String]>,
   tag_vec_opt: Option<&[String]>,
 ) -> Result<Vec<Group>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!("{}/{}", base_url, "smd/hsm/v2/groups");
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!("{}/smd/hsm/v2/groups", base_url);
 
   let mut query = Vec::new();
 
@@ -120,24 +95,19 @@ pub async fn get(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
 
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.json().await.map_err(Error::NetError)
 }
 
 pub async fn get_all(
@@ -182,15 +152,8 @@ pub async fn post(
   log::info!("Add/Create HSM group");
   log::debug!("Add HSM group payload:\n{:#?}", group);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = shasta_base_url.to_owned() + "/smd/hsm/v2/groups";
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!("{}/smd/hsm/v2/groups", shasta_base_url);
 
   let response = client
     .post(api_url)
@@ -205,24 +168,19 @@ pub async fn post(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.json().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
 
-  response
-    .text()
-    .await
-    .map_err(|error| Error::NetError(error))
+  response.text().await.map_err(Error::NetError)
 }
 
 pub async fn create_new_group(
@@ -273,36 +231,18 @@ pub async fn delete_group(
 ) -> Result<Value, Error> {
   log::info!("Delete HSM group '{}'", hsm_group_name);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let url_api =
-    shasta_base_url.to_owned() + "/smd/hsm/v2/groups/" + &hsm_group_name;
+    format!("{}/smd/hsm/v2/groups/{}", shasta_base_url, hsm_group_name);
 
   let response = client
     .delete(url_api)
-    .header("Authorization", format!("Bearer {}", shasta_token))
+    .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
-  if response.status().is_success() {
-    response
-      .json()
-      .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::Message(payload))
-  }
+  http::handle_json_or_text_response(response).await
 }
 
 pub async fn post_member(
@@ -314,15 +254,8 @@ pub async fn post_member(
   member: Member,
 ) -> Result<Value, Error> {
   log::info!("Add members {:?} to group '{}'", member, hsm_group_name);
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
     "{}/smd/hsm/v2/groups/{}/members",
     shasta_base_url, hsm_group_name
   );
@@ -338,16 +271,14 @@ pub async fn post_member(
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
         let error_payload = response.text().await?;
-        let error = Error::RequestError {
+        return Err(Error::RequestError {
           response: e,
           payload: error_payload,
-        };
-        return Err(error);
+        });
       }
       _ => {
         let error_payload = response.text().await?;
-        let error = Error::Message(error_payload);
-        return Err(error);
+        return Err(Error::Message(error_payload));
       }
     }
   }
@@ -368,34 +299,23 @@ pub async fn delete_member(
 ) -> Result<(), Error> {
   log::info!("Delete member {}/{}", hsm_group_name, member_id);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = shasta_base_url.to_owned()
-    + "/smd/hsm/v2/groups/"
-    + hsm_group_name
-    + "/members/"
-    + member_id;
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/smd/hsm/v2/groups/{}/members/{}",
+    shasta_base_url, hsm_group_name, member_id
+  );
 
   let response = client
     .delete(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
+    .bearer_auth(shasta_token)
     .send()
     .await
-    .map_err(|error| Error::NetError(error))?;
+    .map_err(Error::NetError)?;
 
   if response.status().is_success() {
     Ok(())
   } else {
-    let payload = response
-      .text()
-      .await
-      .map_err(|error| Error::NetError(error))?;
+    let payload = response.text().await.map_err(Error::NetError)?;
     Err(Error::Message(payload))
   }
 }

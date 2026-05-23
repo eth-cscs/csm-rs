@@ -117,7 +117,7 @@ impl ClusterTemplateTrait for Csm {
         shasta_base_url,
         shasta_root_cert,
         self.socks5_proxy.as_deref(),
-        bos_sessiontemplate_name_opt.map(|value| value),
+        bos_sessiontemplate_name_opt,
       )
       .await
       .map_err(|e| Error::Message(e.to_string()))?;

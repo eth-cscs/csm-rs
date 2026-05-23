@@ -3,7 +3,7 @@ pub mod http_client {
   pub mod v3 {
     use serde_json::Value;
 
-    use crate::error::Error;
+    use crate::{common::http, error::Error};
 
     /// Get one user public key in IMS is can find
     /// Returns None if public key not found or multiple fould
@@ -38,44 +38,26 @@ pub mod http_client {
       socks5_proxy: Option<&str>,
       username_opt: Option<&str>,
     ) -> Result<Vec<Value>, Error> {
-      let client_builder = reqwest::Client::builder().add_root_certificate(
-        reqwest::Certificate::from_pem(shasta_root_cert)?,
-      );
+      let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+      let api_url = format!("{}/ims/v3/public-keys", shasta_base_url);
 
-      let client = match socks5_proxy {
-        Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-        None => client_builder.build()?,
-      };
+      let json_response: Value =
+        http::get_json(&client, &api_url, shasta_token).await?;
 
-      let api_url = shasta_base_url.to_owned() + "/ims/v3/public-keys";
+      let public_key_value_list = json_response.as_array().unwrap().to_vec();
 
-      let json_response: Value = client
-        .get(api_url)
-        .bearer_auth(shasta_token)
-        .send()
-        .await
-        .map_err(Error::NetError)?
-        .json()
-        .await
-        .map_err(Error::NetError)?;
-
-      let mut public_key_value_list: Vec<Value> =
-        json_response.as_array().unwrap().to_vec();
-
-      public_key_value_list = if let Some(username) = username_opt {
-        public_key_value_list.retain(|ssh_key_value| {
-          ssh_key_value
-            .get("name")
-            .and_then(Value::as_str)
-            .is_some_and(|v| v.eq(username))
-        });
-
-        public_key_value_list
-      } else {
-        json_response.as_array().unwrap().to_vec()
-      };
-
-      Ok(public_key_value_list.to_vec())
+      Ok(match username_opt {
+        Some(username) => public_key_value_list
+          .into_iter()
+          .filter(|ssh_key_value| {
+            ssh_key_value
+              .get("name")
+              .and_then(Value::as_str)
+              .is_some_and(|v| v.eq(username))
+          })
+          .collect(),
+        None => public_key_value_list,
+      })
     }
   }
 }

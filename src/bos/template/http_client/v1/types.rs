@@ -118,9 +118,7 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_sets| {
-        boot_sets
-          .iter()
-          .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
+        boot_sets.values().map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()
@@ -133,9 +131,7 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_sets| {
-        boot_sets
-          .iter()
-          .map(|(_, boot_param)| {
+        boot_sets.values().map(|boot_param| {
             boot_param
               .path
               .clone()

@@ -73,11 +73,10 @@ pub async fn create_new_configuration(
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    &configuration.clone().into(),
+    &configuration.clone(),
     configuration_name,
   )
   .await
-  .map(|config| config.into())
   .map_err(|e| Error::Message(e.to_string()))
 }
 
@@ -91,7 +90,7 @@ pub fn filter(
   xname_from_groups_vec: &[String],
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
-  cfs_component_vec: &Vec<Component>,
+  cfs_component_vec: &[Component],
   configuration_name_pattern_opt: Option<&str>,
   hsm_group_name_vec: &[String],
   since_opt: Option<NaiveDateTime>,
@@ -106,7 +105,7 @@ pub fn filter(
     bos_sessiontemplate_vec,
     configuration_name_pattern_opt,
     hsm_group_name_vec,
-    &xname_from_groups_vec,
+    xname_from_groups_vec,
     None,
   );
 
@@ -459,7 +458,7 @@ pub async fn get_configuration_layer_details(
 
       let commit_sha_value = gitea::http_client::get_commit_from_tag(
         git_repo_tag_url,
-        &tag_name,
+        tag_name,
         gitea_token,
         shasta_root_cert,
         socks5_proxy,

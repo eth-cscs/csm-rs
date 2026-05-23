@@ -33,13 +33,13 @@ impl From<FrontEndState> for State {
   }
 }
 
-impl Into<FrontEndState> for State {
-  fn into(self) -> FrontEndState {
+impl From<State> for FrontEndState {
+  fn from(val: State) -> Self {
     FrontEndState {
-      clone_url: self.clone_url,
-      playbook: self.playbook,
-      commit: self.commit,
-      session_name: self.session_name,
+      clone_url: val.clone_url,
+      playbook: val.playbook,
+      commit: val.commit,
+      session_name: val.session_name,
     }
   }
 }
@@ -83,20 +83,20 @@ impl From<FrontEndComponent> for Component {
   }
 }
 
-impl Into<FrontEndComponent> for Component {
-  fn into(self) -> FrontEndComponent {
+impl From<Component> for FrontEndComponent {
+  fn from(val: Component) -> Self {
     FrontEndComponent {
-      id: self.id,
-      state: self.state.map(|state_vec| {
+      id: val.id,
+      state: val.state.map(|state_vec| {
         state_vec.into_iter().map(|state| state.into()).collect()
       }),
-      desired_config: self.desired_config,
-      error_count: self.error_count,
-      retry_policy: self.retry_policy,
-      enabled: self.enabled,
-      configuration_status: self.configuration_status,
-      tags: self.tags,
-      logs: self.logs,
+      desired_config: val.desired_config,
+      error_count: val.error_count,
+      retry_policy: val.retry_policy,
+      enabled: val.enabled,
+      configuration_status: val.configuration_status,
+      tags: val.tags,
+      logs: val.logs,
     }
   }
 }
@@ -118,10 +118,10 @@ impl From<FrontEndComponentVec> for ComponentVec {
   }
 }
 
-impl Into<FrontEndComponentVec> for ComponentVec {
-  fn into(self) -> FrontEndComponentVec {
+impl From<ComponentVec> for FrontEndComponentVec {
+  fn from(val: ComponentVec) -> Self {
     FrontEndComponentVec {
-      components: self
+      components: val
         .components
         .into_iter()
         .map(|component| component.into())

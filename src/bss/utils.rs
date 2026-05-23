@@ -7,7 +7,7 @@ use super::types::BootParameters;
 // - craycps-s3:s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs:3dfae8d1fa3bb2bfb18152b4f9940ad0-667:dvs:api-gw-service-nmn.local:300:nmn0,hsn0:0
 // - url=s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs,etag=3dfae8d1fa3bb2bfb18152b4f9940ad0-667 bos_update_frequency=4h
 pub fn get_image_id_from_s3_path(s3_path: &str) -> Option<&str> {
-  s3_path.split("/").skip(3).next()
+  s3_path.split("/").nth(3)
 }
 
 pub fn convert_kernel_params_to_map(

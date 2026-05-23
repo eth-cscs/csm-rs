@@ -24,11 +24,11 @@ impl From<FrontEndImsImageRecord2Update> for ImsImageRecord2Update {
   }
 }
 
-impl Into<FrontEndImsImageRecord2Update> for ImsImageRecord2Update {
-  fn into(self) -> FrontEndImsImageRecord2Update {
+impl From<ImsImageRecord2Update> for FrontEndImsImageRecord2Update {
+  fn from(val: ImsImageRecord2Update) -> Self {
     FrontEndImsImageRecord2Update {
-      link: self.link.into(),
-      arch: self.arch,
+      link: val.link.into(),
+      arch: val.arch,
     }
   }
 }
@@ -51,12 +51,12 @@ impl From<FrontEndLink> for Link {
   }
 }
 
-impl Into<FrontEndLink> for Link {
-  fn into(self) -> FrontEndLink {
+impl From<Link> for FrontEndLink {
+  fn from(val: Link) -> Self {
     FrontEndLink {
-      path: self.path,
-      etag: self.etag,
-      r#type: self.r#type,
+      path: val.path,
+      etag: val.etag,
+      r#type: val.r#type,
     }
   }
 }
@@ -84,20 +84,20 @@ impl From<FrontEndImage> for Image {
       name: frontend_image.name,
       link: frontend_image.link.map(|link| link.into()),
       arch: frontend_image.arch,
-      metadata: frontend_image.metadata.map(|metadata| metadata.into()),
+      metadata: frontend_image.metadata,
     }
   }
 }
 
-impl Into<FrontEndImage> for Image {
-  fn into(self) -> FrontEndImage {
+impl From<Image> for FrontEndImage {
+  fn from(val: Image) -> Self {
     FrontEndImage {
-      id: self.id,
-      created: self.created,
-      name: self.name,
-      link: self.link.map(|link| link.into()),
-      arch: self.arch,
-      metadata: self.metadata.map(|metadata| metadata.into()),
+      id: val.id,
+      created: val.created,
+      name: val.name,
+      link: val.link.map(|link| link.into()),
+      arch: val.arch,
+      metadata: val.metadata,
     }
   }
 }
@@ -118,12 +118,12 @@ impl From<FrontEndPatchMetadata> for PatchMetadata {
   }
 }
 
-impl Into<FrontEndPatchMetadata> for PatchMetadata {
-  fn into(self) -> FrontEndPatchMetadata {
+impl From<PatchMetadata> for FrontEndPatchMetadata {
+  fn from(val: PatchMetadata) -> Self {
     FrontEndPatchMetadata {
-      operation: self.operation,
-      key: self.key,
-      value: self.value,
+      operation: val.operation,
+      key: val.key,
+      value: val.value,
     }
   }
 }
@@ -144,18 +144,17 @@ impl From<FrontEndPatchImage> for PatchImage {
       link: frontend_patch_image.link.map(|link| link.into()),
       arch: frontend_patch_image.arch,
       metadata: frontend_patch_image
-        .metadata
-        .map(|metadata| metadata.into()),
+        .metadata,
     }
   }
 }
 
-impl Into<FrontEndPatchImage> for PatchImage {
-  fn into(self) -> FrontEndPatchImage {
+impl From<PatchImage> for FrontEndPatchImage {
+  fn from(val: PatchImage) -> Self {
     FrontEndPatchImage {
-      link: self.link.map(|link| link.into()),
-      arch: self.arch,
-      metadata: self.metadata.map(|metadata| metadata.into()),
+      link: val.link.map(|link| link.into()),
+      arch: val.arch,
+      metadata: val.metadata,
     }
   }
 }
@@ -163,22 +162,22 @@ impl Into<FrontEndPatchImage> for PatchImage {
 impl From<Image> for PatchImage {
   fn from(patch_image: Image) -> Self {
     Self {
-      link: patch_image.link.map(|link| link.into()),
+      link: patch_image.link,
       arch: patch_image.arch,
-      metadata: patch_image.metadata.map(|metadata| metadata.into()),
+      metadata: patch_image.metadata,
     }
   }
 }
 
-impl Into<Image> for PatchImage {
-  fn into(self) -> Image {
+impl From<PatchImage> for Image {
+  fn from(val: PatchImage) -> Self {
     Image {
       id: None,
       created: None,
       name: String::default(),
-      link: self.link.map(|link| link.into()),
-      arch: self.arch,
-      metadata: self.metadata.map(|metadata| metadata.into()),
+      link: val.link,
+      arch: val.arch,
+      metadata: val.metadata,
     }
   }
 }

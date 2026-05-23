@@ -106,7 +106,7 @@ pub async fn exec(
     let _hsmjson = serde_json::to_writer_pretty(&hsm_file, &hsm_group_json);
 
     // CFS ------------------------------------------------------------------------------------
-    let configuration_name: &String = &bos_templates
+    let configuration_name: &String = bos_templates
       .first()
       .and_then(|first_bos_template| first_bos_template.cfs.as_ref())
       .and_then(|cfs_value| cfs_value.configuration.as_ref())
@@ -117,7 +117,7 @@ pub async fn exec(
       shasta_base_url,
       shasta_root_cert,
       socks5_proxy,
-      Some(&configuration_name),
+      Some(configuration_name),
     )
     .await?;
 

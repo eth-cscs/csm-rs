@@ -39,7 +39,7 @@ impl ConsoleTrait for Csm {
         base_url,
         // secret_path: _secret_path,
       } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
+        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(e.to_string()))?
       }
@@ -95,7 +95,7 @@ impl ConsoleTrait for Csm {
         base_url,
         // secret_path: _secret_path,
       } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
+        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(e.to_string()))?
       }
@@ -103,7 +103,7 @@ impl ConsoleTrait for Csm {
 
     let mut attached: AttachedProcess =
       console::get_container_attachment_to_cfs_session_image_target(
-        &session_name.to_string(),
+        session_name,
         &k8s.api_url,
         shasta_k8s_secrets,
         self.socks5_proxy.as_deref(),

@@ -39,19 +39,17 @@ pub mod http_client {
     match resp.error_for_status() {
       Ok(resp) => {
         let resp_value = resp.json::<Value>().await?;
-        return Ok(
-          resp_value
+        resp_value
             .get("auth")
             .and_then(|auth| auth.get("client_token"))
             .and_then(Value::as_str)
             .map(String::from)
             .ok_or_else(|| {
               Error::Message("ERROR - JWT auth token not valid".to_string())
-            })?,
-        );
+            })
       }
       Err(e) => {
-        return Err(Error::NetError(e));
+        Err(Error::NetError(e))
       }
     }
   }
@@ -83,10 +81,10 @@ pub mod http_client {
     match resp.error_for_status() {
       Ok(resp) => {
         let secret_value: Value = resp.json().await?;
-        return Ok(secret_value["data"].clone());
+        Ok(secret_value["data"].clone())
       }
       Err(e) => {
-        return Err(Error::NetError(e));
+        Err(Error::NetError(e))
       }
     }
   }
@@ -112,8 +110,7 @@ pub mod http_client {
     )
     .await?; // this works for hashicorp-vault for fulen may need /v1/secret/data/shasta/vcs
 
-    Ok(
-      vault_secret
+    vault_secret
         .get("data")
         .and_then(|data| data.get("token"))
         .and_then(Value::as_str)
@@ -122,8 +119,7 @@ pub mod http_client {
           Error::Message(
             "ERROR - VCS token not found in vault secret".to_string(),
           )
-        })?,
-    ) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
+        }) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
   }
 
   pub async fn fetch_shasta_k8s_secrets_from_vault(

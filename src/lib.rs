@@ -1,3 +1,5 @@
+#![allow(clippy::doc_lazy_continuation)]
+
 pub mod backend_connector;
 pub mod bos;
 pub mod bss;

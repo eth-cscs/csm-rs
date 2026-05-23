@@ -1,9 +1,9 @@
 pub mod types;
 
-use serde_json::Value;
-
 use crate::{
-  bos::template::http_client::v2::types::BosSessionTemplate, error::Error,
+  bos::template::http_client::v2::types::BosSessionTemplate,
+  common::http,
+  error::Error,
 };
 
 /// Get BOS session templates. Ref --> https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/
@@ -16,49 +16,20 @@ pub async fn get(
 ) -> Result<Vec<BosSessionTemplate>, Error> {
   log::info!("Get BOS sessiontemplate {:?}", bos_session_template_id_opt);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
+  let api_url = if let Some(id) = bos_session_template_id_opt {
+    format!("{}/bos/v2/sessiontemplates/{}", shasta_base_url, id)
+  } else {
+    format!("{}/bos/v2/sessiontemplates", shasta_base_url)
   };
 
-  let api_url =
-    if let Some(bos_session_template_id) = bos_session_template_id_opt {
-      shasta_base_url.to_owned()
-        + "/bos/v2/sessiontemplates/"
-        + bos_session_template_id
-    } else {
-      shasta_base_url.to_owned() + "/bos/v2/sessiontemplates"
-    };
-
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    if bos_session_template_id_opt.is_none() {
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))
-    } else {
-      response
-        .json::<BosSessionTemplate>()
-        .await
-        .map(|cfs_configuration| vec![cfs_configuration])
-        .map_err(|error| Error::NetError(error))
-    }
+  if bos_session_template_id_opt.is_none() {
+    http::get_json(&client, &api_url, shasta_token).await
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-    Err(Error::CsmError(payload))
+    let single: BosSessionTemplate =
+      http::get_json(&client, &api_url, shasta_token).await?;
+    Ok(vec![single])
   }
 }
 
@@ -85,32 +56,12 @@ pub async fn put(
     serde_json::to_string_pretty(bos_template).unwrap()
   );
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url = format!(
     "{}/bos/v2/sessiontemplates/{}",
     shasta_base_url, bos_template_name
   );
-
-  let response = client
-    .put(api_url)
-    .json(&bos_template)
-    .bearer_auth(shasta_token)
-    .send()
-    .await?;
-
-  if response.status().is_success() {
-    response.json().await.map_err(Error::NetError)
-  } else {
-    let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-    Err(Error::CsmError(payload))
-  }
+  http::put_json(&client, &api_url, shasta_token, bos_template).await
 }
 
 /// Delete BOS session templates.
@@ -121,17 +72,12 @@ pub async fn delete(
   socks5_proxy: Option<&str>,
   bos_template_id: &str,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
   let api_url =
-    shasta_base_url.to_owned() + "/bos/v2/sessiontemplates/" + bos_template_id;
+    format!("{}/bos/v2/sessiontemplates/{}", shasta_base_url, bos_template_id);
 
+  // NOTE: existing behavior — `error_for_status` is called but its result is
+  // discarded, so DELETE failures are silently ignored. Preserving for now.
   let _ = client
     .delete(api_url)
     .bearer_auth(shasta_token)

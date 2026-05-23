@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::{RedfishEndpoint, RedfishEndpointArray};
 
@@ -11,17 +11,10 @@ pub async fn get_query(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<RedfishEndpointArray, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
-    "{}/{}/{}",
-    base_url, "/smd/hsm/v2/Inventory/RedfishEndpoint/Query", xname
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url = format!(
+    "{}/smd/hsm/v2/Inventory/RedfishEndpoint/Query/{}",
+    base_url, xname
   );
 
   let response = client
@@ -31,28 +24,7 @@ pub async fn get_query(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn get(
@@ -68,16 +40,9 @@ pub async fn get(
   ip_address: Option<&str>,
   last_status: Option<&str>,
 ) -> Result<RedfishEndpointArray, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    base_url.to_owned() + "/smd/hsm/v2/Inventory/RedfishEndpoints";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", base_url);
 
   let response = client
     .get(api_url)
@@ -86,28 +51,7 @@ pub async fn get(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn get_one(
@@ -117,43 +61,12 @@ pub async fn get_one(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<RedfishEndpoint, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
-    "{}/{}/{}",
-    base_url, "/smd/hsm/v2/Inventory/RedfishEndpoints", xname
-  );
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints/{}", base_url, xname);
 
   let response = client.get(api_url).bearer_auth(auth_token).send().await?;
-
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn post(
@@ -163,16 +76,9 @@ pub async fn post(
   socks5_proxy: Option<&str>,
   redfish_endpoint: RedfishEndpoint,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    base_url.to_owned() + "/smd/hsm/v2/Inventory/RedfishEndpoints";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", base_url);
 
   let response = client
     .post(api_url)
@@ -181,28 +87,7 @@ pub async fn post(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn put(
@@ -213,16 +98,9 @@ pub async fn put(
   xname: &str,
   redfish_endpoint: RedfishEndpoint,
 ) -> Result<RedfishEndpoint, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    format!("{}/{}/{}", base_url, "smd/hsm/v2/State/Components", xname);
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/State/Components/{}", base_url, xname);
 
   let response = client
     .put(api_url)
@@ -231,25 +109,7 @@ pub async fn put(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response.json().await.map_err(|e| Error::NetError(e))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn delete_all(
@@ -258,16 +118,9 @@ pub async fn delete_all(
   root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String =
-    base_url.to_owned() + "/smd/hsm/v2/Inventory/RedfishEndpoints";
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", base_url);
 
   let response = client
     .delete(api_url)
@@ -275,28 +128,7 @@ pub async fn delete_all(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }
 
 pub async fn delete_one(
@@ -306,18 +138,9 @@ pub async fn delete_one(
   socks5_proxy: Option<&str>,
   xname: &str,
 ) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url: String = format!(
-    "{}/{}/{}",
-    base_url, "smd/hsm/v2/Inventory/RedfishEndpoints", xname
-  );
+  let client = http::build_client(root_cert, socks5_proxy)?;
+  let api_url =
+    format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints/{}", base_url, xname);
 
   let response = client
     .delete(api_url)
@@ -325,26 +148,5 @@ pub async fn delete_one(
     .send()
     .await?;
 
-  if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let error_payload = response.text().await?;
-        let error = Error::RequestError {
-          response: e,
-          payload: error_payload,
-        };
-        return Err(error);
-      }
-      _ => {
-        let error_payload = response.json::<Value>().await?;
-        let error = Error::CsmError(error_payload);
-        return Err(error);
-      }
-    }
-  }
-
-  response
-    .json()
-    .await
-    .map_err(|error| Error::NetError(error))
+  http::handle_json_or_request_error(response).await
 }

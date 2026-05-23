@@ -42,7 +42,7 @@ pub async fn get_container_attachment_to_conman(
 
   let mut attached = pods_fabric
     .exec(
-      &console_operator_pod_name,
+      console_operator_pod_name,
       vec!["sh", "-c", &format!("/app/get-node {}", xname)],
       &AttachParams::default()
         .container("cray-console-operator")
@@ -137,7 +137,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   let attached = pods_fabric
         .exec(
-            &console_operator_pod_name,
+            console_operator_pod_name,
             vec![
                 "sh",
                 "-c",
@@ -214,7 +214,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   pods_fabric
     .exec(
-      &console_operator_pod_name,
+      console_operator_pod_name,
       command,
       &AttachParams::default()
         .container("sshd")

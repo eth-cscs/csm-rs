@@ -255,7 +255,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     let target_group_name_vec: Vec<String>;
     let cfs_configuration: String;
     let target_groups: String;
-    let boot_image: bool;
+    
 
     if let Some(tuple) = image_id_cfs_configuration_from_cfs_session
       .iter()
@@ -290,11 +290,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
     // NOTE: 'boot_image' needs to be processed outside the 'if' statement. Otherwise we may
     // miss images used to boot nodes filtered by a different branch in the 'if' statement
-    boot_image = if image_id_from_boot_params.contains(image_id) {
-      true
-    } else {
-      false
-    };
+    let boot_image: bool = image_id_from_boot_params.contains(image_id);
 
     image_detail_vec.push((
       image.clone(),
@@ -394,7 +390,7 @@ pub async fn get_image_available_vec(
         String,
         Vec<String>,
     )> = crate::bos::template::utils::get_image_id_cfs_configuration_target_tuple_vec(
-        &mut bos_sessiontemplate_vec,
+        &bos_sessiontemplate_vec,
     );
 
   image_id_cfs_configuration_from_bos_sessiontemplate

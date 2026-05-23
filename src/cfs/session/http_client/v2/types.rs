@@ -48,17 +48,17 @@ impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
   }
 }
 
-impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
-  fn into(self) -> FrontEndCfsSessionGetResponse {
+impl From<CfsSessionGetResponse> for FrontEndCfsSessionGetResponse {
+  fn from(val: CfsSessionGetResponse) -> Self {
     FrontEndCfsSessionGetResponse {
-      name: self.name,
-      configuration: self
+      name: val.name,
+      configuration: val
         .configuration
         .map(|configuration| configuration.into()),
-      ansible: self.ansible.map(|ansible| ansible.into()),
-      target: self.target.map(|target| target.into()),
-      status: self.status.map(|status| status.into()),
-      tags: self.tags,
+      ansible: val.ansible.map(|ansible| ansible.into()),
+      target: val.target.map(|target| target.into()),
+      status: val.status.map(|status| status.into()),
+      tags: val.tags,
       debug_on_failure: true,
       logs: None,
     }
@@ -90,7 +90,7 @@ impl CfsSessionGetResponse {
 
   /// Returns list of result_ids
   pub fn first_result_id(&self) -> Option<&str> {
-    CfsSessionGetResponse::results_id(&self).next()
+    CfsSessionGetResponse::results_id(self).next()
   }
 
   /// Returns list of HSM groups targeted
@@ -166,11 +166,11 @@ impl From<FrontEndConfiguration> for Configuration {
   }
 }
 
-impl Into<FrontEndConfiguration> for Configuration {
-  fn into(self) -> FrontEndConfiguration {
+impl From<Configuration> for FrontEndConfiguration {
+  fn from(val: Configuration) -> Self {
     FrontEndConfiguration {
-      name: self.name,
-      limit: self.limit,
+      name: val.name,
+      limit: val.limit,
     }
   }
 }
@@ -198,13 +198,13 @@ impl From<FrontEndAnsible> for Ansible {
   }
 }
 
-impl Into<FrontEndAnsible> for Ansible {
-  fn into(self) -> FrontEndAnsible {
+impl From<Ansible> for FrontEndAnsible {
+  fn from(val: Ansible) -> Self {
     FrontEndAnsible {
-      config: self.config,
-      limit: self.limit,
-      verbosity: self.verbosity,
-      passthrough: self.passthrough,
+      config: val.config,
+      limit: val.limit,
+      verbosity: val.verbosity,
+      passthrough: val.passthrough,
     }
   }
 }
@@ -228,13 +228,13 @@ impl From<FrontEndStatus> for Status {
   }
 }
 
-impl Into<FrontEndStatus> for Status {
-  fn into(self) -> FrontEndStatus {
+impl From<Status> for FrontEndStatus {
+  fn from(val: Status) -> Self {
     FrontEndStatus {
-      artifacts: self
+      artifacts: val
         .artifacts
         .map(|artifacts| artifacts.into_iter().map(Artifact::into).collect()),
-      session: self.session.map(Session::into),
+      session: val.session.map(Session::into),
     }
   }
 }
@@ -259,12 +259,12 @@ impl From<FrontEndArtifact> for Artifact {
   }
 }
 
-impl Into<FrontEndArtifact> for Artifact {
-  fn into(self) -> FrontEndArtifact {
+impl From<Artifact> for FrontEndArtifact {
+  fn from(val: Artifact) -> Self {
     FrontEndArtifact {
-      image_id: self.image_id,
-      result_id: self.result_id,
-      r#type: self.r#type,
+      image_id: val.image_id,
+      result_id: val.result_id,
+      r#type: val.r#type,
     }
   }
 }
@@ -297,15 +297,15 @@ impl From<FrontEndSession> for Session {
   }
 }
 
-impl Into<FrontEndSession> for Session {
-  fn into(self) -> FrontEndSession {
+impl From<Session> for FrontEndSession {
+  fn from(val: Session) -> Self {
     FrontEndSession {
-      job: self.job,
+      job: val.job,
       ims_job: None,
-      completion_time: self.completion_time,
-      start_time: self.start_time,
-      status: self.status,
-      succeeded: self.succeeded,
+      completion_time: val.completion_time,
+      start_time: val.start_time,
+      status: val.status,
+      succeeded: val.succeeded,
     }
   }
 }
@@ -351,11 +351,11 @@ impl From<FrontEndGroup> for Group {
   }
 }
 
-impl Into<FrontEndGroup> for Group {
-  fn into(self) -> FrontEndGroup {
+impl From<Group> for FrontEndGroup {
+  fn from(val: Group) -> Self {
     FrontEndGroup {
-      name: self.name,
-      members: self.members,
+      name: val.name,
+      members: val.members,
     }
   }
 }
@@ -379,11 +379,11 @@ impl From<FrontEndTarget> for Target {
   }
 }
 
-impl Into<FrontEndTarget> for Target {
-  fn into(self) -> FrontEndTarget {
+impl From<Target> for FrontEndTarget {
+  fn from(val: Target) -> Self {
     FrontEndTarget {
-      definition: self.definition,
-      groups: self
+      definition: val.definition,
+      groups: val
         .groups
         .map(|groups| groups.into_iter().map(Group::into).collect()),
       image_map: None,
@@ -418,7 +418,7 @@ impl CfsSessionPostRequest {
       // CFS session to build an image
       let target_groups: Vec<Group> = groups_name
         .unwrap_or_default()
-        .into_iter()
+        .iter()
         .map(|group_name| Group {
           name: group_name.to_string(),
           members: vec![base_image_id.unwrap_or_default().to_string()],

@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::{common::http, error::Error};
 
 use super::types::RecipeGetResponse;
 
@@ -10,18 +10,12 @@ pub async fn get(
   socks5_proxy: Option<&str>,
   recipe_id_opt: Option<&str>,
 ) -> Result<Vec<RecipeGetResponse>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = if let Some(recipe_id) = recipe_id_opt {
-    shasta_base_url.to_owned() + "/ims/v2/recipes" + recipe_id
+    format!("{}/ims/v2/recipes{}", shasta_base_url, recipe_id)
   } else {
-    shasta_base_url.to_owned() + "/ims/v2/recipes"
+    format!("{}/ims/v2/recipes", shasta_base_url)
   };
 
   let response = client

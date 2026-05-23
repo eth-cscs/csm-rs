@@ -53,16 +53,16 @@ impl From<FrontEndLayer> for Layer {
   }
 }
 
-impl Into<FrontEndLayer> for Layer {
-  fn into(self) -> FrontEndLayer {
+impl From<Layer> for FrontEndLayer {
+  fn from(val: Layer) -> Self {
     FrontEndLayer {
-      name: self.name,
-      clone_url: self.clone_url,
-      source: self.source,
-      playbook: self.playbook,
-      commit: self.commit,
-      branch: self.branch,
-      special_parameters: self.special_parameters.map(|special_parameters| {
+      name: val.name,
+      clone_url: val.clone_url,
+      source: val.source,
+      playbook: val.playbook,
+      commit: val.commit,
+      branch: val.branch,
+      special_parameters: val.special_parameters.map(|special_parameters| {
         special_parameters
           .into_iter()
           .map(|special_parameter| special_parameter.into())
@@ -108,10 +108,10 @@ impl From<FrontEndSpecialParameter> for SpecialParameter {
   }
 }
 
-impl Into<FrontEndSpecialParameter> for SpecialParameter {
-  fn into(self) -> FrontEndSpecialParameter {
+impl From<SpecialParameter> for FrontEndSpecialParameter {
+  fn from(val: SpecialParameter) -> Self {
     FrontEndSpecialParameter {
-      ims_required_dkms: self.ims_required_dkms,
+      ims_required_dkms: val.ims_required_dkms,
     }
   }
 }
@@ -137,14 +137,14 @@ impl From<FrontEndAdditionalInventory> for AdditionalInventory {
   }
 }
 
-impl Into<FrontEndAdditionalInventory> for AdditionalInventory {
-  fn into(self) -> FrontEndAdditionalInventory {
+impl From<AdditionalInventory> for FrontEndAdditionalInventory {
+  fn from(val: AdditionalInventory) -> Self {
     FrontEndAdditionalInventory {
-      name: self.name,
-      clone_url: self.clone_url,
-      source: self.source,
-      commit: self.commit,
-      branch: self.branch,
+      name: val.name,
+      clone_url: val.clone_url,
+      source: val.source,
+      commit: val.commit,
+      branch: val.branch,
     }
   }
 }
@@ -172,14 +172,14 @@ impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
   }
 }
 
-impl Into<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
-  fn into(self) -> FrontEndCfsConfigurationRequest {
+impl From<CfsConfigurationRequest> for FrontEndCfsConfigurationRequest {
+  fn from(val: CfsConfigurationRequest) -> Self {
     FrontEndCfsConfigurationRequest {
-      description: self.description,
-      layers: self
+      description: val.description,
+      layers: val
         .layers
         .map(|layer_vec| layer_vec.into_iter().map(Layer::into).collect()),
-      additional_inventory: self
+      additional_inventory: val
         .additional_inventory
         .map(|additional_inventory| additional_inventory.into()),
     }
@@ -216,10 +216,10 @@ impl CfsConfigurationRequest {
     site_name: &str,
     socks5_proxy: Option<&str>,
   ) -> Result<(String, Self), Error> {
-    let cfs_configuration_name;
+    
     let mut cfs_configuration = Self::new();
 
-    cfs_configuration_name = configuration_yaml
+    let cfs_configuration_name = configuration_yaml
       .get("name")
       .and_then(Value::as_str)
       .map(str::to_string)
@@ -413,26 +413,24 @@ impl CfsConfigurationRequest {
         let commit_id_opt = if let Some(commit_value) = product_commit_value_opt
         {
           commit_value.clone().as_str().map(str::to_string)
-        } else {
-          if product_branch_value_opt.is_some() {
-            // If branch is provided, then ignore the commit id in the CRAY products table
-            Some(
-              gitea::http_client::get_commit_pointed_by_branch(
-                gitea_base_url,
-                gitea_token,
-                shasta_root_cert,
-                socks5_proxy,
-                &repo_url,
-                product_branch_value_opt.and_then(Value::as_str).unwrap(),
-              )
-              .await?,
+        } else if product_branch_value_opt.is_some() {
+          // If branch is provided, then ignore the commit id in the CRAY products table
+          Some(
+            gitea::http_client::get_commit_pointed_by_branch(
+              gitea_base_url,
+              gitea_token,
+              shasta_root_cert,
+              socks5_proxy,
+              &repo_url,
+              product_branch_value_opt.and_then(Value::as_str).unwrap(),
             )
-          } else {
-            product_details
-              .get("commit")
-              .and_then(Value::as_str)
-              .map(str::to_string)
-          }
+            .await?,
+          )
+        } else {
+          product_details
+            .get("commit")
+            .and_then(Value::as_str)
+            .map(str::to_string)
         };
 
         // IMPORTANT: CSM won't allow CFS configuration layers with both commit id and
@@ -465,9 +463,7 @@ impl CfsConfigurationRequest {
         );
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message(format!(
-          "ERROR - configurations section in SAT file error - CFS configuration layer error"
-        )));
+        return Err(Error::Message("ERROR - configurations section in SAT file error - CFS configuration layer error".to_string()));
       }
     }
 
@@ -492,8 +488,8 @@ impl CfsConfigurationRequest {
       let shasta_commitid_details_resp =
         gitea::http_client::get_commit_details(
           "https://api-gw-service-nmn.local/vcs/",
-          &repo_name,
-          &local_last_commit,
+          repo_name,
+          local_last_commit,
           gitea_token,
           shasta_root_cert,
           socks5_proxy,
@@ -515,7 +511,7 @@ impl CfsConfigurationRequest {
         }
       };
 
-      let clone_url = gitea_base_url.to_owned() + &repo_name;
+      let clone_url = gitea_base_url.to_owned() + repo_name;
 
       log::debug!("clone url: {}", clone_url);
 
@@ -529,7 +525,7 @@ impl CfsConfigurationRequest {
         Some(clone_url),
         None,
         playbook_file_name_opt
-          .unwrap_or(&"site.yml".to_string())
+          .unwrap_or("site.yml")
           .to_string(),
         Some(local_last_commit.to_string()),
         None,

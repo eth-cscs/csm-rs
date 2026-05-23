@@ -87,16 +87,16 @@ impl CfsTrait for Csm {
     .await;
 
     // Convert to manta session
-    let border_session_vec = local_cfs_session_vec
+    
+
+    local_cfs_session_vec
       .map(|cfs_session_vec| {
         cfs_session_vec
           .into_iter()
           .map(|cfs_session| cfs_session.into())
           .collect::<Vec<CfsSessionGetResponse>>()
       })
-      .map_err(|e| Error::Message(e.to_string()));
-
-    border_session_vec
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn get_and_filter_sessions(
@@ -423,7 +423,7 @@ impl CfsTrait for Csm {
       self.socks5_proxy.as_deref(),
       configuration_name,
       configuration_name_pattern,
-      &hsm_group_name_vec,
+      hsm_group_name_vec,
       since_opt,
       until_opt,
       limit_number_opt,
@@ -498,7 +498,7 @@ impl CfsTrait for Csm {
         serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
       }
       K8sAuth::Vault { base_url } => {
-        fetch_shasta_k8s_secrets_from_vault(&base_url, shasta_token, &site_name, self.socks5_proxy.as_deref())
+        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
           .await
           .map_err(|e| Error::Message(format!("{e}")))?
       }

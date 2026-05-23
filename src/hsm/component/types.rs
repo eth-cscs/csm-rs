@@ -38,10 +38,10 @@ impl From<FrontEndNodeMetadataArray> for ComponentArray {
   }
 }
 
-impl Into<FrontEndNodeMetadataArray> for ComponentArray {
-  fn into(self) -> FrontEndNodeMetadataArray {
+impl From<ComponentArray> for FrontEndNodeMetadataArray {
+  fn from(val: ComponentArray) -> Self {
     let component_vec_opt: Option<Vec<FrontEndComponent>> =
-      if let Some(components) = self.components {
+      if let Some(components) = val.components {
         let mut component_vec: Vec<FrontEndComponent> =
           Vec::with_capacity(components.len());
 
@@ -131,24 +131,24 @@ impl From<FrontEndComponent> for Component {
   }
 }
 
-impl Into<FrontEndComponent> for Component {
-  fn into(self) -> FrontEndComponent {
+impl From<Component> for FrontEndComponent {
+  fn from(val: Component) -> Self {
     FrontEndComponent {
-      id: self.id,
-      r#type: self.r#type,
-      state: self.state,
-      flag: self.flag,
-      enabled: self.enabled,
-      software_status: self.software_status,
-      role: self.role,
-      sub_role: self.sub_role,
-      nid: self.nid,
-      subtype: self.subtype,
-      net_type: self.net_type,
-      arch: self.arch,
-      class: self.class,
-      reservation_disabled: self.reservation_disabled,
-      locked: self.locked,
+      id: val.id,
+      r#type: val.r#type,
+      state: val.state,
+      flag: val.flag,
+      enabled: val.enabled,
+      software_status: val.software_status,
+      role: val.role,
+      sub_role: val.sub_role,
+      nid: val.nid,
+      subtype: val.subtype,
+      net_type: val.net_type,
+      arch: val.arch,
+      class: val.class,
+      reservation_disabled: val.reservation_disabled,
+      locked: val.locked,
     }
   }
 }
@@ -249,19 +249,19 @@ impl From<FrontEndComponentArrayPostArray> for ComponentArrayPostArray {
   }
 }
 
-impl Into<FrontEndComponentArrayPostArray> for ComponentArrayPostArray {
-  fn into(self) -> FrontEndComponentArrayPostArray {
+impl From<ComponentArrayPostArray> for FrontEndComponentArrayPostArray {
+  fn from(val: ComponentArrayPostArray) -> Self {
     let mut component_vec: Vec<FrontEndComponentCreate> =
-      Vec::with_capacity(self.components.len());
+      Vec::with_capacity(val.components.len());
 
-    self
+    val
       .components
       .into_iter()
       .for_each(|c| component_vec.push(c.into()));
 
     FrontEndComponentArrayPostArray {
       components: component_vec,
-      force: self.force,
+      force: val.force,
     }
   }
 }
@@ -323,21 +323,21 @@ impl From<FrontEndComponentCreate> for ComponentCreate {
   }
 }
 
-impl Into<FrontEndComponentCreate> for ComponentCreate {
-  fn into(self) -> FrontEndComponentCreate {
+impl From<ComponentCreate> for FrontEndComponentCreate {
+  fn from(val: ComponentCreate) -> Self {
     FrontEndComponentCreate {
-      id: self.id,
-      state: self.state,
-      flag: self.flag,
-      enabled: self.enabled,
-      software_status: self.software_status,
-      role: self.role,
-      sub_role: self.sub_role,
-      nid: self.nid,
-      subtype: self.subtype,
-      net_type: self.net_type,
-      arch: self.arch,
-      class: self.class,
+      id: val.id,
+      state: val.state,
+      flag: val.flag,
+      enabled: val.enabled,
+      software_status: val.software_status,
+      role: val.role,
+      sub_role: val.sub_role,
+      nid: val.nid,
+      subtype: val.subtype,
+      net_type: val.net_type,
+      arch: val.arch,
+      class: val.class,
     }
   }
 }

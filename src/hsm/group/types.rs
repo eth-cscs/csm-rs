@@ -31,23 +31,19 @@ pub struct Member {
 
 impl Group {
   pub fn new(label: &str, member_vec_opt: Option<Vec<&str>>) -> Self {
-    let members_opt = if let Some(member_vec) = member_vec_opt {
-      Some(Members {
+    let members_opt = member_vec_opt.map(|member_vec| Members {
         ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
-      })
-    } else {
-      None
-    };
+      });
 
-    let group = Self {
+    
+
+    Self {
       label: label.to_string(),
       description: None,
       tags: None,
       members: members_opt,
       exclusive_group: None,
-    };
-
-    group
+    }
   }
 
   /// Get HSM group members
@@ -105,10 +101,10 @@ impl From<FrontEndGroup> for Group {
   }
 }
 
-impl Into<FrontEndGroup> for Group {
-  fn into(self) -> FrontEndGroup {
+impl From<Group> for FrontEndGroup {
+  fn from(val: Group) -> Self {
     let mut member_vec = Vec::new();
-    let member_vec_backend = self.get_members();
+    let member_vec_backend = val.get_members();
 
     for member in member_vec_backend {
       member_vec.push(member);
@@ -119,11 +115,11 @@ impl Into<FrontEndGroup> for Group {
     };
 
     FrontEndGroup {
-      label: self.label,
-      description: self.description,
-      tags: self.tags,
+      label: val.label,
+      description: val.description,
+      tags: val.tags,
       members: Some(members),
-      exclusive_group: self.exclusive_group,
+      exclusive_group: val.exclusive_group,
     }
   }
 }

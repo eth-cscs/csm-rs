@@ -46,18 +46,18 @@ impl From<FrontEndBosSession> for BosSession {
   }
 }
 
-impl Into<FrontEndBosSession> for BosSession {
-  fn into(self) -> FrontEndBosSession {
+impl From<BosSession> for FrontEndBosSession {
+  fn from(val: BosSession) -> Self {
     FrontEndBosSession {
-      name: self.name,
-      tenant: self.tenant,
-      operation: self.operation.map(|operation| operation.into()),
-      template_name: self.template_name,
-      limit: self.limit,
-      stage: self.stage,
-      components: self.components,
-      include_disabled: self.include_disabled,
-      status: self.status.map(|status| status.into()),
+      name: val.name,
+      tenant: val.tenant,
+      operation: val.operation.map(|operation| operation.into()),
+      template_name: val.template_name,
+      limit: val.limit,
+      stage: val.stage,
+      components: val.components,
+      include_disabled: val.include_disabled,
+      status: val.status.map(|status| status.into()),
     }
   }
 }
@@ -82,9 +82,9 @@ impl From<FrontEndOperation> for Operation {
   }
 }
 
-impl Into<FrontEndOperation> for Operation {
-  fn into(self) -> FrontEndOperation {
-    match self {
+impl From<Operation> for FrontEndOperation {
+  fn from(val: Operation) -> Self {
+    match val {
       Operation::Boot => FrontEndOperation::Boot,
       Operation::Reboot => FrontEndOperation::Reboot,
       Operation::Shutdown => FrontEndOperation::Shutdown,
@@ -92,16 +92,21 @@ impl Into<FrontEndOperation> for Operation {
   }
 }
 
-impl Operation {
-  pub fn to_string(&self) -> String {
-    match self {
-      Operation::Boot => "boot".to_string(),
-      Operation::Reboot => "reboot".to_string(),
-      Operation::Shutdown => "shutdown".to_string(),
-    }
+impl std::fmt::Display for Operation {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let s = match self {
+      Operation::Boot => "boot",
+      Operation::Reboot => "reboot",
+      Operation::Shutdown => "shutdown",
+    };
+    f.write_str(s)
   }
+}
 
-  pub fn from_str(operation: &str) -> Result<Operation, Error> {
+impl std::str::FromStr for Operation {
+  type Err = Error;
+
+  fn from_str(operation: &str) -> Result<Self, Self::Err> {
     match operation {
       "boot" => Ok(Operation::Boot),
       "reboot" => Ok(Operation::Reboot),
@@ -132,13 +137,13 @@ impl From<FrontEndStatus> for Status {
   }
 }
 
-impl Into<FrontEndStatus> for Status {
-  fn into(self) -> FrontEndStatus {
+impl From<Status> for FrontEndStatus {
+  fn from(val: Status) -> Self {
     FrontEndStatus {
-      start_time: self.start_time,
-      end_time: self.end_time,
-      status: self.status.into(),
-      error: self.error,
+      start_time: val.start_time,
+      end_time: val.end_time,
+      status: val.status.into(),
+      error: val.error,
     }
   }
 }
@@ -163,9 +168,9 @@ impl From<FrontEndStatusLabel> for StatusLabel {
   }
 }
 
-impl Into<FrontEndStatusLabel> for StatusLabel {
-  fn into(self) -> FrontEndStatusLabel {
-    match self {
+impl From<StatusLabel> for FrontEndStatusLabel {
+  fn from(val: StatusLabel) -> Self {
+    match val {
       StatusLabel::Pending => FrontEndStatusLabel::Pending,
       StatusLabel::Running => FrontEndStatusLabel::Running,
       StatusLabel::Complete => FrontEndStatusLabel::Complete,
