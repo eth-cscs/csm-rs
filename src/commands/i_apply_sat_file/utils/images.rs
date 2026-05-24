@@ -432,13 +432,13 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
 
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value =
-    ims::public_keys::http_client::v3::get_single(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      root_ims_key_name,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_public_keys_v3_get_single(root_ims_key_name)
     .await?
     .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
@@ -551,13 +551,13 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
 
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value =
-    ims::public_keys::http_client::v3::get_single(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      root_ims_key_name,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_public_keys_v3_get_single(root_ims_key_name)
     .await?
     .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
