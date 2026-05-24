@@ -1808,37 +1808,21 @@ pub struct RedfishSystemFRUInfo {
   pub uuid: Option<String>,
 }
 
-impl From<FrontEndRedfishSystemFRUInfo> for RedfishSystemFRUInfo {
-  fn from(value: FrontEndRedfishSystemFRUInfo) -> Self {
-    RedfishSystemFRUInfo {
-      asset_tag: value.asset_tag,
-      bios_version: value.bios_version,
-      model: value.model,
-      manufacturer: value.manufacturer,
-      part_number: value.part_number,
-      serial_number: value.serial_number,
-      sku: value.sku,
-      system_type: value.system_type,
-      uuid: value.uuid,
-    }
-  }
-}
-
-impl From<RedfishSystemFRUInfo> for FrontEndRedfishSystemFRUInfo {
-  fn from(val: RedfishSystemFRUInfo) -> Self {
-    FrontEndRedfishSystemFRUInfo {
-      asset_tag: val.asset_tag,
-      bios_version: val.bios_version,
-      model: val.model,
-      manufacturer: val.manufacturer,
-      part_number: val.part_number,
-      serial_number: val.serial_number,
-      sku: val.sku,
-      system_type: val.system_type,
-      uuid: val.uuid,
-    }
-  }
-}
+bidirectional_from!(
+  RedfishSystemFRUInfo,
+  FrontEndRedfishSystemFRUInfo,
+  [
+    asset_tag,
+    bios_version,
+    model,
+    manufacturer,
+    part_number,
+    serial_number,
+    sku,
+    system_type,
+    uuid,
+  ]
+);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeLocationInfo {
