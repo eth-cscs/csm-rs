@@ -70,16 +70,22 @@ pub async fn get_details(
 
     for cfs_session_value in cfs_session_vec {
       // log::info!("cfs_session_value:\n{:#?}", cfs_session_value);
-      let target_groups = cfs_session_value
+      // Sessions missing target.groups or ansible.limit can't be matched
+      // against a HSM group, so skip them.
+      let Some(target_groups) = cfs_session_value
         .target
         .as_ref()
         .and_then(|target| target.groups.as_ref())
-        .unwrap();
-      let ansible_limit = cfs_session_value
+      else {
+        continue;
+      };
+      let Some(ansible_limit) = cfs_session_value
         .ansible
         .as_ref()
         .and_then(|ansible| ansible.limit.as_ref())
-        .unwrap();
+      else {
+        continue;
+      };
 
       // Check CFS session is linkged to HSM GROUP name or any of its members
       if target_groups
@@ -104,12 +110,23 @@ pub async fn get_details(
                 .configuration
                 .as_ref()
                 .and_then(|configuration| configuration.name.as_ref())
-                .unwrap(),
+                .ok_or_else(|| {
+                  Error::Message(format!(
+                    "CFS session for HSM '{}' has no configuration name",
+                    hsm_group_name
+                  ))
+                })?,
             ),
           )
           .await?;
 
-        cfs_configuration = cfs_configuration_vec.first().unwrap();
+        cfs_configuration =
+          cfs_configuration_vec.first().ok_or_else(|| {
+            Error::Message(format!(
+              "CFS configuration for HSM '{}' not found in CSM",
+              hsm_group_name
+            ))
+          })?;
 
         let cluster_details = ClusterDetails {
           hsm_group_label: hsm_group_name.to_string(),

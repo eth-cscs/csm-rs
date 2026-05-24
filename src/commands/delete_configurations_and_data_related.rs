@@ -236,10 +236,11 @@ pub async fn get_data_to_delete(
           cfs_component
             .desired_config
             .as_ref()
-            .unwrap()
-            .eq(cfs_configuration_name)
+            .is_some_and(|cfg| cfg.eq(cfs_configuration_name))
         })
-        .map(|cfs_component| cfs_component.id.as_ref().unwrap().as_str())
+        .filter_map(|cfs_component| {
+          cfs_component.id.as_ref().map(String::as_str)
+        })
         .collect::<Vec<&str>>();
 
     if !nodes_using_cfs_configuration_as_dessired_configuration_vec.is_empty() {
@@ -421,7 +422,10 @@ pub async fn delete(
 
   // Match BOS SESSIONS with the BOS SESSIONTEMPLATE RELATED
   for bos_session in bos_session_vec {
-    let bos_session_id = &bos_session.name.unwrap();
+    let Some(bos_session_id) = &bos_session.name else {
+      log::warn!("BOS session has no 'name' field; skipping deletion");
+      continue;
+    };
     log::info!("Deleting BOS sesion '{}'", bos_session_id);
 
     if bos_sessiontemplate_name_vec.contains(&bos_session.template_name) {

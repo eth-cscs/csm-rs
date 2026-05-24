@@ -110,7 +110,7 @@ pub async fn exec(
   );
 
   let sat_file_struct: SatFile = serde_yaml::from_str(
-    &serde_yaml::to_string(&sat_template_file_yaml).unwrap(),
+    &serde_yaml::to_string(&sat_template_file_yaml)?,
   )?;
 
   let configuration_struct_vec: Vec<configuration::Configuration> =
@@ -167,11 +167,19 @@ pub async fn exec(
       let target_hsm_group_name = hw_component_pattern
         .get("target")
         .and_then(|v| v.as_str())
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(
+            "SAT file: hardware pattern missing 'target'".to_string(),
+          )
+        })?;
       let parent_hsm_group_name = hw_component_pattern
         .get("parent")
         .and_then(Value::as_str)
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(
+            "SAT file: hardware pattern missing 'parent'".to_string(),
+          )
+        })?;
 
       if let Some(pattern) =
         hw_component_pattern.get("pattern").and_then(Value::as_str)

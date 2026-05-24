@@ -133,13 +133,15 @@ impl ComponentTrait for Csm {
 
     let node_metadata_vec_rslt = self
       .get_all_nodes(auth_token, Some("true"))
-      .await
-      .unwrap()
+      .await?
       .components
       .unwrap_or_default()
       .iter()
       .filter(|&node_metadata| {
-        xname_available_vec.contains(node_metadata.id.as_ref().unwrap())
+        node_metadata
+          .id
+          .as_ref()
+          .is_some_and(|id| xname_available_vec.contains(id))
       })
       .cloned()
       .collect();
@@ -367,7 +369,7 @@ impl ComponentTrait for Csm {
         .components
         .unwrap_or_default()
         .iter()
-        .map(|component| component.id.clone().unwrap())
+        .filter_map(|component| component.id.clone())
         .collect();
 
       log::debug!("xname list:\n{:#?}", xname_vec);

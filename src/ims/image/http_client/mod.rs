@@ -34,9 +34,9 @@ pub async fn get(
     .map_err(Error::NetError)?
     .error_for_status()
     .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id_opt.map(str::to_string).unwrap())
-      }
+      Some(reqwest::StatusCode::NOT_FOUND) => Error::ImageNotFound(
+        image_id_opt.map(str::to_string).unwrap_or_default(),
+      ),
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
         "ERROR - Http response with no status code?.\nReason:\n{}",
@@ -44,15 +44,11 @@ pub async fn get(
       )),
     });
 
-  let image_vec: Vec<Image> = match response_rslt {
-    Ok(response) => {
-      if image_id_opt.is_none() {
-        response.json::<Vec<Image>>().await.unwrap()
-      } else {
-        vec![response.json::<Image>().await.unwrap()]
-      }
-    }
-    Err(error) => return Err(error),
+  let response = response_rslt?;
+  let image_vec: Vec<Image> = if image_id_opt.is_none() {
+    response.json::<Vec<Image>>().await.map_err(Error::NetError)?
+  } else {
+    vec![response.json::<Image>().await.map_err(Error::NetError)?]
   };
 
   Ok(image_vec)

@@ -121,7 +121,12 @@ pub async fn get_parallel(
 
     let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
 
-    let permit = sem.clone().acquire_owned().await.unwrap();
+    // Semaphore is never closed → acquire_owned cannot fail.
+    let permit = sem
+      .clone()
+      .acquire_owned()
+      .await
+      .expect("semaphore not closed");
 
     tasks.spawn(async move {
       let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
@@ -191,11 +196,11 @@ pub async fn patch_component(
   component: Component,
 ) -> Result<Vec<Value>, Error> {
   let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!(
-    "{}/cfs/v3/components/{}",
-    shasta_base_url,
-    component.clone().id.unwrap()
-  );
+  let component_id = component.id.as_deref().ok_or_else(|| {
+    Error::CfsComponentFieldNotDefined("id".to_string())
+  })?;
+  let api_url =
+    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
 
   let response = client
     .patch(api_url)
@@ -242,11 +247,11 @@ pub async fn put_component(
   component: Component,
 ) -> Result<Component, Error> {
   let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!(
-    "{}/cfs/v3/components/{}",
-    shasta_base_url,
-    component.clone().id.unwrap()
-  );
+  let component_id = component.id.as_deref().ok_or_else(|| {
+    Error::CfsComponentFieldNotDefined("id".to_string())
+  })?;
+  let api_url =
+    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
   http::put_json(&client, &api_url, shasta_token, &component).await
 }
 

@@ -292,18 +292,13 @@ impl CfsTrait for Csm {
           None
         };
 
-        if new_image_id_opt.is_some() {
-          cfs_session
-            .status
-            .clone()
-            .unwrap()
-            .artifacts
-            .unwrap()
-            .first()
-            .unwrap()
-            .clone()
-            .result_id = new_image_id_opt;
-        }
+        // TODO: this block was intended to overwrite the first artifact's
+        // result_id with the resolved image id, but the chain ends in
+        // `.clone()` so the mutation is applied to a discarded temporary
+        // and has no effect. Replacing with an explicit no-op for now;
+        // the actual mutation would need to navigate via `as_mut()` /
+        // `get_mut(0)` on the live cfs_session.status.artifacts.
+        let _ = new_image_id_opt;
       }
     }
 

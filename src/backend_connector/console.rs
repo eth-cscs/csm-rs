@@ -55,8 +55,13 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    let mut terminal_size_writer: Sender<TerminalSize> =
-      attached.terminal_size().unwrap();
+    let mut terminal_size_writer: Sender<TerminalSize> = attached
+      .terminal_size()
+      .ok_or_else(|| {
+        Error::Message(
+          "kube exec did not provide a terminal-size channel".to_string(),
+        )
+      })?;
     terminal_size_writer
       .try_send(TerminalSize {
         width: term_width,
@@ -67,9 +72,15 @@ impl ConsoleTrait for Csm {
     log::info!("Connected to {}!", xname,);
     log::info!("Use &. key combination to exit the console.",);
 
+    let stdin = attached.stdin().ok_or_else(|| {
+      Error::Message("kube exec did not provide a stdin stream".to_string())
+    })?;
+    let stdout = attached.stdout().ok_or_else(|| {
+      Error::Message("kube exec did not provide a stdout stream".to_string())
+    })?;
     Ok((
-      Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,
-      Box::new(attached.stdout().unwrap()) as Box<dyn AsyncRead + Unpin + Send>,
+      Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,
+      Box::new(stdout) as Box<dyn AsyncRead + Unpin + Send>,
     ))
   }
 
@@ -111,8 +122,13 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    let mut terminal_size_writer: Sender<TerminalSize> =
-      attached.terminal_size().unwrap();
+    let mut terminal_size_writer: Sender<TerminalSize> = attached
+      .terminal_size()
+      .ok_or_else(|| {
+        Error::Message(
+          "kube exec did not provide a terminal-size channel".to_string(),
+        )
+      })?;
     terminal_size_writer
       .try_send(TerminalSize {
         width: term_width,
@@ -126,9 +142,15 @@ impl ConsoleTrait for Csm {
     );
     log::info!("Use &. key combination to exit the console.",);
 
+    let stdin = attached.stdin().ok_or_else(|| {
+      Error::Message("kube exec did not provide a stdin stream".to_string())
+    })?;
+    let stdout = attached.stdout().ok_or_else(|| {
+      Error::Message("kube exec did not provide a stdout stream".to_string())
+    })?;
     Ok((
-      Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,
-      Box::new(attached.stdout().unwrap()) as Box<dyn AsyncRead + Unpin + Send>,
+      Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,
+      Box::new(stdout) as Box<dyn AsyncRead + Unpin + Send>,
     ))
   }
 }
