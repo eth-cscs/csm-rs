@@ -515,13 +515,13 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   // Base image needs to be created from a IMS job using an IMS recipe
   // Get all IMS recipes
   let recipe_detail_vec: Vec<ims::recipe::types::RecipeGetResponse> =
-    ims::recipe::http_client::get(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      None,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_recipe_get(None)
     .await?;
 
   // Filter recipes by name
