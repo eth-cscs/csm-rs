@@ -10,7 +10,7 @@ use crate::{
     template::http_client::v2::types::{BootSet, BosSessionTemplate, Cfs},
   },
   cfs,
-  common,
+  common::{self, yaml::yaml_str},
   error::Error,
   hsm,
   ims::{self, image::http_client::types::Link},
@@ -338,11 +338,8 @@ pub async fn process_session_template_section_in_sat_file(
     log::info!("Image with name '{}' found", image_details.name);
 
     // Get CFS configuration to configure the nodes
-    let bos_session_template_configuration_name = bos_sessiontemplate_yaml
-      .get("configuration")
-      .and_then(Value::as_str)
-      .map(str::to_string)
-      .unwrap();
+    let bos_session_template_configuration_name =
+      yaml_str(bos_sessiontemplate_yaml, "configuration")?.to_string();
 
     // Check CFS configuration exists in CSM
     log::info!(
@@ -367,21 +364,20 @@ pub async fn process_session_template_section_in_sat_file(
     };
 
     // let ims_image_name = image_details.name.to_string();
-    let ims_image_etag: &str = image_details
-      .link
-      .as_ref()
-      .and_then(|link| link.etag.as_ref())
-      .unwrap();
-    let ims_image_path: &str = image_details
-      .link
-      .as_ref()
-      .map(|link| link.path.as_ref())
-      .unwrap();
-    let ims_image_type: &str = image_details
-      .link
-      .as_ref()
-      .map(|link| link.r#type.as_ref())
-      .unwrap();
+    let image_link = image_details.link.as_ref().ok_or_else(|| {
+      Error::Message(format!(
+        "IMS image '{}' has no 'link' (no S3 manifest)",
+        image_details.name
+      ))
+    })?;
+    let ims_image_etag: &str = image_link.etag.as_deref().ok_or_else(|| {
+      Error::Message(format!(
+        "IMS image '{}' link has no 'etag'",
+        image_details.name
+      ))
+    })?;
+    let ims_image_path: &str = image_link.path.as_ref();
+    let ims_image_type: &str = image_link.r#type.as_ref();
 
     let bos_sessiontemplate_name = bos_sessiontemplate_yaml
       .get("name")
@@ -391,16 +387,25 @@ pub async fn process_session_template_section_in_sat_file(
 
     let mut boot_set_vec: HashMap<String, BootSet> = HashMap::new();
 
-    for (parameter, boot_set) in bos_sessiontemplate_yaml
+    let boot_sets_mapping = bos_sessiontemplate_yaml
       .get("bos_parameters")
       .and_then(|bos_parameters| bos_parameters.get("boot_sets"))
       .and_then(Value::as_mapping)
-      .unwrap()
-    {
+      .ok_or_else(|| {
+        Error::Message(
+          "SAT file: session_template is missing 'bos_parameters.boot_sets'"
+            .to_string(),
+        )
+      })?;
+    for (parameter, boot_set) in boot_sets_mapping {
       let kernel_parameters = boot_set
         .get("kernel_parameters")
         .and_then(Value::as_str)
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(
+            "SAT file: boot_set is missing 'kernel_parameters'".to_string(),
+          )
+        })?;
       let arch_opt = boot_set
         .get("arch")
         .and_then(Value::as_str)
@@ -510,8 +515,12 @@ pub async fn process_session_template_section_in_sat_file(
         arch: arch_opt,
       };
 
-      boot_set_vec
-        .insert(parameter.as_str().map(str::to_string).unwrap(), boot_set);
+      let parameter_str = parameter.as_str().ok_or_else(|| {
+        Error::Message(
+          "SAT file: boot_set key is not a string".to_string(),
+        )
+      })?;
+      boot_set_vec.insert(parameter_str.to_string(), boot_set);
     }
 
     let cfs = Cfs {
@@ -558,7 +567,12 @@ pub async fn process_session_template_section_in_sat_file(
         bos_sessiontemplate_name
       );
 
-      bos_st_created_vec.push(bos_sessiontemplate.name.unwrap())
+      let created_name = bos_sessiontemplate.name.ok_or_else(|| {
+        Error::Message(
+          "BOS sessiontemplate API response is missing 'name'".to_string(),
+        )
+      })?;
+      bos_st_created_vec.push(created_name);
     }
   }
 
@@ -606,8 +620,8 @@ pub async fn process_session_template_section_in_sat_file(
   }
 
   // Audit
-  let user = common::jwt_ops::get_name(shasta_token).unwrap();
-  let username = common::jwt_ops::get_preferred_username(shasta_token).unwrap();
+  let user = common::jwt_ops::get_name(shasta_token)?;
+  let username = common::jwt_ops::get_preferred_username(shasta_token)?;
 
   log::info!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
 
@@ -636,8 +650,13 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       // BOS sessiontemplate boot image defined by name
       let image_name = bos_session_template_image_ims_name
         .as_str()
-        .map(str::to_string)
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(
+            "SAT file: session_template image.ims.name is not a string"
+              .to_string(),
+          )
+        })?
+        .to_string();
 
       Ok((image_name, false))
     } else if let Some(bos_session_template_image_ims_id) =
@@ -646,8 +665,13 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       // BOS sessiontemplate boot image defined by id
       let image_id = bos_session_template_image_ims_id
         .as_str()
-        .map(str::to_string)
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(
+            "SAT file: session_template image.ims.id is not a string"
+              .to_string(),
+          )
+        })?
+        .to_string();
 
       Ok((image_id, true))
     } else {
@@ -659,10 +683,23 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
     // BOS sessiontemplate boot image defined by image_ref
     let image_ref = bos_session_template_image_image_ref
       .as_str()
-      .map(str::to_string)
-      .unwrap();
+      .ok_or_else(|| {
+        Error::Message(
+          "SAT file: session_template image.image_ref is not a string"
+            .to_string(),
+        )
+      })?
+      .to_string();
 
-    let image_id = ref_name_processed_hashmap.get(&image_ref).cloned().unwrap();
+    let image_id = ref_name_processed_hashmap
+      .get(&image_ref)
+      .cloned()
+      .ok_or_else(|| {
+        Error::Message(format!(
+          "SAT file: image_ref '{}' not found in processed image set",
+          image_ref
+        ))
+      })?;
 
     Ok((image_id, true))
   } else if let Some(image_name_substring) = bos_sessiontemplate_image.as_str()
@@ -697,7 +734,14 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
       Some(image_reference),
     )
     .await
-    .map(|image_vec| image_vec.first().cloned().unwrap())
+    .and_then(|image_vec| {
+      image_vec.first().cloned().ok_or_else(|| {
+        Error::Message(format!(
+          "Image '{}' not found in CSM",
+          image_reference
+        ))
+      })
+    })
   } else {
     /* ims::image::utils::get_fuzzy(
       shasta_token,
@@ -720,7 +764,14 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
       Some(&1),
     )
     .await
-    .map(|image_vec| image_vec.first().cloned().unwrap())
+    .and_then(|image_vec| {
+      image_vec.first().cloned().ok_or_else(|| {
+        Error::Message(format!(
+          "Image '{}' not found in CSM",
+          image_reference
+        ))
+      })
+    })
   }
 }
 
@@ -984,18 +1035,26 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       // Base image created from a cray product
       let product_name = &product.name;
 
-      let product_version = product.version.as_ref().unwrap();
+      let product_version = product.version.as_ref().ok_or_else(|| {
+        Error::Message(format!(
+          "SAT file: image base.product '{}' is missing 'version'",
+          product_name
+        ))
+      })?;
 
       let product_type = &product.r#type;
 
-      // We assume the SAT file has been alredy validated therefore taking some risks in
-      // getting the details from the Cray product catalog
-      let product_image_map = &serde_yaml::from_str::<serde_json::Value>(
+      let product_image_map = serde_yaml::from_str::<serde_json::Value>(
         &cray_product_catalog[product_name],
       )?[product_version][product_type]
         .as_object()
         .cloned()
-        .unwrap();
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "Cray product catalog: '{}.{}.{}' is missing or not an object",
+            product_name, product_version, product_type
+          ))
+        })?;
 
       let image_id = if let Some(filter) = product.filter.as_ref() {
         filter_product_catalog_images(
@@ -1015,7 +1074,12 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           .and_then(|value| value.get("id"))
           .and_then(serde_json::Value::as_str)
           .map(str::to_string)
-          .unwrap()
+          .ok_or_else(|| {
+            Error::Message(format!(
+              "Cray product catalog: '{}.{}.{}' has no entries with an 'id' field",
+              product_name, product_version, product_type
+            ))
+          })?
       };
 
       // ----------- BASE IMAGE - CRAY PRODUCT CATALOG TYPE RECIPE

@@ -2,7 +2,6 @@ use crate::commands::migrate_restore;
 use crate::error::Error;
 use crate::{bos, cfs, hsm, ims};
 use humansize::DECIMAL;
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -18,23 +17,29 @@ pub async fn exec(
   /* prehook: Option<&String>,
   posthook: Option<&String>, */
 ) -> Result<(), Error> {
-  let dest_path = Path::new(destination.unwrap());
+  let bos = bos.ok_or_else(|| {
+    Error::Message("Error, --bos argument is required.".to_string())
+  })?;
+  let destination = destination.ok_or_else(|| {
+    Error::Message("Error, --destination argument is required.".to_string())
+  })?;
+
+  let dest_path = Path::new(destination);
   let bucket_name = "boot-images";
   let files2download = ["manifest.json", "initrd", "kernel", "rootfs"];
   let files2download_count = files2download.len() + 4; // manifest.json, initrd, kernel, rootfs, bos, cfs, hsm, ims
-  log::debug!("Create directory '{}'", destination.unwrap());
-  match std::fs::create_dir_all(dest_path) {
-    Ok(_ok) => _ok,
-    Err(error) => panic!(
-      "Unable to create directory {}. Error returned: {}",
-      &dest_path.to_string_lossy(),
-      error
-    ),
-  };
-  let bos_file_name = String::from(bos.unwrap()) + ".json";
+  log::debug!("Create directory '{}'", destination);
+  std::fs::create_dir_all(dest_path).map_err(|e| {
+    Error::Message(format!(
+      "Unable to create directory {}: {}",
+      dest_path.to_string_lossy(),
+      e
+    ))
+  })?;
+  let bos_file_name = String::from(bos) + ".json";
   let bos_file_path = dest_path.join(bos_file_name);
 
-  let hsm_file_name = String::from(bos.unwrap()) + "-hsm.json";
+  let hsm_file_name = String::from(bos) + "-hsm.json";
   let hsm_file_path = dest_path.join(hsm_file_name);
 
   let _empty_hsm_group_name: Vec<String> = Vec::new();
@@ -43,7 +48,7 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    bos,
+    Some(bos),
   )
   .await?;
 
@@ -60,7 +65,7 @@ pub async fn exec(
 
     log::info!(
       "Downloading BOS session template {} to {} [{}/{}]",
-      &bos.unwrap(),
+      bos,
       &bos_file_path.clone().to_string_lossy(),
       &download_counter,
       &files2download_count
@@ -75,7 +80,7 @@ pub async fn exec(
     let hsm_file = File::create(&hsm_file_path)?;
     log::info!(
       "Downloading HSM configuration in bos template {} to {} [{}/{}]",
-      &bos.unwrap(),
+      bos,
       &hsm_file_path.clone().to_string_lossy(),
       &download_counter,
       &files2download_count
@@ -89,7 +94,12 @@ pub async fn exec(
       .and_then(|compute_boot_set| compute_boot_set.node_groups.as_ref())
       .and_then(|node_groups| node_groups.first())
       .map(|node_group| node_group.replace('\"', ""))
-      .unwrap();
+      .ok_or_else(|| {
+        Error::Message(format!(
+          "BOS template '{}': no 'compute' boot_set or no node_groups",
+          bos
+        ))
+      })?;
 
     let hsm_group_json = hsm::group::http_client::get(
       shasta_token,
@@ -109,7 +119,12 @@ pub async fn exec(
       .first()
       .and_then(|first_bos_template| first_bos_template.cfs.as_ref())
       .and_then(|cfs_value| cfs_value.configuration.as_ref())
-      .unwrap();
+      .ok_or_else(|| {
+        Error::Message(format!(
+          "BOS template '{}': no CFS configuration referenced",
+          bos
+        ))
+      })?;
 
     let cfs_configurations = cfs::configuration::http_client::v3::get(
       shasta_token,
@@ -140,12 +155,16 @@ pub async fn exec(
     download_counter += 1;
 
     // Image ----------------------------------------------------------------------------------
-    for boot_sets_value in bos_templates
+    let boot_sets = bos_templates
       .first()
       .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
-      .map(HashMap::values)
-      .unwrap()
-    {
+      .ok_or_else(|| {
+        Error::Message(format!(
+          "BOS template '{}': no boot_sets defined",
+          bos
+        ))
+      })?;
+    for boot_sets_value in boot_sets.values() {
       if let Some(path) = &boot_sets_value.path {
         let image_id_related_to_bos_sessiontemplate = path
           .trim_start_matches("s3://boot-images/")
@@ -185,7 +204,7 @@ pub async fn exec(
               image_id_related_to_bos_sessiontemplate.clone().to_string();
             log::info!(
               "Image ID found related to BOS sessiontemplate {} is {}",
-              &bos.unwrap(),
+              bos,
               image_id_related_to_bos_sessiontemplate
             );
             let sts_value = match ims::s3_client::s3_auth(
@@ -204,7 +223,7 @@ pub async fn exec(
               Err(error) => panic!("{}", error.to_string()),
             };
             for file in files2download {
-              let dest = String::from(destination.unwrap()) + "/" + &image_id;
+              let dest = String::from(destination) + "/" + &image_id;
               let src = image_id.clone() + "/" + file;
               let object_size = ims::s3_client::s3_get_object_size(
                 &sts_value,
@@ -251,7 +270,7 @@ pub async fn exec(
             )?;
             log::info!("\tImage name: {}", ims_image_name);
             for file in files2download {
-              let dest = String::from(destination.unwrap());
+              let dest = String::from(destination);
               let src = image_id.clone() + "/" + file;
               log::info!("\t\tfile: {}/{}", dest, src);
             }
