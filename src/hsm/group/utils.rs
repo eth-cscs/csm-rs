@@ -313,31 +313,6 @@ pub async fn migrate_hsm_members(
   // *********************************************************************************************************
   // UPDATE HSM GROUP MEMBERS IN CSM
   if dryrun {
-    /* let target_hsm_group = serde_json::json!({
-        "label": target_hsm_group_name,
-        "decription": "",
-        "members": target_hsm_group_member_vec,
-        "tags": []
-    });
-
-    log::info!(
-      "Target group:\n{}",
-      serde_json::to_string_pretty(&target_hsm_group)?
-    );
-
-    let parent_hsm_group = serde_json::json!({
-        "label": parent_hsm_group_name,
-        "decription": "",
-        "members": parent_hsm_group_member_vec,
-        "tags": []
-    });
-
-    log::info!(
-      "Parent group:\n{}",
-      serde_json::to_string_pretty(&parent_hsm_group)?
-    );
-
-    log::info!("dry-run enabled, changes not persisted."); */
   } else {
     for xname in new_target_hsm_members {
       let member = Member {

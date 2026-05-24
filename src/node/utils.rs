@@ -26,12 +26,6 @@ pub async fn validate_target_hsm_members(
     socks5_proxy,
   )
   .await?;
-  /* let hsm_groups_user_has_access = config_show::get_hsm_name_available_from_jwt_or_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-  )
-  .await; */
 
   let xnames_user_has_access =
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
@@ -42,13 +36,6 @@ pub async fn validate_target_hsm_members(
       &hsm_groups_user_has_access,
     )
     .await?;
-  /* let all_xnames_user_has_access = hsm::group::utils::get_member_vec_from_hsm_name_vec(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      hsm_groups_user_has_access.clone(),
-  )
-  .await; */
 
   // Check user has access to all xnames he is requesting
   if hsm_group_members_opt

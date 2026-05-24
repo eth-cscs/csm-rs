@@ -20,14 +20,6 @@ impl AuthenticationTrait for Csm {
 
     let keycloak_base_url = base_url.to_string() + "/keycloak";
 
-    /* authentication::get_api_token(
-      &self.base_url,
-      &self.root_cert,
-      &keycloak_base_url,
-      site_name,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string())) */
 
     let token = get_token_from_shasta_endpoint(
       &keycloak_base_url,

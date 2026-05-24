@@ -1879,35 +1879,6 @@ pub struct HWInvByLocRouterBMC {
   pub router_bmc_location_info: Option<RedfishManagerLocationInfo>,
 }
 
-/* #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HWInventoryList {
-    #[serde(rename = "Hardware")]
-    pub hw_inventory: Vec<HWInventory>,
-}
-
-impl From<FrontEndHWInventoryList> for HWInventoryList {
-    fn from(value: FrontEndHWInventoryList) -> Self {
-        HWInventoryList {
-            hw_inventory: value
-                .hw_inventory
-                .into_iter()
-                .map(HWInventory::from)
-                .collect(),
-        }
-    }
-}
-
-impl Into<FrontEndHWInventoryList> for HWInventoryList {
-    fn into(self) -> FrontEndHWInventoryList {
-        FrontEndHWInventoryList {
-            hw_inventory: self
-                .hw_inventory
-                .into_iter()
-                .map(|hw_inventory| hw_inventory.into())
-                .collect(),
-        }
-    }
-} */
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventory {

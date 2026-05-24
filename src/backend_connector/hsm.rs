@@ -435,27 +435,6 @@ impl ComponentEthernetInterfaceTrait for Csm {
     ))
   }
 
-  /* async fn get_ip_addresses(
-    &self,
-    _auth_token: &str,
-    _eth_interface_id: &str,
-  ) -> Result<Vec<IpAddressMapping>, Error> {
-    Err(Error::Message(
-      "Get IP addresses command not implemented for this backend".to_string(),
-    ))
-  }
-
-  async fn delete_ip_address(
-    &self,
-    _auth_token: &str,
-    _group_label: &str,
-    _eth_interface_id: &str,
-    _ip_address: &str,
-  ) -> Result<Value, Error> {
-    Err(Error::Message(
-      "Delete IP address command not implemented for this backend".to_string(),
-    ))
-  } */
 }
 
 impl RedfishEndpointTrait for Csm {
