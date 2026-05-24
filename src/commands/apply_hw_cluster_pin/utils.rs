@@ -502,15 +502,14 @@ pub async fn get_node_hw_component_count(
   hsm_member: &str,
   user_defined_hw_profile_vec: Vec<String>,
 ) -> Result<(String, Vec<String>, Vec<u64>), Error> {
-  let node_hw_inventory_value =
-    hsm::hw_inventory::hw_component::http_client::get_query(
-      &shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      hsm_member,
-    )
-    .await?;
+  let node_hw_inventory_value = crate::ShastaClient::new(
+    shasta_base_url,
+    &shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_hw_inventory_get_query(hsm_member)
+  .await?;
 
   let node_hw_profile = get_node_hw_properties_from_value(
     &node_hw_inventory_value,

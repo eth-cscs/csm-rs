@@ -21,7 +21,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use super::Csm;
-use crate::hsm::{self, component::types::ComponentArrayPostArray};
+use crate::hsm::component::types::ComponentArrayPostArray;
 
 impl HardwareInventory for Csm {
   async fn get_inventory_hardware(
@@ -29,19 +29,15 @@ impl HardwareInventory for Csm {
     auth_token: &str,
     xname: &str,
   ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      xname,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
-    .and_then(|hw_inventory| {
-      serde_json::to_value(hw_inventory)
-        .map_err(|e| Error::Message(e.to_string()))
-    })
+    self
+      .shasta_client(auth_token)?
+      .hsm_hw_inventory_get(xname)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
+      .and_then(|hw_inventory| {
+        serde_json::to_value(hw_inventory)
+          .map_err(|e| Error::Message(e.to_string()))
+      })
   }
 
   async fn get_inventory_hardware_query(
@@ -54,15 +50,11 @@ impl HardwareInventory for Csm {
     _partition: Option<&str>,
     _format: Option<&str>,
   ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::get_query(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      xname,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_hw_inventory_get_query(xname)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn post_inventory_hardware(
@@ -70,15 +62,11 @@ impl HardwareInventory for Csm {
     auth_token: &str,
     hw_inventory: FrontEndHWInventoryByLocationList,
   ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::post(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      hw_inventory.into(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_hw_inventory_post(hw_inventory.into())
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }
 
@@ -418,22 +406,12 @@ impl RedfishEndpointTrait for Csm {
     ip_address: Option<&str>,
     last_status: Option<&str>,
   ) -> Result<FrontEndRedfishEndpointArray, Error> {
-    hsm::hw_inventory::redfish_endpoint::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      id,
-      fqdn,
-      r#type,
-      uuid,
-      macaddr,
-      ip_address,
-      last_status,
-    )
-    .await
-    .map(|arr| arr.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_redfish_get(id, fqdn, r#type, uuid, macaddr, ip_address, last_status)
+      .await
+      .map(|arr| arr.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn add_redfish_endpoint(
