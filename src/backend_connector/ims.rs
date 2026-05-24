@@ -12,33 +12,26 @@ impl ImsTrait for Csm {
     shasta_token: &str,
     image_id_opt: Option<&str>,
   ) -> Result<Vec<FrontEndImage>, Error> {
-    crate::ims::image::http_client::get(
-      shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      image_id_opt,
-    )
-    .await
-    .map(|image_vec| image_vec.into_iter().map(|image| image.into()).collect())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(shasta_token)?
+      .ims_image_get(image_id_opt)
+      .await
+      .map(|v| v.into_iter().map(Into::into).collect())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn get_all_images(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
+    _shasta_base_url: &str,
+    _shasta_root_cert: &[u8],
   ) -> Result<Vec<FrontEndImage>, Error> {
-    crate::ims::image::http_client::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-    )
-    .await
-    .map(|image_vec| image_vec.into_iter().map(|image| image.into()).collect())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(shasta_token)?
+      .ims_image_get_all()
+      .await
+      .map(|v| v.into_iter().map(Into::into).collect())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   fn filter_images(
@@ -59,16 +52,11 @@ impl ImsTrait for Csm {
     image_id: &str,
     image: &PatchImage,
   ) -> Result<(), Error> {
-    let _ = crate::ims::image::http_client::patch(
-      shasta_token,
-      self.base_url.as_str(),
-      self.root_cert.as_slice(),
-      self.socks5_proxy.as_deref(),
-      image_id,
-      &image.clone().into(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()));
+    let _ = self
+      .shasta_client(shasta_token)?
+      .ims_image_patch(image_id, &image.clone().into())
+      .await
+      .map_err(|e| Error::Message(e.to_string()));
 
     Ok(())
   }
@@ -76,19 +64,15 @@ impl ImsTrait for Csm {
   async fn delete_image(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
+    _shasta_base_url: &str,
+    _shasta_root_cert: &[u8],
     image_id: &str,
   ) -> Result<(), Error> {
-    crate::ims::image::http_client::delete(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      image_id,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(shasta_token)?
+      .ims_image_delete(image_id)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }
 

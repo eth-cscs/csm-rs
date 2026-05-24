@@ -8,7 +8,7 @@ use crate::{
   common::{self, gitea},
   error::Error,
   hsm,
-  ims::{self, image::http_client::types::Image},
+  ims::image::http_client::types::Image,
 };
 
 use chrono::NaiveDateTime;
@@ -310,6 +310,12 @@ pub async fn get_derivatives(
   // List of image ids from CFS sessions and BOS sessiontemplates related to CFS configuration
   let mut image_id_vec: Vec<&str> = Vec::new();
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
     cfs::session::http_client::v2::get_all(
       shasta_token,
@@ -323,12 +329,7 @@ pub async fn get_derivatives(
       shasta_root_cert,
       socks5_proxy,
     ),
-    ims::image::http_client::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    )
+    shasta_client.ims_image_get_all(),
   )?;
 
   // Filter CFS sessions

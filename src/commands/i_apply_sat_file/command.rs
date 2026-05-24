@@ -16,7 +16,6 @@ use crate::{
   common::kubernetes::{self},
   error::Error,
   hsm::group::utils::update_hsm_group_members,
-  ims,
 };
 
 #[deprecated(
@@ -94,12 +93,7 @@ pub async fn exec(
       shasta_root_cert,
       socks5_proxy
     ),
-    ims::image::http_client::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.ims_image_get_all(),
     shasta_client.ims_recipe_get(None),
   )?;
 

@@ -12,7 +12,6 @@ use crate::{
   },
   error::Error,
   hsm::group::types::Group,
-  ims,
 };
 
 pub async fn exec(
@@ -147,13 +146,13 @@ async fn delete_images(
           image_id
         );
       } else {
-        ims::image::http_client::delete(
-          shasta_token,
+        crate::ShastaClient::new(
           shasta_base_url,
-          shasta_root_cert,
-          socks5_proxy,
-          image_id,
-        )
+          shasta_token,
+          shasta_root_cert.to_vec(),
+          socks5_proxy.map(str::to_owned),
+        )?
+        .ims_image_delete(image_id)
         .await?;
       }
     } else {

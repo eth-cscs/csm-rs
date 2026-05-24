@@ -5,7 +5,6 @@ use crate::{
     session::http_client::v2::types::CfsSessionPostRequest,
   },
   error::Error,
-  hsm,
   node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,
 };
 

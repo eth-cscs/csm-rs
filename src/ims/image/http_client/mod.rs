@@ -4,165 +4,142 @@ use serde_json::Value;
 
 use types::{Image, PatchImage};
 
-use crate::{common::http, error::Error};
+use crate::{ShastaClient, error::Error};
 
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  image_id_opt: Option<&str>,
-) -> Result<Vec<Image>, Error> {
-  log::info!(
-    "Get IMS images '{}'",
-    image_id_opt.unwrap_or("all available")
-  );
+impl ShastaClient {
+  pub async fn ims_image_get(
+    &self,
+    image_id_opt: Option<&str>,
+  ) -> Result<Vec<Image>, Error> {
+    log::info!(
+      "Get IMS images '{}'",
+      image_id_opt.unwrap_or("all available")
+    );
 
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
+    let api_url = if let Some(image_id) = image_id_opt {
+      format!("{}/ims/v3/images/{}", self.base_url(), image_id)
+    } else {
+      format!("{}/ims/v3/images", self.base_url())
+    };
 
-  let api_url = if let Some(image_id) = image_id_opt {
-    format!("{}/ims/v3/images/{}", shasta_base_url, image_id)
-  } else {
-    format!("{}/ims/v3/images", shasta_base_url)
-  };
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(|e| match e.status() {
+        Some(reqwest::StatusCode::NOT_FOUND) => Error::ImageNotFound(
+          image_id_opt.map(str::to_string).unwrap_or_default(),
+        ),
+        Some(_) => Error::NetError(e),
+        None => Error::Message(format!(
+          "ERROR - Http response with no status code?.\nReason:\n{}",
+          e
+        )),
+      })?;
 
-  let response_rslt = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => Error::ImageNotFound(
-        image_id_opt.map(str::to_string).unwrap_or_default(),
-      ),
+    let image_vec: Vec<Image> = if image_id_opt.is_none() {
+      response.json::<Vec<Image>>().await.map_err(Error::NetError)?
+    } else {
+      vec![response.json::<Image>().await.map_err(Error::NetError)?]
+    };
+
+    Ok(image_vec)
+  }
+
+  pub async fn ims_image_get_all(&self) -> Result<Vec<Image>, Error> {
+    self.ims_image_get(None).await
+  }
+
+  /// Register a new image in IMS.
+  pub async fn ims_image_post(
+    &self,
+    ims_image: &Image,
+  ) -> Result<Value, Error> {
+    let api_url = format!("{}/ims/v3/images", self.base_url());
+
+    self
+      .http()
+      .post(api_url)
+      .bearer_auth(self.token())
+      .json(&ims_image)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?
+      .json()
+      .await
+      .map_err(Error::NetError)
+  }
+
+  /// Delete an IMS image (soft delete + permanent deletion in sequence).
+  pub async fn ims_image_delete(&self, image_id: &str) -> Result<(), Error> {
+    let map_delete_err = |e: reqwest::Error| match e.status() {
+      Some(reqwest::StatusCode::NOT_FOUND) => {
+        Error::ImageNotFound(image_id.to_string())
+      }
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
         "ERROR - Http response with no status code?.\nReason:\n{}",
         e
       )),
-    });
+    };
 
-  let response = response_rslt?;
-  let image_vec: Vec<Image> = if image_id_opt.is_none() {
-    response.json::<Vec<Image>>().await.map_err(Error::NetError)?
-  } else {
-    vec![response.json::<Image>().await.map_err(Error::NetError)?]
-  };
+    // SOFT DELETION
+    let api_url = format!("{}/ims/v3/images/{}", self.base_url(), image_id);
+    self
+      .http()
+      .delete(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map(|_| ())
+      .map_err(map_delete_err)?;
 
-  Ok(image_vec)
-}
+    // PERMANENT DELETION
+    let api_url =
+      format!("{}/ims/v3/deleted/images/{}", self.base_url(), image_id);
+    self
+      .http()
+      .delete(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map(|_| ())
+      .map_err(map_delete_err)
+  }
 
-pub async fn get_all(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Vec<Image>, Error> {
-  get(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, None).await
-}
+  /// Patch an IMS image record (link to S3 manifest, metadata, etc).
+  pub async fn ims_image_patch(
+    &self,
+    ims_image_id: &str,
+    ims_link: &PatchImage,
+  ) -> Result<(), Error> {
+    let api_url =
+      format!("{}/ims/v3/images/{}", self.base_url(), ims_image_id);
 
-/// Register a new image in IMS --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
-pub async fn post(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_image: &Image,
-) -> Result<Value, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/ims/v3/images", shasta_base_url);
+    self
+      .http()
+      .patch(api_url)
+      .bearer_auth(self.token())
+      .json(&ims_link)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?
+      .json::<Value>()
+      .await
+      .map_err(Error::NetError)?;
 
-  client
-    .post(api_url)
-    .bearer_auth(shasta_token)
-    .json(&ims_image)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?
-    .json()
-    .await
-    .map_err(Error::NetError)
-}
-
-// Delete IMS image using CSM API. First does a "soft delete", then a "permanent deletion"
-// soft delete --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/delete_v3_image/
-// permanent deletion --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/delete_v3_deleted_image/
-pub async fn delete(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  image_id: &str,
-) -> Result<(), Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-
-  // Map a NOT_FOUND status to the dedicated ImageNotFound variant so callers
-  // can distinguish "the image is already gone" from other failures.
-  let map_delete_err = |e: reqwest::Error| match e.status() {
-    Some(reqwest::StatusCode::NOT_FOUND) => {
-      Error::ImageNotFound(image_id.to_string())
-    }
-    Some(_) => Error::NetError(e),
-    None => Error::Message(format!(
-      "ERROR - Http response with no status code?.\nReason:\n{}",
-      e
-    )),
-  };
-
-  // SOFT DELETION
-  let api_url = format!("{}/ims/v3/images/{}", shasta_base_url, image_id);
-  client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map(|_| ())
-    .map_err(map_delete_err)?;
-
-  // PERMANENT DELETION
-  let api_url =
-    format!("{}/ims/v3/deleted/images/{}", shasta_base_url, image_id);
-  client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map(|_| ())
-    .map_err(map_delete_err)
-}
-
-/// update an IMS image record --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
-pub async fn patch(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_image_id: &str,
-  ims_link: &PatchImage,
-) -> Result<(), Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/ims/v3/images/{}", shasta_base_url, ims_image_id);
-
-  client
-    .patch(api_url)
-    .bearer_auth(shasta_token)
-    .json(&ims_link)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?
-    .json::<Value>()
-    .await
-    .map_err(Error::NetError)?;
-
-  Ok(())
+    Ok(())
+  }
 }

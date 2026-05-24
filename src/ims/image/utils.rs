@@ -320,13 +320,13 @@ pub async fn get_image_available_vec(
   hsm_name_available_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
-  let mut image_vec: Vec<Image> = super::http_client::get(
-    shasta_token,
+  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_image_get_all()
   .await?;
 
   ims::image::utils::filter(&mut image_vec);

@@ -22,13 +22,13 @@ pub async fn get_images_and_details(
   id_opt: Option<&str>,
   limit_number: Option<&u8>,
 ) -> Result<Vec<(Image, String, String, bool)>, Error> {
-  let mut image_vec: Vec<Image> = image::http_client::get(
-    shasta_token,
+  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    id_opt,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_image_get(id_opt)
   .await?;
 
   let image_detail_vec_rslt: Result<Vec<(Image, String, String, bool)>, Error> =

@@ -7,23 +7,7 @@ use manta_backend_dispatcher::{
   },
 };
 
-use crate::ShastaClient;
-
 use super::Csm;
-
-impl Csm {
-  /// Build a `ShastaClient` for this `Csm` + the supplied per-call token.
-  /// Cheap: cert parse + reqwest::Client::build per call (microseconds).
-  fn shasta_client(&self, token: &str) -> Result<ShastaClient, Error> {
-    ShastaClient::new(
-      &self.base_url,
-      token,
-      self.root_cert.clone(),
-      self.socks5_proxy.clone(),
-    )
-    .map_err(|e| Error::Message(e.to_string()))
-  }
-}
 
 impl PCSTrait for Csm {
   async fn power_on_sync(

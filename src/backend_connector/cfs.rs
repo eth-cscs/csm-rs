@@ -270,15 +270,11 @@ impl CfsTrait for Csm {
           let new_image_vec_rslt: Result<
             Vec<crate::ims::image::http_client::types::Image>,
             _,
-          > = crate::ims::image::http_client::get(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            self.socks5_proxy.as_deref(),
-            // hsm_group_name_vec,
-            image_id,
-          )
-          .await;
+          > = self
+            .shasta_client(shasta_token)
+            .map_err(|e| crate::error::Error::Message(e.to_string()))?
+            .ims_image_get(image_id)
+            .await;
 
           if let Ok(Some(new_image)) = new_image_vec_rslt
             .as_ref()

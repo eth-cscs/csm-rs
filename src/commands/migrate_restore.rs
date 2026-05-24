@@ -6,10 +6,7 @@ use crate::cfs::configuration::http_client::v3::types::{
 use crate::hsm::group::http_client::{create_new_group, delete_group};
 use crate::hsm::group::types::Group;
 use crate::ims::image::{
-  http_client::{
-    patch,
-    types::{Image, Link},
-  },
+  http_client::types::{Image, Link},
   utils::get_by_name,
   utils::get_fuzzy,
 };
@@ -492,15 +489,19 @@ async fn ims_update_image_add_manifest(
     metadata: None,
   };
 
-  match patch(
-    shasta_token,
+  let patch_result = match crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &ims_image_id.to_string(),
-    &rec,
-  )
-  .await
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  ) {
+    Ok(client) => {
+      client.ims_image_patch(&ims_image_id.to_string(), &rec).await
+    }
+    Err(e) => Err(e),
+  };
+
+  match patch_result
   {
     Ok(()) => log::debug!("Image updated"),
     Err(e) => panic!(
@@ -838,13 +839,13 @@ async fn ims_register_image(
     ));
   }
 
-  let json_response = ims::image::http_client::post(
-    shasta_token,
+  let json_response = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &ims_record,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_image_post(&ims_record)
   .await?;
 
   json_response

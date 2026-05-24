@@ -14,7 +14,6 @@ use crate::{
   },
   common,
   error::Error,
-  ims,
 };
 
 pub async fn get_data_to_delete(
@@ -392,13 +391,13 @@ pub async fn delete(
   // DELETE IMAGES
   for image_id in image_id_vec {
     log::info!("Deleting IMS image '{}'", image_id);
-    let image_deleted_value_rslt = ims::image::http_client::delete(
-      shasta_token,
+    let image_deleted_value_rslt = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      image_id,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_image_delete(image_id)
     .await;
 
     // process api response

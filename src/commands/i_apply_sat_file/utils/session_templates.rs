@@ -156,13 +156,13 @@ pub async fn validate_sat_file_session_template_section(
             session_template_yaml.name
           );
 
-          let image_found = ims::image::http_client::get(
-            shasta_token,
+          let image_found = crate::ShastaClient::new(
             shasta_base_url,
-            shasta_root_cert,
-            socks5_proxy,
-            Some(image_id.as_str()),
-          )
+            shasta_token,
+            shasta_root_cert.to_vec(),
+            socks5_proxy.map(str::to_owned),
+          )?
+          .ims_image_get(Some(image_id.as_str()))
           .await
           .is_ok();
 
@@ -726,13 +726,13 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   
 
   if is_image_id {
-    ims::image::http_client::get(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      Some(image_reference),
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_image_get(Some(image_reference))
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {

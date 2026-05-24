@@ -25,4 +25,21 @@ impl Csm {
       socks5_proxy: socks5_proxy.map(str::to_owned),
     }
   }
+
+  /// Build a `ShastaClient` for this `Csm` + the supplied per-call token.
+  /// Cheap: cert parse + reqwest::Client::build per call (microseconds).
+  pub(crate) fn shasta_client(
+    &self,
+    token: &str,
+  ) -> Result<crate::ShastaClient, manta_backend_dispatcher::error::Error> {
+    crate::ShastaClient::new(
+      &self.base_url,
+      token,
+      self.root_cert.clone(),
+      self.socks5_proxy.clone(),
+    )
+    .map_err(|e| {
+      manta_backend_dispatcher::error::Error::Message(e.to_string())
+    })
+  }
 }

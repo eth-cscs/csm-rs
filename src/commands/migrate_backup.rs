@@ -189,13 +189,13 @@ pub async fn exec(
           &download_counter,
           &files2download_count
         );
-        match ims::image::http_client::get(
-          shasta_token,
+        match crate::ShastaClient::new(
           shasta_base_url,
-          shasta_root_cert,
-          socks5_proxy,
-          Some(&image_id_related_to_bos_sessiontemplate),
-        )
+          shasta_token,
+          shasta_root_cert.to_vec(),
+          socks5_proxy.map(str::to_owned),
+        )?
+        .ims_image_get(Some(&image_id_related_to_bos_sessiontemplate))
         .await
         {
           Ok(ims_record) => {
