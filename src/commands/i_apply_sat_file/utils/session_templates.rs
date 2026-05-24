@@ -8,7 +8,6 @@ use crate::{
     session::http_client::v2::types::{BosSession, Operation},
     template::http_client::v2::types::{BootSet, BosSessionTemplate, Cfs},
   },
-  cfs,
   common::{self, yaml::yaml_str},
   error::Error,
   hsm,
@@ -203,13 +202,13 @@ pub async fn validate_sat_file_session_template_section(
         session_template_yaml.name
       );
 
-      configuration_found = cfs::configuration::http_client::v3::get(
-        shasta_token,
+      configuration_found = crate::ShastaClient::new(
         shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        Some(&session_template_yaml.configuration),
-      )
+        shasta_token,
+        shasta_root_cert.to_vec(),
+        socks5_proxy.map(str::to_owned),
+      )?
+      .cfs_configuration_v3_get(Some(&session_template_yaml.configuration))
       .await
       .is_ok();
 
@@ -352,13 +351,13 @@ pub async fn process_session_template_section_in_sat_file(
         bos_session_template_configuration_name
       );
     } else {
-      cfs::configuration::http_client::v3::get(
-        shasta_token,
+      crate::ShastaClient::new(
         shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        Some(&bos_session_template_configuration_name),
-      )
+        shasta_token,
+        shasta_root_cert.to_vec(),
+        socks5_proxy.map(str::to_owned),
+      )?
+      .cfs_configuration_v3_get(Some(&bos_session_template_configuration_name))
       .await?;
     };
 

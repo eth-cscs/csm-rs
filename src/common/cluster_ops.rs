@@ -99,26 +99,25 @@ pub async fn get_details(
 
         // Get CFS configuration linked to CFS session related to HSM GROUP or any of its
         // members
-        let cfs_configuration_vec =
-          crate::cfs::configuration::http_client::v2::get(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            socks5_proxy,
-            Some(
-              most_recent_cfs_session
-                .configuration
-                .as_ref()
-                .and_then(|configuration| configuration.name.as_ref())
-                .ok_or_else(|| {
-                  Error::Message(format!(
-                    "CFS session for HSM '{}' has no configuration name",
-                    hsm_group_name
-                  ))
-                })?,
-            ),
-          )
-          .await?;
+        let cfs_configuration_vec = crate::ShastaClient::new(
+          shasta_base_url,
+          shasta_token,
+          shasta_root_cert.to_vec(),
+          socks5_proxy.map(str::to_owned),
+        )?
+        .cfs_configuration_v2_get(Some(
+          most_recent_cfs_session
+            .configuration
+            .as_ref()
+            .and_then(|configuration| configuration.name.as_ref())
+            .ok_or_else(|| {
+              Error::Message(format!(
+                "CFS session for HSM '{}' has no configuration name",
+                hsm_group_name
+              ))
+            })?,
+        ))
+        .await?;
 
         cfs_configuration =
           cfs_configuration_vec.first().ok_or_else(|| {

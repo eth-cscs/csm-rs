@@ -63,12 +63,7 @@ pub async fn get_data_to_delete(
     bss_bootparameters_vec,
   ) = tokio::try_join!(
     shasta_client.cfs_component_v2_get_all(),
-    cfs::configuration::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.cfs_configuration_v2_get_all(),
     cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,
@@ -514,14 +509,8 @@ pub async fn delete(
     log::info!("Deleting CFS configuration '{}'", cfs_configuration);
     let mut counter = 0;
     loop {
-      let deletion_rslt = cfs::configuration::http_client::v3::delete(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        cfs_configuration,
-      )
-      .await;
+      let deletion_rslt =
+        shasta_client.cfs_configuration_v3_delete(cfs_configuration).await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(

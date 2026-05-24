@@ -34,16 +34,17 @@ pub async fn create_new_configuration(
   // Check if CFS configuration already exists
   log::info!("Check CFS configuration '{}' exists", configuration_name);
 
-  let cfs_configuration_vec = crate::cfs::configuration::http_client::v2::get(
-    shasta_token,
+  let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(configuration_name),
-  )
-  .await
-  .map_err(|e| Error::Message(e.to_string()))
-  .unwrap_or_default();
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let cfs_configuration_vec = shasta_client
+    .cfs_configuration_v2_get(Some(configuration_name))
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
+    .unwrap_or_default();
 
   // Check if CFS configuration already exists and throw an error is that is the case
   if !cfs_configuration_vec.is_empty() {
@@ -68,16 +69,10 @@ pub async fn create_new_configuration(
     configuration_name
   );
 
-  crate::cfs::configuration::http_client::v2::put(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &configuration.clone(),
-    configuration_name,
-  )
-  .await
-  .map_err(|e| Error::Message(e.to_string()))
+  shasta_client
+    .cfs_configuration_v2_put(&configuration.clone(), configuration_name)
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
 }
 
 /// Filter the list of CFS configurations provided. This operation is very expensive since it is
@@ -250,13 +245,7 @@ pub async fn get_and_filter(
     mut bos_sessiontemplate_vec,
     cfs_component_vec,
   ) = tokio::try_join!(
-    cfs::configuration::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      configuration_name,
-    ),
+    shasta_client.cfs_configuration_v2_get(configuration_name),
     cfs::session::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,

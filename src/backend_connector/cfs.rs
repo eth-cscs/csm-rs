@@ -381,14 +381,10 @@ impl CfsTrait for Csm {
     root_cert: &[u8],
     configuration_name_opt: Option<&String>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    let cfs_configuration_vec =
-      crate::cfs::configuration::http_client::v3::get(
-        auth_token,
-        base_url,
-        root_cert,
-        self.socks5_proxy.as_deref(),
-        configuration_name_opt.map(|elem| elem.as_str()),
-      )
+    let _ = (base_url, root_cert);
+    let cfs_configuration_vec = self
+      .shasta_client(auth_token)?
+      .cfs_configuration_v3_get(configuration_name_opt.map(|elem| elem.as_str()))
       .await
       .map_err(|e| Error::Message(e.to_string()));
 

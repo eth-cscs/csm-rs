@@ -1,6 +1,6 @@
 use crate::commands::migrate_restore;
 use crate::error::Error;
-use crate::{bos, cfs, hsm, ims};
+use crate::{bos, hsm, ims};
 use humansize::DECIMAL;
 use std::fs::File;
 use std::path::Path;
@@ -126,13 +126,13 @@ pub async fn exec(
         ))
       })?;
 
-    let cfs_configurations = cfs::configuration::http_client::v3::get(
-      shasta_token,
+    let cfs_configurations = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      Some(configuration_name),
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .cfs_configuration_v3_get(Some(configuration_name))
     .await?;
 
     let cfs_file_name =

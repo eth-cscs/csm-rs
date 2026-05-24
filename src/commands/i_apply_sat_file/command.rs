@@ -3,10 +3,7 @@ use std::{collections::HashMap, time::Instant};
 use serde_yaml::Value;
 
 use crate::{
-  cfs::{
-    self,
-    configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
-  },
+  cfs::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   commands::{
     apply_hw_cluster_pin,
     i_apply_sat_file::utils::{
@@ -87,12 +84,7 @@ pub async fn exec(
     socks5_proxy.map(str::to_owned),
   )?;
   let (configuration_vec, image_vec, ims_recipe_vec) = tokio::try_join!(
-    cfs::configuration::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.cfs_configuration_v2_get_all(),
     shasta_client.ims_image_get_all(),
     shasta_client.ims_recipe_get(None),
   )?;

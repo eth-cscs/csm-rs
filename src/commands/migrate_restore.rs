@@ -11,7 +11,7 @@ use crate::ims::image::{
   utils::get_fuzzy,
 };
 use crate::ims::s3_client::BAR_FORMAT;
-use crate::{cfs, ims};
+use crate::ims;
 use chrono::Local;
 use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -336,20 +336,21 @@ async fn create_cfs_config(
   let cfs_config_name = cfs_configuration.name;
 
   // Get all CFS configurations, this is ugly
-  let cfs_config_vec = cfs::configuration::http_client::v3::get(
-    shasta_token,
+  let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(&cfs_config_name),
-  )
-  .await
-  .map_err(|error| {
-    Error::Message(format!(
-      "Unable to fetch CFS configuration: {}",
-      error
-    ))
-  })?;
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let cfs_config_vec = shasta_client
+    .cfs_configuration_v3_get(Some(&cfs_config_name))
+    .await
+    .map_err(|error| {
+      Error::Message(format!(
+        "Unable to fetch CFS configuration: {}",
+        error
+      ))
+    })?;
 
   if !cfs_config_vec.is_empty() {
     if !overwrite {
@@ -359,14 +360,9 @@ async fn create_cfs_config(
       ));
     }
 
-    match cfs::configuration::http_client::v3::delete(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      cfs_config_name.as_str(),
-    )
-    .await
+    match shasta_client
+      .cfs_configuration_v3_delete(cfs_config_name.as_str())
+      .await
     {
       Ok(_) => {
         log::debug!("Ok CFS configuration {}, deleted.", cfs_config_name)
@@ -388,15 +384,9 @@ async fn create_cfs_config(
 
   log::debug!("CFS config:\n{:#?}", &cfs_configuration);
 
-  match cfs::configuration::http_client::v3::put(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &cfs_configuration,
-    cfs_config_name.as_str(),
-  )
-  .await
+  match shasta_client
+    .cfs_configuration_v3_put(&cfs_configuration, cfs_config_name.as_str())
+    .await
   {
     Ok(result) => {
       log::debug!("Ok, result: {:#?}", result);

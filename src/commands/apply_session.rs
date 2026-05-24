@@ -302,17 +302,15 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   .await?;
 
   // Update/PUT CFS configuration
-  let cfs_configuration_name: String =
-    cfs::configuration::http_client::v3::put(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &cfs_configuration,
-      cfs_configuration_name,
-    )
-    .await?
-    .name;
+  let cfs_configuration_name: String = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_configuration_v3_put(&cfs_configuration, cfs_configuration_name)
+  .await?
+  .name;
 
   // Create dynamic CFS session
   let cfs_session_name = format!(
