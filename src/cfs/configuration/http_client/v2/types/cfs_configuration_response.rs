@@ -226,6 +226,17 @@ impl CfsConfigurationResponse {
     self.layers.push(layer);
   }
 
+  /// Build a `CfsConfigurationResponse` from a SAT-file YAML node.
+  ///
+  /// # Panics
+  ///
+  /// Panics if the YAML does not have the expected SAT-file shape (top-level
+  /// `name` / `layers`, each git layer with `name` + `git.url`, each product
+  /// layer with `name` + `playbook`). Callers are expected to have run SAT
+  /// file validation first.
+  ///
+  /// Prefer `CfsConfigurationRequest::from_sat_file_serde_yaml`, which
+  /// returns `Result<_, Error>` and produces actionable error messages.
   pub fn from_sat_file_serde_yaml(
     configuration_yaml: &serde_yaml::Value,
   ) -> Self {
@@ -235,13 +246,13 @@ impl CfsConfigurationResponse {
       .get("name")
       .and_then(serde_yaml::Value::as_str)
       .map(str::to_string)
-      .unwrap();
+      .expect("SAT file: configuration is missing 'name'");
 
-    for layer_yaml in configuration_yaml
+    let layers = configuration_yaml
       .get("layers")
       .and_then(serde_yaml::Value::as_sequence)
-      .unwrap()
-    {
+      .expect("SAT file: configuration is missing 'layers'");
+    for layer_yaml in layers {
       // log::info!("\n\n### Layer:\n{:#?}\n", layer_json);
 
       if layer_yaml.get("git").is_some() {
@@ -250,13 +261,13 @@ impl CfsConfigurationResponse {
           .get("name")
           .and_then(serde_yaml::Value::as_str)
           .map(str::to_string)
-          .unwrap();
+          .expect("SAT file: git layer is missing 'name'");
         let repo_url = layer_yaml
           .get("git")
           .and_then(|git| git.get("url"))
           .and_then(serde_yaml::Value::as_str)
           .map(str::to_string)
-          .unwrap();
+          .expect("SAT file: git layer is missing 'git.url'");
         let layer = Layer::new(
           repo_url,
           None,
@@ -275,26 +286,29 @@ impl CfsConfigurationResponse {
         cfs_configuration.add_layer(layer);
       } else {
         // Product layer
+        let product_name = layer_yaml
+          .get("name")
+          .and_then(serde_yaml::Value::as_str)
+          .expect("SAT file: product layer is missing 'name'");
         let repo_url = format!(
           "https://api-gw-service-nmn.local/vcs/cray/{}-config-management.git",
-          layer_yaml
-            .get("name")
-            .and_then(serde_yaml::Value::as_str)
-            .unwrap()
+          product_name
         );
         let layer = Layer::new(
           repo_url,
           None,
-          Some(layer_yaml["product"]
-            .get("name")
-            .and_then(serde_yaml::Value::as_str)
-            .unwrap_or_default()
-            .to_string()),
+          Some(
+            layer_yaml["product"]
+              .get("name")
+              .and_then(serde_yaml::Value::as_str)
+              .unwrap_or_default()
+              .to_string(),
+          ),
           layer_yaml
             .get("playbook")
             .and_then(serde_yaml::Value::as_str)
             .map(str::to_string)
-            .unwrap(),
+            .expect("SAT file: product layer is missing 'playbook'"),
           Some(
             layer_yaml["product"]
               .get("branch")

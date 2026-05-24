@@ -94,10 +94,16 @@ pub fn get_best_candidate_in_hsm_pin(
   }
 
   hsm_score_vec.sort_by_key(|elem| elem.0.clone());
-  hsm_score_vec.sort_by(|b, a| a.1.partial_cmp(&b.1).unwrap());
+  // f32 partial_cmp returns None for NaN; treat NaN as equal so the sort stays
+  // total-ordered without panicking on degenerate input.
+  hsm_score_vec.sort_by(|b, a| {
+    a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+  });
 
-  // Get node with highest normalized score (best candidate)
-  let best_candidate: (String, f32) = hsm_score_vec.first().unwrap().clone();
+  // Get node with highest normalized score (best candidate).
+  // Non-empty check above guarantees first() is Some.
+  let best_candidate: (String, f32) =
+    hsm_score_vec.first().expect("non-empty: checked above").clone();
 
   hsm_hw_component_vec
     .iter()
@@ -431,35 +437,28 @@ pub fn calculate_hsm_node_scores_from_final_hsm(
   for (xname, hw_component_count) in parent_hsm_node_hw_component_count_vec {
     let mut node_score: f32 = 0.0;
     for (hw_component, qty) in hw_component_count {
-      if final_hsm_summary_hashmap.get(hw_component).is_none() {
-        // final/user request does NOT contain hw component
-        // negative - current hw component counter in HSM group is not requested by the user therefor we should
-        // penalize this node
-        node_score -= hw_component_scarcity_scores_hashmap
-          .get(hw_component)
-          .unwrap()
-          * *qty as f32;
-      } else {
-        // final/user request does contain hw component
-        if final_hsm_summary_hashmap.get(hw_component).unwrap()
-          < parent_hsm_hw_component_summary_hashmap
-            .get(hw_component)
-            .unwrap()
+      // Missing scarcity score → treat as 0.0 (no penalty/reward) rather than
+      // panic. Missing summary entries are handled by the get() pattern.
+      let scarcity = *hw_component_scarcity_scores_hashmap
+        .get(hw_component)
+        .unwrap_or(&0.0);
+      match (
+        final_hsm_summary_hashmap.get(hw_component),
+        parent_hsm_hw_component_summary_hashmap.get(hw_component),
+      ) {
+        (None, _) => {
+          // final/user request does NOT contain hw component → penalize
+          node_score -= scarcity * *qty as f32;
+        }
+        (Some(final_count), Some(parent_count))
+          if final_count < parent_count =>
         {
-          // positive - current hw component counter in parent/combined HSM group are higher than
-          // final (user requested) hw component counter therefore we remove this node
-          node_score += hw_component_scarcity_scores_hashmap
-            .get(hw_component)
-            .unwrap()
-            * *qty as f32;
-        } else {
-          // negative - current hw component counter in parent/combined HSM group is lower or
-          // equal than final (user requested) hw component counter therefor we should
-          // penalize this node
-          node_score -= hw_component_scarcity_scores_hashmap
-            .get(hw_component)
-            .unwrap()
-            * *qty as f32;
+          // parent has more than user requested → reward removing this node
+          node_score += scarcity * *qty as f32;
+        }
+        _ => {
+          // parent has <= user requested → penalize removing this node
+          node_score -= scarcity * *qty as f32;
         }
       }
     }

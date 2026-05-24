@@ -34,8 +34,11 @@ pub async fn exec(
   // Normalize text in lowercase and separate each HSM group hw inventory pattern
   let pattern_lowercase = pattern.to_lowercase();
 
-  let (target_hsm_group_name, pattern_hw_component) =
-    pattern_lowercase.split_once(':').unwrap();
+  // pattern was constructed above with a ':' between target_hsm_group_name
+  // and the user-supplied pattern, so split_once cannot fail here.
+  let (target_hsm_group_name, pattern_hw_component) = pattern_lowercase
+    .split_once(':')
+    .expect("pattern built with ':' separator above");
 
   let pattern_element_vec: Vec<&str> =
     pattern_hw_component.split(':').collect();
@@ -47,16 +50,17 @@ pub async fn exec(
 
   // Check user input is correct
   for hw_component_counter in pattern_element_vec.chunks(2) {
-    if hw_component_counter[0].parse::<String>().is_ok()
-      && hw_component_counter[1].parse::<usize>().is_ok()
-    {
-      user_defined_target_hsm_hw_component_count_hashmap.insert(
-        hw_component_counter[0].parse::<String>().unwrap(),
-        hw_component_counter[1].parse::<usize>().unwrap(),
-      );
-    } else {
+    if hw_component_counter.len() < 2 {
       return Err(Error::Message("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8".to_string()));
     }
+    let count = hw_component_counter[1].parse::<usize>().map_err(|_| {
+      Error::Message(format!(
+        "Error in pattern: '{}' is not a valid integer count",
+        hw_component_counter[1]
+      ))
+    })?;
+    user_defined_target_hsm_hw_component_count_hashmap
+      .insert(hw_component_counter[0].to_string(), count);
   }
 
   log::info!(
@@ -378,7 +382,8 @@ pub async fn exec(
 
   log::info!(
     "{}",
-    serde_json::to_string_pretty(&target_hsm_group_value).unwrap()
+    serde_json::to_string_pretty(&target_hsm_group_value)
+      .expect("infallible: json!{} -> string")
   );
 
   // Print parent HSM data
@@ -397,7 +402,8 @@ pub async fn exec(
 
   log::info!(
     "{}",
-    serde_json::to_string_pretty(&parent_hsm_group_value).unwrap()
+    serde_json::to_string_pretty(&parent_hsm_group_value)
+      .expect("infallible: json!{} -> string")
   );
 
   Ok(())

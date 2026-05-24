@@ -65,7 +65,11 @@ pub async fn exec(
   }
   // * End Parse input params
 
-  let cfs_configuration_name = cfs_conf_sess_name.unwrap();
+  let cfs_configuration_name = cfs_conf_sess_name.ok_or_else(|| {
+    Error::Message(
+      "Error, --cfs-conf-sess-name argument is required.".to_string(),
+    )
+  })?;
 
   // * Process/validate hsm group value (and ansible limit)
   if let Some(hsm_group_value) = hsm_group_value_opt {
@@ -183,20 +187,19 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   let nodes_in_running_or_pending_cfs_session: Vec<&str> = cfs_sessions
     .iter()
     .filter(|cfs_session| {
-      ["running", "pending"].contains(
-        &cfs_session
-          .status
-          .as_ref()
-          .and_then(|status| status.session.as_ref())
-          .and_then(|session| session.status.as_ref())
-          .map(String::as_str)
-          .unwrap(),
-      ) && cfs_session
-        .configuration
+      let status = cfs_session
+        .status
         .as_ref()
-        .and_then(|configuration| configuration.name.as_ref())
-        .map(String::as_str)
-        == Some(cfs_configuration_name)
+        .and_then(|status| status.session.as_ref())
+        .and_then(|session| session.status.as_ref())
+        .map(String::as_str);
+      status.is_some_and(|s| ["running", "pending"].contains(&s))
+        && cfs_session
+          .configuration
+          .as_ref()
+          .and_then(|configuration| configuration.name.as_ref())
+          .map(String::as_str)
+          == Some(cfs_configuration_name)
     })
     .flat_map(|cfs_session| {
       cfs_session
@@ -204,7 +207,8 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         .as_ref()
         .and_then(|ansible| ansible.limit.as_ref())
         .map(|ansible_limit| ansible_limit.split(','))
-        .unwrap()
+        .into_iter()
+        .flatten()
     })
     .map(|xname| xname.trim())
     .collect(); // TODO: remove duplicates... sort() + dedup() ???
@@ -263,7 +267,12 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       .first()
       .and_then(|v| v.get("State"))
       .and_then(Value::as_str)
-      .unwrap();
+      .ok_or_else(|| {
+        Error::Message(format!(
+          "HSM component status for '{}' is missing 'State'",
+          xname
+        ))
+      })?;
 
     log::info!(
       "HSM component state for component {}: {}",
@@ -271,10 +280,10 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       hsm_component_status_state
     );
     log::info!(
-      "Is component enabled for batched CFS: {}",
-      component_status.enabled.unwrap()
+      "Is component enabled for batched CFS: {:?}",
+      component_status.enabled
     );
-    log::info!("Error count: {}", component_status.error_count.unwrap());
+    log::info!("Error count: {:?}", component_status.error_count);
 
     if hsm_component_status_state.eq("On")
       || hsm_component_status_state.eq("Standby")
