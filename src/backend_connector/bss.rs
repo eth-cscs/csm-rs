@@ -4,7 +4,6 @@ use manta_backend_dispatcher::{
 };
 
 use super::Csm;
-use crate::bss;
 
 impl BootParametersTrait for Csm {
   async fn get_all_bootparameters(
@@ -49,14 +48,11 @@ impl BootParametersTrait for Csm {
     auth_token: &str,
     boot_parameters: &FrontEndBootParameters,
   ) -> Result<(), Error> {
-    bss::http_client::post(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      boot_parameters.clone().into(),
-    )
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .bss_bootparameters_post(boot_parameters.clone().into())
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn update_bootparameters(

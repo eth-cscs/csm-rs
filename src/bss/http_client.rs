@@ -102,6 +102,29 @@ impl ShastaClient {
     }
   }
 
+  /// POST a single set of BootParameters. Used to create new entries.
+  pub async fn bss_bootparameters_post(
+    &self,
+    boot_parameters: BootParameters,
+  ) -> Result<(), Error> {
+    let api_url = format!("{}/bss/boot/v1/bootparameters", self.base_url());
+
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(self.token())
+      .json(&boot_parameters)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      Err(Error::Message(response.text().await?))
+    }
+  }
+
   pub async fn bss_bootparameters_patch(
     &self,
     boot_parameters: &BootParameters,
@@ -125,39 +148,3 @@ impl ShastaClient {
   }
 }
 
-/// Blocking POST for BootParameters.
-/// NOTE: kept as a free fn (not a `ShastaClient` method) because it uses the
-/// blocking reqwest client; integrating with the async `ShastaClient` is out of
-/// scope here. The async http helpers don't support blocking calls.
-pub fn post(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  boot_parameters: BootParameters,
-) -> Result<(), Error> {
-  // NOTE: this is the only blocking (non-async) call in bss; the helper module
-  // is async-only, so we keep the inline reqwest::blocking client.
-  let client_builder = reqwest::blocking::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = format!("{}/boot/v1/bootparameters", base_url);
-
-  let response = client
-    .post(api_url)
-    .bearer_auth(auth_token)
-    .json(&boot_parameters)
-    .send()
-    .map_err(Error::NetError)?;
-
-  if response.status().is_success() {
-    Ok(())
-  } else {
-    Err(Error::Message(response.text()?))
-  }
-}

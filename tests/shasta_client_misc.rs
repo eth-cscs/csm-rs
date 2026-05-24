@@ -43,6 +43,30 @@ async fn bss_bootparameters_get_passes_xnames_as_name_query_params() {
 }
 
 #[tokio::test]
+async fn bss_bootparameters_post_hits_bss_boot_v1_bootparameters() {
+  use csm_rs::bss::types::BootParameters;
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path("/bss/boot/v1/bootparameters"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let bp = BootParameters {
+    hosts: vec!["x1000c0s0b0n0".to_string()],
+    macs: None,
+    nids: None,
+    params: "console=tty0".to_string(),
+    kernel: "k".to_string(),
+    initrd: "i".to_string(),
+    cloud_init: None,
+  };
+  client.bss_bootparameters_post(bp).await.expect("ok");
+}
+
+#[tokio::test]
 async fn bss_bootparameters_patch_sends_patch_request() {
   use csm_rs::bss::types::BootParameters;
   let server = MockServer::start().await;
