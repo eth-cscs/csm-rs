@@ -15,6 +15,38 @@ use crate::error::Error;
 
 /// Connection details + a reusable `reqwest::Client` for one Shasta CSM
 /// installation.
+///
+/// `ShastaClient` is the single entry point for every HTTP call csm-rs
+/// makes. Construct it once per Shasta installation and reuse it; cloning
+/// is cheap (the inner `reqwest::Client` is reference-counted).
+///
+/// # Method naming
+///
+/// Methods follow the convention `<module>_<resource>_<verb>`, optionally
+/// suffixed with an API version. Examples:
+///
+/// - `ims_image_get_all` — GET /ims/v3/images
+/// - `cfs_configuration_v2_put` — PUT /cfs/v2/configurations/{name}
+/// - `hsm_group_delete_member` — DELETE /smd/hsm/v2/groups/{label}/members/{id}
+/// - `pcs_transitions_post_block` — POST /power-control/v1/transitions and poll until completion
+///
+/// # Example
+///
+/// ```no_run
+/// # async fn example() -> Result<(), csm_rs::error::Error> {
+/// let client = csm_rs::ShastaClient::new(
+///     "https://api.shasta.example.com",
+///     "your-bearer-token",
+///     std::fs::read("/etc/shasta/ca.crt").unwrap(),
+///     None,
+/// )?;
+///
+/// // Single shared client across many calls:
+/// let images = client.ims_image_get_all().await?;
+/// let group = client.hsm_group_get_one("zinal").await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct ShastaClient {
   pub(crate) base_url: String,
@@ -27,6 +59,13 @@ pub struct ShastaClient {
 impl ShastaClient {
   /// Build a new client. Constructs the underlying `reqwest::Client` once,
   /// applying the CSM root cert and (optionally) a SOCKS5 proxy.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`Error::NetError`] if the proxy URL is malformed or
+  /// `reqwest::Client::build` fails. Malformed PEM input is silently
+  /// tolerated by `reqwest::Certificate::from_pem` (it just produces an
+  /// empty trust chain), so this constructor does not surface PEM errors.
   pub fn new(
     base_url: impl Into<String>,
     token: impl Into<String>,
@@ -44,18 +83,22 @@ impl ShastaClient {
     })
   }
 
+  /// The Shasta API base URL (e.g. `https://api.shasta.example.com`).
   pub fn base_url(&self) -> &str {
     &self.base_url
   }
 
+  /// The bearer token used to authenticate every request.
   pub fn token(&self) -> &str {
     &self.token
   }
 
+  /// The PEM-encoded root certificate trusted for HTTPS calls.
   pub fn root_cert(&self) -> &[u8] {
     &self.root_cert
   }
 
+  /// The SOCKS5 proxy URL, if one was configured.
   pub fn socks5_proxy(&self) -> Option<&str> {
     self.socks5_proxy.as_deref()
   }
