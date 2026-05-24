@@ -3,7 +3,6 @@ use crate::cfs::configuration::http_client::v3::types::{
   cfs_configuration_request::CfsConfigurationRequest,
   cfs_configuration_response::CfsConfigurationResponse,
 };
-use crate::hsm::group::http_client::{create_new_group, delete_group};
 use crate::hsm::group::types::Group;
 use crate::ims::image::{
   http_client::types::{Image, Link},
@@ -875,22 +874,25 @@ pub async fn create_hsm_group_from_file(
 
   let group_vec: Vec<Group> = serde_json::from_str(&hsm_data)?;
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   for group in group_vec {
     // Create the HSM group
     let group_members_opt =
       group.members.clone().and_then(|members| members.ids);
-    match create_new_group(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &group.label,
-      &group_members_opt.unwrap_or_default(),
-      &group.exclusive_group.clone().unwrap_or_default(),
-      &group.description.clone().unwrap_or_default(),
-      &group.tags.clone().unwrap_or_default(),
-    )
-    .await
+    match shasta_client
+      .hsm_group_create_new_group(
+        &group.label,
+        &group_members_opt.unwrap_or_default(),
+        &group.exclusive_group.clone().unwrap_or_default(),
+        &group.description.clone().unwrap_or_default(),
+        &group.tags.clone().unwrap_or_default(),
+      )
+      .await
     {
       Ok(group) => {
         log::info!(
@@ -902,27 +904,12 @@ pub async fn create_hsm_group_from_file(
         if error.to_string().to_lowercase().contains("409") {
           if overwrite {
             log::info!("Looks like you want to continue");
-            // match backend.delete_group(shasta_token, &group.label).await {
-            match delete_group(
-              shasta_token,
-              shasta_base_url,
-              shasta_root_cert,
-              socks5_proxy,
-              &group.label,
-            )
-            .await
-            {
+            match shasta_client.hsm_group_delete_group(&group.label).await {
               Ok(_) => {
                 // try creating the group again
-                // match backend.add_group(shasta_token, group.clone()).await {
-                match crate::hsm::group::http_client::post(
-                  shasta_token,
-                  shasta_base_url,
-                  shasta_root_cert,
-                  socks5_proxy,
-                  group.clone(),
-                )
-                .await
+                match shasta_client
+                  .hsm_group_post(group.clone())
+                  .await
                 {
                   Ok(_json) => {
                     log::info!(

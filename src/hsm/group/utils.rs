@@ -8,10 +8,7 @@ use crate::{
   node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,
 };
 
-use super::{
-  http_client::{self, delete_member, post_member},
-  types::Member,
-};
+use super::types::Member;
 
 pub async fn get_group_available(
   shasta_auth_token: &str,
@@ -21,12 +18,13 @@ pub async fn get_group_available(
 ) -> Result<Vec<Group>, Error> {
   const ADMIN_ROLE_NAME: &str = "pa_admin";
 
-  let mut group_vec = hsm::group::http_client::get_all(
-    shasta_auth_token,
+  let mut group_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-  )
+    shasta_auth_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_all()
   .await
   .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -97,16 +95,17 @@ pub async fn get_group_name_available(
     Ok(realm_access_role_filtered_vec)
   } else {
     log::debug!("User is admin, getting all HSM groups in the system");
-    let all_hsm_groups = hsm::group::http_client::get_all(
-      shasta_auth_token,
+    let all_hsm_groups = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    )
+      shasta_auth_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .hsm_group_get_all()
     .await?
-      .iter()
-      .map(|hsm_value| hsm_value.label.clone())
-      .collect::<Vec<String>>();
+    .iter()
+    .map(|hsm_value| hsm_value.label.clone())
+    .collect::<Vec<String>>();
 
     // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
     // the roles to check if a user has access to individual compute nodes
@@ -134,15 +133,15 @@ pub async fn add_member(
   new_member: &str,
 ) -> Result<Vec<String>, Error> {
   // Get HSM group from CSM
-  let group_vec = hsm::group::http_client::get(
-    auth_token,
+  let shasta_client = crate::ShastaClient::new(
     base_url,
-    root_cert,
-    socks5_proxy,
-    Some(&[group_label.to_string()]),
-    None,
-  )
-  .await?;
+    auth_token,
+    root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let group_vec = shasta_client
+    .hsm_group_get(Some(&[group_label.to_string()]), None)
+    .await?;
 
   // Check if HSM group found
   if let Some(group) = group_vec.first().cloned().as_mut() {
@@ -154,15 +153,7 @@ pub async fn add_member(
     };
 
     // Update HSM group in CSM
-    let _ = crate::hsm::group::http_client::post_member(
-      auth_token,
-      base_url,
-      root_cert,
-      socks5_proxy,
-      group_label,
-      member,
-    )
-    .await?;
+    let _ = shasta_client.hsm_group_post_member(group_label, member).await?;
 
     // Generate list of updated group members
     group.get_members().push(new_member);
@@ -231,16 +222,16 @@ pub async fn remove_hsm_members(
 
     log::info!("dry-run enabled, changes not persisted.");
   } else {
+    let shasta_client = crate::ShastaClient::new(
+      shasta_base_url,
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?;
     for xname in new_target_hsm_members {
-      let _ = delete_member(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        target_hsm_group_name,
-        xname,
-      )
-      .await;
+      let _ = shasta_client
+        .hsm_group_delete_member(target_hsm_group_name, xname)
+        .await;
     }
   }
 
@@ -314,30 +305,24 @@ pub async fn migrate_hsm_members(
   // UPDATE HSM GROUP MEMBERS IN CSM
   if dryrun {
   } else {
+    let shasta_client = crate::ShastaClient::new(
+      shasta_base_url,
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?;
     for xname in new_target_hsm_members {
       let member = Member {
         id: Some(xname.to_string()),
       };
 
-      let _ = post_member(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        target_hsm_group_name,
-        member,
-      )
-      .await;
+      let _ = shasta_client
+        .hsm_group_post_member(target_hsm_group_name, member)
+        .await;
 
-      let _ = delete_member(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        parent_hsm_group_name,
-        xname,
-      )
-      .await;
+      let _ = shasta_client
+        .hsm_group_delete_member(parent_hsm_group_name, xname)
+        .await;
     }
   }
 
@@ -354,18 +339,18 @@ pub async fn update_hsm_group_members(
   old_target_hsm_group_members: &[&str],
   new_target_hsm_group_members: &[&str],
 ) -> Result<(), Error> {
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   // Delete members
   for old_member in old_target_hsm_group_members {
     if !new_target_hsm_group_members.contains(old_member) {
-      let _ = delete_member(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        hsm_group_name,
-        old_member,
-      )
-      .await;
+      let _ = shasta_client
+        .hsm_group_delete_member(hsm_group_name, old_member)
+        .await;
     }
   }
 
@@ -376,15 +361,9 @@ pub async fn update_hsm_group_members(
         id: Some(new_member.to_string()),
       };
 
-      let _ = post_member(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        hsm_group_name,
-        member,
-      )
-      .await;
+      let _ = shasta_client
+        .hsm_group_post_member(hsm_group_name, member)
+        .await;
     }
   }
 
@@ -400,9 +379,14 @@ pub async fn get_xname_map_and_filter_by_xname_vec(
   socks5_proxy: Option<&str>,
   xname_vec: Vec<&str>,
 ) -> Result<HashMap<String, Vec<String>>, Error> {
-  let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
-      .await?;
+  let hsm_group_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_all()
+  .await?;
 
   let mut xname_map: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -429,9 +413,14 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   socks5_proxy: Option<&str>,
   hsm_name_vec: &[&str],
 ) -> Result<HashMap<String, Vec<String>>, Error> {
-  let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
-      .await?;
+  let hsm_group_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_all()
+  .await?;
 
   Ok(filter_by_hsm_group_name_and_convert_to_map(
     hsm_name_vec,
@@ -448,9 +437,14 @@ pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
   socks5_proxy: Option<&str>,
   member_vec: &[&str],
 ) -> Result<HashMap<String, Vec<String>>, Error> {
-  let hsm_group_vec =
-    http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
-      .await?;
+  let hsm_group_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_all()
+  .await?;
 
   Ok(filter_by_hsm_group_members_and_convert_to_map(
     member_vec,
@@ -539,14 +533,13 @@ pub async fn get_member_vec_from_hsm_name_vec(
   log::info!("Get xnames from HSM groups");
   log::debug!("Get xnames from HSM groups: {:?}", hsm_name_vec);
 
-  let hsm_group_vec = hsm::group::http_client::get(
-    shasta_token,
+  let hsm_group_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(hsm_name_vec),
-    None,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get(Some(hsm_name_vec), None)
   .await?;
 
   let mut hsm_group_member_vec: Vec<String> = Vec::new();
@@ -608,13 +601,13 @@ pub async fn get_member_vec_from_hsm_group_name(
 ) -> Result<Vec<String>, Error> {
   // Take all nodes for all hsm_groups found and put them in a Vec
   Ok(
-    http_client::get_one(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      hsm_group,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .hsm_group_get_one(hsm_group)
     .await?
     .get_members(),
   )

@@ -51,15 +51,11 @@ impl GroupTrait for Csm {
     auth_token: &str,
     group: FrontEndGroup,
   ) -> Result<FrontEndGroup, Error> {
-    let group_csm = hsm::group::http_client::post(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      group.clone().into(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    let group_csm = self
+      .shasta_client(auth_token)?
+      .hsm_group_post(group.clone().into())
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
 
     // let group: FrontEndGroup = group_csm.into();
     log::info!("Group created: {}", group_csm);
@@ -122,14 +118,11 @@ impl GroupTrait for Csm {
     auth_token: &str,
   ) -> Result<Vec<FrontEndGroup>, Error> {
     // Get all HSM groups
-    let hsm_group_backend_vec = hsm::group::http_client::get_all(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    let hsm_group_backend_vec = self
+      .shasta_client(auth_token)?
+      .hsm_group_get_all()
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
 
     // Convert all HSM groups from mesa to infra
     let hsm_group_vec = hsm_group_backend_vec
@@ -146,16 +139,11 @@ impl GroupTrait for Csm {
     hsm_name: &str,
   ) -> Result<FrontEndGroup, Error> {
     // Get all HSM groups
-    let hsm_group_backend_vec = hsm::group::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      Some(&[hsm_name.to_string()]),
-      None,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    let hsm_group_backend_vec = self
+      .shasta_client(auth_token)?
+      .hsm_group_get(Some(&[hsm_name.to_string()]), None)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
 
     // Error if more than one HSM group found
     if hsm_group_backend_vec.len() > 1 {
@@ -183,16 +171,11 @@ impl GroupTrait for Csm {
     hsm_name_vec_opt: Option<&[String]>,
   ) -> Result<Vec<FrontEndGroup>, Error> {
     // Get all HSM groups
-    let hsm_group_backend_vec = hsm::group::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      hsm_name_vec_opt,
-      None,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    let hsm_group_backend_vec = self
+      .shasta_client(auth_token)?
+      .hsm_group_get(hsm_name_vec_opt, None)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
 
     // Convert from HsmGroup (silla) to HsmGroup (infra)
     let mut hsm_group_vec = Vec::new();
@@ -209,15 +192,11 @@ impl GroupTrait for Csm {
     auth_token: &str,
     label: &str,
   ) -> Result<Value, Error> {
-    hsm::group::http_client::delete_group(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      &label.to_string(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_group_delete_group(&label.to_string())
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn get_hsm_map_and_filter_by_hsm_name_vec(
@@ -246,16 +225,11 @@ impl GroupTrait for Csm {
       id: Some(xname.to_string()),
     };
 
-    hsm::group::http_client::post_member(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      group_label,
-      member,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_group_post_member(group_label, member)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn add_members_to_group(
@@ -288,16 +262,11 @@ impl GroupTrait for Csm {
     group_label: &str,
     xname: &str,
   ) -> Result<(), Error> {
-    hsm::group::http_client::delete_member(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      group_label,
-      xname,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_group_delete_member(group_label, xname)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn update_group_members(

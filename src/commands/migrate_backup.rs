@@ -1,6 +1,6 @@
 use crate::commands::migrate_restore;
 use crate::error::Error;
-use crate::{bos, hsm, ims};
+use crate::{bos, ims};
 use humansize::DECIMAL;
 use std::fs::File;
 use std::path::Path;
@@ -101,14 +101,13 @@ pub async fn exec(
         ))
       })?;
 
-    let hsm_group_json = hsm::group::http_client::get(
-      shasta_token,
+    let hsm_group_json = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      Some(&[hsm_group_name.to_string()]),
-      None,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .hsm_group_get(Some(&[hsm_group_name.to_string()]), None)
     .await?;
 
     log::debug!("{:#?}", &hsm_group_json);

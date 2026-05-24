@@ -24,13 +24,13 @@ pub async fn get_details(
   let mut clusters_details = vec![];
 
   // Get HSM groups matching cluster name
-  let hsm_group_value_vec = crate::hsm::group::http_client::get_hsm_group_vec(
-    shasta_token,
+  let hsm_group_value_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(&hsm_group_name.to_string()),
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_hsm_group_vec(Some(&hsm_group_name.to_string()))
   .await?;
 
   for hsm_group in hsm_group_value_vec {
