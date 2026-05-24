@@ -167,15 +167,14 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_value_vec =
-    crate::bos::template::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      None,
-    )
-    .await?;
+  let mut bos_sessiontemplate_value_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_template_v2_get(None)
+  .await?;
 
   let _ = bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
@@ -332,13 +331,13 @@ pub async fn get_image_available_vec(
   ims::image::utils::filter(&mut image_vec);
 
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_vec = bos::template::http_client::v2::get(
-    shasta_token,
+  let mut bos_sessiontemplate_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_template_v2_get(None)
   .await?;
 
   let xname_from_group_vec =

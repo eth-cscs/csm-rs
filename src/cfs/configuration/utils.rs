@@ -238,6 +238,12 @@ pub async fn get_and_filter(
     )
     .await?;
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   let (
     mut cfs_configuration_vec,
     mut cfs_session_vec,
@@ -257,12 +263,7 @@ pub async fn get_and_filter(
       shasta_root_cert,
       socks5_proxy,
     ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
+    shasta_client.bos_template_v2_get_all(),
     cfs::component::http_client::v2::get_parallel(
       shasta_token,
       shasta_base_url,
@@ -323,12 +324,7 @@ pub async fn get_derivatives(
       shasta_root_cert,
       socks5_proxy,
     ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
+    shasta_client.bos_template_v2_get_all(),
     shasta_client.ims_image_get_all(),
   )?;
 

@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 use crate::{
   bos::{
-    self,
     session::http_client::v2::types::{BosSession, Operation},
     template::http_client::v2::types::{BootSet, BosSessionTemplate, Cfs},
   },
@@ -552,11 +551,13 @@ pub async fn process_session_template_section_in_sat_file(
       );
       bos_st_created_vec.push(dry_run_bos_sessiontemplate_name);
     } else {
-      let bos_sessiontemplate = bos::template::http_client::v2::put(
-        shasta_token,
+      let bos_sessiontemplate = crate::ShastaClient::new(
         shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
+        shasta_token,
+        shasta_root_cert.to_vec(),
+        socks5_proxy.map(str::to_owned),
+      )?
+      .bos_template_v2_put(
         &create_bos_session_template_payload,
         &bos_sessiontemplate_name,
       )

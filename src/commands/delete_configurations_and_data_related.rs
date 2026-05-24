@@ -5,7 +5,6 @@ use std::time::Instant;
 use chrono::NaiveDateTime;
 
 use crate::{
-  bos::{self},
   bss::{self, types::BootParameters},
   cfs::{
     self,
@@ -50,6 +49,12 @@ pub async fn get_data_to_delete(
 
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   let (
     cfs_component_vec,
     mut cfs_configuration_vec,
@@ -75,12 +80,7 @@ pub async fn get_data_to_delete(
       shasta_root_cert,
       socks5_proxy
     ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.bos_template_v2_get_all(),
     bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
   )?;
 
@@ -487,14 +487,8 @@ pub async fn delete(
     );
     let mut counter = 0;
     loop {
-      let deletion_rslt = bos::template::http_client::v2::delete(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        bos_sessiontemplate_name,
-      )
-      .await;
+      let deletion_rslt =
+        shasta_client.bos_template_v2_delete(bos_sessiontemplate_name).await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(

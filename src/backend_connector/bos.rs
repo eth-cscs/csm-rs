@@ -81,21 +81,18 @@ impl ClusterTemplateTrait for Csm {
     shasta_root_cert: &[u8],
     bos_session_template_id_opt: Option<&str>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    crate::bos::template::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      bos_session_template_id_opt,
-    )
-    .await
-    .map(|bos_session_template_vec| {
-      bos_session_template_vec
-        .into_iter()
-        .map(|template| template.into())
-        .collect::<Vec<BosSessionTemplate>>()
-    })
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .bos_template_v2_get(bos_session_template_id_opt)
+      .await
+      .map(|bos_session_template_vec| {
+        bos_session_template_vec
+          .into_iter()
+          .map(|template| template.into())
+          .collect::<Vec<BosSessionTemplate>>()
+      })
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn get_and_filter_templates(
@@ -108,14 +105,10 @@ impl ClusterTemplateTrait for Csm {
     bos_sessiontemplate_name_opt: Option<&str>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    let mut bos_sessiontemplate_vec =
-      crate::bos::template::http_client::v2::get(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        self.socks5_proxy.as_deref(),
-        bos_sessiontemplate_name_opt,
-      )
+    let _ = (shasta_base_url, shasta_root_cert);
+    let mut bos_sessiontemplate_vec = self
+      .shasta_client(shasta_token)?
+      .bos_template_v2_get(bos_sessiontemplate_name_opt)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -142,20 +135,18 @@ impl ClusterTemplateTrait for Csm {
     shasta_base_url: &str,
     shasta_root_cert: &[u8],
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    crate::bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-    )
-    .await
-    .map(|bos_session_template_vec| {
-      bos_session_template_vec
-        .into_iter()
-        .map(|template| template.into())
-        .collect::<Vec<BosSessionTemplate>>()
-    })
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .bos_template_v2_get_all()
+      .await
+      .map(|bos_session_template_vec| {
+        bos_session_template_vec
+          .into_iter()
+          .map(|template| template.into())
+          .collect::<Vec<BosSessionTemplate>>()
+      })
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn put_template(
@@ -166,17 +157,13 @@ impl ClusterTemplateTrait for Csm {
     bos_template: &BosSessionTemplate,
     bos_template_name: &str,
   ) -> Result<BosSessionTemplate, Error> {
-    crate::bos::template::http_client::v2::put(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      &bos_template.clone().into(),
-      bos_template_name,
-    )
-    .await
-    .map(|bos_session_template| bos_session_template.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .bos_template_v2_put(&bos_template.clone().into(), bos_template_name)
+      .await
+      .map(|bos_session_template| bos_session_template.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn delete_template(
@@ -186,14 +173,11 @@ impl ClusterTemplateTrait for Csm {
     shasta_root_cert: &[u8],
     bos_template_id: &str,
   ) -> Result<(), Error> {
-    crate::bos::template::http_client::v2::delete(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      bos_template_id,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .bos_template_v2_delete(bos_template_id)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }

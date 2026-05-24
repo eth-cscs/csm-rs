@@ -11,7 +11,7 @@ use crate::ims::image::{
   utils::get_fuzzy,
 };
 use crate::ims::s3_client::BAR_FORMAT;
-use crate::{bos, cfs, ims};
+use crate::{cfs, ims};
 use chrono::Local;
 use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -238,13 +238,14 @@ async fn create_bos_sessiontemplate(
   // BOS sessiontemplates need the new ID of the image!
   log::debug!("BOS sessiontemplate name: {}", &bos_sessiontemplate_name);
 
-  let vector = bos::template::http_client::v2::get(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        Some(&bos_sessiontemplate_name),
-    )
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let vector = shasta_client
+    .bos_template_v2_get(Some(&bos_sessiontemplate_name))
     .await
     .map_err(|error| {
       Error::Message(format!(
@@ -261,14 +262,9 @@ async fn create_bos_sessiontemplate(
         "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
       ));
     } else {
-      match bos::template::http_client::v2::delete(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        &bos_sessiontemplate_name,
-      )
-      .await
+      match shasta_client
+        .bos_template_v2_delete(&bos_sessiontemplate_name)
+        .await
       {
         Ok(_) => log::debug!(
           "Ok BOS session template {}, deleted.",
@@ -304,15 +300,9 @@ async fn create_bos_sessiontemplate(
   log::debug!("BOS sessiontemplate loaded:\n{:#?}", bos_sessiontemplate);
   log::debug!("BOS sessiontemplate modified:\n{:#?}", &bos_sessiontemplate);
 
-  match bos::template::http_client::v2::put(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &bos_sessiontemplate,
-    &bos_sessiontemplate_name,
-  )
-  .await
+  match shasta_client
+    .bos_template_v2_put(&bos_sessiontemplate, &bos_sessiontemplate_name)
+    .await
   {
     Ok(_result) => log::info!(
       "Ok, BOS session template {} created successfully.",

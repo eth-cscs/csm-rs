@@ -43,13 +43,13 @@ pub async fn exec(
   let hsm_file_path = dest_path.join(hsm_file_name);
 
   let _empty_hsm_group_name: Vec<String> = Vec::new();
-  let mut bos_templates = bos::template::http_client::v2::get(
-    shasta_token,
+  let mut bos_templates = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(bos),
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_template_v2_get(Some(bos))
   .await?;
 
   let _ =
