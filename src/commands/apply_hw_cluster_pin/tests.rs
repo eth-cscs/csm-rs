@@ -252,7 +252,7 @@ pub async fn test_hsm_hw_management_1() {
   // Check if user request is fulfilled
   let mut success = true;
   for (hw_component, qty) in user_request_hw_summary {
-    if target_hsm_hw_summary.get(&hw_component).is_none()
+    if !target_hsm_hw_summary.contains_key(&hw_component)
       || qty > *target_hsm_hw_summary.get(&hw_component).unwrap()
     {
       println!(
@@ -444,7 +444,7 @@ pub async fn test_hsm_hw_management_2() {
   // Check new target HSM group hw summary fulfills the user request
   let mut success = true;
   for (hw_component, qty) in user_request_hw_summary {
-    if target_hsm_hw_summary.get(&hw_component).is_none()
+    if !target_hsm_hw_summary.contains_key(&hw_component)
       || qty > *target_hsm_hw_summary.get(&hw_component).unwrap()
     {
       println!(

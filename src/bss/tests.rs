@@ -304,7 +304,7 @@ fn test_delete_kernel_param() {
   println!("DEBUG - kernel param value test: {:?}", param_value_opt);
 
   let pass =
-    changed && (new_num_params == num_params - 1) && param_value_opt == None;
+    changed && (new_num_params == num_params - 1) && param_value_opt.is_none();
 
   assert!(pass)
 }
@@ -435,7 +435,7 @@ fn test_set_kernel_param_3() {
   println!("DEBUG - kernel param value test: {:?}", param_value_opt);
 
   let pass =
-    changed && (new_num_params == num_params) && param_value_opt == None;
+    changed && (new_num_params == num_params) && param_value_opt.is_none();
 
   assert!(pass)
 }

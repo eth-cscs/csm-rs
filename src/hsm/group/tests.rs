@@ -12,9 +12,9 @@ use super::hacks::ROLES;
 fn test_add_xnames() {
   let mut group = Group::new("label", Some(vec!["xname1", "xname2"]));
 
-  let mut new_xnames = vec!["xname3".to_string(), "xname4".to_string()];
+  let new_xnames = vec!["xname3".to_string(), "xname4".to_string()];
 
-  group.add_xnames(&mut new_xnames);
+  group.add_xnames(&new_xnames);
 
   assert_eq!(
     group.get_members(),
