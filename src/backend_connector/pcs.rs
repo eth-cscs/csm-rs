@@ -7,9 +7,23 @@ use manta_backend_dispatcher::{
   },
 };
 
-use crate::pcs;
+use crate::ShastaClient;
 
 use super::Csm;
+
+impl Csm {
+  /// Build a `ShastaClient` for this `Csm` + the supplied per-call token.
+  /// Cheap: cert parse + reqwest::Client::build per call (microseconds).
+  fn shasta_client(&self, token: &str) -> Result<ShastaClient, Error> {
+    ShastaClient::new(
+      &self.base_url,
+      token,
+      self.root_cert.clone(),
+      self.socks5_proxy.clone(),
+    )
+    .map_err(|e| Error::Message(e.to_string()))
+  }
+}
 
 impl PCSTrait for Csm {
   async fn power_on_sync(
@@ -17,19 +31,12 @@ impl PCSTrait for Csm {
     auth_token: &str,
     nodes: &[String],
   ) -> Result<TransitionResponse, Error> {
-    let operation = "on";
-
-    pcs::transitions::http_client::post_block(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      operation,
-      &nodes.to_vec(),
-    )
-    .await
-    .map(|transition| transition.into())
-    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .pcs_transitions_post_block("on", nodes)
+      .await
+      .map(Into::into)
+      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_off_sync(
@@ -40,17 +47,12 @@ impl PCSTrait for Csm {
   ) -> Result<TransitionResponse, Error> {
     let operation = if force { "force-off" } else { "soft-off" };
 
-    pcs::transitions::http_client::post_block(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      operation,
-      &nodes.to_vec(),
-    )
-    .await
-    .map(|transition| transition.into())
-    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .pcs_transitions_post_block(operation, nodes)
+      .await
+      .map(Into::into)
+      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_reset_sync(
@@ -65,17 +67,12 @@ impl PCSTrait for Csm {
       "soft-restart"
     };
 
-    pcs::transitions::http_client::post_block(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      operation,
-      &nodes.to_vec(),
-    )
-    .await
-    .map(|transition| transition.into())
-    .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .pcs_transitions_post_block(operation, nodes)
+      .await
+      .map(Into::into)
+      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
   async fn power_status(
@@ -85,24 +82,20 @@ impl PCSTrait for Csm {
     power_state_filter: Option<&str>,
     management_state_filter: Option<&str>,
   ) -> Result<FrontEndPowerStatusAll, Error> {
-    // Convert &[String] to Vec<&str> and wrap in Some
-    let nodes_str: Vec<&str> = nodes.iter().map(|s| s.as_str()).collect();
-    let nodes_opt = Some(nodes_str.as_slice());
+    let nodes_str: Vec<&str> = nodes.iter().map(String::as_str).collect();
 
-    pcs::power_status::http_client::post(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      nodes_opt,
-      power_state_filter,
-      management_state_filter,
-    )
-    .await
-    .map(|status| {
-      log::info!("return value from async fn power_status : {:?}", status);
-      status.into()
-    })
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .pcs_power_status_post(
+        Some(nodes_str.as_slice()),
+        power_state_filter,
+        management_state_filter,
+      )
+      .await
+      .map(|status| {
+        log::info!("return value from async fn power_status : {:?}", status);
+        status.into()
+      })
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }

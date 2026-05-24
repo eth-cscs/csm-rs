@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::time;
 
 use crate::{
+  ShastaClient,
   common::http,
   error::Error,
   pcs::transitions::types::{
@@ -12,143 +13,100 @@ use crate::{
 
 use super::types::Transition;
 
-pub async fn get(
-  shasta_base_url: &str,
-  shasta_token: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Vec<TransitionResponse>, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let url = format!("{}/power-control/v1/transitions", shasta_base_url);
-
-  let list: TransitionResponseList =
-    http::get_json(&client, &url, shasta_token).await?;
-  Ok(list.transitions)
-}
-
-pub async fn get_by_id(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  id: &str,
-) -> Result<TransitionResponse, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let url =
-    format!("{}/power-control/v1/transitions/{}", shasta_base_url, id);
-
-  let transition: TransitionResponse =
-    http::get_json(&client, &url, shasta_token).await?;
-  log::debug!("PCS transition details\n{:#?}", transition);
-  Ok(transition)
-}
-
-pub async fn post(
-  shasta_base_url: &str,
-  shasta_token: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  operation: &str,
-  xname_vec: &Vec<String>,
-) -> Result<TransitionStartOutput, Error> {
-  log::info!("Create PCS transition '{}' on {:?}", operation, xname_vec);
-
-  let location_vec: Vec<Location> = xname_vec
-    .iter()
-    .map(|xname| Location {
-      xname: xname.to_string(),
-      deputy_key: None,
-    })
-    .collect();
-
-  let request_payload = Transition {
-    operation: Operation::from_str(operation)?,
-    task_deadline_minutes: None,
-    location: location_vec,
-  };
-
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let url = format!("{}/power-control/v1/transitions", shasta_base_url);
-
-  http::post_json(&client, &url, shasta_token, &request_payload).await
-}
-
-pub async fn post_block(
-  shasta_base_url: &str,
-  shasta_token: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  operation: &str,
-  xname_vec: &Vec<String>,
-) -> Result<TransitionResponse, Error> {
-  let power_transition = post(
-    shasta_base_url,
-    shasta_token,
-    shasta_root_cert,
-    socks5_proxy,
-    operation,
-    xname_vec,
-  )
-  .await?;
-
-  log::info!("PCS transition ID: {}", power_transition.transition_id);
-
-  let power_management_status: TransitionResponse = wait_to_complete(
-    shasta_base_url,
-    shasta_token,
-    shasta_root_cert,
-    socks5_proxy,
-    &power_transition.transition_id,
-  )
-  .await?;
-
-  Ok(power_management_status)
-}
-
-pub async fn wait_to_complete(
-  shasta_base_url: &str,
-  shasta_token: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  transition_id: &str,
-) -> Result<TransitionResponse, Error> {
-  let mut transition: TransitionResponse = get_by_id(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    transition_id,
-  )
-  .await?;
-
-  let mut i = 1;
-  let max_attempt = 300;
-
-  while i <= max_attempt && transition.transition_status != "completed" {
-    transition = get_by_id(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      transition_id,
-    )
-    .await?;
-
-    log::warn!(
-      "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
-      transition.operation,
-      transition.transition_status,
-      transition.task_counts.failed,
-      transition.task_counts.in_progress,
-      transition.task_counts.succeeded,
-      transition.task_counts.total,
-      i,
-      max_attempt
-    );
-
-    tokio::time::sleep(time::Duration::from_secs(3)).await;
-    i += 1;
+impl ShastaClient {
+  pub async fn pcs_transitions_get(
+    &self,
+  ) -> Result<Vec<TransitionResponse>, Error> {
+    let url = format!("{}/power-control/v1/transitions", self.base_url());
+    let list: TransitionResponseList =
+      http::get_json(self.http(), &url, self.token()).await?;
+    Ok(list.transitions)
   }
 
-  Ok(transition)
+  pub async fn pcs_transitions_get_by_id(
+    &self,
+    id: &str,
+  ) -> Result<TransitionResponse, Error> {
+    let url =
+      format!("{}/power-control/v1/transitions/{}", self.base_url(), id);
+    let transition: TransitionResponse =
+      http::get_json(self.http(), &url, self.token()).await?;
+    log::debug!("PCS transition details\n{:#?}", transition);
+    Ok(transition)
+  }
+
+  pub async fn pcs_transitions_post(
+    &self,
+    operation: &str,
+    xname_vec: &[String],
+  ) -> Result<TransitionStartOutput, Error> {
+    log::info!("Create PCS transition '{}' on {:?}", operation, xname_vec);
+
+    let location_vec: Vec<Location> = xname_vec
+      .iter()
+      .map(|xname| Location {
+        xname: xname.to_string(),
+        deputy_key: None,
+      })
+      .collect();
+
+    let request_payload = Transition {
+      operation: Operation::from_str(operation)?,
+      task_deadline_minutes: None,
+      location: location_vec,
+    };
+
+    let url = format!("{}/power-control/v1/transitions", self.base_url());
+    http::post_json(self.http(), &url, self.token(), &request_payload).await
+  }
+
+  /// Like [`Self::pcs_transitions_post`] but waits for the transition to
+  /// finish before returning.
+  pub async fn pcs_transitions_post_block(
+    &self,
+    operation: &str,
+    xname_vec: &[String],
+  ) -> Result<TransitionResponse, Error> {
+    let started = self.pcs_transitions_post(operation, xname_vec).await?;
+
+    log::info!("PCS transition ID: {}", started.transition_id);
+
+    self
+      .pcs_transitions_wait_to_complete(&started.transition_id)
+      .await
+  }
+
+  /// Polls a transition until it reaches `completed` status or 300 attempts
+  /// (15 minutes at the 3-second poll interval).
+  pub async fn pcs_transitions_wait_to_complete(
+    &self,
+    transition_id: &str,
+  ) -> Result<TransitionResponse, Error> {
+    let mut transition: TransitionResponse =
+      self.pcs_transitions_get_by_id(transition_id).await?;
+
+    let max_attempt = 300;
+    let mut i = 1;
+
+    while i <= max_attempt && transition.transition_status != "completed" {
+      transition = self.pcs_transitions_get_by_id(transition_id).await?;
+
+      log::warn!(
+        "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
+        transition.operation,
+        transition.transition_status,
+        transition.task_counts.failed,
+        transition.task_counts.in_progress,
+        transition.task_counts.succeeded,
+        transition.task_counts.total,
+        i,
+        max_attempt
+      );
+
+      tokio::time::sleep(time::Duration::from_secs(3)).await;
+      i += 1;
+    }
+
+    Ok(transition)
+  }
 }
