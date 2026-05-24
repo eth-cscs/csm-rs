@@ -1,0 +1,128 @@
+//! Wiremock smoke tests for `ShastaClient::bos_*` methods.
+
+mod common;
+use common::{TEST_TOKEN, make_client};
+
+use serde_json::json;
+use wiremock::matchers::{bearer_token, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
+
+// ---------- bos/session/v2 ----------
+
+#[tokio::test]
+async fn bos_session_v2_get_all_hits_v2_sessions() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/bos/v2/sessions"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let sessions = client.bos_session_v2_get(None).await.expect("ok");
+  assert!(sessions.is_empty());
+}
+
+#[tokio::test]
+async fn bos_session_v2_get_by_id_hits_singular_endpoint() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/bos/v2/sessions/sess-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "name": "sess-1",
+      "template_name": "tmpl-1",
+    })))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let sessions = client.bos_session_v2_get(Some("sess-1")).await.unwrap();
+  assert_eq!(sessions.len(), 1);
+  assert_eq!(sessions[0].name.as_deref(), Some("sess-1"));
+}
+
+#[tokio::test]
+async fn bos_session_v2_delete_hits_singular_endpoint() {
+  let server = MockServer::start().await;
+  Mock::given(method("DELETE"))
+    .and(path("/bos/v2/sessions/sess-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(204))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  client.bos_session_v2_delete("sess-1").await.expect("ok");
+}
+
+// ---------- bos/template/v2 ----------
+
+#[tokio::test]
+async fn bos_template_v2_get_all_hits_v2_sessiontemplates() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/bos/v2/sessiontemplates"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  client.bos_template_v2_get_all().await.expect("ok");
+}
+
+#[tokio::test]
+async fn bos_template_v2_get_by_name_hits_singular_endpoint() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/bos/v2/sessiontemplates/tmpl-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(
+      ResponseTemplate::new(200).set_body_json(json!({"name": "tmpl-1"})),
+    )
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let templates = client.bos_template_v2_get(Some("tmpl-1")).await.unwrap();
+  assert_eq!(templates.len(), 1);
+  assert_eq!(templates[0].name.as_deref(), Some("tmpl-1"));
+}
+
+#[tokio::test]
+async fn bos_template_v2_delete_silently_ignores_error_status() {
+  // NOTE: `bos_template_v2_delete` discards the result of `.error_for_status()`,
+  // so even a 500 from the server returns Ok(()). Documenting current behavior.
+  let server = MockServer::start().await;
+  Mock::given(method("DELETE"))
+    .and(path("/bos/v2/sessiontemplates/tmpl-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(500))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let result = client.bos_template_v2_delete("tmpl-1").await;
+  assert!(result.is_ok(), "delete swallows non-2xx; got {:?}", result.err());
+}
+
+// ---------- bos/health_check ----------
+
+#[tokio::test]
+async fn bos_health_check_hits_v2_healthz() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/bos/v2/healthz"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(
+      ResponseTemplate::new(200).set_body_json(json!({"status": "ok"})),
+    )
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let result = client.bos_health_check().await.unwrap();
+  assert_eq!(result["status"], "ok");
+}
