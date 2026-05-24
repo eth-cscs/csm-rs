@@ -297,7 +297,11 @@ async fn create_bos_sessiontemplate(
     .boot_sets
     .as_mut()
     .and_then(|boot_sets| boot_sets.get_mut("compute"))
-    .unwrap()
+    .ok_or_else(|| {
+      Error::Message(
+        "BOS sessiontemplate has no 'compute' boot_set to update".to_string(),
+      )
+    })?
     .path = Some(path_modified);
 
   log::debug!("BOS sessiontemplate loaded:\n{:#?}", bos_sessiontemplate);
@@ -541,7 +545,9 @@ async fn s3_upload_image_artifacts(
   };
 
   for file in vec_image_files {
-    let filename = Path::new(file).file_name().unwrap();
+    let filename = Path::new(file).file_name().ok_or_else(|| {
+      Error::Message(format!("Path '{}' has no file name component", file))
+    })?;
     let file_size = match fs::metadata(file) {
       Ok(_file_metadata) => {
         let res: String = humansize::format_size(_file_metadata.len(), DECIMAL);
@@ -562,7 +568,7 @@ async fn s3_upload_image_artifacts(
       "File {:?} ({}) to s3://{}/{}.",
       &file, &file_size, &bucket_name, &full_object_path
     );
-    let etag: String = if fs::metadata(file).unwrap().len() > 1024 * 1024 * 5 {
+    let etag: String = if fs::metadata(file)?.len() > 1024 * 1024 * 5 {
       match ims::s3_client::s3_multipart_upload_object(
         &sts_value,
         socks5_proxy,
@@ -649,10 +655,18 @@ async fn s3_upload_image_artifacts(
 
   let new_manifest_file_name = String::from("new-manifest.json");
 
-  let new_manifest_file_path = Path::new(vec_image_files.first().unwrap())
+  let first_image_file = vec_image_files.first().ok_or_else(|| {
+    Error::Message("vec_image_files is empty; no manifest can be written".to_string())
+  })?;
+  let new_manifest_file_path = Path::new(first_image_file)
     .parent()
     .map(|path| path.join(&new_manifest_file_name))
-    .unwrap();
+    .ok_or_else(|| {
+      Error::Message(format!(
+        "Path '{}' has no parent directory",
+        first_image_file
+      ))
+    })?;
 
   let new_manifest_file = File::create(&new_manifest_file_path)?;
 
@@ -683,23 +697,34 @@ async fn s3_upload_image_artifacts(
   Ok(())
 }
 
-/// Return the md5sum of a file
+/// Return the md5sum of a file. The file is expected to exist and be
+/// readable — `exec` verifies this earlier; reaching this fn with a missing
+/// or unreadable file is a programmer error.
 fn file_md5sum(filename: PathBuf) -> Digest {
   log::debug!("File {:?}...", &filename);
 
-  let f = File::open(filename).unwrap();
+  let f = File::open(&filename)
+    .unwrap_or_else(|e| panic!("file_md5sum: open {:?}: {}", filename, e));
   // Find the length of the file
-  let len = f.metadata().unwrap().len();
+  let len = f
+    .metadata()
+    .unwrap_or_else(|e| panic!("file_md5sum: metadata {:?}: {}", filename, e))
+    .len();
   // Decide on a reasonable buffer size (100MB in this case, fastest will depend on hardware)
   let buf_len = len.min(100_000_000) as usize;
   let mut buf = BufReader::with_capacity(buf_len, f);
   let mut context = md5::Context::new();
   let bar = ProgressBar::new(len);
-  bar.set_style(ProgressStyle::with_template(BAR_FORMAT).unwrap());
+  // BAR_FORMAT is a compile-time constant — template parse is infallible.
+  bar.set_style(
+    ProgressStyle::with_template(BAR_FORMAT).expect("BAR_FORMAT is valid"),
+  );
 
   loop {
     // Get a chunk of the file
-    let part = buf.fill_buf().unwrap();
+    let part = buf
+      .fill_buf()
+      .unwrap_or_else(|e| panic!("file_md5sum: read {:?}: {}", filename, e));
     // If that chunk was empty, the reader has reached EOF
     if part.is_empty() {
       break;
@@ -822,13 +847,13 @@ async fn ims_register_image(
   )
   .await?;
 
-  Ok(
-    json_response
-      .get("id")
-      .and_then(Value::as_str)
-      .map(|id| id.replace('"', ""))
-      .unwrap(),
-  )
+  json_response
+    .get("id")
+    .and_then(Value::as_str)
+    .map(|id| id.replace('"', ""))
+    .ok_or_else(|| {
+      anyhow::anyhow!("IMS image post response is missing 'id'")
+    })
 }
 
 /// Gets the image name off an IMS yaml file
@@ -840,13 +865,16 @@ pub fn get_image_name_from_ims_file(
 
   let ims_json: serde_json::Value = serde_json::from_str(&ims_data)?;
 
-  Ok(
-    ims_json
-      .pointer("/0/name")
-      .and_then(Value::as_str)
-      .map(|ims_name| ims_name.replace('"', ""))
-      .unwrap(),
-  )
+  ims_json
+    .pointer("/0/name")
+    .and_then(Value::as_str)
+    .map(|ims_name| ims_name.replace('"', ""))
+    .ok_or_else(|| {
+      Error::Message(format!(
+        "IMS file '{}' is missing /0/name",
+        ims_file
+      ))
+    })
 }
 
 // Anything in this function is critical, so the asserts will kill further processing
@@ -877,9 +905,9 @@ pub async fn create_hsm_group_from_file(
       socks5_proxy,
       &group.label,
       &group_members_opt.unwrap_or_default(),
-      &group.exclusive_group.clone().unwrap(),
-      &group.description.clone().unwrap(),
-      &group.tags.clone().unwrap(),
+      &group.exclusive_group.clone().unwrap_or_default(),
+      &group.description.clone().unwrap_or_default(),
+      &group.tags.clone().unwrap_or_default(),
     )
     .await
     {
