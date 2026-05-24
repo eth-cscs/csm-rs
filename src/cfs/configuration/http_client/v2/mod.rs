@@ -81,7 +81,8 @@ pub async fn put(
 
   log::debug!(
     "CFS configuration request payload:\n{}",
-    serde_json::to_string_pretty(&request_payload).unwrap()
+    serde_json::to_string_pretty(&request_payload)
+      .unwrap_or_else(|e| format!("<serialize error: {}>", e))
   );
 
   http::put_json(&client, &api_url, shasta_token, &request_payload).await

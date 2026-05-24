@@ -919,10 +919,17 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   log::info!("{output}");
 
+  // Validate the host line matches the expected shape; we only inspect
+  // it here, the original `output` is used downstream.
   output
     .strip_prefix("ansible_host: ")
     .and_then(|v| v.strip_suffix("-service.ims.svc.cluster.local"))
-    .unwrap();
+    .ok_or_else(|| {
+      Error::K8sError(format!(
+        "Unexpected ansible_host line from console operator pod: {:?}",
+        output
+      ))
+    })?;
 
   log::info!("{output}");
 
@@ -1001,7 +1008,14 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 }
 
 pub async fn get_output(mut attached: AttachedProcess) -> String {
-  let stdout = tokio_util::io::ReaderStream::new(attached.stdout().unwrap());
+  // `attached` is created by kube exec; in our callers the attach params
+  // always request stdout, so `stdout()` should be `Some`. If kube ever
+  // returns None we want a clear panic rather than a silent empty string.
+  let stdout = tokio_util::io::ReaderStream::new(
+    attached
+      .stdout()
+      .expect("kube exec was started without a stdout stream"),
+  );
   let out = stdout
     .filter_map(|r| async {
       r.ok().and_then(|v| String::from_utf8(v.to_vec()).ok())
@@ -1010,7 +1024,11 @@ pub async fn get_output(mut attached: AttachedProcess) -> String {
     .await
     .join("");
 
-  attached.join().await.unwrap();
+  // join() returns the process exit status; failures are logged rather than
+  // surfaced because get_output is infallible by signature.
+  if let Err(e) = attached.join().await {
+    log::warn!("kube exec join failed: {}", e);
+  }
 
   out
 }

@@ -62,18 +62,20 @@ pub async fn get_token_from_shasta_endpoint(
 
   log::debug!("Request to fetch authentication token: {}", api_url);
 
-  Ok(
-    client
-      .post(api_url)
-      .form(&params)
-      .send()
-      .await?
-      .error_for_status()?
-      .json::<Value>()
-      .await?
-      .get("access_token")
-      .and_then(Value::as_str)
-      .map(str::to_string)
-      .unwrap(),
-  )
+  client
+    .post(api_url)
+    .form(&params)
+    .send()
+    .await?
+    .error_for_status()?
+    .json::<Value>()
+    .await?
+    .get("access_token")
+    .and_then(Value::as_str)
+    .map(str::to_string)
+    .ok_or_else(|| {
+      Error::Message(
+        "Keycloak token response is missing 'access_token'".to_string(),
+      )
+    })
 }

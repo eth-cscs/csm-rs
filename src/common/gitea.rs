@@ -100,20 +100,25 @@ pub mod http_client {
     )
     .await?;
 
+    let want = format!("refs/heads/{}", branch_name);
     let ref_details_opt = all_ref_vec.into_iter().find(|ref_details| {
-      ref_details.get("ref").and_then(Value::as_str).unwrap()
-        == format!("refs/heads/{}", branch_name)
+      ref_details
+        .get("ref")
+        .and_then(Value::as_str)
+        .is_some_and(|r| r == want)
     });
 
     match ref_details_opt {
-      Some(ref_details) => Ok(
-        ref_details
-          .get("object")
-          .and_then(|object| object.get("sha"))
-          .and_then(Value::as_str)
-          .map(str::to_string)
-          .unwrap(),
-      ),
+      Some(ref_details) => ref_details
+        .get("object")
+        .and_then(|object| object.get("sha"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+          Error::Message(
+            "Gitea response: ref object is missing 'sha'".to_string(),
+          )
+        }),
       None => Err(Error::Message("SHA for branch not found".to_string())),
     }
   }

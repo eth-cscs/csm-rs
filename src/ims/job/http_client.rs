@@ -94,7 +94,9 @@ pub async fn post_sync(
   let ims_job: Job =
     post(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, ims_job).await?;
 
-  let ims_job_id = ims_job.id.unwrap();
+  let ims_job_id = ims_job.id.clone().ok_or_else(|| {
+    Error::Message("IMS job creation response is missing 'id'".to_string())
+  })?;
 
   // Wait till the IMS job finishes
   wait_ims_job_to_finish(

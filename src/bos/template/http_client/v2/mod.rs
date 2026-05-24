@@ -53,7 +53,8 @@ pub async fn put(
   log::info!("Create BOS sessiontemplte '{}'", bos_template_name);
   log::debug!(
     "Create BOS sessiontemplate request payload:\n{}",
-    serde_json::to_string_pretty(bos_template).unwrap()
+    serde_json::to_string_pretty(bos_template)
+      .unwrap_or_else(|e| format!("<serialize error: {}>", e))
   );
 
   let client = http::build_client(shasta_root_cert, socks5_proxy)?;

@@ -72,7 +72,7 @@ pub fn get_roles(token: &str) -> Result<Vec<String>, Error> {
       .cloned()
       .unwrap_or_default()
       .iter()
-      .map(|role_value| role_value.as_str().map(str::to_string).unwrap())
+      .filter_map(|role_value| role_value.as_str().map(str::to_string))
       .collect(),
   )
 }

@@ -100,7 +100,8 @@ pub async fn put(
   let request_payload = serde_json::json!({ "layers": configuration.layers });
   log::debug!(
     "CFS configuration request payload:\n{}",
-    serde_json::to_string_pretty(&request_payload).unwrap()
+    serde_json::to_string_pretty(&request_payload)
+      .unwrap_or_else(|e| format!("<serialize error: {}>", e))
   );
 
   let response = client

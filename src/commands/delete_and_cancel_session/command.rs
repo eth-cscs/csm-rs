@@ -39,7 +39,12 @@ pub async fn exec(
   )
   .await?;
 
-  let cfs_session_target_definition = cfs_session.get_target_def().unwrap();
+  let cfs_session_target_definition =
+    cfs_session.get_target_def().ok_or_else(|| {
+      Error::Message(
+        "CFS session has no target definition (image/dynamic)".to_string(),
+      )
+    })?;
 
   // DELETE DATA
   //
@@ -61,7 +66,12 @@ pub async fn exec(
     let retry_policy = cfs_global_options
       .get("default_batcher_retry_policy")
       .and_then(Value::as_u64)
-      .unwrap();
+      .ok_or_else(|| {
+        Error::Message(
+          "CFS options response missing 'default_batcher_retry_policy'"
+            .to_string(),
+        )
+      })?;
 
     cancel_session(
       shasta_token,

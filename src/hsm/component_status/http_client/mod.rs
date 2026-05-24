@@ -19,7 +19,12 @@ pub async fn get_raw(
     &format!("{}/smd/hsm/v2/State/Components", shasta_base_url),
     &url_params,
   )
-  .unwrap();
+  .map_err(|e| {
+    Error::Message(format!(
+      "Could not build HSM components URL from base '{}': {}",
+      shasta_base_url, e
+    ))
+  })?;
 
   let response: Value =
     http::get_json(&client, api_url.as_str(), shasta_token).await?;

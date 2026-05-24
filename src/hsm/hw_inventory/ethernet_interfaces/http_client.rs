@@ -51,10 +51,14 @@ pub async fn post_ip_addresses(
   eht_interface: ComponentEthernetInterface,
 ) -> Result<EthernetInterface, Error> {
   let client = http::build_client(root_cert, socks5_proxy)?;
+  let component_id = eht_interface.component_id.as_ref().ok_or_else(|| {
+    Error::Message(
+      "ComponentEthernetInterface is missing 'component_id'".to_string(),
+    )
+  })?;
   let api_url = format!(
     "{}/hsm/v2/Inventory/EthernetInterfaces/{}/IPAddresses",
-    base_url,
-    eht_interface.component_id.as_ref().unwrap()
+    base_url, component_id
   );
 
   let response = client

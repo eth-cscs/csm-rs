@@ -165,7 +165,12 @@ impl GroupTrait for Csm {
       )));
     }
 
-    let hsm_group_backend = hsm_group_backend_vec.first().unwrap().to_owned();
+    // Length-1 guaranteed: the >1 case errored above; the 0 case would
+    // have been errored by the upstream get() with GroupNotFound.
+    let hsm_group_backend = hsm_group_backend_vec
+      .first()
+      .expect("exactly one HSM group: checked above")
+      .to_owned();
 
     let hsm_group: FrontEndGroup = hsm_group_backend.into();
 
