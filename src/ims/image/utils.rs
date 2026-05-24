@@ -458,3 +458,65 @@ pub async fn get_image_available_vec(
 
   Ok(image_available_vec)
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn image(name: &str, created: Option<&str>) -> Image {
+    Image {
+      id: Some(format!("id-{name}")),
+      created: created.map(str::to_string),
+      name: name.to_string(),
+      link: None,
+      arch: None,
+      metadata: None,
+    }
+  }
+
+  // ---------- filter (sorts by created ASC) ----------
+
+  #[test]
+  fn filter_sorts_by_created_ascending() {
+    let mut images = vec![
+      image("c", Some("2024-03-01T00:00:00Z")),
+      image("a", Some("2024-01-01T00:00:00Z")),
+      image("b", Some("2024-02-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, vec!["a", "b", "c"]);
+  }
+
+  #[test]
+  fn filter_is_stable_for_equal_timestamps() {
+    let mut images = vec![
+      image("first", Some("2024-01-01T00:00:00Z")),
+      image("second", Some("2024-01-01T00:00:00Z")),
+      image("third", Some("2024-01-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    // Rust's sort_by is stable, so equal keys preserve insertion order.
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, vec!["first", "second", "third"]);
+  }
+
+  #[test]
+  fn filter_empty_input_does_not_panic() {
+    let mut images: Vec<Image> = vec![];
+    filter(&mut images);
+    assert!(images.is_empty());
+  }
+
+  #[test]
+  fn filter_single_element_is_idempotent() {
+    let mut images = vec![image("only", Some("2024-01-01T00:00:00Z"))];
+    filter(&mut images);
+    assert_eq!(images.len(), 1);
+    assert_eq!(images[0].name, "only");
+  }
+
+  // NOTE: filter() calls .unwrap() on `created`, so passing an image with
+  // `created: None` panics. We don't test that path because it's documented
+  // current behavior, not a contract we want to lock in.
+}
