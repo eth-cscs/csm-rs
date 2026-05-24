@@ -1,25 +1,23 @@
-use crate::{common::http, error::Error};
+use crate::{ShastaClient, error::Error};
 
 use super::types::Role;
 
-/// Get list of Roles
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Vec<String>, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/smd/hsm/v2/service/values/role", shasta_base_url);
+impl ShastaClient {
+  /// Get list of HSM Roles.
+  pub async fn hsm_roles_get(&self) -> Result<Vec<String>, Error> {
+    let api_url =
+      format!("{}/smd/hsm/v2/service/values/role", self.base_url());
 
-  let payload = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .json::<Role>()
-    .await;
-
-  payload.map(|role| role.role).map_err(Error::NetError)
+    self
+      .http()
+      .get(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .json::<Role>()
+      .await
+      .map(|role| role.role)
+      .map_err(Error::NetError)
+  }
 }

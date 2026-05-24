@@ -339,13 +339,13 @@ pub async fn get_node_details(
     tasks.spawn(async move {
       let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
 
-      hsm::memberships::http_client::get_xname(
-        &shasta_token_string,
+      crate::ShastaClient::new(
         &shasta_base_url_string,
-        &shasta_root_cert_vec,
-        socks5_proxy_opt.as_deref(),
-        &xname,
-      )
+        &shasta_token_string,
+        shasta_root_cert_vec.clone(),
+        socks5_proxy_opt.clone(),
+      )?
+      .hsm_memberships_get_xname(&xname)
       .await
     });
   }

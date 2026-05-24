@@ -1,27 +1,22 @@
-use crate::{common::http, error::Error};
+use crate::{ShastaClient, common::http, error::Error};
 
 use super::types::Membership;
 
-pub async fn get_all(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Vec<Membership>, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let url = format!("{}/smd/hsm/v2/memberships", shasta_base_url);
-  http::get_json(&client, &url, shasta_token).await
-}
+impl ShastaClient {
+  pub async fn hsm_memberships_get_all(
+    &self,
+  ) -> Result<Vec<Membership>, Error> {
+    let url = format!("{}/smd/hsm/v2/memberships", self.base_url());
+    http::get_json(self.http(), &url, self.token()).await
+  }
 
-pub async fn get_xname(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  xname: &str,
-) -> Result<Membership, Error> {
-  log::debug!("Get membership of node '{}'", xname);
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let url = format!("{}/smd/hsm/v2/memberships/{}", shasta_base_url, xname);
-  http::get_json(&client, &url, shasta_token).await
+  pub async fn hsm_memberships_get_xname(
+    &self,
+    xname: &str,
+  ) -> Result<Membership, Error> {
+    log::debug!("Get membership of node '{}'", xname);
+    let url =
+      format!("{}/smd/hsm/v2/memberships/{}", self.base_url(), xname);
+    http::get_json(self.http(), &url, self.token()).await
+  }
 }
