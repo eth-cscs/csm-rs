@@ -1,5 +1,8 @@
 use crate::error::Error;
-use base64::{Engine, engine::general_purpose::STANDARD};
+use base64::{
+  Engine,
+  engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+};
 use serde_json::Value;
 
 /* // FIXME: replace Error to my own one
@@ -15,12 +18,17 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
     .nth(1)
     .unwrap_or("JWT Token not valid");
 
-  let claims_u8 = STANDARD.decode(base64_claims).map_err(|e| {
-    Error::Message(format!(
-      "ERROR - could not get claims in JWT token. Reason:\n{}",
-      e
-    ))
-  })?;
+  // JWTs per RFC 7519 use base64url without padding; some non-conformant
+  // tokens use standard base64. Try url-safe first, then fall back.
+  let claims_u8 = URL_SAFE_NO_PAD
+    .decode(base64_claims)
+    .or_else(|_| STANDARD.decode(base64_claims))
+    .map_err(|e| {
+      Error::Message(format!(
+        "ERROR - could not get claims in JWT token. Reason:\n{}",
+        e
+      ))
+    })?;
 
   let claims_str = std::str::from_utf8(&claims_u8).map_err(|_| {
     Error::Message("ERROR - could not convert JWT claims to string".to_string())
