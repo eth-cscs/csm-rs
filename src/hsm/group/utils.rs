@@ -239,6 +239,7 @@ pub async fn remove_hsm_members(
 }
 
 /// Moves list of xnames from parent to target HSM group
+#[allow(clippy::too_many_arguments)]
 pub async fn migrate_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,

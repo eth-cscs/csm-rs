@@ -25,6 +25,7 @@ use super::{
 };
 
 
+#[allow(clippy::too_many_arguments)]
 pub async fn validate_sat_file_session_template_section(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -224,6 +225,7 @@ pub async fn validate_sat_file_session_template_section(
   Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn process_session_template_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -766,6 +768,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
 }
 
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
   shasta_token: &str,
   shasta_base_url: &str,

@@ -13,6 +13,7 @@ use crate::{
   hsm::group::types::Group,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -166,6 +167,7 @@ async fn delete_images(
   Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn cancel_session(
   shasta_token: &str,
   shasta_base_url: &str,

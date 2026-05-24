@@ -13,6 +13,7 @@ use crate::{
 
 use super::{configuration, image, sessiontemplate};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_cfs_configuration_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -73,6 +74,7 @@ pub async fn create_cfs_configuration_from_sat_file(
   }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_cfs_configuration_struct_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,

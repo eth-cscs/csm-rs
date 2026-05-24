@@ -19,6 +19,7 @@ use crate::{
   since = "0.86.2",
   note = "this function prints cfs session logs to stdout"
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,

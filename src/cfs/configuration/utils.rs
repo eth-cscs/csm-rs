@@ -80,6 +80,7 @@ pub async fn create_new_configuration(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
+#[allow(clippy::too_many_arguments)]
 pub fn filter(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
   xname_from_groups_vec: &[String],
@@ -206,6 +207,7 @@ pub fn filter(
 /// If filtering by HSM group, then configuration name must include HSM group name (It assumms each configuration
 /// is built for a specific cluster based on ansible vars used by the CFS session). The reason
 /// for this is because CSCS staff deletes all CFS sessions every now and then...
+#[allow(clippy::too_many_arguments)]
 pub async fn get_and_filter(
   shasta_token: &str,
   shasta_base_url: &str,

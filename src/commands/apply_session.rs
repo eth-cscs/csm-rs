@@ -13,6 +13,7 @@ use serde_json::Value;
 
 /// Creates a CFS session target dynamic
 /// Returns a tuple like (<cfs configuration name>, <cfs session name>)
+#[allow(clippy::too_many_arguments)]
 pub async fn exec(
   gitea_token: &str,
   gitea_base_url: &str,
@@ -150,6 +151,7 @@ pub async fn exec(
   Ok((cfs_configuration_name, cfs_session_name))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   cfs_configuration_name: &str,
   playbook_yaml_file_name_opt: Option<&str>,

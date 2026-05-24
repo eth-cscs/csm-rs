@@ -46,6 +46,7 @@ fn default_version() -> String {
   "1.0".to_string()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,

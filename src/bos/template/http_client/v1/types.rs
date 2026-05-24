@@ -145,6 +145,7 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[allow(clippy::too_many_arguments)]
   pub fn new_for_hsm_group(
     cfs_configuration_name: String,
     bos_session_template_name: String,

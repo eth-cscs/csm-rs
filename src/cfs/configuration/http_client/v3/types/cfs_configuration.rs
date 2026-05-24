@@ -82,6 +82,7 @@ impl From<LayerDetails> for FrontendLayerDetails {
 }
 
 impl LayerDetails {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     name: Option<String>,
     repo_name: &str,

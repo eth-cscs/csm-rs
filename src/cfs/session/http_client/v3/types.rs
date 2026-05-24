@@ -523,6 +523,7 @@ impl From<CfsSessionPostRequest> for FrontEndCfsSessionPostRequest {
 }
 
 impl CfsSessionPostRequest {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     name: String,
     configuration_name: String,

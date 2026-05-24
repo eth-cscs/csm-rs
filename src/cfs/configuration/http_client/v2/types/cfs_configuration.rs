@@ -50,6 +50,7 @@ pub struct LayerDetails {
 }
 
 impl LayerDetails {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     name: &str,
     repo_name: &str,

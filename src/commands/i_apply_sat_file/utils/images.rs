@@ -156,6 +156,7 @@ pub fn get_image_name_or_ref_name_to_process_struct(
   since = "0.86.2",
   note = "this function prints cfs session logs to stdout"
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -241,6 +242,7 @@ pub async fn i_import_images_section_in_sat_file(
   since = "0.86.2",
   note = "this function prints cfs session logs to stdout"
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -332,6 +334,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn get_session_from_image_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -659,7 +662,7 @@ pub fn filter_product_catalog_images(
         image_name
       )))
     } else {
-      let image_key: &String = &image_key_vec[0];
+      let image_key: &String = image_key_vec[0];
       image_map
         .get(image_key)
         .and_then(|image_value| image_value.get("id"))

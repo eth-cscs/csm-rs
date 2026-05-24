@@ -39,6 +39,7 @@ pub async fn get_one(
 /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
 /// Returns list of CFS sessions ordered by start time.
 /// This methods filter by either HSM group name or HSM group members or both
+#[allow(clippy::too_many_arguments)]
 pub async fn get_and_sort(
   shasta_token: &str,
   shasta_base_url: &str,

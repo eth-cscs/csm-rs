@@ -265,6 +265,7 @@ impl BosSessionTemplate {
     })
   }
 
+  #[allow(clippy::too_many_arguments)]
   pub fn new_for_hsm_group(
     tenant_opt: Option<String>,
     cfs_configuration_name: String,

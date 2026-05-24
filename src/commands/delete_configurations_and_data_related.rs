@@ -15,6 +15,7 @@ use crate::{
   error::Error,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub async fn get_data_to_delete(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -222,9 +223,7 @@ pub async fn get_data_to_delete(
             .as_ref()
             .is_some_and(|cfg| cfg.eq(cfs_configuration_name))
         })
-        .filter_map(|cfs_component| {
-          cfs_component.id.as_ref().map(String::as_str)
-        })
+        .filter_map(|cfs_component| cfs_component.id.as_deref())
         .collect::<Vec<&str>>();
 
     if !nodes_using_cfs_configuration_as_dessired_configuration_vec.is_empty() {
@@ -361,6 +360,7 @@ pub async fn get_data_to_delete(
 /// a CFS configuration. This method is safe. It checks if CFS configuration to delete is assigned
 /// to a CFS component as a 'desired configuration' and also checks if image related to CFS
 /// configuration is used as a boot image of any node in the system.
+#[allow(clippy::too_many_arguments)]
 pub async fn delete(
   shasta_token: &str,
   shasta_base_url: &str,
