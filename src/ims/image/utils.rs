@@ -1,6 +1,5 @@
 use crate::{
   bos,
-  bss::http_client::get_multiple,
   common,
   error::Error,
   hsm::group::utils::get_member_vec_from_hsm_name_vec,
@@ -230,13 +229,13 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   )
   .await?;
 
-  let boot_param_vec = get_multiple(
-    shasta_token,
+  let boot_param_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &hsm_member_vec,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bss_bootparameters_get_multiple(&hsm_member_vec)
   .await
   .unwrap_or_default();
 

@@ -5,7 +5,7 @@ use std::time::Instant;
 use chrono::NaiveDateTime;
 
 use crate::{
-  bss::{self, types::BootParameters},
+  bss::types::BootParameters,
   cfs::{
     self,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
@@ -81,7 +81,7 @@ pub async fn get_data_to_delete(
       socks5_proxy
     ),
     shasta_client.bos_template_v2_get_all(),
-    bss::http_client::get_all(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy)
+    shasta_client.bss_bootparameters_get_all(),
   )?;
 
   let duration = start.elapsed();

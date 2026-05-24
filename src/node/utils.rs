@@ -150,6 +150,13 @@ pub async fn get_node_details(
 ) -> Result<Vec<NodeDetails>, Error> {
   let start = Instant::now();
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+
   let (
     components_status_rslt,
     node_boot_params_vec_rslt,
@@ -165,13 +172,7 @@ pub async fn get_node_details(
       &xname_list,
     ),
     // Get boot params to get the boot image id for each node
-    bss::http_client::get_multiple(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_list,
-    ),
+    shasta_client.bss_bootparameters_get_multiple(&xname_list),
     // Get HSM component status (needed to get NIDS)
     hsm::component::http_client::get_and_filter(
       shasta_token,
