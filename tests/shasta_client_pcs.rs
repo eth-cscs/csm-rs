@@ -109,14 +109,15 @@ async fn pcs_power_cap_get_hits_correct_url() {
   Mock::given(method("GET"))
     .and(path("/power-control/v1/power-cap"))
     .and(bearer_token(TEST_TOKEN))
-    // NOTE: taskCounts uses snake_case `in_progress`/`un_supported` in this
-    // struct (rather than kebab-case as the upstream CSM API actually returns).
-    // Likely a type-definition bug; the test mirrors the struct as-is.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "taskId": "task-1",
       "type": "snapshot",
       "taskCreateTime": "2024-01-01T00:00:00Z",
       "taskStatus": "completed",
+      "taskCounts": {
+        "total": 1, "new": 0, "in-progress": 0,
+        "failed": 0, "succeeded": 1, "un-supported": 0,
+      },
     })))
     .mount(&server)
     .await;

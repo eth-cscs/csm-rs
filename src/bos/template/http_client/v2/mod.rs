@@ -65,15 +65,15 @@ impl ShastaClient {
       bos_template_id
     );
 
-    // NOTE: existing behavior — `error_for_status` is called but its result is
-    // discarded, so DELETE failures are silently ignored. Preserving for now.
-    let _ = self
+    self
       .http()
       .delete(api_url)
       .bearer_auth(self.token())
       .send()
-      .await?
-      .error_for_status();
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?;
 
     Ok(())
   }

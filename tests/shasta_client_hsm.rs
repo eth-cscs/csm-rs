@@ -203,11 +203,8 @@ async fn hsm_roles_get_hits_service_values_role() {
   Mock::given(method("GET"))
     .and(path("/smd/hsm/v2/service/values/role"))
     .and(bearer_token(TEST_TOKEN))
-    // NOTE: the `Role` struct uses `rename(serialize = "Role")` — so
-    // deserialization expects lowercase `role`, despite the upstream CSM
-    // API actually returning capitalized `Role`. Test mirrors the struct.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-      "role": ["Compute", "Service", "Storage"]
+      "Role": ["Compute", "Service", "Storage"]
     })))
     .mount(&server)
     .await;

@@ -92,9 +92,7 @@ async fn bos_template_v2_get_by_name_hits_singular_endpoint() {
 }
 
 #[tokio::test]
-async fn bos_template_v2_delete_silently_ignores_error_status() {
-  // NOTE: `bos_template_v2_delete` discards the result of `.error_for_status()`,
-  // so even a 500 from the server returns Ok(()). Documenting current behavior.
+async fn bos_template_v2_delete_propagates_non_2xx_errors() {
   let server = MockServer::start().await;
   Mock::given(method("DELETE"))
     .and(path("/bos/v2/sessiontemplates/tmpl-1"))
@@ -104,8 +102,25 @@ async fn bos_template_v2_delete_silently_ignores_error_status() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.bos_template_v2_delete("tmpl-1").await;
-  assert!(result.is_ok(), "delete swallows non-2xx; got {:?}", result.err());
+  let err = client
+    .bos_template_v2_delete("tmpl-1")
+    .await
+    .expect_err("500 should propagate");
+  assert!(matches!(err, csm_rs::error::Error::NetError(_)));
+}
+
+#[tokio::test]
+async fn bos_template_v2_delete_succeeds_on_204() {
+  let server = MockServer::start().await;
+  Mock::given(method("DELETE"))
+    .and(path("/bos/v2/sessiontemplates/tmpl-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(204))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  client.bos_template_v2_delete("tmpl-1").await.expect("ok");
 }
 
 // ---------- bos/health_check ----------

@@ -9,9 +9,11 @@ pub struct PowerCapTaskList {
 pub struct TaskCounts {
   pub total: usize,
   pub new: usize,
+  #[serde(rename = "in-progress")]
   pub in_progress: usize,
   pub failed: usize,
   pub succeeded: usize,
+  #[serde(rename = "un-supported")]
   pub un_supported: usize,
 }
 

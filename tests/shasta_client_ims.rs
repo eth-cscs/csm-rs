@@ -106,21 +106,23 @@ async fn ims_recipe_get_all_hits_v2_recipes() {
 }
 
 #[tokio::test]
-async fn ims_recipe_get_by_id_url_is_missing_slash_separator() {
-  // BUG NOTE: `ims_recipe_get(Some(id))` formats the URL as
-  // `{base}/ims/v2/recipes{id}` (no `/` separator). This test documents that
-  // current behavior; the upstream API actually expects `/ims/v2/recipes/{id}`.
+async fn ims_recipe_get_by_id_hits_singular_endpoint() {
   let server = MockServer::start().await;
   Mock::given(method("GET"))
-    .and(path("/ims/v2/recipesabc")) // <-- no slash
+    .and(path("/ims/v2/recipes/abc"))
     .and(bearer_token(TEST_TOKEN))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "id": "abc",
+      "name": "recipe-a",
+      "recipe_type": "kiwi-ng",
+      "linux_distribution": "sles15",
+    })))
     .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.ims_recipe_get(Some("abc")).await;
-  assert!(result.is_ok(), "got: {:?}", result.err());
+  let recipes = client.ims_recipe_get(Some("abc")).await.expect("should succeed");
+  assert_eq!(recipes.len(), 1);
 }
 
 // ---------- ims/job ----------

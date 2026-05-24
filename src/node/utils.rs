@@ -69,11 +69,12 @@ pub fn validate_nid_format_vec(node_vec: Vec<String>) -> bool {
   node_vec.iter().all(|nid| validate_nid_format(nid))
 }
 
-/// Check if input is a NID
+/// Check if input is a NID. The check is case-insensitive: `nid000001`,
+/// `NID000001`, and `Nid000001` are all valid.
 pub fn validate_nid_format(nid: &str) -> bool {
-  nid.to_lowercase().starts_with("nid")
-    && nid.len() == 9
-    && nid
+  let lower = nid.to_lowercase();
+  lower.len() == 9
+    && lower
       .strip_prefix("nid")
       .is_some_and(|nid_number| nid_number.chars().all(char::is_numeric))
 }
@@ -425,14 +426,10 @@ mod tests {
   }
 
   #[test]
-  fn validate_nid_format_rejects_uppercase_prefix() {
-    // The function lowercases the input for the `starts_with("nid")` check
-    // but then calls `strip_prefix("nid")` on the original casing — so
-    // uppercase prefixes are actually rejected despite the lowercase check.
-    // Documenting current behavior; if you intend case-insensitive matching,
-    // strip the prefix from `nid.to_lowercase()`.
-    assert!(!validate_nid_format("NID000001"));
-    assert!(!validate_nid_format("Nid000001"));
+  fn validate_nid_format_is_case_insensitive() {
+    assert!(validate_nid_format("NID000001"));
+    assert!(validate_nid_format("Nid000001"));
+    assert!(validate_nid_format("nID000001"));
   }
 
   #[test]

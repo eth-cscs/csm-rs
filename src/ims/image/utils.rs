@@ -121,11 +121,14 @@ pub async fn try_get_by_name(
   Ok(image_available_vec.to_vec())
 }
 
-/// Just sorts images by creation time in ascendent order
+/// Just sorts images by creation time in ascendent order. Images with no
+/// `created` timestamp sort before any with one (treated as empty string).
 pub fn filter(image_vec: &mut [Image]) {
-  // Sort images by creation time order ASC
   image_vec.sort_by(|a, b| {
-    a.created.as_ref().unwrap().cmp(b.created.as_ref().unwrap())
+    a.created
+      .as_deref()
+      .unwrap_or("")
+      .cmp(b.created.as_deref().unwrap_or(""))
   });
 }
 
@@ -516,7 +519,16 @@ mod tests {
     assert_eq!(images[0].name, "only");
   }
 
-  // NOTE: filter() calls .unwrap() on `created`, so passing an image with
-  // `created: None` panics. We don't test that path because it's documented
-  // current behavior, not a contract we want to lock in.
+  #[test]
+  fn filter_treats_missing_created_as_empty_and_sorts_first() {
+    let mut images = vec![
+      image("b", Some("2024-01-01T00:00:00Z")),
+      image("missing", None),
+      image("a", Some("2024-02-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    // "" < any non-empty timestamp, so the missing-created image sorts first.
+    assert_eq!(names, vec!["missing", "b", "a"]);
+  }
 }
