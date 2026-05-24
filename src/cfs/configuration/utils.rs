@@ -246,12 +246,7 @@ pub async fn get_and_filter(
     cfs_component_vec,
   ) = tokio::try_join!(
     shasta_client.cfs_configuration_v2_get(configuration_name),
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
+    shasta_client.cfs_session_v2_get_all(),
     shasta_client.bos_template_v2_get_all(),
     shasta_client.cfs_component_v2_get_parallel(&xname_from_groups_vec),
   )?;
@@ -301,12 +296,7 @@ pub async fn get_derivatives(
     socks5_proxy.map(str::to_owned),
   )?;
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
+    shasta_client.cfs_session_v2_get_all(),
     shasta_client.bos_template_v2_get_all(),
     shasta_client.ims_image_get_all(),
   )?;

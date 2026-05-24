@@ -40,16 +40,13 @@ impl CfsTrait for Csm {
     shasta_root_cert: &[u8],
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
-    crate::cfs::session::http_client::v3::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      &session.clone().into(),
-    )
-    .await
-    .map(|cfs_session| cfs_session.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .cfs_session_v3_post(&session.clone().into())
+      .await
+      .map(|cfs_session| cfs_session.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
@@ -68,23 +65,22 @@ impl CfsTrait for Csm {
     is_succeded_opt: Option<bool>,
     tags_opt: Option<String>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
+    let _ = (shasta_base_url, shasta_root_cert);
     // Get local/backend CFS sessions
-    let local_cfs_session_vec = crate::cfs::session::http_client::v3::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      session_name_opt,
-      limit_opt,
-      after_id_opt,
-      min_age_opt,
-      max_age_opt,
-      status_opt,
-      name_contains_opt,
-      is_succeded_opt,
-      tags_opt,
-    )
-    .await;
+    let local_cfs_session_vec = self
+      .shasta_client(shasta_token)?
+      .cfs_session_v3_get(
+        session_name_opt,
+        limit_opt,
+        after_id_opt,
+        min_age_opt,
+        max_age_opt,
+        status_opt,
+        name_contains_opt,
+        is_succeded_opt,
+        tags_opt,
+      )
+      .await;
 
     // Convert to manta session
     

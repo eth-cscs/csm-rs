@@ -64,12 +64,7 @@ pub async fn get_data_to_delete(
   ) = tokio::try_join!(
     shasta_client.cfs_component_v2_get_all(),
     shasta_client.cfs_configuration_v2_get_all(),
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.cfs_session_v2_get_all(),
     shasta_client.bos_template_v2_get_all(),
     shasta_client.bss_bootparameters_get_all(),
   )?;
@@ -436,14 +431,8 @@ pub async fn delete(
     log::info!("Deleting IMS image '{}'", cfs_session_name);
     let mut counter = 0;
     loop {
-      let deletion_rslt = cfs::session::http_client::v3::delete(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        cfs_session_name,
-      )
-      .await;
+      let deletion_rslt =
+        shasta_client.cfs_session_v3_delete(cfs_session_name).await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(

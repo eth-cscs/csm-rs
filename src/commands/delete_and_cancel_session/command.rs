@@ -3,7 +3,6 @@ use serde_json::Value;
 use crate::{
   bss::types::BootParameters,
   cfs::{
-    self,
     component::http_client::v2::types::Component,
     session::{
       http_client::v2::types::CfsSessionGetResponse,
@@ -112,13 +111,13 @@ pub async fn exec(
   if dry_run {
     log::info!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
   } else {
-    cfs::session::http_client::v3::delete(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      cfs_session_name,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .cfs_session_v3_delete(cfs_session_name)
     .await?;
   }
 

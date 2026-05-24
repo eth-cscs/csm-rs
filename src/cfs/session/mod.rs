@@ -1,7 +1,6 @@
 pub mod http_client;
 pub mod utils;
 
-use crate::cfs;
 use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 #[allow(deprecated)]
@@ -22,17 +21,13 @@ pub async fn get_one(
   socks5_proxy: Option<&str>,
   session_name: &String,
 ) -> Result<CfsSessionGetResponse, Error> {
-  let cfs_session_vec = cfs::session::http_client::v2::get(
-    shasta_token,
+  let cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-    None,
-    None,
-    Some(session_name),
-    None,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_get(None, None, None, Some(session_name), None)
   .await?;
 
   if cfs_session_vec.len() == 1 {
@@ -55,11 +50,13 @@ pub async fn get_and_sort(
   session_name_opt: Option<&String>,
   is_succeded_opt: Option<bool>,
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-  let mut cfs_session_vec = cfs::session::http_client::v2::get(
-    shasta_token,
+  let mut cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_get(
     min_age_opt,
     max_age_opt,
     status_opt,
@@ -84,13 +81,13 @@ pub async fn post(
   log::info!("Create CFS session '{}'", session.name);
   log::debug!("Create CFS session request payload:\n{:#?}", session);
 
-  cfs::session::http_client::v2::post(
-    shasta_token,
+  crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    session,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_post(session)
   .await
 }
 
@@ -100,6 +97,7 @@ pub async fn post(
   since = "0.42.3-beta.71",
   note = "this function prints CFS logs to stdout"
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn i_post_sync(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -114,7 +112,7 @@ pub async fn i_post_sync(
 ) -> Result<CfsSessionGetResponse, Error> {
   // Create CFS session
   log::info!("Create CFS session '{}'", session.name);
-  let cfs_session: CfsSessionGetResponse = cfs::session::post(
+  let cfs_session: CfsSessionGetResponse = crate::cfs::session::post(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
