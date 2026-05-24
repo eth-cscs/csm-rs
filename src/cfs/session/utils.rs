@@ -339,9 +339,9 @@ pub async fn wait_cfs_session_to_finish(
       })?;
 
     if cfs_session_status != "complete" && i < max {
-      print!("\x1B[2K"); // Clear current line
+      log::info!("\x1B[2K"); // Clear current line
       io::stdout().flush()?;
-      println!(
+      log::info!(
         "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
         cfs_session_id, cfs_session_status, i, max
       );
@@ -351,7 +351,7 @@ pub async fn wait_cfs_session_to_finish(
 
       i += 1;
     } else {
-      println!(
+      log::info!(
         "CFS session '{}' finished with status '{}'",
         cfs_session_id, cfs_session_status
       );

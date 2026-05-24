@@ -196,7 +196,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    println!(
+    log::info!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -228,7 +228,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    println!(
+    log::info!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -258,7 +258,7 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    println!(
+    log::info!(
       "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
       container_name, attempt, max_attempts
     );
@@ -289,7 +289,7 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    println!(
+    log::info!(
       "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
       container_name, attempt, max_attempts
     );
@@ -357,7 +357,7 @@ pub async fn i_print_init_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    println!("{}", line);
+    log::info!("{}", line);
   }
 
   Ok(())
@@ -398,7 +398,7 @@ pub async fn i_print_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    println!("{}", line);
+    log::info!("{}", line);
   }
 
   Ok(())
@@ -567,7 +567,7 @@ pub async fn get_pod_and_wait_items(
 
   // Waiting for pod to start
   while cfs_session_pods.items.is_empty() && i <= max {
-    println!(
+    log::info!(
       "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
       cfs_session_name,
       delay_secs,
@@ -646,7 +646,7 @@ pub async fn get_init_container_and_wait_to_ready(
       init_container.name,
       init_container_status(cfs_session_pod, &init_container.name)
     );
-    println!(
+    log::info!(
       "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       init_container.name,
       i + 1,
@@ -792,7 +792,7 @@ pub async fn get_container_logs_stream(
       container.name,
       container_status(&cfs_session_pod, &container.name)
     );
-    println!(
+    log::info!(
       "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       container.name,
       i + 1,
@@ -868,7 +868,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
-    println!(
+    log::info!(
       "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
       cfs_session_name,
       i + 1,
@@ -917,18 +917,18 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   output = output.trim().to_string();
 
-  println!("{output}");
+  log::info!("{output}");
 
   output
     .strip_prefix("ansible_host: ")
     .and_then(|v| v.strip_suffix("-service.ims.svc.cluster.local"))
     .unwrap();
 
-  println!("{output}");
+  log::info!("{output}");
 
   let ansible_target_container_label = output + "-customize";
 
-  println!("{ansible_target_container_label}");
+  log::info!("{ansible_target_container_label}");
 
   // Find ansible target container
 
@@ -947,7 +947,7 @@ pub async fn attach_cfs_session_container_target_k8s_service_name(
 
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
-    println!(
+    log::info!(
       "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
       cfs_session_name,
       i + 1,

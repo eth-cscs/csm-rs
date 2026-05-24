@@ -201,3 +201,320 @@ pub(crate) async fn delete(
     Err(Error::CsmError(payload))
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde::Deserialize;
+  use serde_json::json;
+  use wiremock::matchers::{
+    bearer_token, body_json, header, method, path, query_param,
+  };
+  use wiremock::{Mock, MockServer, ResponseTemplate};
+
+  // ---------- build_client ----------
+
+  // A minimal self-signed cert, used to verify that build_client accepts
+  // well-formed PEM. We don't actually make any requests against it.
+  const TEST_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
+MIIBhTCCASugAwIBAgIQIRi6zePL6mKjOipn+dNuaTAKBggqhkjOPQQDAjASMRAw\n\
+DgYDVQQKEwdBY21lIENvMB4XDTE3MTAyMDE5NDMwNloXDTE4MTAyMDE5NDMwNlow\n\
+EjEQMA4GA1UEChMHQWNtZSBDbzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABD0d\n\
+7VNhbWvZLWPuj/RtHFjvtJBEwOkhbN/BnnE8rnZR8+sbwnc/KhCk3FhnpHZnQz7B\n\
+5aETbbIgmuvewdjvSBSjYzBhMA4GA1UdDwEB/wQEAwICpDATBgNVHSUEDDAKBggr\n\
+BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MCkGA1UdEQQiMCCCDmxvY2FsaG9zdDo1\n\
+NDUzgg4xMjcuMC4wLjE6NTQ1MzAKBggqhkjOPQQDAgNIADBFAiEA2zpJEPQyz6/l\n\
+Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
+6MF9+Yw1Yy0t\n\
+-----END CERTIFICATE-----\n";
+
+  #[test]
+  fn build_client_with_valid_pem_succeeds() {
+    let client = build_client(TEST_PEM.as_bytes(), None);
+    assert!(client.is_ok());
+  }
+
+  // NOTE: there is no `build_client_with_invalid_pem_fails` test because
+  // `reqwest::Certificate::from_pem` is lenient: it tolerates input without
+  // PEM blocks and returns Ok with an empty cert chain. So malformed input
+  // is not actually surfaced as an error by build_client.
+
+  #[test]
+  fn build_client_with_socks5_proxy_succeeds() {
+    let client =
+      build_client(TEST_PEM.as_bytes(), Some("socks5://localhost:9050"));
+    assert!(client.is_ok());
+  }
+
+  #[test]
+  fn build_client_with_invalid_proxy_url_fails() {
+    let client = build_client(TEST_PEM.as_bytes(), Some(":::not a url:::"));
+    assert!(client.is_err());
+  }
+
+  // ---------- request helpers (use wiremock, plain HTTP) ----------
+
+  #[derive(Deserialize, Debug, PartialEq)]
+  struct Widget {
+    id: u32,
+    name: String,
+  }
+
+  #[tokio::test]
+  async fn get_json_success() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/widgets/1"))
+      .and(bearer_token("tok"))
+      .respond_with(
+        ResponseTemplate::new(200).set_body_json(json!({"id": 1, "name": "a"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let widget: Widget =
+      get_json(&client, &format!("{}/widgets/1", server.uri()), "tok")
+        .await
+        .expect("should succeed");
+    assert_eq!(widget, Widget { id: 1, name: "a".into() });
+  }
+
+  #[tokio::test]
+  async fn get_json_non_success_returns_csm_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/widgets/missing"))
+      .respond_with(
+        ResponseTemplate::new(404)
+          .set_body_json(json!({"detail": "not found"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let result: Result<Widget, _> = get_json(
+      &client,
+      &format!("{}/widgets/missing", server.uri()),
+      "tok",
+    )
+    .await;
+    match result {
+      Err(Error::CsmError(v)) => {
+        assert_eq!(v["detail"], "not found")
+      }
+      other => panic!("expected CsmError, got {:?}", other),
+    }
+  }
+
+  #[tokio::test]
+  async fn get_json_with_query_sends_params() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/widgets"))
+      .and(query_param("limit", "100000"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let result: Vec<Widget> = get_json_with_query(
+      &client,
+      &format!("{}/widgets", server.uri()),
+      "tok",
+      &[("limit", 100000)],
+    )
+    .await
+    .expect("should succeed");
+    assert!(result.is_empty());
+  }
+
+  #[tokio::test]
+  async fn post_json_sends_body_and_deserializes_response() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+      .and(path("/widgets"))
+      .and(bearer_token("tok"))
+      .and(body_json(json!({"name": "new"})))
+      .respond_with(
+        ResponseTemplate::new(201)
+          .set_body_json(json!({"id": 42, "name": "new"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let widget: Widget = post_json(
+      &client,
+      &format!("{}/widgets", server.uri()),
+      "tok",
+      &json!({"name": "new"}),
+    )
+    .await
+    .expect("should succeed");
+    assert_eq!(widget.id, 42);
+  }
+
+  #[tokio::test]
+  async fn put_json_works() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+      .and(path("/widgets/1"))
+      .respond_with(
+        ResponseTemplate::new(200)
+          .set_body_json(json!({"id": 1, "name": "updated"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let widget: Widget = put_json(
+      &client,
+      &format!("{}/widgets/1", server.uri()),
+      "tok",
+      &json!({"name": "updated"}),
+    )
+    .await
+    .expect("should succeed");
+    assert_eq!(widget.name, "updated");
+  }
+
+  #[tokio::test]
+  async fn delete_success_returns_unit() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+      .and(path("/widgets/1"))
+      .and(bearer_token("tok"))
+      .respond_with(ResponseTemplate::new(204))
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let result =
+      delete(&client, &format!("{}/widgets/1", server.uri()), "tok").await;
+    assert!(result.is_ok());
+  }
+
+  #[tokio::test]
+  async fn delete_non_success_returns_csm_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+      .and(path("/widgets/locked"))
+      .respond_with(
+        ResponseTemplate::new(409)
+          .set_body_json(json!({"detail": "in use"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let result =
+      delete(&client, &format!("{}/widgets/locked", server.uri()), "tok")
+        .await;
+    match result {
+      Err(Error::CsmError(v)) => {
+        assert_eq!(v["detail"], "in use")
+      }
+      other => panic!("expected CsmError, got {:?}", other),
+    }
+  }
+
+  // ---------- response handlers ----------
+
+  #[tokio::test]
+  async fn handle_json_or_text_response_text_fallback() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/cfs"))
+      .respond_with(ResponseTemplate::new(500).set_body_string("server boom"))
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let response = client
+      .get(format!("{}/cfs", server.uri()))
+      .send()
+      .await
+      .unwrap();
+    let result: Result<Widget, _> =
+      handle_json_or_text_response(response).await;
+    match result {
+      Err(Error::Message(m)) => assert_eq!(m, "server boom"),
+      other => panic!("expected Message('server boom'), got {:?}", other),
+    }
+  }
+
+  #[tokio::test]
+  async fn handle_json_or_request_error_unauthorized() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/hsm"))
+      .respond_with(
+        ResponseTemplate::new(401).set_body_string("auth header missing"),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let response = client
+      .get(format!("{}/hsm", server.uri()))
+      .send()
+      .await
+      .unwrap();
+    let result: Result<Widget, _> =
+      handle_json_or_request_error(response).await;
+    match result {
+      Err(Error::RequestError { payload, .. }) => {
+        assert_eq!(payload, "auth header missing")
+      }
+      other => panic!("expected RequestError, got {:?}", other),
+    }
+  }
+
+  #[tokio::test]
+  async fn handle_json_or_request_error_other_status_returns_csm_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/hsm/x"))
+      .respond_with(
+        ResponseTemplate::new(500)
+          .set_body_json(json!({"detail": "db unavailable"})),
+      )
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let response = client
+      .get(format!("{}/hsm/x", server.uri()))
+      .send()
+      .await
+      .unwrap();
+    let result: Result<Widget, _> =
+      handle_json_or_request_error(response).await;
+    match result {
+      Err(Error::CsmError(v)) => {
+        assert_eq!(v["detail"], "db unavailable")
+      }
+      other => panic!("expected CsmError, got {:?}", other),
+    }
+  }
+
+  // Bearer auth verification — make sure every helper actually sends the token
+  #[tokio::test]
+  async fn bearer_token_is_sent_with_get_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/auth"))
+      .and(header("authorization", "Bearer test-token"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!({"ok": 1})))
+      .mount(&server)
+      .await;
+
+    let client = reqwest::Client::new();
+    let _: serde_json::Value =
+      get_json(&client, &format!("{}/auth", server.uri()), "test-token")
+        .await
+        .expect("should succeed");
+  }
+}
+

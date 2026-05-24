@@ -72,7 +72,7 @@ pub async fn wait_nodes_to_power_on(
       })
       .unwrap_or_default();
 
-    print!(
+    log::info!(
       "\rWaiting nodes to power on. Trying again in {} seconds. Attempt {} of {}.",
       delay_secs,
       i + 1,
@@ -137,7 +137,7 @@ pub async fn wait_nodes_to_power_off(
       })
       .unwrap_or_default();
 
-    print!(
+    log::info!(
       "\rWaiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
       delay_secs,
       i + 1,

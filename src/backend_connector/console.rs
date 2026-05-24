@@ -64,8 +64,8 @@ impl ConsoleTrait for Csm {
       })
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    println!("Connected to {}!", xname,);
-    println!("Use &. key combination to exit the console.",);
+    log::info!("Connected to {}!", xname,);
+    log::info!("Use &. key combination to exit the console.",);
 
     Ok((
       Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,
@@ -120,11 +120,11 @@ impl ConsoleTrait for Csm {
       })
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    println!(
+    log::info!(
       "Connected to session target container for session name: {}!",
       session_name
     );
-    println!("Use &. key combination to exit the console.",);
+    log::info!("Use &. key combination to exit the console.",);
 
     Ok((
       Box::new(attached.stdin().unwrap()) as Box<dyn AsyncWrite + Unpin + Send>,

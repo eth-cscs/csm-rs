@@ -185,7 +185,7 @@ pub async fn exec(
         // When applying a SAT file, I'm assuming the user doesn't want to create new HSM groups or delete empty parent hsm groups
         // But this could be changed.
         if dry_run {
-          println!("Dry run: Create HSM groups based on hardware pattern");
+          log::info!("Dry run: Create HSM groups based on hardware pattern");
         } else {
           apply_hw_cluster_pin::command::exec(
             shasta_token,
@@ -227,7 +227,7 @@ pub async fn exec(
         );
 
         if dry_run {
-          println!(
+          log::info!(
             "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
             target_hsm_group_name, new_target_hsm_group_members_vec
           );
@@ -280,7 +280,7 @@ pub async fn exec(
 
     let cfs_configuration_name = cfs_configuration.name.to_string();
 
-    println!("CFS configuration '{}' created", cfs_configuration_name);
+    log::info!("CFS configuration '{}' created", cfs_configuration_name);
 
     cfs_configuration_name_vec.push(cfs_configuration_name.clone());
 

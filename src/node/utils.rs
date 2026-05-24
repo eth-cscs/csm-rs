@@ -286,7 +286,7 @@ pub async fn get_node_details(
       {
         (node_boot_params.get_boot_image(), node_boot_params.params)
       } else {
-        eprintln!("BSS boot parameters for node '{}' - NOT FOUND", xname);
+        log::warn!("BSS boot parameters for node '{}' - NOT FOUND", xname);
         ("Not found".to_string(), "Not found".to_string())
       };
 

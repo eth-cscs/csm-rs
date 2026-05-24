@@ -53,13 +53,12 @@ pub async fn exec(
   let mut download_counter = 1;
 
   if bos_templates.is_empty() {
-    println!("No BOS template found!");
-    std::process::exit(1);
+    return Err(Error::Message("No BOS template found!".to_string()));
   } else {
     // BOS ------------------------------------------------------------------------------------
     let bos_file = File::create(&bos_file_path)?;
 
-    println!(
+    log::info!(
       "Downloading BOS session template {} to {} [{}/{}]",
       &bos.unwrap(),
       &bos_file_path.clone().to_string_lossy(),
@@ -74,7 +73,7 @@ pub async fn exec(
     // HSM group -----------------------------------------------------------------------------
 
     let hsm_file = File::create(&hsm_file_path)?;
-    println!(
+    log::info!(
       "Downloading HSM configuration in bos template {} to {} [{}/{}]",
       &bos.unwrap(),
       &hsm_file_path.clone().to_string_lossy(),
@@ -126,7 +125,7 @@ pub async fn exec(
     let cfs_file_path = dest_path.join(&cfs_file_name);
     let cfs_file = File::create(&cfs_file_path)?;
 
-    println!(
+    log::info!(
       "Downloading CFS configuration {} to {} [{}/{}]",
       &configuration_name,
       &cfs_file_path.clone().to_string_lossy(),
@@ -164,7 +163,7 @@ pub async fn exec(
         let ims_file_path = dest_path.join(&ims_file_name);
         let ims_file = File::create(&ims_file_path)?;
 
-        println!(
+        log::info!(
           "Downloading IMS image record {} to {} [{}/{}]",
           &image_id_related_to_bos_sessiontemplate,
           &ims_file_path.clone().to_string_lossy(),
@@ -215,7 +214,7 @@ pub async fn exec(
               )
               .await
               .unwrap_or(-1);
-              println!(
+              log::info!(
                 "Downloading image file {} ({}) to {}/{} [{}/{}]",
                 &src,
                 humansize::format_size(object_size as u64, DECIMAL),
@@ -242,19 +241,19 @@ pub async fn exec(
                 ),
               };
             } // for file in files2download
-            println!("\nDone, the following image bundle was generated:");
-            println!("\tBOS file: {}", &bos_file_path.to_string_lossy());
-            println!("\tCFS file: {}", &cfs_file_path.to_string_lossy());
-            println!("\tHSM file: {}", &hsm_file_path.to_string_lossy());
-            println!("\tIMS file: {}", &ims_file_path.to_string_lossy());
+            log::info!("\nDone, the following image bundle was generated:");
+            log::info!("\tBOS file: {}", &bos_file_path.to_string_lossy());
+            log::info!("\tCFS file: {}", &cfs_file_path.to_string_lossy());
+            log::info!("\tHSM file: {}", &hsm_file_path.to_string_lossy());
+            log::info!("\tIMS file: {}", &ims_file_path.to_string_lossy());
             let ims_image_name = migrate_restore::get_image_name_from_ims_file(
               &ims_file_path.clone().to_string_lossy().to_string(),
             )?;
-            println!("\tImage name: {}", ims_image_name);
+            log::info!("\tImage name: {}", ims_image_name);
             for file in files2download {
               let dest = String::from(destination.unwrap());
               let src = image_id.clone() + "/" + file;
-              println!("\t\tfile: {}/{}", dest, src);
+              log::info!("\t\tfile: {}/{}", dest, src);
             }
           }
           Err(e) => {

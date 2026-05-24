@@ -134,7 +134,7 @@ pub async fn wait_to_complete(
     )
     .await?;
 
-    eprintln!(
+    log::warn!(
       "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
       transition.operation,
       transition.transition_status,

@@ -1,5 +1,5 @@
 use crate::error::Error;
-use base64::decode;
+use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::Value;
 
 /* // FIXME: replace Error to my own one
@@ -15,7 +15,7 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
     .nth(1)
     .unwrap_or("JWT Token not valid");
 
-  let claims_u8 = decode(base64_claims).map_err(|e| {
+  let claims_u8 = STANDARD.decode(base64_claims).map_err(|e| {
     Error::Message(format!(
       "ERROR - could not get claims in JWT token. Reason:\n{}",
       e

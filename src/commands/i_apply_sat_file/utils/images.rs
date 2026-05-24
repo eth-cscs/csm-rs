@@ -125,22 +125,14 @@ pub fn get_next_image_in_sat_file_to_process_struct(
 pub fn get_image_name_or_ref_name_to_process(
   image_yaml: &serde_yaml::Value,
 ) -> String {
-  if image_yaml.get("ref_name").is_some() {
-    image_yaml
-      .get("ref_name")
-      .and_then(Value::as_str)
-      .map(str::to_string)
-      .unwrap()
-  } else {
-    // If the image processed is missing the field "ref_name", then use the field "name"
-    // instead, this is needed to flag this image as processed and filtered when
-    // calculating the next image to process (get_next_image_to_process)
-    image_yaml
-      .get("name")
-      .and_then(Value::as_str)
-      .map(str::to_string)
-      .unwrap()
-  }
+  // Prefer ref_name, fall back to name. If neither is a string, return empty
+  // (this fn is deprecated; the struct version is preferred).
+  image_yaml
+    .get("ref_name")
+    .and_then(Value::as_str)
+    .or_else(|| image_yaml.get("name").and_then(Value::as_str))
+    .map(str::to_string)
+    .unwrap_or_default()
 }
 
 /// Get the "ref_name" from an image, because we need to be aware of which images in SAT file have
@@ -320,18 +312,18 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     }
 
     let image_id = cfs_session.first_result_id().unwrap_or_default();
-    println!("Image '{}' ({}) created", image_name, image_id);
+    log::info!("Image '{}' ({}) created", image_name, image_id);
 
     Ok(image_id.to_string())
   } else {
-    println!(
+    log::info!(
       "Dry run mode: Create CFS session:\n{}",
       serde_json::to_string_pretty(&cfs_session)?
     );
 
     let image_id = Uuid::new_v4().to_string();
 
-    println!(
+    log::info!(
       "Dry run mode: Image '{}' ({}) created",
       image_name, image_id
     );
@@ -363,7 +355,13 @@ async fn get_session_from_image_yaml(
   );
 
   // Get CFS configuration related to CFS session in SAT file
-  let configuration_name = image_yaml.configuration.as_ref().unwrap();
+  let configuration_name =
+    image_yaml.configuration.as_ref().ok_or_else(|| {
+      Error::Message(format!(
+        "SAT file: image '{}' is missing 'configuration' field",
+        image_yaml.name
+      ))
+    })?;
 
   // Get HSM groups related to CFS session in SAT file
   let groups_name: Vec<&str> = image_yaml
@@ -447,7 +445,11 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   let root_public_ssh_key: &str = root_public_ssh_key_value
     .get("id")
     .and_then(serde_json::Value::as_str)
-    .unwrap();
+    .ok_or_else(|| {
+      Error::Message(
+        "IMS public-key response is missing or has non-string 'id'".to_string(),
+      )
+    })?;
 
   // let ims_job = ims::job::types::JobPostRequest {
   let ims_job = ims::job::types::Job {
@@ -474,7 +476,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   };
 
   let ims_job = if dry_run {
-    println!(
+    log::info!(
       "Dry run mode: Create IMS job:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
@@ -492,7 +494,12 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
     .await?
   };
 
-  Ok(ims_job.resultant_image_id.unwrap())
+  ims_job.resultant_image_id.ok_or_else(|| {
+    Error::Message(format!(
+      "IMS job for image '{}' did not produce a resultant_image_id",
+      image_name
+    ))
+  })
 }
 
 /* async fn process_sat_file_image_ims_type_recipe(
@@ -580,7 +587,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   };
 
   let ims_job = if dry_run {
-    println!(
+    log::info!(
       "Dry run mode: Create IMS job:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
@@ -597,7 +604,12 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
 
   log::info!("IMS job response:\n{:#?}", ims_job);
 
-  Ok(ims_job.resultant_image_id.unwrap())
+  ims_job.resultant_image_id.ok_or_else(|| {
+    Error::Message(format!(
+      "IMS job for image '{}' did not produce a resultant_image_id",
+      image_name
+    ))
+  })
 } */
 
 pub(super) async fn process_sat_file_image_ims_type_recipe(
@@ -629,14 +641,18 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   log::info!("IMS recipe details:\n{:#?}", recipe_detail_opt);
 
   // Check recipe with requested name exists
-  let recipe_id = if let Some(recipe_detail) = recipe_detail_opt {
-    recipe_detail.id.as_ref().unwrap()
-  } else {
-    return Err(Error::Message(format!(
+  let recipe_detail = recipe_detail_opt.ok_or_else(|| {
+    Error::Message(format!(
       "IMS recipe with name '{}' - not found. Exit",
       recipe_name
-    )));
-  };
+    ))
+  })?;
+  let recipe_id = recipe_detail.id.as_ref().ok_or_else(|| {
+    Error::Message(format!(
+      "IMS recipe '{}' has no 'id' field",
+      recipe_name
+    ))
+  })?;
 
   log::info!("IMS recipe id found '{}'", recipe_id);
 
@@ -657,7 +673,11 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   let root_public_ssh_key = root_public_ssh_key_value
     .get("id")
     .and_then(serde_json::Value::as_str)
-    .unwrap();
+    .ok_or_else(|| {
+      Error::Message(
+        "IMS public-key response is missing or has non-string 'id'".to_string(),
+      )
+    })?;
 
   let ims_job = ims::job::types::Job {
     job_type: "create".to_string(),
@@ -683,7 +703,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   };
 
   let ims_job = if dry_run {
-    println!(
+    log::info!(
       "Dry run mode: Create IMS job:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
@@ -701,7 +721,12 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
 
   log::info!("IMS job response:\n{:#?}", ims_job);
 
-  Ok(ims_job.resultant_image_id.unwrap())
+  ims_job.resultant_image_id.ok_or_else(|| {
+    Error::Message(format!(
+      "IMS job for image '{}' did not produce a resultant_image_id",
+      image_name
+    ))
+  })
 }
 
 pub(super) fn process_sat_file_image_old_version_struct(
@@ -743,15 +768,18 @@ pub fn filter_product_catalog_images(
         image_name
       )))
     } else {
-      let image_key: &String = image_key_vec.first().unwrap();
-      let image_value_opt = image_map.get(image_key);
-      Ok(
-        image_value_opt
-          .and_then(|image_value| image_value.get("id"))
-          .and_then(serde_json::Value::as_str)
-          .map(str::to_string)
-          .unwrap(),
-      )
+      let image_key: &String = &image_key_vec[0];
+      image_map
+        .get(image_key)
+        .and_then(|image_value| image_value.get("id"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "Product catalog entry '{}' for image '{}' has no 'id' field",
+            image_key, image_name
+          ))
+        })
     }
   // } else if let Some(wildcard) = filter.get("wildcard") {
   } else if let Filter::Wildcard { wildcard } = filter {
@@ -772,15 +800,18 @@ pub fn filter_product_catalog_images(
         image_name
       )))
     } else {
-      let image_key = image_key_vec.first().cloned().unwrap();
-      let image_value_opt = image_map.get(image_key);
-      Ok(
-        image_value_opt
-          .and_then(|image_value| image_value.get("id"))
-          .and_then(serde_json::Value::as_str)
-          .map(str::to_string)
-          .unwrap(),
-      )
+      let image_key = image_key_vec[0];
+      image_map
+        .get(image_key)
+        .and_then(|image_value| image_value.get("id"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "Product catalog entry '{}' for image '{}' has no 'id' field",
+            image_key, image_name
+          ))
+        })
     }
   // } else if let Some(prefix) = filter.get("prefix") {
   } else if let Filter::Prefix { prefix } = filter {
@@ -801,15 +832,18 @@ pub fn filter_product_catalog_images(
         image_name
       )))
     } else {
-      let image_key = image_key_vec.first().cloned().unwrap();
-      let image_value_opt = image_map.get(image_key);
-      Ok(
-        image_value_opt
-          .and_then(|image_value| image_value.get("id"))
-          .and_then(serde_json::Value::as_str)
-          .map(str::to_string)
-          .unwrap(),
-      )
+      let image_key = image_key_vec[0];
+      image_map
+        .get(image_key)
+        .and_then(|image_value| image_value.get("id"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "Product catalog entry '{}' for image '{}' has no 'id' field",
+            image_key, image_name
+          ))
+        })
     }
   } else {
     Err(Error::Message(format!(
@@ -849,8 +883,7 @@ pub fn validate_sat_file_images_section(
 
         let is_image_base_id_in_csm = image_vec.iter().any(
           |image: &ims::image::http_client::types::Image| {
-            let image_id = image.id.as_ref().unwrap();
-            image_id.eq(id)
+            image.id.as_ref().is_some_and(|image_id| image_id.eq(id))
           },
         );
 
@@ -896,7 +929,12 @@ pub fn validate_sat_file_images_section(
 
         let product_name = &product.name;
 
-        let product_version = product.version.as_ref().unwrap();
+        let product_version = product.version.as_ref().ok_or_else(|| {
+          Error::Message(format!(
+            "SAT file: image '{}' base.product '{}' is missing 'version'",
+            image_name, product_name
+          ))
+        })?;
 
         let product_type = &product.r#type;
 
@@ -1036,7 +1074,7 @@ pub fn validate_sat_file_images_section(
             }
           }
         } else {
-          eprintln!(
+          log::warn!(
             "Image '{}' is missing the field 'base.ims.name'. Exit",
             image_name
           );
@@ -1149,7 +1187,7 @@ pub fn validate_sat_file_images_section(
 
   for image_yaml in image_yaml_vec {
     // Validate image
-    let image_name = image_yaml.get("name").and_then(Value::as_str).unwrap();
+    let image_name = yaml_str(image_yaml, "name")?;
 
     log::info!("Validate 'image' '{}'", image_name);
 
@@ -1172,16 +1210,14 @@ pub fn validate_sat_file_images_section(
 
       let is_image_base_id_in_csm = image_vec.iter().any(
         |image: &ims::image::http_client::types::Image| {
-          let image_id = image.id.as_ref().unwrap();
-          image_id.eq(image_ims_id_to_find)
+          image.id.as_ref().is_some_and(|id| id.eq(image_ims_id_to_find))
         },
       );
 
       if !is_image_base_id_in_csm {
         return Err(Error::Message(format!(
           "Could not find base image id '{}' in image '{}'. Exit",
-          image_ims_id_to_find,
-          image_yaml.get("name").and_then(Value::as_str).unwrap()
+          image_ims_id_to_find, image_name
         )));
       }
     } else if image_yaml.get("base").is_some() {
@@ -1190,11 +1226,11 @@ pub fn validate_sat_file_images_section(
         .get("base")
         .and_then(|base| base.get("image_ref"))
       {
+        let image_ref_str = as_yaml_str(image_ref_to_find)?;
         // Validate base image
         log::info!(
           "Validate 'image' '{}' base image '{}'",
-          image_name,
-          image_ref_to_find.clone().as_str().unwrap()
+          image_name, image_ref_str
         );
 
         // Check there is another image with 'ref_name' that matches this 'image_ref'
@@ -1206,9 +1242,9 @@ pub fn validate_sat_file_images_section(
 
         if !image_found {
           return Err(Error::Message(format!(
-                                "Could not find image with ref name '{}' in SAT file. Cancelling image build proccess. Exit",
-                                image_ref_to_find.as_str().unwrap(),
-                            )));
+            "Could not find image with ref name '{}' in SAT file. Cancelling image build proccess. Exit",
+            image_ref_str,
+          )));
         }
       } else if let Some(image_base_product) = image_yaml["base"].get("product")
       {
@@ -1219,21 +1255,12 @@ pub fn validate_sat_file_images_section(
 
         // Base image created from a cray product
 
-        let product_name = image_base_product
-          .get("name")
-          .and_then(Value::as_str)
-          .unwrap();
+        let product_name = yaml_str(image_base_product, "name")?;
 
-        let product_version = image_base_product
-          .get("version")
-          .and_then(Value::as_str)
-          .unwrap();
+        let product_version = yaml_str(image_base_product, "version")?;
 
-        let product_type = image_base_product
-          .get("type")
-          .and_then(Value::as_str)
-          .map(|v| v.to_string() + "s")
-          .unwrap();
+        let product_type =
+          yaml_str(image_base_product, "type")?.to_string() + "s";
 
         let product_catalog_rslt = &serde_yaml::from_str::<serde_json::Value>(
           &cray_product_catalog
@@ -1376,7 +1403,7 @@ pub fn validate_sat_file_images_section(
             }
           }
         } else {
-          eprintln!(
+          log::warn!(
             "Image '{}' is missing the field 'base.ims.name'. Exit",
             image_name
           );

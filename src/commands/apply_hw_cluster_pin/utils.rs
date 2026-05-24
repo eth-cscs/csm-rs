@@ -228,7 +228,7 @@ pub fn calculate_target_hsm_pin(
     )
     .ok_or_else(|| {
       Error::Message("ERROR - No best candidate found.".to_string())
-      /* eprintln!("ERROR - No best candidate found.");
+      /* log::warn!("ERROR - No best candidate found.");
       std::process::exit(1); */
     })?;
 
@@ -625,7 +625,7 @@ pub async fn get_hsm_node_hw_component_counter(
 
     let permit = Arc::clone(&sem).acquire_owned().await;
 
-    // println!("user_defined_hw_profile_vec_aux: {:?}", user_defined_hw_profile_vec_aux);
+    // log::info!("user_defined_hw_profile_vec_aux: {:?}", user_defined_hw_profile_vec_aux);
     tasks.spawn(async move {
       let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
 

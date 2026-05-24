@@ -100,7 +100,7 @@ pub async fn exec(
 
   // Delete CFS session
   if dry_run {
-    println!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
+    log::info!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
   } else {
     cfs::session::http_client::v3::delete(
       shasta_token,
@@ -132,7 +132,7 @@ async fn delete_images(
 
     if !is_image_boot_node {
       if dry_run {
-        println!(
+        log::info!(
           "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{}'",
           image_id
         );
@@ -147,7 +147,7 @@ async fn delete_images(
         .await?;
       }
     } else {
-      println!(
+      log::info!(
         "Image '{}' is a boot node image. It will not be deleted.",
         image_id
       );
@@ -197,7 +197,7 @@ async fn cancel_session(
   );
 
   if dry_run {
-    println!(
+    log::info!(
       "Dry Run Mode: Update error count on nodes {:?}",
       cfs_component_vec
     );

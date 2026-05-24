@@ -38,9 +38,9 @@ pub async fn wait_ims_job_to_finish(
     let ims_job_status = ims_job.status.unwrap();
 
     if (ims_job_status != "error" && ims_job_status != "success") && i < max {
-      print!("\x1B[2K"); // Clear current line
+      log::info!("\x1B[2K"); // Clear current line
       io::stdout().flush().unwrap();
-      print!(
+      log::info!(
         "\rWaiting IMS job '{}' with job status '{}'. Checking again in 2 secs. Attempt {} of {}.",
         ims_job_id, ims_job_status, i, max
       );
@@ -50,7 +50,7 @@ pub async fn wait_ims_job_to_finish(
 
       i += 1;
     } else {
-      println!(
+      log::info!(
         "\nIMS job '{}' finished with job status '{}'",
         ims_job_id, ims_job_status
       );

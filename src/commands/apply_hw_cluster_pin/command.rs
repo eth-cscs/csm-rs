@@ -376,7 +376,7 @@ pub async fn exec(
       "tags": []
   });
 
-  println!(
+  log::info!(
     "{}",
     serde_json::to_string_pretty(&target_hsm_group_value).unwrap()
   );
@@ -395,7 +395,7 @@ pub async fn exec(
       "tags": []
   });
 
-  println!(
+  log::info!(
     "{}",
     serde_json::to_string_pretty(&parent_hsm_group_value).unwrap()
   );

@@ -69,7 +69,7 @@ pub async fn get_details(
     let cfs_configuration;
 
     for cfs_session_value in cfs_session_vec {
-      // println!("cfs_session_value:\n{:#?}", cfs_session_value);
+      // log::info!("cfs_session_value:\n{:#?}", cfs_session_value);
       let target_groups = cfs_session_value
         .target
         .as_ref()

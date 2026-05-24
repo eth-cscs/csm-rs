@@ -224,12 +224,12 @@ pub async fn remove_hsm_members(
   // *********************************************************************************************************
   // UPDATE HSM GROUP MEMBERS IN CSM
   if dryrun {
-    println!(
+    log::info!(
       "Remove following nodes from HSM group {}:\n{:?}",
       target_hsm_group_name, new_target_hsm_members
     );
 
-    println!("dry-run enabled, changes not persisted.");
+    log::info!("dry-run enabled, changes not persisted.");
   } else {
     for xname in new_target_hsm_members {
       let _ = delete_member(
@@ -320,7 +320,7 @@ pub async fn migrate_hsm_members(
         "tags": []
     });
 
-    println!(
+    log::info!(
       "Target group:\n{}",
       serde_json::to_string_pretty(&target_hsm_group)?
     );
@@ -332,12 +332,12 @@ pub async fn migrate_hsm_members(
         "tags": []
     });
 
-    println!(
+    log::info!(
       "Parent group:\n{}",
       serde_json::to_string_pretty(&parent_hsm_group)?
     );
 
-    println!("dry-run enabled, changes not persisted."); */
+    log::info!("dry-run enabled, changes not persisted."); */
   } else {
     for xname in new_target_hsm_members {
       let member = Member {

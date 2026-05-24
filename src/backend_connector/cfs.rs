@@ -115,10 +115,10 @@ impl CfsTrait for Csm {
     is_succeded_opt: Option<bool>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
     if !hsm_group_name_vec.is_empty() && !xname_vec.is_empty() {
-      eprintln!(
-        "ERROR - Cannot filter by both HSM group names and xnames simultaneously"
-      );
-      std::process::exit(1);
+      return Err(Error::Message(
+        "Cannot filter by both HSM group names and xnames simultaneously"
+          .to_string(),
+      ));
     }
 
     let mut hsm_group_available_vec =
@@ -141,8 +141,9 @@ impl CfsTrait for Csm {
         .retain(|group| hsm_group_name_vec.contains(&group.label));
 
       if hsm_group_available_vec.is_empty() {
-        eprintln!("ERROR - None of the requested HSM groups are available");
-        std::process::exit(1);
+        return Err(Error::Message(
+          "None of the requested HSM groups are available".to_string(),
+        ));
       };
 
       let mut member_available_vec = hsm_group_available_vec
@@ -170,10 +171,10 @@ impl CfsTrait for Csm {
       });
 
       if hsm_group_available_vec.is_empty() {
-        eprintln!(
-          "ERROR - None of the requested xnames are available in the target HSM groups"
-        );
-        std::process::exit(1);
+        return Err(Error::Message(
+          "None of the requested xnames are available in the target HSM groups"
+            .to_string(),
+        ));
       }
 
       (

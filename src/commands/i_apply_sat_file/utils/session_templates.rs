@@ -311,7 +311,7 @@ pub async fn process_session_template_section_in_sat_file(
               }
             });
 
-          println!(
+          log::info!(
             "Dry run mode: Generate mock Image\n{}",
             serde_json::to_string_pretty(&dry_run_mock_image)?
           );
@@ -351,7 +351,7 @@ pub async fn process_session_template_section_in_sat_file(
     );
 
     if dry_run {
-      println!(
+      log::info!(
         "Dry run mode: CFS configuration '{}' found in CSM.",
         bos_session_template_configuration_name
       );
@@ -529,7 +529,7 @@ pub async fn process_session_template_section_in_sat_file(
     };
 
     if dry_run {
-      println!(
+      log::info!(
         "Dry run mode: Create BOS sessiontemplate:\n{}",
         serde_json::to_string_pretty(&create_bos_session_template_payload)?
       );
@@ -537,7 +537,7 @@ pub async fn process_session_template_section_in_sat_file(
       // Generate a mock name for the BOS session template
       let dry_run_bos_sessiontemplate_name =
         format!("DRYRUN_{}", Uuid::new_v4());
-      println!(
+      log::info!(
         "Dry Run Mode: BOS sessiontemplate name '{}' created",
         dry_run_bos_sessiontemplate_name
       );
@@ -553,7 +553,7 @@ pub async fn process_session_template_section_in_sat_file(
       )
       .await?;
 
-      println!(
+      log::info!(
         "BOS sessiontemplate name '{}' created",
         bos_sessiontemplate_name
       );
@@ -588,7 +588,7 @@ pub async fn process_session_template_section_in_sat_file(
       };
 
       if dry_run {
-        println!(
+        log::info!(
           "Dry run mode: Create BOS session:\n{}",
           serde_json::to_string_pretty(&bos_session)?
         );

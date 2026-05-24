@@ -248,7 +248,7 @@ pub async fn get_data_to_delete(
 
       nodes_using_cfs_configuration_as_dessired_configuration_vec.sort();
 
-      eprintln!(
+      log::warn!(
         "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
         cfs_configuration_name,
         cfs_configuration_name,
@@ -264,7 +264,7 @@ pub async fn get_data_to_delete(
 
       if !node_vec.is_empty() {
         image_id_used_to_boot_nodes_vec.push(image_id.to_string());
-        eprintln!(
+        log::warn!(
           "Image '{}' used to boot nodes: {}",
           image_id,
           node_vec.join(", ")
@@ -402,9 +402,9 @@ pub async fn delete(
 
     // process api response
     match image_deleted_value_rslt {
-      Ok(_) => println!("IMS image deleted: {}", image_id),
+      Ok(_) => log::info!("IMS image deleted: {}", image_id),
       Err(e) => {
-        eprintln!("{e}. Continue");
+        log::warn!("{e}. Continue");
       }
     }
   }
@@ -434,7 +434,7 @@ pub async fn delete(
       )
       .await?;
 
-      println!(
+      log::info!(
         "BOS session deleted: {}",
         bos_session_id // For some reason CSM API to delete a BOS
                        // session does not returns the BOS session
@@ -470,14 +470,14 @@ pub async fn delete(
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
-        eprintln!(
+        log::warn!(
           "ERROR deleting CFS session {}, please delete it manually.",
           cfs_session_name,
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        println!("CfS session deleted: {}", cfs_session_name);
+        log::info!("CfS session deleted: {}", cfs_session_name);
         break;
       }
     }
@@ -511,14 +511,14 @@ pub async fn delete(
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
-        eprintln!(
+        log::warn!(
           "ERROR deleting BOS sessiontemplate {}, please delete it manually.",
           bos_sessiontemplate_name,
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        println!("BOS sessiontemplate deleted: {}", bos_sessiontemplate_name);
+        log::info!("BOS sessiontemplate deleted: {}", bos_sessiontemplate_name);
         break;
       }
     }
@@ -549,14 +549,14 @@ pub async fn delete(
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
-        eprintln!(
+        log::warn!(
           "ERROR deleting CFS configuration {}, please delete it manually.",
           cfs_configuration,
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        println!("CFS configuration deleted: {}", cfs_configuration);
+        log::info!("CFS configuration deleted: {}", cfs_configuration);
         break;
       }
     }

@@ -102,15 +102,15 @@ pub async fn exec(
   let backup_hsm_file = hsm_file.to_string();
 
   let ims_image_name: String = get_image_name_from_ims_file(&backup_ims_file)?;
-  println!(" Image name: {}", ims_image_name);
+  log::info!(" Image name: {}", ims_image_name);
 
   let initrd_path = format!("{}/initrd", image_dir);
   let kernel_path = format!("{}/kernel", image_dir);
   let rootfs_path = format!("{}/rootfs", image_dir);
 
-  println!("\tinitrd file: {}", initrd_path);
-  println!("\tkernel file: {}", kernel_path);
-  println!("\trootfs file: {}", rootfs_path);
+  log::info!("\tinitrd file: {}", initrd_path);
+  log::info!("\tkernel file: {}", kernel_path);
+  log::info!("\trootfs file: {}", rootfs_path);
 
   // These should come from the manifest, but let's assume these values are correct
   let vec_backup_image_files = vec![initrd_path, kernel_path, rootfs_path];
@@ -124,11 +124,11 @@ pub async fn exec(
     }
   }
 
-  println!("Calculating image artifact checksum...");
+  log::info!("Calculating image artifact checksum...");
   calculate_image_checksums(&mut ims_image_manifest, &vec_backup_image_files);
 
   // Do we have another image with this name?
-  println!("\n\nRegistering image with IMS...");
+  log::info!("\n\nRegistering image with IMS...");
   let ims_image_id_rslt = ims_register_image(
     shasta_token,
     shasta_base_url,
@@ -146,9 +146,9 @@ pub async fn exec(
     }
   };
 
-  println!("IMS image ID: {}", &ims_image_id);
+  log::info!("IMS image ID: {}", &ims_image_id);
 
-  println!("\nUploading image artifacts to s3...");
+  log::info!("\nUploading image artifacts to s3...");
   s3_upload_image_artifacts(
     shasta_token,
     shasta_base_url,
@@ -159,7 +159,7 @@ pub async fn exec(
     &vec_backup_image_files,
   )
   .await?;
-  println!("\nUpdating IMS image record with the new location in s3...");
+  log::info!("\nUpdating IMS image record with the new location in s3...");
   log::debug!(
     "Updating image record with location of the newly generated manifest.json data"
   );
@@ -173,7 +173,7 @@ pub async fn exec(
   )
   .await;
 
-  println!("\nCreating HSM group...");
+  log::info!("\nCreating HSM group...");
   create_hsm_group_from_file(
     shasta_token,
     shasta_base_url,
@@ -184,7 +184,7 @@ pub async fn exec(
   )
   .await?;
 
-  println!("\nUploading CFS configuration...");
+  log::info!("\nUploading CFS configuration...");
   // create a new CFS configuration based on the original CFS file backed up previously
   // this operation is simple as the file only has git repos and commits
   create_cfs_config(
@@ -197,7 +197,7 @@ pub async fn exec(
   )
   .await?;
 
-  println!("\nUploading BOS sessiontemplate...");
+  log::info!("\nUploading BOS sessiontemplate...");
 
   // Create a new BOS session template based on the original BOS file backed previously
   create_bos_sessiontemplate(
@@ -211,7 +211,7 @@ pub async fn exec(
   )
   .await?;
 
-  println!(
+  log::info!(
     "\nDone, the image bundle, HSM group, CFS configuration and BOS sessiontemplate have been restored."
   );
 
@@ -249,20 +249,20 @@ async fn create_bos_sessiontemplate(
         Some(&bos_sessiontemplate_name),
     )
     .await
-    .unwrap_or_else(|error| {
-        eprint!(
-            "Error: unable to query CSM to get list of BOS sessiontemplates. Error returned: {}",
-            error
-        );
-        std::process::exit(1);
-    });
+    .map_err(|error| {
+      Error::Message(format!(
+        "Unable to query CSM to get list of BOS sessiontemplates: {}",
+        error
+      ))
+    })?;
 
   log::debug!("BOS sessiontemplate filtered: {:#?}", vector);
 
   if !vector.is_empty() {
     if !overwrite {
-      println!("Looks like you do not want to continue, bailing out.");
-      std::process::exit(2)
+      return Err(Error::Message(
+        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
+      ));
     } else {
       match bos::template::http_client::v2::delete(
         shasta_token,
@@ -313,7 +313,7 @@ async fn create_bos_sessiontemplate(
   )
   .await
   {
-    Ok(_result) => println!(
+    Ok(_result) => log::info!(
       "Ok, BOS session template {} created successfully.",
       &bos_sessiontemplate_name
     ),
@@ -353,18 +353,19 @@ async fn create_cfs_config(
     Some(&cfs_config_name),
   )
   .await
-  .unwrap_or_else(|error| {
-    eprint!(
-      "Error: Unable to fetch CFS configuration. Error returned by CSM API: {}",
+  .map_err(|error| {
+    Error::Message(format!(
+      "Unable to fetch CFS configuration: {}",
       error
-    );
-    std::process::exit(1);
-  });
+    ))
+  })?;
 
   if !cfs_config_vec.is_empty() {
     if !overwrite {
-      println!("Looks like you do not want to continue, bailing out.");
-      std::process::exit(2)
+      return Err(Error::Message(
+        "CFS configuration already exists and --overwrite was not set"
+          .to_string(),
+      ));
     }
 
     match cfs::configuration::http_client::v3::delete(
@@ -408,7 +409,7 @@ async fn create_cfs_config(
   {
     Ok(result) => {
       log::debug!("Ok, result: {:#?}", result);
-      println!(
+      log::info!(
         "Ok, CFS configuration {} created successfully.",
         &cfs_config_name
       );
@@ -547,7 +548,7 @@ async fn s3_upload_image_artifacts(
         res
       }
       Err(e) => {
-        eprintln!(
+        log::warn!(
           "Unable to fetch file metadata info, faking the value. Error: {}",
           e
         );
@@ -557,7 +558,7 @@ async fn s3_upload_image_artifacts(
 
     let full_object_path =
       format!("{}/{}", &object_path, &filename.to_string_lossy());
-    println!(
+    log::info!(
       "File {:?} ({}) to s3://{}/{}.",
       &file, &file_size, &bucket_name, &full_object_path
     );
@@ -588,7 +589,7 @@ async fn s3_upload_image_artifacts(
       .await
       {
         Ok(result) => {
-          println!("Ok");
+          log::info!("Ok");
           result
         }
         Err(error) => panic!("Unable to upload file to s3. Error {}", error),
@@ -659,7 +660,7 @@ async fn s3_upload_image_artifacts(
 
   log::debug!("Uploading the new manifest.json file");
   let manifest_full_object_path = format!("{}/manifest.json", &object_path);
-  println!(
+  log::info!(
     "File {:?} -> s3://{}/{}.",
     &new_manifest_file_name, &bucket_name, &manifest_full_object_path
   );
@@ -674,7 +675,7 @@ async fn s3_upload_image_artifacts(
   .await
   {
     Ok(_result) => {
-      println!("OK");
+      log::info!("OK");
     }
     Err(error) => panic!("Unable to upload file to s3. Error {}", error),
   };
@@ -728,14 +729,14 @@ fn calculate_image_checksums(
         res
       }
       Err(e) => {
-        eprintln!(
+        log::warn!(
           "Unable to fetch file metadata info, faking the value. Error: {}",
           e
         );
         "-1".to_string()
       }
     };
-    println!("File {:?} ({})...", &file, &file_size);
+    log::info!("File {:?} ({})...", &file, &file_size);
     let artifact;
     let mut fp = PathBuf::new();
     fp.push(file);
@@ -805,11 +806,12 @@ async fn ims_register_image(
   )
   .await?;
 
-  if !list_images_with_same_name.is_empty()
-    && !overwrite {
-      println!("Looks like you do not want to continue, bailing out.");
-      std::process::exit(2)
-    }
+  if !list_images_with_same_name.is_empty() && !overwrite {
+    return Err(anyhow::anyhow!(
+      "IMS image '{}' already exists and --overwrite-image was not set",
+      ims_image_name
+    ));
+  }
 
   let json_response = ims::image::http_client::post(
     shasta_token,
@@ -882,7 +884,7 @@ pub async fn create_hsm_group_from_file(
     .await
     {
       Ok(group) => {
-        println!(
+        log::info!(
           "The HSM group {} has been created successfully.",
           &group.label
         );
@@ -890,7 +892,7 @@ pub async fn create_hsm_group_from_file(
       Err(error) => {
         if error.to_string().to_lowercase().contains("409") {
           if overwrite {
-            println!("Looks like you want to continue");
+            log::info!("Looks like you want to continue");
             // match backend.delete_group(shasta_token, &group.label).await {
             match delete_group(
               shasta_token,
@@ -914,7 +916,7 @@ pub async fn create_hsm_group_from_file(
                 .await
                 {
                   Ok(_json) => {
-                    println!(
+                    log::info!(
                       "The HSM group {} has been created successfully.",
                       &group.label
                     );
@@ -937,14 +939,16 @@ pub async fn create_hsm_group_from_file(
               }
             }
           } else {
-            println!("Not deleting the group, cannot continue the operation.");
-            std::process::exit(2);
+            return Err(Error::Message(
+              "Not deleting the group, cannot continue the operation."
+                .to_string(),
+            ));
           }
         } else if error.to_string().to_lowercase().contains("400") {
-          eprintln!(
+          return Err(Error::Message(
             "Unable to create the group, the API returned code 400. This usually means the HSM file is malformed, or has incorrect xnames for this site in it."
-          );
-          std::process::exit(2);
+              .to_string(),
+          ));
         }
       }
     };

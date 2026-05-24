@@ -242,7 +242,7 @@ impl CfsConfigurationResponse {
       .and_then(serde_yaml::Value::as_sequence)
       .unwrap()
     {
-      // println!("\n\n### Layer:\n{:#?}\n", layer_json);
+      // log::info!("\n\n### Layer:\n{:#?}\n", layer_json);
 
       if layer_yaml.get("git").is_some() {
         // Git layer
