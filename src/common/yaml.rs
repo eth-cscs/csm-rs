@@ -52,20 +52,3 @@ pub(crate) fn as_yaml_str(value: &serde_yaml::Value) -> Result<&str, Error> {
     Error::Message("SAT file: value is not a string".to_string())
   })
 }
-
-/// Get `value[key]` as `&str` from a `serde_json::Value`. Same semantics as
-/// `yaml_str` but for JSON.
-pub(crate) fn json_str<'a>(
-  value: &'a serde_json::Value,
-  key: &str,
-) -> Result<&'a str, Error> {
-  value
-    .get(key)
-    .and_then(serde_json::Value::as_str)
-    .ok_or_else(|| {
-      Error::Message(format!(
-        "Missing or non-string field '{}' in JSON response",
-        key
-      ))
-    })
-}
