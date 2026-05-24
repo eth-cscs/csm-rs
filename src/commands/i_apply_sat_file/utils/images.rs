@@ -484,13 +484,13 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
     dry_run_ims_job.resultant_image_id = Some(Uuid::new_v4().to_string());
     dry_run_ims_job
   } else {
-    ims::job::http_client::post_sync(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &ims_job,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_job_post_sync(&ims_job)
     .await?
   };
 
@@ -600,13 +600,13 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     );
     ims_job
   } else {
-    ims::job::http_client::post_sync(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &ims_job,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_job_post_sync(&ims_job)
     .await?
   };
 
