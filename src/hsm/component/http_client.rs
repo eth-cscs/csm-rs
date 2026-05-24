@@ -1,62 +1,13 @@
 use serde_json::Value;
 
-use crate::{common::http, error::Error, hsm::component::types::Component};
+use crate::{
+  ShastaClient, common::http, error::Error, hsm::component::types::Component,
+};
 
 use super::types::{
   ComponentArray, ComponentArrayPostArray, ComponentArrayPostByNidQuery,
   ComponentArrayPostQuery, ComponentPut,
 };
-
-pub async fn get_all(
-  base_url: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  auth_token: &str,
-  nid_only: Option<&str>,
-) -> Result<ComponentArray, Error> {
-  get(
-    base_url, root_cert, socks5_proxy, auth_token, None, None, None, None,
-    None, None, None, None, None, None, None, None, None, None, None, None,
-    None, None, None, nid_only,
-  )
-  .await
-}
-
-pub async fn get_all_nodes(
-  base_url: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  auth_token: &str,
-  nid_only: Option<&str>,
-) -> Result<ComponentArray, Error> {
-  get(
-    base_url,
-    root_cert,
-    socks5_proxy,
-    auth_token,
-    None,
-    Some("Node"),
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    None,
-    nid_only,
-  )
-  .await
-}
 
 pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
   component_vec.retain(|component| {
@@ -68,302 +19,324 @@ pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
   });
 }
 
-pub async fn get_and_filter(
-  auth_token: &str,
-  base_url: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  xname_list: &[String],
-) -> Result<Vec<Component>, Error> {
-  let mut component_vec = get_all(base_url, root_cert, socks5_proxy, auth_token, None)
-    .await?
-    .components
-    .unwrap_or_default();
-
-  filter(&mut component_vec, xname_list);
-
-  Ok(component_vec)
-}
-
-pub async fn get(
-  base_url: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  auth_token: &str,
-  id: Option<&str>,
-  r#type: Option<&str>,
-  state: Option<&str>,
-  flag: Option<&str>,
-  role: Option<&str>,
-  subrole: Option<&str>,
-  enabled: Option<&str>,
-  software_status: Option<&str>,
-  subtype: Option<&str>,
-  arch: Option<&str>,
-  class: Option<&str>,
-  nid: Option<&str>,
-  nid_start: Option<&str>,
-  nid_end: Option<&str>,
-  partition: Option<&str>,
-  group: Option<&str>,
-  state_only: Option<&str>,
-  flag_only: Option<&str>,
-  role_only: Option<&str>,
-  nid_only: Option<&str>,
-) -> Result<ComponentArray, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-
-  let mut nid_vec_query = nid.map(|nids| {
-    nids
-      .split(",")
-      .map(|nid| ("nid", Some(nid)))
-      .collect::<Vec<(&str, Option<&str>)>>()
-  });
-
-  let mut query_params = vec![
-    ("id", id),
-    ("type", r#type),
-    ("state", state),
-    ("flag", flag),
-    ("role", role),
-    ("subrole", subrole),
-    ("enabled", enabled),
-    ("softwarestatus", software_status),
-    ("subtype", subtype),
-    ("arch", arch),
-    ("class", class),
-    ("nidstart", nid_start),
-    ("nidend", nid_end),
-    ("partition", partition),
-    ("group", group),
-    ("stateonly", state_only),
-    ("flagonly", flag_only),
-    ("roleonly", role_only),
-    ("nidonly", nid_only),
-  ];
-
-  if let Some(mut nid_vec_query) = nid_vec_query.take() {
-    query_params.append(&mut nid_vec_query);
+impl ShastaClient {
+  pub async fn hsm_component_get_all(
+    &self,
+    nid_only: Option<&str>,
+  ) -> Result<ComponentArray, Error> {
+    self
+      .hsm_component_get(
+        None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, nid_only,
+      )
+      .await
   }
 
-  let api_url = format!("{}/smd/hsm/v2/State/Components", base_url);
+  pub async fn hsm_component_get_all_nodes(
+    &self,
+    nid_only: Option<&str>,
+  ) -> Result<ComponentArray, Error> {
+    self
+      .hsm_component_get(
+        None,
+        Some("Node"),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        nid_only,
+      )
+      .await
+  }
 
-  let response = client
-    .get(api_url)
-    .query(&query_params)
-    .bearer_auth(auth_token)
-    .send()
-    .await?;
+  pub async fn hsm_component_get_and_filter(
+    &self,
+    xname_list: &[String],
+  ) -> Result<Vec<Component>, Error> {
+    let mut component_vec = self
+      .hsm_component_get_all(None)
+      .await?
+      .components
+      .unwrap_or_default();
 
-  http::handle_json_or_text_response(response).await
-}
+    filter(&mut component_vec, xname_list);
 
-pub async fn get_one(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  xname: &str,
-) -> Result<Component, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
+    Ok(component_vec)
+  }
 
-  let response = client.get(api_url).bearer_auth(auth_token).send().await?;
+  #[allow(clippy::too_many_arguments)]
+  pub async fn hsm_component_get(
+    &self,
+    id: Option<&str>,
+    r#type: Option<&str>,
+    state: Option<&str>,
+    flag: Option<&str>,
+    role: Option<&str>,
+    subrole: Option<&str>,
+    enabled: Option<&str>,
+    software_status: Option<&str>,
+    subtype: Option<&str>,
+    arch: Option<&str>,
+    class: Option<&str>,
+    nid: Option<&str>,
+    nid_start: Option<&str>,
+    nid_end: Option<&str>,
+    partition: Option<&str>,
+    group: Option<&str>,
+    state_only: Option<&str>,
+    flag_only: Option<&str>,
+    // role_only: Option<&str>,
+    nid_only: Option<&str>,
+  ) -> Result<ComponentArray, Error> {
+    let mut nid_vec_query = nid.map(|nids| {
+      nids
+        .split(",")
+        .map(|nid| ("nid", Some(nid)))
+        .collect::<Vec<(&str, Option<&str>)>>()
+    });
 
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    let mut query_params = vec![
+      ("id", id),
+      ("type", r#type),
+      ("state", state),
+      ("flag", flag),
+      ("role", role),
+      ("subrole", subrole),
+      ("enabled", enabled),
+      ("softwarestatus", software_status),
+      ("subtype", subtype),
+      ("arch", arch),
+      ("class", class),
+      ("nidstart", nid_start),
+      ("nidend", nid_end),
+      ("partition", partition),
+      ("group", group),
+      ("stateonly", state_only),
+      ("flagonly", flag_only),
+      ("nidonly", nid_only),
+    ];
+
+    if let Some(mut nid_vec_query) = nid_vec_query.take() {
+      query_params.append(&mut nid_vec_query);
+    }
+
+    let api_url = format!("{}/smd/hsm/v2/State/Components", self.base_url());
+
+    let response = self
+      .http()
+      .get(api_url)
+      .query(&query_params)
+      .bearer_auth(self.token())
+      .send()
+      .await?;
+
+    http::handle_json_or_text_response(response).await
+  }
+
+  pub async fn hsm_component_get_one(
+    &self,
+    xname: &str,
+  ) -> Result<Component, Error> {
+    let api_url =
+      format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
+
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await?;
+
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    response.json().await.map_err(Error::NetError)
   }
 
-  response.json().await.map_err(Error::NetError)
-}
+  pub async fn hsm_component_post(
+    &self,
+    component: ComponentArrayPostArray,
+  ) -> Result<(), Error> {
+    let api_url = format!("{}/hsm/v2/State/Components", self.base_url());
 
-pub async fn post(
-  auth_token: &str,
-  base_url: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component: ComponentArrayPostArray,
-) -> Result<(), Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components", base_url);
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(self.token())
+      .json(&component)
+      .send()
+      .await?;
 
-  let response = client
-    .post(api_url)
-    .bearer_auth(auth_token)
-    .json(&component)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    Ok(())
   }
 
-  Ok(())
-}
+  pub async fn hsm_component_post_query(
+    &self,
+    component: ComponentArrayPostQuery,
+  ) -> Result<ComponentArray, Error> {
+    let api_url = format!("{}/hsm/v2/State/Components", self.base_url());
 
-pub async fn post_query(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component: ComponentArrayPostQuery,
-) -> Result<ComponentArray, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components", base_url);
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(self.token())
+      .json(&component)
+      .send()
+      .await?;
 
-  let response = client
-    .post(api_url)
-    .bearer_auth(auth_token)
-    .json(&component)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    response.json().await.map_err(Error::NetError)
   }
 
-  response.json().await.map_err(Error::NetError)
-}
+  pub async fn hsm_component_post_bynid_query(
+    &self,
+    component: ComponentArrayPostByNidQuery,
+  ) -> Result<ComponentArray, Error> {
+    let api_url =
+      format!("{}/hsm/v2/State/Components/ByNID/Query", self.base_url());
 
-pub async fn post_bynid_query(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component: ComponentArrayPostByNidQuery,
-) -> Result<ComponentArray, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components/ByNID/Query", base_url);
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(self.token())
+      .json(&component)
+      .send()
+      .await?;
 
-  let response = client
-    .post(api_url)
-    .bearer_auth(auth_token)
-    .json(&component)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    response.json().await.map_err(Error::NetError)
   }
 
-  response.json().await.map_err(Error::NetError)
-}
+  pub async fn hsm_component_put(
+    &self,
+    xname: &str,
+    component: ComponentPut,
+  ) -> Result<(), Error> {
+    let api_url =
+      format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
 
-pub async fn put(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  xname: &str,
-  component: ComponentPut,
-) -> Result<(), Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
+    let response = self
+      .http()
+      .put(api_url)
+      .bearer_auth(self.token())
+      .json(&component)
+      .send()
+      .await?;
 
-  let response = client
-    .put(api_url)
-    .bearer_auth(auth_token)
-    .json(&component)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    response.json().await.map_err(Error::NetError)
   }
 
-  response.json().await.map_err(Error::NetError)
-}
+  pub async fn hsm_component_delete_one(
+    &self,
+    xname: &str,
+  ) -> Result<Value, Error> {
+    let api_url =
+      format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
 
-pub async fn delete_one(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  xname: &str,
-) -> Result<Value, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Components/{}", base_url, xname);
+    let response = self
+      .http()
+      .delete(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await?;
 
-  let response = client
-    .delete(api_url)
-    .bearer_auth(auth_token)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
+
+    response.json().await.map_err(Error::NetError)
   }
 
-  response.json().await.map_err(Error::NetError)
-}
+  pub async fn hsm_component_delete(&self) -> Result<Value, Error> {
+    let api_url = format!("{}/hsm/v2/State/Componnets", self.base_url());
 
-pub async fn delete(
-  base_url: &str,
-  auth_token: &str,
-  root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Value, Error> {
-  let client = http::build_client(root_cert, socks5_proxy)?;
-  let api_url = format!("{}/hsm/v2/State/Componnets", base_url);
+    let response = self
+      .http()
+      .delete(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await?;
 
-  let response = client
-    .delete(api_url)
-    .bearer_auth(auth_token)
-    .send()
-    .await?;
-
-  if !response.status().is_success() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        return Err(Error::Message(response.text().await?));
-      }
-      _ => {
-        return Err(Error::CsmError(response.json::<Value>().await?));
+    if !response.status().is_success() {
+      match response.status() {
+        reqwest::StatusCode::UNAUTHORIZED => {
+          return Err(Error::Message(response.text().await?));
+        }
+        _ => {
+          return Err(Error::CsmError(response.json::<Value>().await?));
+        }
       }
     }
-  }
 
-  response.json().await.map_err(Error::NetError)
+    response.json().await.map_err(Error::NetError)
+  }
 }

@@ -88,35 +88,12 @@ impl ComponentTrait for Csm {
     auth_token: &str,
     nid_only: Option<&str>,
   ) -> Result<NodeMetadataArray, Error> {
-    hsm::component::http_client::get(
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      auth_token,
-      None,
-      Some("Node"),
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      nid_only,
-    )
-    .await
-    .map(|c| c.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_component_get_all_nodes(nid_only)
+      .await
+      .map(|c| c.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn get_node_metadata_available(
@@ -175,35 +152,33 @@ impl ComponentTrait for Csm {
     role_only: Option<&str>,
     nid_only: Option<&str>,
   ) -> Result<NodeMetadataArray, Error> {
-    hsm::component::http_client::get(
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      auth_token,
-      id,
-      r#type,
-      state,
-      flag,
-      role,
-      subrole,
-      enabled,
-      software_status,
-      subtype,
-      arch,
-      class,
-      nid,
-      nid_start,
-      nid_end,
-      partition,
-      group,
-      state_only,
-      flag_only,
-      role_only,
-      nid_only,
-    )
-    .await
-    .map(|c| c.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = role_only;
+    self
+      .shasta_client(auth_token)?
+      .hsm_component_get(
+        id,
+        r#type,
+        state,
+        flag,
+        role,
+        subrole,
+        enabled,
+        software_status,
+        subtype,
+        arch,
+        class,
+        nid,
+        nid_start,
+        nid_end,
+        partition,
+        group,
+        state_only,
+        flag_only,
+        nid_only,
+      )
+      .await
+      .map(|c| c.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn post_nodes(
@@ -213,15 +188,11 @@ impl ComponentTrait for Csm {
   ) -> Result<(), Error> {
     let component_backend: ComponentArrayPostArray = component.into();
 
-    hsm::component::http_client::post(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      component_backend,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_component_post(component_backend)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn delete_node(
@@ -229,15 +200,11 @@ impl ComponentTrait for Csm {
     auth_token: &str,
     id: &str,
   ) -> Result<Value, Error> {
-    hsm::component::http_client::delete_one(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      id,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .shasta_client(auth_token)?
+      .hsm_component_delete_one(id)
+      .await
+      .map_err(|e| Error::Message(e.to_string()))
   }
 
   /// Get list of xnames from NIDs
@@ -261,17 +228,13 @@ impl ComponentTrait for Csm {
         .map_err(|e| Error::Message(e.to_string()))?;
 
       // Get all HSM components (list of xnames + nids)
-      let hsm_component_vec = hsm::component::http_client::get_all_nodes(
-        &self.base_url,
-        &self.root_cert,
-        self.socks5_proxy.as_deref(),
-        shasta_token,
-        Some("true"),
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?
-      .components
-      .unwrap_or_default();
+      let hsm_component_vec = self
+        .shasta_client(shasta_token)?
+        .hsm_component_get_all_nodes(Some("true"))
+        .await
+        .map_err(|e| Error::Message(e.to_string()))?
+        .components
+        .unwrap_or_default();
 
       let mut xname_vec: Vec<String> = vec![];
 
@@ -335,34 +298,31 @@ impl ComponentTrait for Csm {
 
       log::debug!("short NID list: {}", nid_short);
 
-      let hsm_components = hsm::component::http_client::get(
-        &self.base_url,
-        &self.root_cert,
-        self.socks5_proxy.as_deref(),
-        shasta_token,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(&nid_short),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some("true"),
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      let hsm_components = self
+        .shasta_client(shasta_token)?
+        .hsm_component_get(
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some(&nid_short),
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some("true"),
+        )
+        .await
+        .map_err(|e| Error::Message(e.to_string()))?;
 
       // Get list of xnames from HSM components
       let xname_vec: Vec<String> = hsm_components

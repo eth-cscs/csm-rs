@@ -168,13 +168,7 @@ pub async fn get_node_details(
     // Get boot params to get the boot image id for each node
     shasta_client.bss_bootparameters_get_multiple(&xname_list),
     // Get HSM component status (needed to get NIDS)
-    hsm::component::http_client::get_and_filter(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_list,
-    ),
+    shasta_client.hsm_component_get_and_filter(&xname_list),
     // Get CFS sessions
     cfs::session::get_and_sort(
       shasta_token,
