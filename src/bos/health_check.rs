@@ -1,7 +1,13 @@
 use serde_json::Value;
 
-use crate::common::csm;
-use crate::error::Error;
+use crate::{ShastaClient, common::http, error::Error};
+
+impl ShastaClient {
+  pub async fn bos_health_check(&self) -> Result<Value, Error> {
+    let api_url = format!("{}/bos/v2/healthz", self.base_url());
+    http::get_json(self.http(), &api_url, self.token()).await
+  }
+}
 
 pub async fn get(
   shasta_token: &str,
@@ -9,9 +15,12 @@ pub async fn get(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
-  let api_url = shasta_base_url.to_owned() + "/bos/v2/healthz";
-
-  
-  csm::process_get_http_request(shasta_token, api_url, shasta_root_cert, socks5_proxy)
-      .await
+  crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_health_check()
+  .await
 }
