@@ -413,6 +413,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -594,6 +595,7 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -647,6 +649,7 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -707,6 +710,7 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -767,6 +771,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -827,6 +832,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
@@ -886,6 +892,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
     serde_yaml::from_str(
       r#"
             - name: my-configuration-name
+              layers: []
             "#,
     )
     .unwrap();
