@@ -624,22 +624,17 @@ impl CfsTrait for Csm {
     Vec<manta_backend_dispatcher::types::cfs::component::Component>,
     Error,
   > {
-    crate::cfs::component::http_client::v3::get_query(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      configuration_name,
-      components_ids,
-      status,
-    )
-    .await
-    .map(|component_vec| {
-      component_vec
-        .into_iter()
-        .map(|component| component.into())
-        .collect()
-    })
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .cfs_component_v3_get_query(configuration_name, components_ids, status)
+      .await
+      .map(|component_vec| {
+        component_vec
+          .into_iter()
+          .map(|component| component.into())
+          .collect()
+      })
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }

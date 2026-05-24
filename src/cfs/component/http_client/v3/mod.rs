@@ -7,296 +7,243 @@ use tokio::sync::Semaphore;
 use types::ComponentVec;
 
 use crate::{
-  cfs::component::http_client::v3::types::Component, common::http, error::Error,
+  ShastaClient, cfs::component::http_client::v3::types::Component,
+  common::http, error::Error,
 };
 
-/// Get CFS options
-/// Retutns a JSON object with the options available in the CFS API
-pub async fn get_options(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Value, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/cfs/v3/options", shasta_base_url);
+impl ShastaClient {
+  /// Get CFS options
+  /// Retutns a JSON object with the options available in the CFS API
+  pub async fn cfs_component_v3_get_options(&self) -> Result<Value, Error> {
+    let api_url = format!("{}/cfs/v3/options", self.base_url());
 
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?;
 
-  http::handle_json_or_text_response(response).await
-}
+    http::handle_json_or_text_response(response).await
+  }
 
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  components_ids: Option<&str>,
-  status: Option<&str>,
-) -> Result<Vec<Component>, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
+  pub async fn cfs_component_v3_get(
+    &self,
+    components_ids: Option<&str>,
+    status: Option<&str>,
+  ) -> Result<Vec<Component>, Error> {
+    let api_url = format!("{}/cfs/v3/components", self.base_url());
 
-  let response = client
-    .get(api_url)
-    .query(&[("ids", components_ids), ("status", status)])
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
+    let response = self
+      .http()
+      .get(api_url)
+      .query(&[("ids", components_ids), ("status", status)])
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?;
 
-  let payload: ComponentVec =
-    http::handle_json_or_text_response(response).await?;
-  Ok(payload.components)
-}
+    let payload: ComponentVec =
+      http::handle_json_or_text_response(response).await?;
+    Ok(payload.components)
+  }
 
-pub async fn get_single_by_id(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component_id: &str,
-) -> Result<Component, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url =
-    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
+  pub async fn cfs_component_v3_get_single_by_id(
+    &self,
+    component_id: &str,
+  ) -> Result<Component, Error> {
+    let api_url =
+      format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
 
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?;
 
-  http::handle_json_or_text_response(response).await
-}
+    http::handle_json_or_text_response(response).await
+  }
 
-/// Get components data.
-/// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
-/// method will paralelize multiple calls, each with a batch of xnames
-pub async fn get_parallel(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  node_vec: &[String],
-) -> Result<Vec<Component>, Error> {
-  let start = Instant::now();
+  /// Get components data.
+  /// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
+  /// method will paralelize multiple calls, each with a batch of xnames
+  pub async fn cfs_component_v3_get_parallel(
+    &self,
+    node_vec: &[String],
+  ) -> Result<Vec<Component>, Error> {
+    let start = Instant::now();
 
-  let num_xnames_per_request = 60;
-  let pipe_size = 15;
+    let num_xnames_per_request = 60;
+    let pipe_size = 15;
 
-  log::debug!(
-    "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
-  );
-
-  let mut component_vec = Vec::new();
-
-  let mut tasks = tokio::task::JoinSet::new();
-
-  let sem = Arc::new(Semaphore::new(pipe_size)); // CSM 1.3.1 higher number of concurrent tasks won't
-
-  let num_requests = (node_vec.len() / num_xnames_per_request) + 1;
-
-  let mut i = 1;
-
-  // Calculate number of digits of a number (used for pretty formatting console messages)
-  let width = num_requests.checked_ilog10().unwrap_or(0) as usize + 1;
-
-  for sub_node_list in node_vec.chunks(num_xnames_per_request) {
-    let num_nodes_in_flight = sub_node_list.len();
-    log::info!(
-      "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
+    log::debug!(
+      "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
     );
 
-    let shasta_token_string = shasta_token.to_string();
-    let shasta_base_url_string = shasta_base_url.to_string();
-    let shasta_root_cert_vec = shasta_root_cert.to_vec();
-    let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
+    let mut component_vec = Vec::new();
+    let mut tasks = tokio::task::JoinSet::new();
+    let sem = Arc::new(Semaphore::new(pipe_size));
+    let num_requests = (node_vec.len() / num_xnames_per_request) + 1;
+    let mut i = 1;
+    let width = num_requests.checked_ilog10().unwrap_or(0) as usize + 1;
 
-    let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
+    for sub_node_list in node_vec.chunks(num_xnames_per_request) {
+      let num_nodes_in_flight = sub_node_list.len();
+      log::info!(
+        "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
+      );
 
-    // Semaphore is never closed → acquire_owned cannot fail.
-    let permit = sem
-      .clone()
-      .acquire_owned()
+      let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
+      let client = self.clone();
+
+      let permit = sem
+        .clone()
+        .acquire_owned()
+        .await
+        .expect("semaphore not closed");
+
+      tasks.spawn(async move {
+        let _permit = permit;
+        client
+          .cfs_component_v3_get_query(
+            None,
+            Some(&hsm_subgroup_nodes_string),
+            None,
+          )
+          .await
+      });
+
+      i += 1;
+    }
+
+    while let Some(message) = tasks.join_next().await {
+      component_vec.append(&mut message??);
+    }
+
+    let duration = start.elapsed();
+    log::info!("Time elapsed to get CFS components is: {:?}", duration);
+
+    Ok(component_vec)
+  }
+
+  pub async fn cfs_component_v3_get_query(
+    &self,
+    configuration_name: Option<&str>,
+    components_ids: Option<&str>,
+    status: Option<&str>,
+  ) -> Result<Vec<Component>, Error> {
+    let stupid_limit = 100000;
+
+    let api_url = format!("{}/cfs/v3/components", self.base_url());
+
+    let response = self
+      .http()
+      .get(api_url)
+      .query(&[
+        ("ids", components_ids),
+        ("config_name", configuration_name),
+        ("status", status),
+        ("limit", Some(&stupid_limit.to_string())),
+      ])
+      .bearer_auth(self.token())
+      .send()
       .await
-      .expect("semaphore not closed");
+      .map_err(Error::NetError)?;
 
-    tasks.spawn(async move {
-      let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
+    let payload: ComponentVec =
+      http::handle_json_or_text_response(response).await?;
+    Ok(payload.components)
+  }
 
-      get_query(
-        &shasta_token_string,
-        &shasta_base_url_string,
-        &shasta_root_cert_vec,
-        socks5_proxy_opt.as_deref(),
-        None,
-        Some(&hsm_subgroup_nodes_string),
-        None,
-      )
+  pub async fn cfs_component_v3_patch_component(
+    &self,
+    component: Component,
+  ) -> Result<Vec<Value>, Error> {
+    let component_id = component.id.as_deref().ok_or_else(|| {
+      Error::CfsComponentFieldNotDefined("id".to_string())
+    })?;
+    let api_url =
+      format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
+
+    let response = self
+      .http()
+      .patch(api_url)
+      .bearer_auth(self.token())
+      .json(&component)
+      .send()
       .await
-    });
+      .map_err(Error::NetError)?;
 
-    i += 1;
+    http::handle_json_or_text_response(response).await
   }
 
-  while let Some(message) = tasks.join_next().await {
-    component_vec.append(&mut message??);
+  pub async fn cfs_component_v3_patch_component_list(
+    &self,
+    component_list: Vec<Component>,
+  ) -> Result<(), Error> {
+    let api_url = format!("{}/cfs/v3/components", self.base_url());
+
+    let response = self
+      .http()
+      .patch(api_url)
+      .bearer_auth(self.token())
+      .json(&component_list)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      let payload = response.text().await.map_err(Error::NetError)?;
+      Err(Error::Message(payload))
+    }
   }
 
-  let duration = start.elapsed();
-  log::info!("Time elapsed to get CFS components is: {:?}", duration);
-
-  Ok(component_vec)
-}
-
-pub async fn get_query(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  configuration_name: Option<&str>,
-  components_ids: Option<&str>,
-  status: Option<&str>,
-) -> Result<Vec<Component>, Error> {
-  let stupid_limit = 100000;
-
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
-
-  let response = client
-    .get(api_url)
-    .query(&[
-      ("ids", components_ids),
-      ("config_name", configuration_name),
-      ("status", status),
-      ("limit", Some(&stupid_limit.to_string())),
-    ])
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
-
-  let payload: ComponentVec =
-    http::handle_json_or_text_response(response).await?;
-  Ok(payload.components)
-}
-
-pub async fn patch_component(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component: Component,
-) -> Result<Vec<Value>, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let component_id = component.id.as_deref().ok_or_else(|| {
-    Error::CfsComponentFieldNotDefined("id".to_string())
-  })?;
-  let api_url =
-    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
-
-  let response = client
-    .patch(api_url)
-    .bearer_auth(shasta_token)
-    .json(&component)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
-
-  http::handle_json_or_text_response(response).await
-}
-
-pub async fn patch_component_list(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component_list: Vec<Component>,
-) -> Result<(), Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url = format!("{}/cfs/v3/components", shasta_base_url);
-
-  let response = client
-    .patch(api_url)
-    .bearer_auth(shasta_token)
-    .json(&component_list)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
-
-  if response.status().is_success() {
-    Ok(())
-  } else {
-    let payload = response.text().await.map_err(Error::NetError)?;
-    Err(Error::Message(payload))
-  }
-}
-
-pub async fn put_component(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component: Component,
-) -> Result<Component, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let component_id = component.id.as_deref().ok_or_else(|| {
-    Error::CfsComponentFieldNotDefined("id".to_string())
-  })?;
-  let api_url =
-    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
-  http::put_json(&client, &api_url, shasta_token, &component).await
-}
-
-pub async fn put_component_list(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component_list: Vec<Component>,
-) -> Result<Vec<Component>, Error> {
-  let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
-
-  for component in component_list {
-    let result = put_component(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      component,
-    )
-    .await;
-    result_vec.push(result);
+  pub async fn cfs_component_v3_put_component(
+    &self,
+    component: Component,
+  ) -> Result<Component, Error> {
+    let component_id = component.id.as_deref().ok_or_else(|| {
+      Error::CfsComponentFieldNotDefined("id".to_string())
+    })?;
+    let api_url =
+      format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
+    http::put_json(self.http(), &api_url, self.token(), &component).await
   }
 
-  // Convert from Vec<Result<Component, Error>> to Result<Vec<Component>, Error>>
-  result_vec.into_iter().collect()
-}
+  pub async fn cfs_component_v3_put_component_list(
+    &self,
+    component_list: Vec<Component>,
+  ) -> Result<Vec<Component>, Error> {
+    let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
 
-pub async fn delete_single_component(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  component_id: &str,
-) -> Result<Component, Error> {
-  let client = http::build_client(shasta_root_cert, socks5_proxy)?;
-  let api_url =
-    format!("{}/cfs/v3/components/{}", shasta_base_url, component_id);
+    for component in component_list {
+      let result = self.cfs_component_v3_put_component(component).await;
+      result_vec.push(result);
+    }
 
-  let response = client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
+    result_vec.into_iter().collect()
+  }
 
-  http::handle_json_or_text_response(response).await
+  pub async fn cfs_component_v3_delete_single_component(
+    &self,
+    component_id: &str,
+  ) -> Result<Component, Error> {
+    let api_url =
+      format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
+
+    let response = self
+      .http()
+      .delete(api_url)
+      .bearer_auth(self.token())
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+
+    http::handle_json_or_text_response(response).await
+  }
 }

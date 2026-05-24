@@ -62,12 +62,7 @@ pub async fn get_data_to_delete(
     bos_sessiontemplate_vec,
     bss_bootparameters_vec,
   ) = tokio::try_join!(
-    cfs::component::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy
-    ),
+    shasta_client.cfs_component_v2_get_all(),
     cfs::configuration::http_client::v2::get_all(
       shasta_token,
       shasta_base_url,

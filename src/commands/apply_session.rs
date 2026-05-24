@@ -243,15 +243,14 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   for xname in xnames {
     log::info!("Checking status of component {}", xname);
 
-    let component_status =
-      cfs::component::http_client::v2::get_single_component(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        &xname,
-      )
-      .await?;
+    let component_status = crate::ShastaClient::new(
+      shasta_base_url,
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .cfs_component_v2_get_single_component(&xname)
+    .await?;
 
     let hsm_component_status_rslt = crate::ShastaClient::new(
       shasta_base_url,

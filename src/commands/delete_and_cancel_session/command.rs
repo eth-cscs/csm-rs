@@ -54,12 +54,13 @@ pub async fn exec(
     // setting error_count to retry_policy value
     log::info!("CFS session target definition is 'dynamic'.");
 
-    let cfs_global_options = cfs::component::http_client::v3::get_options(
-      shasta_token,
+    let cfs_global_options = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .cfs_component_v3_get_options()
     .await?;
 
     let retry_policy = cfs_global_options
@@ -211,13 +212,13 @@ async fn cancel_session(
       cfs_component_vec
     );
   } else {
-    cfs::component::http_client::v2::put_component_list(
-      shasta_token,
+    crate::ShastaClient::new(
       shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      cfs_component_vec,
-    )
+      shasta_token,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .cfs_component_v2_put_component_list(cfs_component_vec)
     .await?;
   }
 

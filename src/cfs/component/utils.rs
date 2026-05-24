@@ -21,14 +21,16 @@ pub async fn update_component_desired_configuration(
     logs: None,
   };
 
-  let _ = crate::cfs::component::http_client::v3::patch_component(
-    shasta_token,
+  let Ok(client) = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    component,
-  )
-  .await;
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  ) else {
+    return;
+  };
+
+  let _ = client.cfs_component_v3_patch_component(component).await;
 }
 
 pub async fn update_component_list_desired_configuration(
@@ -58,13 +60,13 @@ pub async fn update_component_list_desired_configuration(
     component_list.push(component);
   }
 
-  crate::cfs::component::http_client::v3::patch_component_list(
-    shasta_token,
+  crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    component_list,
-  )
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_component_v3_patch_component_list(component_list)
   .await?;
 
   Ok(())

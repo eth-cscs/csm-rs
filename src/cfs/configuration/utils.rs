@@ -264,13 +264,7 @@ pub async fn get_and_filter(
       socks5_proxy,
     ),
     shasta_client.bos_template_v2_get_all(),
-    cfs::component::http_client::v2::get_parallel(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_from_groups_vec,
-    ),
+    shasta_client.cfs_component_v2_get_parallel(&xname_from_groups_vec),
   )?;
 
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
