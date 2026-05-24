@@ -410,14 +410,13 @@ pub async fn delete(
   }
 
   // DELETE BOS SESSIONS
-  let bos_session_vec = bos::session::http_client::v2::get(
-    shasta_token,
+  let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-  )
-  .await?;
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let bos_session_vec = shasta_client.bos_session_v2_get(None).await?;
 
   // Match BOS SESSIONS with the BOS SESSIONTEMPLATE RELATED
   for bos_session in bos_session_vec {
@@ -428,14 +427,7 @@ pub async fn delete(
     log::info!("Deleting BOS sesion '{}'", bos_session_id);
 
     if bos_sessiontemplate_name_vec.contains(&bos_session.template_name) {
-      bos::session::http_client::v2::delete(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        bos_session_id,
-      )
-      .await?;
+      shasta_client.bos_session_v2_delete(bos_session_id).await?;
 
       log::info!(
         "BOS session deleted: {}",

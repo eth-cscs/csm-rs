@@ -607,13 +607,13 @@ pub async fn process_session_template_section_in_sat_file(
           serde_json::to_string_pretty(&bos_session)?
         );
       } else {
-        bos::session::http_client::v2::post(
-          shasta_token,
+        crate::ShastaClient::new(
           shasta_base_url,
-          shasta_root_cert,
-          socks5_proxy,
-          bos_session,
-        )
+          shasta_token,
+          shasta_root_cert.to_vec(),
+          socks5_proxy.map(str::to_owned),
+        )?
+        .bos_session_v2_post(bos_session)
         .await?;
       }
     }

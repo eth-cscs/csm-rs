@@ -63,16 +63,13 @@ impl ClusterSessionTrait for Csm {
     shasta_root_cert: &[u8],
     bos_session: manta_backend_dispatcher::types::bos::session::BosSession,
   ) -> Result<BosSession, Error> {
-    crate::bos::session::http_client::v2::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      bos_session.into(),
-    )
-    .await
-    .map(|bos_session| bos_session.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = (shasta_base_url, shasta_root_cert);
+    self
+      .shasta_client(shasta_token)?
+      .bos_session_v2_post(bos_session.into())
+      .await
+      .map(|bos_session| bos_session.into())
+      .map_err(|e| Error::Message(e.to_string()))
   }
 }
 
