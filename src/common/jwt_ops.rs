@@ -83,3 +83,121 @@ pub fn is_user_admin(shasta_token: &str) -> bool {
 
   roles_rslt.is_ok_and(|roles| roles.contains(&"pa_admin".to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use base64::{Engine, engine::general_purpose::STANDARD};
+  use serde_json::json;
+
+  /// Build a synthetic JWT-shaped string: `<header>.<base64(claims_json)>.<sig>`.
+  /// The header and signature are dummy; only the middle claims segment is read.
+  fn jwt_with_claims(claims: serde_json::Value) -> String {
+    let claims_b64 = STANDARD.encode(claims.to_string());
+    format!("dummy-header.{}.dummy-sig", claims_b64)
+  }
+
+  // ---------- get_name ----------
+
+  #[test]
+  fn get_name_returns_name_claim() {
+    let token = jwt_with_claims(json!({"name": "Alice Example"}));
+    assert_eq!(get_name(&token).unwrap(), "Alice Example");
+  }
+
+  #[test]
+  fn get_name_errors_when_name_missing() {
+    let token = jwt_with_claims(json!({"sub": "abc"}));
+    assert!(get_name(&token).is_err());
+  }
+
+  #[test]
+  fn get_name_errors_on_malformed_token() {
+    // Not three dot-separated parts; the implementation tolerates 1-part
+    // input and treats it as the base64 segment, but garbage base64 fails.
+    assert!(get_name("not-a-jwt").is_err());
+  }
+
+  // ---------- get_preferred_username ----------
+
+  #[test]
+  fn get_preferred_username_returns_claim() {
+    let token = jwt_with_claims(json!({"preferred_username": "alice"}));
+    assert_eq!(get_preferred_username(&token).unwrap(), "alice");
+  }
+
+  #[test]
+  fn get_preferred_username_errors_when_missing() {
+    let token = jwt_with_claims(json!({"name": "Alice"}));
+    assert!(get_preferred_username(&token).is_err());
+  }
+
+  // ---------- get_roles ----------
+
+  #[test]
+  fn get_roles_extracts_realm_access_roles() {
+    let token = jwt_with_claims(json!({
+      "realm_access": { "roles": ["zinal", "Compute", "pa_admin"] }
+    }));
+    let roles = get_roles(&token).unwrap();
+    assert_eq!(roles, vec!["zinal", "Compute", "pa_admin"]);
+  }
+
+  #[test]
+  fn get_roles_returns_empty_when_realm_access_missing() {
+    let token = jwt_with_claims(json!({"sub": "user1"}));
+    assert!(get_roles(&token).unwrap().is_empty());
+  }
+
+  #[test]
+  fn get_roles_returns_empty_when_roles_missing() {
+    let token = jwt_with_claims(json!({"realm_access": {}}));
+    assert!(get_roles(&token).unwrap().is_empty());
+  }
+
+  #[test]
+  fn get_roles_skips_non_string_role_entries() {
+    let token = jwt_with_claims(json!({
+      "realm_access": { "roles": ["valid", 42, true, "another"] }
+    }));
+    let roles = get_roles(&token).unwrap();
+    assert_eq!(roles, vec!["valid", "another"]);
+  }
+
+  // ---------- is_user_admin ----------
+
+  #[test]
+  fn is_user_admin_true_when_pa_admin_role_present() {
+    let token = jwt_with_claims(json!({
+      "realm_access": { "roles": ["zinal", "pa_admin"] }
+    }));
+    assert!(is_user_admin(&token));
+  }
+
+  #[test]
+  fn is_user_admin_false_when_pa_admin_role_absent() {
+    let token = jwt_with_claims(json!({
+      "realm_access": { "roles": ["zinal", "Compute"] }
+    }));
+    assert!(!is_user_admin(&token));
+  }
+
+  #[test]
+  fn is_user_admin_false_when_token_malformed() {
+    // get_roles returns Err, so is_user_admin returns false (not a panic).
+    assert!(!is_user_admin("garbage"));
+  }
+
+  // ---------- bearer-style "Bearer <jwt>" prefix handling ----------
+
+  #[test]
+  fn get_name_strips_bearer_prefix() {
+    // The implementation calls .split(' ').nth(1) first, then falls back to
+    // the original token. So "Bearer <jwt>" should also work.
+    let claims = json!({"name": "Alice"});
+    let claims_b64 = STANDARD.encode(claims.to_string());
+    let jwt = format!("dummy-header.{}.dummy-sig", claims_b64);
+    let bearer = format!("Bearer {}", jwt);
+    assert_eq!(get_name(&bearer).unwrap(), "Alice");
+  }
+}

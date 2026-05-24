@@ -411,3 +411,106 @@ pub fn nodes_to_string_format_discrete_columns(
 
   members
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  // ---------- validate_nid_format ----------
+
+  #[test]
+  fn validate_nid_format_accepts_canonical_nid() {
+    assert!(validate_nid_format("nid000001"));
+    assert!(validate_nid_format("nid123456"));
+  }
+
+  #[test]
+  fn validate_nid_format_rejects_uppercase_prefix() {
+    // The function lowercases the input for the `starts_with("nid")` check
+    // but then calls `strip_prefix("nid")` on the original casing — so
+    // uppercase prefixes are actually rejected despite the lowercase check.
+    // Documenting current behavior; if you intend case-insensitive matching,
+    // strip the prefix from `nid.to_lowercase()`.
+    assert!(!validate_nid_format("NID000001"));
+    assert!(!validate_nid_format("Nid000001"));
+  }
+
+  #[test]
+  fn validate_nid_format_rejects_wrong_length() {
+    assert!(!validate_nid_format("nid00001")); // 8 chars
+    assert!(!validate_nid_format("nid0000001")); // 10 chars
+    assert!(!validate_nid_format(""));
+  }
+
+  #[test]
+  fn validate_nid_format_rejects_missing_prefix() {
+    assert!(!validate_nid_format("000000001"));
+    assert!(!validate_nid_format("xyz000001"));
+  }
+
+  #[test]
+  fn validate_nid_format_rejects_non_numeric_suffix() {
+    assert!(!validate_nid_format("nid0000ab"));
+    assert!(!validate_nid_format("nid-00001"));
+  }
+
+  #[test]
+  fn validate_nid_format_vec_all_or_nothing() {
+    assert!(validate_nid_format_vec(vec![
+      "nid000001".into(),
+      "nid000002".into(),
+    ]));
+    assert!(!validate_nid_format_vec(vec![
+      "nid000001".into(),
+      "not-a-nid".into(),
+    ]));
+    assert!(validate_nid_format_vec(vec![])); // vacuous: all() of empty is true
+  }
+
+  // ---------- validate_xname_format ----------
+
+  #[test]
+  fn validate_xname_format_accepts_canonical_xname() {
+    assert!(validate_xname_format("x1000c0s0b0n0"));
+    assert!(validate_xname_format("x9999c7s64b1n7"));
+  }
+
+  #[test]
+  fn validate_xname_format_rejects_out_of_range_components() {
+    // c must be 0..=7
+    assert!(!validate_xname_format("x1000c8s0b0n0"));
+    // s must be 0..=64
+    assert!(!validate_xname_format("x1000c0s65b0n0"));
+    // b must be 0..=1
+    assert!(!validate_xname_format("x1000c0s0b2n0"));
+    // n must be 0..=7
+    assert!(!validate_xname_format("x1000c0s0b0n8"));
+  }
+
+  #[test]
+  fn validate_xname_format_rejects_missing_or_extra_parts() {
+    assert!(!validate_xname_format(""));
+    assert!(!validate_xname_format("x1000"));
+    assert!(!validate_xname_format("x1000c0s0b0n0extra"));
+    assert!(!validate_xname_format("not-an-xname"));
+  }
+
+  #[test]
+  fn validate_xname_format_requires_four_digit_cabinet() {
+    assert!(!validate_xname_format("x100c0s0b0n0")); // 3 digits
+    assert!(!validate_xname_format("x10000c0s0b0n0")); // 5 digits
+  }
+
+  #[test]
+  fn validate_xname_format_vec_all_or_nothing() {
+    assert!(validate_xname_format_vec(vec![
+      "x1000c0s0b0n0".into(),
+      "x1000c0s0b0n1".into(),
+    ]));
+    assert!(!validate_xname_format_vec(vec![
+      "x1000c0s0b0n0".into(),
+      "garbage".into(),
+    ]));
+    assert!(validate_xname_format_vec(vec![]));
+  }
+}

@@ -312,3 +312,97 @@ impl BosSessionTemplate {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn bos_template_with_boot_sets(
+    boot_sets: HashMap<String, BootSet>,
+  ) -> BosSessionTemplate {
+    BosSessionTemplate {
+      name: Some("test-template".to_string()),
+      description: None,
+      enable_cfs: None,
+      cfs: None,
+      boot_sets: Some(boot_sets),
+      links: None,
+      tenant: None,
+    }
+  }
+
+  fn boot_set_with_path(path: Option<&str>) -> BootSet {
+    BootSet {
+      name: None,
+      path: path.map(str::to_string),
+      r#type: None,
+      etag: None,
+      kernel_parameters: None,
+      cfs: None,
+      node_list: None,
+      node_roles_groups: None,
+      node_groups: None,
+      rootfs_provider: None,
+      rootfs_provider_passthrough: None,
+      arch: None,
+    }
+  }
+
+  #[test]
+  fn images_path_returns_empty_when_no_boot_sets() {
+    let template = BosSessionTemplate {
+      name: None,
+      description: None,
+      enable_cfs: None,
+      cfs: None,
+      boot_sets: None,
+      links: None,
+      tenant: None,
+    };
+    assert_eq!(template.images_path().count(), 0);
+  }
+
+  #[test]
+  fn images_path_skips_boot_sets_with_no_path() {
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert("compute".into(), boot_set_with_path(None));
+    boot_sets.insert(
+      "uan".into(),
+      boot_set_with_path(Some("s3://boot-images/abc/manifest.json")),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let paths: Vec<&str> = template.images_path().collect();
+    assert_eq!(paths, vec!["s3://boot-images/abc/manifest.json"]);
+  }
+
+  #[test]
+  fn images_id_strips_s3_prefix_and_manifest_suffix() {
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert(
+      "compute".into(),
+      boot_set_with_path(Some(
+        "s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/manifest.json",
+      )),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let ids: Vec<&str> = template.images_id().collect();
+    assert_eq!(ids, vec!["59e0180a-3fdd-4936-bba7-14ba914ffd34"]);
+  }
+
+  #[test]
+  fn images_id_passes_through_path_without_known_affixes() {
+    // Behavior contract: trim_*_matches only removes when present;
+    // foreign paths come through unchanged.
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert(
+      "compute".into(),
+      boot_set_with_path(Some("https://example.com/blob")),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let ids: Vec<&str> = template.images_id().collect();
+    assert_eq!(ids, vec!["https://example.com/blob"]);
+  }
+}

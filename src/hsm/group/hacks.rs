@@ -145,3 +145,148 @@ pub fn validate_groups(
       .collect()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn group_with_label(label: &str) -> Group {
+    Group {
+      label: label.to_string(),
+      description: None,
+      tags: None,
+      exclusive_group: None,
+      members: None,
+    }
+  }
+
+  // ---------- filter_system_hsm_groups ----------
+
+  #[test]
+  fn filter_system_hsm_groups_removes_known_system_labels() {
+    let input = vec![
+      group_with_label("alps"),
+      group_with_label("prealps"),
+      group_with_label("alpse"),
+      group_with_label("alpsb"),
+      group_with_label("user-group"),
+    ];
+    let out = filter_system_hsm_groups(input);
+    let labels: Vec<&str> = out.iter().map(|g| g.label.as_str()).collect();
+    assert_eq!(labels, vec!["user-group"]);
+  }
+
+  #[test]
+  fn filter_system_hsm_groups_preserves_user_groups() {
+    let input = vec![
+      group_with_label("zinal"),
+      group_with_label("muri"),
+      group_with_label("daint"),
+    ];
+    let out = filter_system_hsm_groups(input.clone());
+    assert_eq!(out.len(), 3);
+  }
+
+  #[test]
+  fn filter_system_hsm_groups_empty_input_empty_output() {
+    assert!(filter_system_hsm_groups(vec![]).is_empty());
+  }
+
+  // ---------- filter_keycloak_roles ----------
+
+  #[test]
+  fn filter_keycloak_roles_strips_keycloak_internal_roles() {
+    let roles = vec![
+      "offline_access",
+      "uma_authorization",
+      "default-roles-shasta",
+      "zinal",
+      "Compute",
+    ];
+    let out = filter_keycloak_roles(&roles);
+    assert_eq!(out, vec!["zinal".to_string(), "Compute".to_string()]);
+  }
+
+  #[test]
+  fn filter_keycloak_roles_preserves_unknown_roles() {
+    let roles = vec!["my-role", "another-role"];
+    let out = filter_keycloak_roles(&roles);
+    assert_eq!(out.len(), 2);
+  }
+
+  #[test]
+  fn filter_keycloak_roles_empty_input_empty_output() {
+    assert!(filter_keycloak_roles(&[]).is_empty());
+  }
+
+  // ---------- filter_system_hsm_group_names ----------
+
+  #[test]
+  fn filter_system_hsm_group_names_removes_known_system_labels() {
+    let input = vec![
+      "alps".to_string(),
+      "prealps".to_string(),
+      "user-group".to_string(),
+    ];
+    let out = filter_system_hsm_group_names(input);
+    assert_eq!(out, vec!["user-group".to_string()]);
+  }
+
+  // ---------- filter_roles_and_subroles ----------
+
+  #[test]
+  fn filter_roles_and_subroles_removes_roles_and_subroles() {
+    // ROLES = ["Compute", "Service", "System", "Application", "Storage", "Management"]
+    // SUBROLES = ["Worker", "Master", "Storage", "UAN", "Gateway", "LNETRouter", "Visualization", "UserDefined"]
+    let input = vec![
+      "Compute",      // role
+      "Worker",       // subrole
+      "Storage",      // both role and subrole
+      "zinal",        // genuine group
+      "my-cluster",   // genuine group
+    ];
+    let out = filter_roles_and_subroles(&input);
+    assert_eq!(out, vec!["zinal".to_string(), "my-cluster".to_string()]);
+  }
+
+  #[test]
+  fn filter_roles_and_subroles_empty_input_empty_output() {
+    assert!(filter_roles_and_subroles(&[]).is_empty());
+  }
+
+  // ---------- validate_groups ----------
+  //
+  // Existing tests in hsm/group/tests.rs cover the admin and tenant happy
+  // paths. Adding edge cases here.
+
+  #[test]
+  fn validate_groups_empty_cfs_groups_returns_empty() {
+    let groups_user_has =
+      vec!["zinal", "offline_access", "default-roles-shasta"];
+    let out = validate_groups(&[], &groups_user_has);
+    assert!(out.is_empty());
+  }
+
+  #[test]
+  fn validate_groups_admin_passes_unknown_groups() {
+    // Admins bypass all checks.
+    let cfs_groups = vec!["unknown-group", "another-unknown"];
+    let auth = vec![PA_ADMIN];
+    assert!(validate_groups(&cfs_groups, &auth).is_empty());
+  }
+
+  #[test]
+  fn validate_groups_strips_roles_subroles_from_cfs_list() {
+    // CFS groups that are pure roles/subroles never need authorization.
+    let cfs_groups = vec!["Compute", "Worker"];
+    let auth: Vec<&str> = vec![]; // empty auth, not admin
+    assert!(validate_groups(&cfs_groups, &auth).is_empty());
+  }
+
+  #[test]
+  fn validate_groups_strips_system_wide_from_cfs_list() {
+    let cfs_groups = vec!["alps", "alpsb"];
+    let auth: Vec<&str> = vec![];
+    assert!(validate_groups(&cfs_groups, &auth).is_empty());
+  }
+}
