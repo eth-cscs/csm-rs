@@ -1,3 +1,5 @@
+//! `ConsoleTrait` impl for [`Csm`](super::Csm).
+
 use futures_channel::mpsc::Sender;
 use kube::api::{AttachedProcess, TerminalSize};
 use manta_backend_dispatcher::{
@@ -25,8 +27,13 @@ impl ConsoleTrait for Csm {
     term_width: u16,
     term_height: u16,
     k8s: &K8sDetails,
-  ) -> Result<(Box<dyn AsyncWrite + Unpin + Send>, Box<dyn AsyncRead + Unpin + Send>), Error>
-  {
+  ) -> Result<
+    (
+      Box<dyn AsyncWrite + Unpin + Send>,
+      Box<dyn AsyncRead + Unpin + Send>,
+    ),
+    Error,
+  > {
     let shasta_k8s_secrets = match &k8s.authentication {
       K8sAuth::Native {
         certificate_authority_data,
@@ -38,11 +45,14 @@ impl ConsoleTrait for Csm {
       K8sAuth::Vault {
         base_url,
         // secret_path: _secret_path,
-      } => {
-        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
-          .await
-          .map_err(|e| Error::Message(e.to_string()))?
-      }
+      } => fetch_shasta_k8s_secrets_from_vault(
+        base_url,
+        shasta_token,
+        site_name,
+        self.socks5_proxy.as_deref(),
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?,
     };
 
     let mut attached: AttachedProcess =
@@ -55,9 +65,8 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    let mut terminal_size_writer: Sender<TerminalSize> = attached
-      .terminal_size()
-      .ok_or_else(|| {
+    let mut terminal_size_writer: Sender<TerminalSize> =
+      attached.terminal_size().ok_or_else(|| {
         Error::Message(
           "kube exec did not provide a terminal-size channel".to_string(),
         )
@@ -92,8 +101,13 @@ impl ConsoleTrait for Csm {
     term_width: u16,
     term_height: u16,
     k8s: &K8sDetails,
-  ) -> Result<(Box<dyn AsyncWrite + Unpin + Send>, Box<dyn AsyncRead + Unpin + Send>), Error>
-  {
+  ) -> Result<
+    (
+      Box<dyn AsyncWrite + Unpin + Send>,
+      Box<dyn AsyncRead + Unpin + Send>,
+    ),
+    Error,
+  > {
     let shasta_k8s_secrets = match &k8s.authentication {
       K8sAuth::Native {
         certificate_authority_data,
@@ -105,11 +119,14 @@ impl ConsoleTrait for Csm {
       K8sAuth::Vault {
         base_url,
         // secret_path: _secret_path,
-      } => {
-        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
-          .await
-          .map_err(|e| Error::Message(e.to_string()))?
-      }
+      } => fetch_shasta_k8s_secrets_from_vault(
+        base_url,
+        shasta_token,
+        site_name,
+        self.socks5_proxy.as_deref(),
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?,
     };
 
     let mut attached: AttachedProcess =
@@ -122,9 +139,8 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
-    let mut terminal_size_writer: Sender<TerminalSize> = attached
-      .terminal_size()
-      .ok_or_else(|| {
+    let mut terminal_size_writer: Sender<TerminalSize> =
+      attached.terminal_size().ok_or_else(|| {
         Error::Message(
           "kube exec did not provide a terminal-size channel".to_string(),
         )

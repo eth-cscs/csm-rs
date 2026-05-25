@@ -19,7 +19,7 @@ impl ShastaClient {
     }
   }
 
-  /// Fetch IMS image ref --> https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/
+  /// Fetch IMS public keys. Ref: <https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/>.
   pub async fn ims_public_keys_v3_get(
     &self,
     username_opt: Option<&str>,

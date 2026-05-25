@@ -150,7 +150,10 @@ async fn hsm_memberships_get_xname_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let m = client.hsm_memberships_get_xname("x1000c0s0b0n0").await.unwrap();
+  let m = client
+    .hsm_memberships_get_xname("x1000c0s0b0n0")
+    .await
+    .unwrap();
   assert_eq!(m.id, "x1000c0s0b0n0");
 }
 

@@ -242,8 +242,6 @@ fn test_get_next_image_to_process_4() {
   );
 }
 
-
-
 /// Test SAT file
 /// Test image section in OLD format in SAT file
 /// Result: PASS

@@ -284,8 +284,7 @@ pub fn is_cfs_configuration_a_desired_configuration_of_other(
       cfs_component
         .desired_config
         .eq(&Some(cfs_configuration_name.to_string()))
-        && !xname_vec
-          .contains(&cfs_component.id.as_deref().unwrap())
+        && !xname_vec.contains(&cfs_component.id.as_deref().unwrap())
     })
     .map(|cfs_component| cfs_component.id.clone().unwrap())
     .collect()

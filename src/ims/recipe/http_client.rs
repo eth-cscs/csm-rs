@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/ims/v3/recipes`.
+
 use crate::{ShastaClient, error::Error};
 
 use super::types::RecipeGetResponse;

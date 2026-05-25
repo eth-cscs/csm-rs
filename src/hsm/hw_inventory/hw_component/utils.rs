@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::hsm_hw_component_*` methods.
+
 use serde_json::Value;
 
 pub fn get_list_processor_model_from_hw_inventory_value(

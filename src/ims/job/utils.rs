@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::ims_job_*` methods.
+
 use std::io::{self, Write};
 
 use crate::{ShastaClient, error::Error, ims::job::types::Job};
@@ -40,7 +42,10 @@ pub async fn wait_ims_job_to_finish(
       io::stdout().flush().unwrap_or(());
       log::info!(
         "\rWaiting IMS job '{}' with job status '{}'. Checking again in 2 secs. Attempt {} of {}.",
-        ims_job_id, ims_job_status, i, max
+        ims_job_id,
+        ims_job_status,
+        i,
+        max
       );
       io::stdout().flush().unwrap_or(());
 
@@ -50,7 +55,8 @@ pub async fn wait_ims_job_to_finish(
     } else {
       log::info!(
         "\nIMS job '{}' finished with job status '{}'",
-        ims_job_id, ims_job_status
+        ims_job_id,
+        ims_job_status
       );
       break;
     }

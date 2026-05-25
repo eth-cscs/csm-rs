@@ -19,10 +19,7 @@ pub(crate) fn yaml_str<'a>(
     .get(key)
     .and_then(serde_yaml::Value::as_str)
     .ok_or_else(|| {
-      Error::Message(format!(
-        "SAT file: missing or non-string field '{}'",
-        key
-      ))
+      Error::Message(format!("SAT file: missing or non-string field '{}'", key))
     })
 }
 

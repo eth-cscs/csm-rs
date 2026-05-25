@@ -1,3 +1,5 @@
+//! Workarounds for CSM HSM behaviour that does not fit cleanly into the rest of the surface.
+
 use crate::{common, error::Error, hsm};
 
 use super::types::Group;
@@ -239,11 +241,11 @@ mod tests {
     // ROLES = ["Compute", "Service", "System", "Application", "Storage", "Management"]
     // SUBROLES = ["Worker", "Master", "Storage", "UAN", "Gateway", "LNETRouter", "Visualization", "UserDefined"]
     let input = vec![
-      "Compute",      // role
-      "Worker",       // subrole
-      "Storage",      // both role and subrole
-      "zinal",        // genuine group
-      "my-cluster",   // genuine group
+      "Compute",    // role
+      "Worker",     // subrole
+      "Storage",    // both role and subrole
+      "zinal",      // genuine group
+      "my-cluster", // genuine group
     ];
     let out = filter_roles_and_subroles(&input);
     assert_eq!(out, vec!["zinal".to_string(), "my-cluster".to_string()]);

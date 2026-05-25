@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/smd/hsm/v2/State/Components`.
+
 use serde_json::Value;
 
 use crate::{
@@ -9,6 +11,7 @@ use super::types::{
   ComponentArrayPostQuery, ComponentPut,
 };
 
+/// In-place retain of components whose `id` is in `xname_list`.
 pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
   component_vec.retain(|component| {
     if let Some(xname) = &component.id {
@@ -20,18 +23,20 @@ pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
 }
 
 impl ShastaClient {
+  /// Fetch all HSM components. `nid_only` toggles the lightweight nid-only response.
   pub async fn hsm_component_get_all(
     &self,
     nid_only: Option<&str>,
   ) -> Result<ComponentArray, Error> {
     self
       .hsm_component_get(
-        None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, None, nid_only,
+        None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, nid_only,
       )
       .await
   }
 
+  /// Fetch all HSM components with `Type=Node`.
   pub async fn hsm_component_get_all_nodes(
     &self,
     nid_only: Option<&str>,

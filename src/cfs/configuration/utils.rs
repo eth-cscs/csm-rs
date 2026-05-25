@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::cfs_configuration_*` methods.
+
 use crate::{
   bos::{self, template::http_client::v2::types::BosSessionTemplate},
   cfs::{

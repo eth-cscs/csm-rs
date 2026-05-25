@@ -42,10 +42,7 @@ pub(crate) async fn handle_json_response<T: DeserializeOwned>(
   if response.status().is_success() {
     response.json::<T>().await.map_err(Error::NetError)
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(Error::NetError)?;
+    let payload = response.json::<Value>().await.map_err(Error::NetError)?;
     Err(Error::CsmError(payload))
   }
 }
@@ -165,10 +162,8 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
         });
       }
       _ => {
-        let payload = response
-          .json::<Value>()
-          .await
-          .map_err(Error::NetError)?;
+        let payload =
+          response.json::<Value>().await.map_err(Error::NetError)?;
         return Err(Error::CsmError(payload));
       }
     }
@@ -194,10 +189,7 @@ pub(crate) async fn delete(
   if response.status().is_success() {
     Ok(())
   } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(Error::NetError)?;
+    let payload = response.json::<Value>().await.map_err(Error::NetError)?;
     Err(Error::CsmError(payload))
   }
 }
@@ -277,7 +269,13 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       get_json(&client, &format!("{}/widgets/1", server.uri()), "tok")
         .await
         .expect("should succeed");
-    assert_eq!(widget, Widget { id: 1, name: "a".into() });
+    assert_eq!(
+      widget,
+      Widget {
+        id: 1,
+        name: "a".into()
+      }
+    );
   }
 
   #[tokio::test]
@@ -293,12 +291,9 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       .await;
 
     let client = reqwest::Client::new();
-    let result: Result<Widget, _> = get_json(
-      &client,
-      &format!("{}/widgets/missing", server.uri()),
-      "tok",
-    )
-    .await;
+    let result: Result<Widget, _> =
+      get_json(&client, &format!("{}/widgets/missing", server.uri()), "tok")
+        .await;
     match result {
       Err(Error::CsmError(v)) => {
         assert_eq!(v["detail"], "not found")
@@ -401,16 +396,14 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     Mock::given(method("DELETE"))
       .and(path("/widgets/locked"))
       .respond_with(
-        ResponseTemplate::new(409)
-          .set_body_json(json!({"detail": "in use"})),
+        ResponseTemplate::new(409).set_body_json(json!({"detail": "in use"})),
       )
       .mount(&server)
       .await;
 
     let client = reqwest::Client::new();
     let result =
-      delete(&client, &format!("{}/widgets/locked", server.uri()), "tok")
-        .await;
+      delete(&client, &format!("{}/widgets/locked", server.uri()), "tok").await;
     match result {
       Err(Error::CsmError(v)) => {
         assert_eq!(v["detail"], "in use")
@@ -517,4 +510,3 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
         .expect("should succeed");
   }
 }
-

@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use std::collections::HashMap;
 
 use manta_backend_dispatcher::types::bss::BootParameters as FrontEndBootParameters;
@@ -196,7 +200,7 @@ impl BootParameters {
           kernel_param.split_once('=').unwrap_or((kernel_param, ""))
         })
         .collect();
-    } ;
+    };
 
     // NOTE: NCN nodes have UUID image id 'nmd_data' kernel parameter
     let mut nmd_kernel_param: Vec<&str>;
@@ -217,7 +221,7 @@ impl BootParameters {
         .and_modify(|nmd_param| *nmd_param = &new_nmd_kernel_param);
 
       self.update_kernel_param("nmd_data", &new_nmd_kernel_param);
-    } ;
+    };
 
     self.kernel = format!("s3://boot-images/{}/kernel", new_image_id);
 

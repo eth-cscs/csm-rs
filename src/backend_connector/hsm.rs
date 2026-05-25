@@ -1,3 +1,5 @@
+//! `HardwareInventory`, `ComponentTrait`, `ComponentEthernetInterfaceTrait`, `RedfishEndpointTrait` impls for [`Csm`](super::Csm).
+
 use hostlist_parser::parse;
 use manta_backend_dispatcher::{
   error::Error,
@@ -382,7 +384,6 @@ impl ComponentEthernetInterfaceTrait for Csm {
         .to_string(),
     ))
   }
-
 }
 
 impl RedfishEndpointTrait for Csm {

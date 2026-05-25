@@ -1,3 +1,5 @@
+//! Liveness/readiness probes against the BOS service.
+
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};

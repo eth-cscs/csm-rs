@@ -1,3 +1,5 @@
+//! Built-in fallback list of HSM node roles for offline use.
+
 pub fn get() -> Vec<String> {
   vec![
     "Storage".to_string(),

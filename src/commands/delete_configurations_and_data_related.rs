@@ -1,3 +1,5 @@
+//! Delete a CFS configuration along with its derived images, sessions, and BOS templates.
+
 use core::time;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -15,6 +17,18 @@ use crate::{
   error::Error,
 };
 
+/// Compute the cascade of resources reachable from a CFS configuration
+/// filter — what [`delete`] would actually remove.
+///
+/// Cross-references CFS sessions, IMS images, BOS session templates,
+/// and BSS boot parameters against the configurations matched by
+/// `configuration_name_pattern_opt` and the time window
+/// (`since_opt`/`until_opt`). Use this as a dry-run before calling
+/// [`delete`] with the same inputs.
+///
+/// Returns a tuple of
+/// `(sessions, image_refs, image_ids, boot_image_ids,
+/// session_template_refs, configurations)`.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_data_to_delete(
   shasta_token: &str,
@@ -466,8 +480,9 @@ pub async fn delete(
     );
     let mut counter = 0;
     loop {
-      let deletion_rslt =
-        shasta_client.bos_template_v2_delete(bos_sessiontemplate_name).await;
+      let deletion_rslt = shasta_client
+        .bos_template_v2_delete(bos_sessiontemplate_name)
+        .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
@@ -498,8 +513,9 @@ pub async fn delete(
     log::info!("Deleting CFS configuration '{}'", cfs_configuration);
     let mut counter = 0;
     loop {
-      let deletion_rslt =
-        shasta_client.cfs_configuration_v3_delete(cfs_configuration).await;
+      let deletion_rslt = shasta_client
+        .cfs_configuration_v3_delete(cfs_configuration)
+        .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
@@ -533,7 +549,9 @@ pub fn get_node_vec_booting_image(
   boot_param_vec: &[BootParameters],
 ) -> Vec<String> {
   let mut node_booting_image_vec = boot_param_vec
-    .iter().filter(|&boot_param| boot_param.get_boot_image().eq(image_id)).cloned()
+    .iter()
+    .filter(|&boot_param| boot_param.get_boot_image().eq(image_id))
+    .cloned()
     .flat_map(|boot_param| boot_param.hosts)
     .collect::<Vec<_>>();
 

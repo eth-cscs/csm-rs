@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for CAPMC power transitions and status.
+
 use serde_json::Value;
 
 use crate::{
@@ -10,6 +12,12 @@ use crate::{
 };
 
 impl ShastaClient {
+  /// Issue a CAPMC power-off request for the given xnames and return
+  /// immediately with the raw response (fire-and-forget).
+  ///
+  /// `POST /capmc/capmc/v1/xname_off`. Use
+  /// [`Self::capmc_node_power_off_post_sync`] to also wait until the
+  /// nodes report as `off`.
   pub async fn capmc_node_power_off_post(
     &self,
     xname_vec: Vec<String>,
@@ -35,8 +43,11 @@ impl ShastaClient {
     )
   }
 
-  /// Shut down a node
-  /// This is sync call meaning it won't return untill the target is down
+  /// Power off the given xnames and wait until CAPMC reports each one
+  /// as `off`.
+  ///
+  /// This wrapper around [`Self::capmc_node_power_off_post`] polls
+  /// `xname_status` until every target is down before returning.
   pub async fn capmc_node_power_off_post_sync(
     &self,
     xname_vec: Vec<String>,
@@ -49,6 +60,10 @@ impl ShastaClient {
     wait_nodes_to_power_off(self, xname_vec, reason_opt, force).await
   }
 
+  /// Issue a CAPMC power-on request for the given xnames and return
+  /// immediately (fire-and-forget).
+  ///
+  /// `POST /capmc/capmc/v1/xname_on`.
   pub async fn capmc_node_power_on_post(
     &self,
     xname_vec: Vec<String>,
@@ -71,8 +86,8 @@ impl ShastaClient {
     )
   }
 
-  /// Power ON a group of nodes
-  /// This is sync call meaning it won't return untill all nodes are ON
+  /// Power on the given xnames and wait until CAPMC reports each one
+  /// as `on`.
   pub async fn capmc_node_power_on_post_sync(
     &self,
     xname_vec: Vec<String>,
@@ -83,6 +98,9 @@ impl ShastaClient {
     wait_nodes_to_power_on(self, xname_vec, reason).await
   }
 
+  /// Issue a CAPMC reinit (power-cycle) request and return immediately.
+  ///
+  /// `POST /capmc/capmc/v1/xname_reinit`.
   pub async fn capmc_node_power_reset_post(
     &self,
     xname_vec: Vec<String>,
@@ -106,6 +124,11 @@ impl ShastaClient {
     )
   }
 
+  /// Power-cycle the given xnames by powering off then back on
+  /// synchronously, waiting for each transition to complete.
+  ///
+  /// Implemented as `power_off_post_sync` followed by
+  /// `power_on_post_sync` for the same set of xnames.
   pub async fn capmc_node_power_reset_post_sync(
     &self,
     xname_vec: Vec<String>,
@@ -127,8 +150,13 @@ impl ShastaClient {
       .await
   }
 
-  /// Power RESET a group of nodes
-  /// This is sync call meaning it won't return untill all nodes are ON
+  /// Power-cycle a set of xnames concurrently — one
+  /// `power_reset_post_sync` is spawned per xname so each node is reset
+  /// in parallel.
+  ///
+  /// Returns once every node is back on. Use this rather than
+  /// [`Self::capmc_node_power_reset_post_sync`] when the target list is
+  /// large and waiting for them serially would be too slow.
   pub async fn capmc_node_power_reset_post_sync_vec(
     &self,
     xnames: Vec<String>,
@@ -145,11 +173,7 @@ impl ShastaClient {
 
       tasks.spawn(async move {
         client
-          .capmc_node_power_reset_post_sync(
-            vec![xname],
-            reason_cloned,
-            force,
-          )
+          .capmc_node_power_reset_post_sync(vec![xname], reason_cloned, force)
           .await
       });
     }
@@ -161,6 +185,10 @@ impl ShastaClient {
     Ok(serde_json::to_value(nodes_reseted)?)
   }
 
+  /// Query CAPMC for the current Redfish power state of the given
+  /// xnames.
+  ///
+  /// `POST /capmc/capmc/v1/get_xname_status` with source `redfish`.
   pub async fn capmc_node_power_status_post(
     &self,
     xnames: &Vec<String>,

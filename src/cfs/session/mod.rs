@@ -1,3 +1,11 @@
+//! CFS sessions — invocations that run an Ansible configuration against
+//! a set of components.
+//!
+//! Submodules:
+//!
+//! - [`http_client`] — `ShastaClient` methods for the v2 and v3 endpoints.
+//! - [`utils`] — orchestration helpers that compose multiple calls.
+
 pub mod http_client;
 pub mod utils;
 
@@ -8,8 +16,7 @@ use crate::common::kubernetes::i_print_cfs_session_logs;
 
 use crate::{
   common::{
-    kubernetes,
-    vault::http_client::fetch_shasta_k8s_secrets_from_vault,
+    kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
   },
   error::Error,
 };
@@ -36,9 +43,10 @@ pub async fn get_one(
     Err(Error::SessionNotFound(session_name.to_string()))
   }
 }
-/// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
-/// Returns list of CFS sessions ordered by start time.
-/// This methods filter by either HSM group name or HSM group members or both
+/// Fetch CFS sessions. Ref: <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>.
+///
+/// Returns list of CFS sessions ordered by start time. Filters by either
+/// HSM group name or HSM group members or both.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_and_sort(
   shasta_token: &str,
@@ -137,7 +145,8 @@ pub async fn i_post_sync(
     .await?;
 
     let client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+        .await?;
 
     #[allow(deprecated)]
     i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;

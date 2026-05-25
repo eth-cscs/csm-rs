@@ -1,3 +1,5 @@
+//! Helpers built on top of [`crate::ShastaClient`]`::bss_*` methods.
+
 use std::collections::HashMap;
 
 use super::types::BootParameters;

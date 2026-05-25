@@ -135,7 +135,6 @@ pub async fn create_cfs_configuration_struct_from_sat_file(
   }
 }
 
-
 pub fn validate_sat_file_configurations_section(
   configuration_yaml_vec: &[configuration::Configuration],
   image_yaml_vec_opt: &[image::Image],
@@ -143,14 +142,14 @@ pub fn validate_sat_file_configurations_section(
 ) -> Result<(), Error> {
   // Validate 'configurations' sections
   if !configuration_yaml_vec.is_empty()
-    && image_yaml_vec_opt.is_empty() && sessiontemplate_yaml_vec_opt.is_empty()
-    {
-      return Err(Error::Message(
+    && image_yaml_vec_opt.is_empty()
+    && sessiontemplate_yaml_vec_opt.is_empty()
+  {
+    return Err(Error::Message(
         "Incorrect SAT file. Please define either an 'images' or a 'session_templates' section. Exit"
             .to_string(),
       ));
-    }
+  }
 
   Ok(())
 }
-

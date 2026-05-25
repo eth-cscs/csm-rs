@@ -1,3 +1,5 @@
+//! CFS sessions v3 — `ShastaClient` methods for `/cfs/v3/sessions`.
+
 pub mod types;
 
 use crate::{
@@ -10,7 +12,15 @@ use crate::{
 };
 
 impl ShastaClient {
-  /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
+  /// Fetch CFS sessions via the v3 API, optionally filtered by name,
+  /// age, status, name substring, success flag, and tags.
+  ///
+  /// `GET /cfs/v3/sessions[/{name}]`. When `session_name_opt` is set
+  /// the returned `Vec` always has at most one element. `limit_opt` and
+  /// `after_id_opt` paginate the list form.
+  ///
+  /// See <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>
+  /// for the underlying REST contract.
   #[allow(clippy::too_many_arguments)]
   pub async fn cfs_session_v3_get(
     &self,
@@ -77,6 +87,9 @@ impl ShastaClient {
     }
   }
 
+  /// Create a new CFS session via the v3 API.
+  ///
+  /// `POST /cfs/v3/sessions`.
   pub async fn cfs_session_v3_post(
     &self,
     session: &CfsSessionPostRequest,
@@ -87,6 +100,9 @@ impl ShastaClient {
     http::post_json(self.http(), &api_url, self.token(), session).await
   }
 
+  /// Delete a CFS session by name via the v3 API.
+  ///
+  /// `DELETE /cfs/v3/sessions/{session_name}`.
   pub async fn cfs_session_v3_delete(
     &self,
     session_name: &str,

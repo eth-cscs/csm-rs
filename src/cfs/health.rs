@@ -1,3 +1,5 @@
+//! Liveness/readiness probes against the CFS service.
+
 use std::time::Duration;
 
 use crate::error::Error;

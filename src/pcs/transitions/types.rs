@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use manta_backend_dispatcher::types::pcs::transitions::types::{
   Location as FrontEndLocation, Operation as FrontEndOperation,
   Task as FrontEndTask, TaskCounts as FrontEndTaskCounts,
@@ -113,11 +117,7 @@ impl From<FrontEndTransition> for Transition {
     Transition {
       operation: Operation::from(value.operation),
       task_deadline_minutes: value.task_deadline_minutes,
-      location: value
-        .location
-        .into_iter()
-        .map(Location::from)
-        .collect(),
+      location: value.location.into_iter().map(Location::from).collect(),
     }
   }
 }
@@ -194,9 +194,7 @@ impl From<FrontEndTask> for Task {
 impl From<Task>
   for manta_backend_dispatcher::types::pcs::transitions::types::Task
 {
-  fn from(
-    val: Task,
-  ) -> Self {
+  fn from(val: Task) -> Self {
     manta_backend_dispatcher::types::pcs::transitions::types::Task {
       xname: val.xname,
       task_status: val.task_status,
@@ -258,10 +256,7 @@ pub struct TransitionResponseList {
 impl From<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
   fn from(value: Vec<FrontEndTransitionResponse>) -> Self {
     TransitionResponseList {
-      transitions: value
-        .into_iter()
-        .map(TransitionResponse::from)
-        .collect(),
+      transitions: value.into_iter().map(TransitionResponse::from).collect(),
     }
   }
 }

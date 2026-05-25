@@ -1,3 +1,5 @@
+//! Entry-point function for the apply-hw-cluster-pin workflow.
+
 use std::collections::HashMap;
 
 use crate::{
@@ -9,6 +11,25 @@ use crate::{
   hsm::{self, group::types::Group},
 };
 
+/// Apply a hardware pattern to (re)compose an HSM group from a parent
+/// group.
+///
+/// Computes the set of xnames in `parent_hsm_group_name` whose hardware
+/// matches `pattern` (e.g. `"a100:gpu=4"`), then moves that set into
+/// `target_hsm_group_name`, optionally creating the target if it
+/// doesn't exist and removing the parent once it's empty.
+///
+/// # Arguments
+///
+/// - `target_hsm_group_name` — destination group.
+/// - `parent_hsm_group_name` — source group to draw nodes from.
+/// - `pattern` — `key:value`-style hardware filter.
+/// - `nodryrun` — when `false`, the function only logs the intended
+///   changes without mutating CSM.
+/// - `create_target_hsm_group` — create the target group if it doesn't
+///   exist.
+/// - `delete_empty_parent_hsm_group` — delete the parent if it ends up
+///   with zero members.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,

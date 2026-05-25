@@ -1,3 +1,5 @@
+//! Helpers built on top of [`crate::ShastaClient`]`::bos_template_*` methods.
+
 use crate::{
   bos::template::http_client::v2::types::BosSessionTemplate, error::Error,
 };
@@ -212,8 +214,16 @@ mod tests {
   #[test]
   fn filter_by_hsm_keeps_templates_whose_node_groups_all_match() {
     let mut templates = vec![
-      template("t1", None, vec![("compute", boot_set_for_hsm(vec!["zinal"]))]),
-      template("t2", None, vec![("compute", boot_set_for_hsm(vec!["daint"]))]),
+      template(
+        "t1",
+        None,
+        vec![("compute", boot_set_for_hsm(vec!["zinal"]))],
+      ),
+      template(
+        "t2",
+        None,
+        vec![("compute", boot_set_for_hsm(vec!["daint"]))],
+      ),
     ];
 
     let hsm = vec!["zinal".to_string()];
@@ -352,7 +362,8 @@ mod tests {
       tenant: None,
     };
 
-    let result = get_image_id_cfs_configuration_target_tuple_vec(&vec![template]);
+    let result =
+      get_image_id_cfs_configuration_target_tuple_vec(&vec![template]);
     assert_eq!(result.len(), 1);
     let (image_id, config, targets) = &result[0];
     assert_eq!(image_id, "img-uuid-1");
@@ -382,8 +393,8 @@ mod tests {
       tenant: None,
     };
 
-    let result = get_image_id_cfs_configuration_target_tuple_vec(&vec![template]);
+    let result =
+      get_image_id_cfs_configuration_target_tuple_vec(&vec![template]);
     assert!(result.is_empty());
   }
-
 }

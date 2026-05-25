@@ -1,3 +1,5 @@
+//! Keycloak / OIDC bearer-token acquisition for Shasta.
+
 use serde_json::Value;
 
 use std::collections::HashMap;
@@ -26,9 +28,7 @@ pub async fn validate_api_token(
   let resp_rslt = client.get(api_url).bearer_auth(shasta_token).send().await;
 
   match resp_rslt {
-    Ok(resp) => {
-      Ok(resp.error_for_status().map(|_| ())?)
-    }
+    Ok(resp) => Ok(resp.error_for_status().map(|_| ())?),
     Err(error) => Err(Error::Message(format!("Token is not valid: {}", error))),
   }
 }

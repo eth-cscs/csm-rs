@@ -1,3 +1,6 @@
+//! CFS configurations v3 — `ShastaClient` methods for
+//! `/cfs/v3/configurations`.
+
 pub mod types;
 
 use crate::{
@@ -15,6 +18,12 @@ use crate::{
 const STUPID_LIMIT: i64 = 100000;
 
 impl ShastaClient {
+  /// Fetch one CFS configuration by name, or every configuration when
+  /// `configuration_name_opt` is `None`, using the v3 API.
+  ///
+  /// `GET /cfs/v3/configurations[/{name}]`. CFS v3 returns plain-text
+  /// error bodies and a different success shape for single vs. list
+  /// lookups; both are normalised here.
   pub async fn cfs_configuration_v3_get(
     &self,
     configuration_name_opt: Option<&str>,
@@ -49,9 +58,13 @@ impl ShastaClient {
     }
   }
 
-  // This function enforces a new CFS configuration to be created. First, checks
-  // if CFS configuration with same name already exists in CSM, if that is the
-  // case, it will return an error, otherwise creates a new CFS configuration
+  /// Create a CFS configuration by name, refusing to overwrite if one
+  /// already exists.
+  ///
+  /// `PUT /cfs/v3/configurations/{configuration_name}`. Unlike a bare
+  /// `PUT`, this checks first via [`Self::cfs_configuration_v3_get`]
+  /// and returns [`Error::Message`] if a configuration with the same
+  /// name is already present.
   pub async fn cfs_configuration_v3_put(
     &self,
     configuration: &CfsConfigurationRequest,
@@ -60,8 +73,9 @@ impl ShastaClient {
     // Check if CFS configuration already exists
     log::info!("Check CFS configuration '{}' exists", configuration_name);
 
-    let cfs_configuration_rslt =
-      self.cfs_configuration_v3_get(Some(configuration_name)).await;
+    let cfs_configuration_rslt = self
+      .cfs_configuration_v3_get(Some(configuration_name))
+      .await;
 
     if cfs_configuration_rslt
       .is_ok_and(|cfs_configuration_vec| !cfs_configuration_vec.is_empty())
@@ -86,8 +100,7 @@ impl ShastaClient {
       configuration_name
     );
 
-    let request_payload =
-      serde_json::json!({ "layers": configuration.layers });
+    let request_payload = serde_json::json!({ "layers": configuration.layers });
     log::debug!(
       "CFS configuration request payload:\n{}",
       serde_json::to_string_pretty(&request_payload)
@@ -106,6 +119,9 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// Delete a CFS configuration by id via the v3 API.
+  ///
+  /// `DELETE /cfs/v3/configurations/{configuration_id}`.
   pub async fn cfs_configuration_v3_delete(
     &self,
     configuration_id: &str,

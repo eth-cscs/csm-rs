@@ -1,3 +1,5 @@
+//! Helpers built on top of the lower-level node-related APIs.
+
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use regex::Regex;
@@ -139,9 +141,11 @@ pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
   Ok(true)
 }
 
-/// Get components data.
-/// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
-/// method will paralelize multiple calls, each with a batch of xnames
+/// Fetch per-node component data for an arbitrary number of xnames by
+/// batching requests.
+///
+/// CSM rejects requests that include too many xnames in a single call;
+/// this helper chunks `xnames` and dispatches the batches concurrently.
 pub async fn get_node_details(
   shasta_token: &str,
   shasta_base_url: &str,

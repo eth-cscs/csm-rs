@@ -1,3 +1,5 @@
+//! `DeleteConfigurationsAndDataRelatedTrait` impl for [`Csm`](super::Csm).
+
 use chrono::NaiveDateTime;
 use manta_backend_dispatcher::{
   error::Error,

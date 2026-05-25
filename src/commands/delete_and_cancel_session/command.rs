@@ -1,3 +1,5 @@
+//! Entry-point function for the delete-and-cancel-session workflow.
+
 use serde_json::Value;
 
 use crate::{
@@ -13,6 +15,22 @@ use crate::{
   hsm::group::types::Group,
 };
 
+/// Cancel an in-flight CFS session and clean up the resources derived
+/// from it.
+///
+/// Resolves the xnames touched by `cfs_session` (via HSM-group
+/// membership or explicit xname targets), then deletes the session
+/// itself together with the CFS components, BSS boot parameters, and
+/// any related BOS artefacts.
+///
+/// # Arguments
+///
+/// - `group_available_vec` — HSM groups the caller is allowed to
+///   target; sessions that reach outside this set are refused.
+/// - `cfs_component_vec` / `bos_bootparameters_vec` — current snapshots
+///   used to decide what needs cleaning up.
+/// - `dry_run` — when `true`, log the intended deletions without
+///   mutating CSM.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,

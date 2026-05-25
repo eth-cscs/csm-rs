@@ -1,3 +1,5 @@
+//! `AuthenticationTrait` impl for [`Csm`](super::Csm).
+
 use manta_backend_dispatcher::{
   error::Error, interfaces::authentication::AuthenticationTrait,
 };
@@ -20,7 +22,6 @@ impl AuthenticationTrait for Csm {
 
     let keycloak_base_url = base_url.to_string() + "/keycloak";
 
-
     let token = get_token_from_shasta_endpoint(
       &keycloak_base_url,
       &self.root_cert,
@@ -37,8 +38,13 @@ impl AuthenticationTrait for Csm {
   }
 
   async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
-    authentication::validate_api_token(&self.base_url, token, &self.root_cert, self.socks5_proxy.as_deref())
-      .await
-      .map_err(|e| Error::Message(e.to_string()))
+    authentication::validate_api_token(
+      &self.base_url,
+      token,
+      &self.root_cert,
+      self.socks5_proxy.as_deref(),
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
   }
 }

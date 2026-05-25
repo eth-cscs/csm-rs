@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use manta_backend_dispatcher::types::ims::{
   Image as FrontEndImage,
   ImsImageRecord2Update as FrontEndImsImageRecord2Update, Link as FrontEndLink,
@@ -143,8 +147,7 @@ impl From<FrontEndPatchImage> for PatchImage {
     Self {
       link: frontend_patch_image.link.map(|link| link.into()),
       arch: frontend_patch_image.arch,
-      metadata: frontend_patch_image
-        .metadata,
+      metadata: frontend_patch_image.metadata,
     }
   }
 }

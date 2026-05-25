@@ -1,3 +1,5 @@
+//! Fetch Kubernetes service-account secrets from Vault — the supported way to obtain CSM cluster credentials off-cluster.
+
 pub mod http_client {
 
   use crate::error::Error;
@@ -16,7 +18,9 @@ pub mod http_client {
 
     // Build client
     let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      Some(proxy) => {
+        client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?
+      }
       None => client_builder.build()?,
     };
 
@@ -40,17 +44,15 @@ pub mod http_client {
       Ok(resp) => {
         let resp_value = resp.json::<Value>().await?;
         resp_value
-            .get("auth")
-            .and_then(|auth| auth.get("client_token"))
-            .and_then(Value::as_str)
-            .map(String::from)
-            .ok_or_else(|| {
-              Error::Message("ERROR - JWT auth token not valid".to_string())
-            })
+          .get("auth")
+          .and_then(|auth| auth.get("client_token"))
+          .and_then(Value::as_str)
+          .map(String::from)
+          .ok_or_else(|| {
+            Error::Message("ERROR - JWT auth token not valid".to_string())
+          })
       }
-      Err(e) => {
-        Err(Error::NetError(e))
-      }
+      Err(e) => Err(Error::NetError(e)),
     }
   }
 
@@ -64,7 +66,9 @@ pub mod http_client {
 
     // Build client
     let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
+      Some(proxy) => {
+        client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?
+      }
       None => client_builder.build()?,
     };
 
@@ -83,9 +87,7 @@ pub mod http_client {
         let secret_value: Value = resp.json().await?;
         Ok(secret_value["data"].clone())
       }
-      Err(e) => {
-        Err(Error::NetError(e))
-      }
+      Err(e) => Err(Error::NetError(e)),
     }
   }
 
@@ -98,7 +100,8 @@ pub mod http_client {
     // secret_path: &str,
   ) -> Result<String, Error> {
     let vault_token =
-      auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy).await?;
+      auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy)
+        .await?;
 
     let vault_secret_path = format!("manta/data/{}", site_name);
 
@@ -111,15 +114,15 @@ pub mod http_client {
     .await?; // this works for hashicorp-vault for fulen may need /v1/secret/data/shasta/vcs
 
     vault_secret
-        .get("data")
-        .and_then(|data| data.get("token"))
-        .and_then(Value::as_str)
-        .map(String::from)
-        .ok_or_else(|| {
-          Error::Message(
-            "ERROR - VCS token not found in vault secret".to_string(),
-          )
-        }) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
+      .get("data")
+      .and_then(|data| data.get("token"))
+      .and_then(Value::as_str)
+      .map(String::from)
+      .ok_or_else(|| {
+        Error::Message(
+          "ERROR - VCS token not found in vault secret".to_string(),
+        )
+      }) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
   }
 
   pub async fn fetch_shasta_k8s_secrets_from_vault(
@@ -132,7 +135,8 @@ pub mod http_client {
   ) -> Result<Value, Error> {
     log::info!("Fetching k8s secrets from vault");
     let vault_token =
-      auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy).await?;
+      auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy)
+        .await?;
 
     let vault_secret_path = format!("manta/data/{}", site_name);
 

@@ -1,3 +1,5 @@
+//! Back up a BOS session template and its dependencies (CFS/HSM/IMS) to disk.
+
 use crate::commands::migrate_restore;
 use crate::error::Error;
 use crate::{bos, ims};
@@ -7,6 +9,18 @@ use std::path::Path;
 
 // use crate::commands::i_migrate_restore;
 
+/// Back up one BOS session template — plus the IMS image artefacts and
+/// CFS/HSM metadata it references — to a local directory.
+///
+/// Produces a self-contained on-disk snapshot that
+/// [`crate::commands::migrate_restore::exec`] can re-import on another
+/// system.
+///
+/// # Arguments
+///
+/// - `bos` — name of the BOS session template to back up. Required.
+/// - `destination` — directory to write the archive into; created if
+///   missing. Required.
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -158,10 +172,7 @@ pub async fn exec(
       .first()
       .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
       .ok_or_else(|| {
-        Error::Message(format!(
-          "BOS template '{}': no boot_sets defined",
-          bos
-        ))
+        Error::Message(format!("BOS template '{}': no boot_sets defined", bos))
       })?;
     for boot_sets_value in boot_sets.values() {
       if let Some(path) = &boot_sets_value.path {

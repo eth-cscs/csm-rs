@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/ims/v3/jobs`.
+
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};

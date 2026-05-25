@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 // pub mod response_payload {
 use std::collections::HashMap;
 
@@ -118,7 +122,9 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_sets| {
-        boot_sets.values().map(|boot_param| boot_param.path.clone().unwrap_or_default())
+        boot_sets
+          .values()
+          .map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()
@@ -131,7 +137,9 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_sets| {
-        boot_sets.values().map(|boot_param| {
+        boot_sets
+          .values()
+          .map(|boot_param| {
             boot_param
               .path
               .clone()

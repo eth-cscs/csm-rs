@@ -1,6 +1,7 @@
+//! Helpers built on top of `ShastaClient::ims_image_*` methods.
+
 use crate::{
-  bos,
-  common,
+  bos, common,
   error::Error,
   hsm::group::utils::get_member_vec_from_hsm_name_vec,
   ims::{self, image::http_client::types::Image},
@@ -132,16 +133,13 @@ pub fn filter(image_vec: &mut [Image]) {
   });
 }
 
-/// Returns a tuple like(Image sruct, cfs configuration name, list of target - either hsm group name
-/// or xnames, bool - indicates if image is used to boot a node or not)
-/// This method tries to filter by HSM group which means it will make use of:
-///  - CFS sessions to find which image id was created against which HSM group
-///  - BOS sessiontemplates to find the HSM group related to nodes being rebooted in the past
-///  - Image ids in boot params for nodes in HSM groups we are looking for (This is needed to not miss
-/// images currenly used which name may not have HSM group we are looking for included not CFS
-/// session nor BOS sessiontemplate)
-///  - Image names with HSM group name included (This is a bad practice because this is a free text
-/// prone to human errors)
+/// Resolve each IMS image to its CFS configuration, the HSM groups (or
+/// xnames) it targets, and whether it is currently a boot image.
+///
+/// Returns a list of `(Image, cfs_configuration_name, targets,
+/// is_boot_image)`. See
+/// [`crate::commands::get_images_and_details::get_images_and_details`]
+/// for the full description of the matching strategy.
 pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -256,7 +254,6 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     let target_group_name_vec: Vec<String>;
     let cfs_configuration: String;
     let target_groups: String;
-    
 
     if let Some(tuple) = image_id_cfs_configuration_from_cfs_session
       .iter()

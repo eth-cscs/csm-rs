@@ -1,3 +1,5 @@
+//! CFS components v3 — `ShastaClient` methods for `/cfs/v3/components`.
+
 pub mod types;
 
 use std::{sync::Arc, time::Instant};
@@ -12,8 +14,10 @@ use crate::{
 };
 
 impl ShastaClient {
-  /// Get CFS options
-  /// Retutns a JSON object with the options available in the CFS API
+  /// Fetch CFS options.
+  ///
+  /// `GET /cfs/v3/options`. Returns the raw JSON object of CFS
+  /// service-level options.
   pub async fn cfs_component_v3_get_options(&self) -> Result<Value, Error> {
     let api_url = format!("{}/cfs/v3/options", self.base_url());
 
@@ -28,6 +32,9 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// Fetch CFS components, optionally filtered by id list and status.
+  ///
+  /// `GET /cfs/v3/components`.
   pub async fn cfs_component_v3_get(
     &self,
     components_ids: Option<&str>,
@@ -49,6 +56,9 @@ impl ShastaClient {
     Ok(payload.components)
   }
 
+  /// Fetch one CFS component by id.
+  ///
+  /// `GET /cfs/v3/components/{component_id}`.
   pub async fn cfs_component_v3_get_single_by_id(
     &self,
     component_id: &str,
@@ -67,9 +77,11 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
-  /// Get components data.
-  /// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
-  /// method will paralelize multiple calls, each with a batch of xnames
+  /// Fetch CFS components for an arbitrarily large xname list by
+  /// batching 60 ids per request, 15 requests in flight.
+  ///
+  /// Works around the CSM-side limit on a single GET; order of the
+  /// returned components is not preserved.
   pub async fn cfs_component_v3_get_parallel(
     &self,
     node_vec: &[String],
@@ -129,6 +141,11 @@ impl ShastaClient {
     Ok(component_vec)
   }
 
+  /// Fetch CFS components with full query filters (configuration name,
+  /// ids, status).
+  ///
+  /// `GET /cfs/v3/components` with `config_name`, `ids`, `status`,
+  /// and a large `limit`.
   pub async fn cfs_component_v3_get_query(
     &self,
     configuration_name: Option<&str>,
@@ -158,13 +175,18 @@ impl ShastaClient {
     Ok(payload.components)
   }
 
+  /// Apply a partial update to one CFS component.
+  ///
+  /// `PATCH /cfs/v3/components/{component.id}`. Returns
+  /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v3_patch_component(
     &self,
     component: Component,
   ) -> Result<Vec<Value>, Error> {
-    let component_id = component.id.as_deref().ok_or_else(|| {
-      Error::CfsComponentFieldNotDefined("id".to_string())
-    })?;
+    let component_id = component
+      .id
+      .as_deref()
+      .ok_or_else(|| Error::CfsComponentFieldNotDefined("id".to_string()))?;
     let api_url =
       format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
 
@@ -180,6 +202,9 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// Bulk-patch many CFS components in a single request.
+  ///
+  /// `PATCH /cfs/v3/components` with the full list as JSON body.
   pub async fn cfs_component_v3_patch_component_list(
     &self,
     component_list: Vec<Component>,
@@ -203,18 +228,25 @@ impl ShastaClient {
     }
   }
 
+  /// Replace one CFS component record.
+  ///
+  /// `PUT /cfs/v3/components/{component.id}`. Returns
+  /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v3_put_component(
     &self,
     component: Component,
   ) -> Result<Component, Error> {
-    let component_id = component.id.as_deref().ok_or_else(|| {
-      Error::CfsComponentFieldNotDefined("id".to_string())
-    })?;
+    let component_id = component
+      .id
+      .as_deref()
+      .ok_or_else(|| Error::CfsComponentFieldNotDefined("id".to_string()))?;
     let api_url =
       format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
     http::put_json(self.http(), &api_url, self.token(), &component).await
   }
 
+  /// Replace many CFS component records sequentially. Stops at the
+  /// first error.
   pub async fn cfs_component_v3_put_component_list(
     &self,
     component_list: Vec<Component>,
@@ -229,6 +261,9 @@ impl ShastaClient {
     result_vec.into_iter().collect()
   }
 
+  /// Delete a CFS component by id.
+  ///
+  /// `DELETE /cfs/v3/components/{component_id}`.
   pub async fn cfs_component_v3_delete_single_component(
     &self,
     component_id: &str,

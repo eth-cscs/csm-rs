@@ -193,7 +193,8 @@ impl CfsConfigurationRequest {
   ) -> Result<(String, Self), Error> {
     let mut cfs_configuration = Self::new();
 
-    let cfs_configuration_name = yaml_str(configuration_yaml, "name")?.to_string();
+    let cfs_configuration_name =
+      yaml_str(configuration_yaml, "name")?.to_string();
 
     cfs_configuration.name = cfs_configuration_name.clone();
 
@@ -311,15 +312,15 @@ impl CfsConfigurationRequest {
         let product_version = yaml_str(product_yaml, "version")?;
         let product_branch_value_opt = product_yaml.get("branch");
 
-        let product = cray_product_catalog.get(product_name).ok_or_else(|| {
-          Error::Message(format!(
-            "Product {} not found in cray product catalog",
-            product_name
-          ))
-        })?;
+        let product =
+          cray_product_catalog.get(product_name).ok_or_else(|| {
+            Error::Message(format!(
+              "Product {} not found in cray product catalog",
+              product_name
+            ))
+          })?;
 
-        let cos_cray_product_catalog =
-          serde_yaml::from_str::<Value>(product)?;
+        let cos_cray_product_catalog = serde_yaml::from_str::<Value>(product)?;
 
         let product_details = cos_cray_product_catalog
           .get(product_version)
@@ -346,8 +347,7 @@ impl CfsConfigurationRequest {
           "api-gw-service-nmn.local",
         );
 
-        let commit_id_opt = if let Some(branch_value) =
-          product_branch_value_opt
+        let commit_id_opt = if let Some(branch_value) = product_branch_value_opt
         {
           // If branch is provided, then ignore the commit id in the CRAY products table
           let branch_name = as_yaml_str(branch_value)?;
@@ -536,7 +536,6 @@ impl CfsConfigurationRequest {
             .map(str::to_string);
 
           // Create CFS configuration layer struct
-          
 
           Layer::new(
             repo_url,
@@ -604,7 +603,6 @@ impl CfsConfigurationRequest {
           );
 
           // Create CFS configuration layer struct
-          
 
           Layer::new(
             repo_url,
@@ -660,7 +658,6 @@ impl CfsConfigurationRequest {
           );
 
           // Create CFS configuration layer struct
-          
 
           Layer::new(
             repo_url,

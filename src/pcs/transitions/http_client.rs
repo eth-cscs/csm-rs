@@ -14,6 +14,9 @@ use crate::{
 use super::types::Transition;
 
 impl ShastaClient {
+  /// List every power transition currently known to PCS.
+  ///
+  /// `GET /power-control/v1/transitions`.
   pub async fn pcs_transitions_get(
     &self,
   ) -> Result<Vec<TransitionResponse>, Error> {
@@ -23,6 +26,9 @@ impl ShastaClient {
     Ok(list.transitions)
   }
 
+  /// Fetch a single power transition by its `id`.
+  ///
+  /// `GET /power-control/v1/transitions/{id}`.
   pub async fn pcs_transitions_get_by_id(
     &self,
     id: &str,
@@ -35,6 +41,16 @@ impl ShastaClient {
     Ok(transition)
   }
 
+  /// Start a power transition (`on`, `off`, `reset`, …) against a set
+  /// of xnames and return immediately with the transition id.
+  ///
+  /// `POST /power-control/v1/transitions`. Use
+  /// [`Self::pcs_transitions_post_block`] if you want to wait for the
+  /// transition to complete.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if `operation` is not a valid PCS [`Operation`].
   pub async fn pcs_transitions_post(
     &self,
     operation: &str,

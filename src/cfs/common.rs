@@ -1,8 +1,14 @@
+//! Helpers shared across the CFS resource modules (e.g. service health).
+
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// Probe CFS for liveness.
+  ///
+  /// `GET /cfs/healthz`. Returns the raw JSON body produced by CFS;
+  /// success only means the service was reachable and authenticated.
   pub async fn cfs_health_check(&self) -> Result<Value, Error> {
     let api_url = format!("{}/cfs/healthz", self.base_url());
     http::get_json(self.http(), &api_url, self.token()).await

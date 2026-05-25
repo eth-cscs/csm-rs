@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::cfs_component_*` methods.
+
 use crate::{cfs::component::http_client::v3::types::Component, error::Error};
 
 pub async fn update_component_desired_configuration(

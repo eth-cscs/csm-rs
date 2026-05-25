@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use manta_backend_dispatcher::types::bos::session_template::{
   BootSet as FrontEndBootSet, BosSessionTemplate as FrontEndBosSessionTemplate,
   Cfs as FrontEndCfs, Link as FrontEndLink,
@@ -241,7 +245,9 @@ impl BosSessionTemplate {
       .boot_sets
       .as_ref()
       .map(|boot_set| {
-        boot_set.values().map(|boot_param| boot_param.path.clone().unwrap_or_default())
+        boot_set
+          .values()
+          .map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()

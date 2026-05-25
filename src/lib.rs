@@ -50,6 +50,8 @@
 //! `cfs_session_v3_get`). See each module's docs for the full list.
 
 #![allow(clippy::doc_lazy_continuation)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![warn(missing_docs)]
 
 pub mod backend_connector;
 pub mod bos;

@@ -1,3 +1,22 @@
+//! Crate-wide error type.
+//!
+//! Every fallible call in csm-rs returns `Result<T, `[`Error`]`>`. The
+//! variants fall roughly into three groups:
+//!
+//! - **Infrastructure errors** ([`Error::IoError`], [`Error::NetError`],
+//!   [`Error::TokioError`], …) — propagated from the standard library or
+//!   from third-party crates via `#[from]`.
+//! - **HTTP/CSM errors** ([`Error::RequestError`], [`Error::CsmError`]) —
+//!   raised when CSM returns a non-2xx response.
+//! - **Domain errors** (e.g. [`Error::ConfigurationAlreadyExists`],
+//!   [`Error::GroupNotFound`], [`Error::ImageNotFound`]) — distinguished
+//!   variants for cases callers commonly want to branch on instead of
+//!   string-matching against a generic [`Error::Message`].
+//!
+//! [`Error::Message`] is the catch-all "something went wrong, here's a
+//! string" variant; prefer a specific variant when one exists so callers
+//! can act on it programmatically.
+
 use std::{env::VarError, io, num::ParseIntError, str::Utf8Error};
 
 use aws_smithy_types::byte_stream;
@@ -6,7 +25,13 @@ use manta_backend_dispatcher::error::Error as MantaError;
 use serde_json::Value;
 use tokio::task::JoinError;
 
+/// Errors returned by any csm-rs call.
+///
+/// See the [module docs][self] for a high-level grouping of variants.
+/// The `#[error("…")]` message on each variant is the canonical
+/// description; per-variant rustdoc is intentionally omitted.
 #[derive(thiserror::Error, Debug)]
+#[allow(missing_docs)]
 pub enum Error {
   #[error("CSM-RS > Generic error: {0}")]
   Message(String),

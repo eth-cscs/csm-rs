@@ -327,7 +327,8 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
 
     log::info!(
       "Dry run mode: Image '{}' ({}) created",
-      image_name, image_id
+      image_name,
+      image_id
     );
 
     Ok(image_id)
@@ -434,16 +435,15 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key_value: serde_json::Value =
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_token,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .ims_public_keys_v3_get_single(root_ims_key_name)
-    .await?
-    .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
+  let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_public_keys_v3_get_single(root_ims_key_name)
+  .await?
+  .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
   let root_public_ssh_key: &str = root_public_ssh_key_value
     .get("id")
@@ -505,7 +505,6 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   })
 }
 
-
 pub(super) async fn process_sat_file_image_ims_type_recipe(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -542,10 +541,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     ))
   })?;
   let recipe_id = recipe_detail.id.as_ref().ok_or_else(|| {
-    Error::Message(format!(
-      "IMS recipe '{}' has no 'id' field",
-      recipe_name
-    ))
+    Error::Message(format!("IMS recipe '{}' has no 'id' field", recipe_name))
   })?;
 
   log::info!("IMS recipe id found '{}'", recipe_id);
@@ -553,16 +549,15 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key_value: serde_json::Value =
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_token,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .ims_public_keys_v3_get_single(root_ims_key_name)
-    .await?
-    .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
+  let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_token,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_public_keys_v3_get_single(root_ims_key_name)
+  .await?
+  .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
   let root_public_ssh_key = root_public_ssh_key_value
     .get("id")
@@ -1067,5 +1062,3 @@ pub fn validate_sat_file_images_section(
 
   Ok(())
 }
-
-

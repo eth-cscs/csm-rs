@@ -8,6 +8,11 @@ use crate::{
 };
 
 impl ShastaClient {
+  /// Issue the raw `GET /smd/hsm/v2/groups[/{name}]` call and return
+  /// the unparsed `reqwest::Response`.
+  ///
+  /// Useful when the caller needs access to status codes or headers
+  /// before deciding how to deserialise the body.
   pub async fn hsm_group_get_raw(
     &self,
     group_name_opt: Option<&String>,
@@ -27,6 +32,12 @@ impl ShastaClient {
       .map_err(Error::NetError)
   }
 
+  /// Fetch a single HSM group by `label`, returning a strongly-typed
+  /// [`Group`].
+  ///
+  /// `GET /smd/hsm/v2/groups/{label}`. Distinguishes unauthorized
+  /// responses as [`Error::RequestError`] so callers can react to token
+  /// problems differently from other HTTP errors.
   pub async fn hsm_group_get_one(&self, label: &str) -> Result<Group, Error> {
     let api_url = format!("{}/smd/hsm/v2/groups/{}", self.base_url(), label);
 
@@ -56,6 +67,12 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// List HSM groups, optionally filtered by one or more labels and/or
+  /// tags.
+  ///
+  /// `GET /smd/hsm/v2/groups?group=…&tag=…`. Each value in
+  /// `label_vec_opt` and `tag_vec_opt` becomes an additional repeated
+  /// query parameter.
   pub async fn hsm_group_get(
     &self,
     label_vec_opt: Option<&[String]>,
@@ -103,10 +120,17 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// List every HSM group on the system.
+  ///
+  /// Convenience wrapper for `hsm_group_get(None, None)`.
   pub async fn hsm_group_get_all(&self) -> Result<Vec<Group>, Error> {
     self.hsm_group_get(None, None).await
   }
 
+  /// Find every HSM group whose label *contains* `hsm_group_name_opt`
+  /// (substring match).
+  ///
+  /// Returns an empty `Vec` if `hsm_group_name_opt` is `None`.
   pub async fn hsm_group_get_hsm_group_vec(
     &self,
     hsm_group_name_opt: Option<&String>,
@@ -126,6 +150,10 @@ impl ShastaClient {
     Ok(hsm_groups)
   }
 
+  /// Create a new HSM group.
+  ///
+  /// `POST /smd/hsm/v2/groups`. Returns the response body as text
+  /// because CSM's success payload here is a plain string id, not JSON.
   pub async fn hsm_group_post(&self, group: Group) -> Result<String, Error> {
     log::info!("Add/Create HSM group");
     log::debug!("Add HSM group payload:\n{:#?}", group);
@@ -161,6 +189,11 @@ impl ShastaClient {
     response.text().await.map_err(Error::NetError)
   }
 
+  /// Build a [`Group`] from its individual fields and create it via
+  /// [`Self::hsm_group_post`].
+  ///
+  /// Returns the constructed [`Group`] regardless of the response body
+  /// shape; success of the underlying POST is logged.
   pub async fn hsm_group_create_new_group(
     &self,
     hsm_group_name_opt: &str,
@@ -190,6 +223,9 @@ impl ShastaClient {
     Ok(group)
   }
 
+  /// Delete an HSM group by label.
+  ///
+  /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}`.
   pub async fn hsm_group_delete_group(
     &self,
     hsm_group_name: &String,
@@ -210,6 +246,9 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// Add a member (component xname) to an HSM group.
+  ///
+  /// `POST /smd/hsm/v2/groups/{hsm_group_name}/members`.
   pub async fn hsm_group_post_member(
     &self,
     hsm_group_name: &str,
@@ -252,6 +291,9 @@ impl ShastaClient {
       .map_err(|e| Error::Message(e.to_string()))
   }
 
+  /// Remove a member (component xname) from an HSM group.
+  ///
+  /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}/members/{member_id}`.
   pub async fn hsm_group_delete_member(
     &self,
     hsm_group_name: &str,

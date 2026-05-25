@@ -21,11 +21,6 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
 pub const TEST_TOKEN: &str = "test-token";
 
 pub fn make_client(base_url: &str) -> ShastaClient {
-  ShastaClient::new(
-    base_url,
-    TEST_TOKEN,
-    TEST_PEM.as_bytes().to_vec(),
-    None,
-  )
-  .expect("ShastaClient::new should succeed with valid PEM")
+  ShastaClient::new(base_url, TEST_TOKEN, TEST_PEM.as_bytes().to_vec(), None)
+    .expect("ShastaClient::new should succeed with valid PEM")
 }

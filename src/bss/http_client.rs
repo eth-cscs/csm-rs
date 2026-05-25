@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/bss/boot/v1/bootparameters`.
+
 use tokio::sync::Semaphore;
 
 use core::result::Result;
@@ -8,7 +10,7 @@ use crate::{ShastaClient, common::http, error::Error};
 use super::types::BootParameters;
 
 impl ShastaClient {
-  /// Get node boot params, ref --> https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/get/
+  /// Get node boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/get/>.
   pub async fn bss_bootparameters_get(
     &self,
     xnames: &[String],
@@ -74,7 +76,7 @@ impl ShastaClient {
     Ok(boot_params_vec)
   }
 
-  /// Change nodes boot params, ref --> https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/put/
+  /// Change nodes boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/put/>.
   pub async fn bss_bootparameters_put(
     &self,
     boot_parameters: BootParameters,
@@ -147,4 +149,3 @@ impl ShastaClient {
     }
   }
 }
-

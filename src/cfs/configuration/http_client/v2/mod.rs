@@ -1,3 +1,6 @@
+//! CFS configurations v2 — `ShastaClient` methods for
+//! `/cfs/v2/configurations`.
+
 pub mod types;
 
 use crate::{
@@ -13,6 +16,12 @@ use crate::{
 const STUPID_LIMIT: i64 = 100000;
 
 impl ShastaClient {
+  /// Fetch one CFS configuration by name, or every configuration when
+  /// `configuration_name_opt` is `None`.
+  ///
+  /// `GET /cfs/v2/configurations[/{name}]`. Always returns a `Vec` for
+  /// uniform handling at the call site — single-name lookups produce a
+  /// one-element vector.
   pub async fn cfs_configuration_v2_get(
     &self,
     configuration_name_opt: Option<&str>,
@@ -48,12 +57,20 @@ impl ShastaClient {
     }
   }
 
+  /// List every CFS configuration on the system.
+  ///
+  /// Convenience wrapper for `cfs_configuration_v2_get(None)`.
   pub async fn cfs_configuration_v2_get_all(
     &self,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     self.cfs_configuration_v2_get(None).await
   }
 
+  /// Create or replace a CFS configuration by name with the supplied
+  /// layer list.
+  ///
+  /// `PUT /cfs/v2/configurations/{configuration_name}`. The request body
+  /// is `{ "layers": configuration.layers }`.
   pub async fn cfs_configuration_v2_put(
     &self,
     configuration: &CfsConfigurationRequest,
@@ -68,8 +85,7 @@ impl ShastaClient {
       configuration_name
     );
 
-    let request_payload =
-      serde_json::json!({ "layers": configuration.layers });
+    let request_payload = serde_json::json!({ "layers": configuration.layers });
 
     log::debug!(
       "CFS configuration request payload:\n{}",
@@ -80,6 +96,11 @@ impl ShastaClient {
     http::put_json(self.http(), &api_url, self.token(), &request_payload).await
   }
 
+  /// Delete a CFS configuration by id.
+  ///
+  /// `DELETE /cfs/v2/configurations/{configuration_id}`. CFS rejects
+  /// the delete if the configuration is still referenced by an image
+  /// or runtime binding; that surfaces as an HTTP error.
   pub async fn cfs_configuration_v2_delete(
     &self,
     configuration_id: &str,

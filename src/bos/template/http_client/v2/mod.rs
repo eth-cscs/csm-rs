@@ -1,3 +1,6 @@
+//! BOS session templates v2 — `ShastaClient` methods for
+//! `/bos/v2/sessiontemplates`.
+
 pub mod types;
 
 use crate::{
@@ -6,7 +9,7 @@ use crate::{
 };
 
 impl ShastaClient {
-  /// Get BOS session templates. Ref --> https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/
+  /// Get BOS session templates. Ref: <https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/>.
   pub async fn bos_template_v2_get(
     &self,
     bos_session_template_id_opt: Option<&str>,

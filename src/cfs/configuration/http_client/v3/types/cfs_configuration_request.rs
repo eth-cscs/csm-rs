@@ -222,10 +222,10 @@ impl CfsConfigurationRequest {
     site_name: &str,
     socks5_proxy: Option<&str>,
   ) -> Result<(String, Self), Error> {
-    
     let mut cfs_configuration = Self::new();
 
-    let cfs_configuration_name = yaml_str(configuration_yaml, "name")?.to_string();
+    let cfs_configuration_name =
+      yaml_str(configuration_yaml, "name")?.to_string();
 
     for layer_yaml in yaml_seq(configuration_yaml, "layers")? {
       if let Some(git_yaml) = layer_yaml.get("git") {
@@ -345,15 +345,15 @@ impl CfsConfigurationRequest {
         let product_branch_value_opt = product_yaml.get("branch");
         let product_commit_value_opt = product_yaml.get("commit");
 
-        let product = cray_product_catalog.get(product_name).ok_or_else(|| {
-          Error::Message(format!(
-            "Product {} not found in cray product catalog",
-            product_name
-          ))
-        })?;
+        let product =
+          cray_product_catalog.get(product_name).ok_or_else(|| {
+            Error::Message(format!(
+              "Product {} not found in cray product catalog",
+              product_name
+            ))
+          })?;
 
-        let cos_cray_product_catalog =
-          serde_yaml::from_str::<Value>(product)?;
+        let cos_cray_product_catalog = serde_yaml::from_str::<Value>(product)?;
 
         let product_details = cos_cray_product_catalog
           .get(product_version)
@@ -490,9 +490,7 @@ impl CfsConfigurationRequest {
         )),
         Some(clone_url),
         None,
-        playbook_file_name_opt
-          .unwrap_or("site.yml")
-          .to_string(),
+        playbook_file_name_opt.unwrap_or("site.yml").to_string(),
         Some(local_last_commit.to_string()),
         None,
         None,

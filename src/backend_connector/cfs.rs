@@ -1,3 +1,5 @@
+//! `CfsTrait` impl for [`Csm`](super::Csm).
+
 use std::pin::Pin;
 
 use chrono::NaiveDateTime;
@@ -49,7 +51,7 @@ impl CfsTrait for Csm {
       .map_err(|e| Error::Message(e.to_string()))
   }
 
-  /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
+  /// Fetch CFS sessions. Ref: <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>.
   async fn get_sessions(
     &self,
     shasta_token: &str,
@@ -83,7 +85,6 @@ impl CfsTrait for Csm {
       .await;
 
     // Convert to manta session
-    
 
     local_cfs_session_vec
       .map(|cfs_session_vec| {
@@ -380,7 +381,9 @@ impl CfsTrait for Csm {
     let _ = (base_url, root_cert);
     let cfs_configuration_vec = self
       .shasta_client(auth_token)?
-      .cfs_configuration_v3_get(configuration_name_opt.map(|elem| elem.as_str()))
+      .cfs_configuration_v3_get(
+        configuration_name_opt.map(|elem| elem.as_str()),
+      )
       .await
       .map_err(|e| Error::Message(e.to_string()));
 
@@ -481,16 +484,23 @@ impl CfsTrait for Csm {
       } => {
         serde_json::json!({ "certificate-authority-data": certificate_authority_data, "client-certificate-data": client_certificate_data, "client-key-data": client_key_data })
       }
-      K8sAuth::Vault { base_url } => {
-        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name, self.socks5_proxy.as_deref())
-          .await
-          .map_err(|e| Error::Message(format!("{e}")))?
-      }
+      K8sAuth::Vault { base_url } => fetch_shasta_k8s_secrets_from_vault(
+        base_url,
+        shasta_token,
+        site_name,
+        self.socks5_proxy.as_deref(),
+      )
+      .await
+      .map_err(|e| Error::Message(format!("{e}")))?,
     };
 
-    let client = kubernetes::get_client(&k8s.api_url, shasta_k8s_secrets, self.socks5_proxy.as_deref())
-      .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
+    let client = kubernetes::get_client(
+      &k8s.api_url,
+      shasta_k8s_secrets,
+      self.socks5_proxy.as_deref(),
+    )
+    .await
+    .map_err(|e| Error::Message(format!("{e}")))?;
 
     let (log_stream_git_clone, exit_code) =
       kubernetes::get_cfs_session_init_container_git_clone_logs_stream(

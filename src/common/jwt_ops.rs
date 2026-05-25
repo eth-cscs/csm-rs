@@ -1,3 +1,5 @@
+//! JWT decoding helpers (RFC 7519 base64url-aware) used to introspect Shasta tokens without verifying their signature.
+
 use crate::error::Error;
 use base64::{
   Engine,

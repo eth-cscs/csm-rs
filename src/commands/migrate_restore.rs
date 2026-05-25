@@ -1,16 +1,18 @@
+//! Restore a system from the bundle produced by [`crate::commands::migrate_backup`].
+
 use crate::bos::template::http_client::v2::types::BosSessionTemplate;
 use crate::cfs::configuration::http_client::v3::types::{
   cfs_configuration_request::CfsConfigurationRequest,
   cfs_configuration_response::CfsConfigurationResponse,
 };
 use crate::hsm::group::types::Group;
+use crate::ims;
 use crate::ims::image::{
   http_client::types::{Image, Link},
   utils::get_by_name,
   utils::get_fuzzy,
 };
 use crate::ims::s3_client::BAR_FORMAT;
-use crate::ims;
 use chrono::Local;
 use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -46,6 +48,20 @@ fn default_version() -> String {
   "1.0".to_string()
 }
 
+/// Restore a system from the bundle produced by
+/// [`crate::commands::migrate_backup::exec`].
+///
+/// Reads the BOS, CFS, HSM, and IMS JSON files plus the IMS image
+/// directory and recreates the corresponding CSM resources on the
+/// target system.
+///
+/// # Arguments
+///
+/// All four `*_file` arguments and `image_dir` are required (typed as
+/// `Option` only because of the CLI surface that consumes this).
+///
+/// The four `overwrite_*` flags replace existing CSM resources with
+/// the same name instead of failing.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
@@ -74,9 +90,12 @@ pub async fn exec(
   let ims_file = require(ims_file, "ims-file")?;
   let image_dir = require(image_dir, "image-dir")?;
 
-  for (label, path) in
-    [("bos", bos_file), ("cfs", cfs_file), ("ims", ims_file), ("hsm", hsm_file)]
-  {
+  for (label, path) in [
+    ("bos", bos_file),
+    ("cfs", cfs_file),
+    ("ims", ims_file),
+    ("hsm", hsm_file),
+  ] {
     if !PathBuf::from(path).exists() {
       return Err(Error::Message(format!(
         "Error, {} file {} does not exist or cannot be open.",
@@ -232,7 +251,9 @@ async fn create_bos_sessiontemplate(
     serde_json::from_reader(BufReader::new(file_content))?;
 
   let bos_sessiontemplate_name = bos_json.name.ok_or_else(|| {
-    Error::Message("BOS sessiontemplate file is missing the 'name' field".to_string())
+    Error::Message(
+      "BOS sessiontemplate file is missing the 'name' field".to_string(),
+    )
   })?;
 
   // BOS sessiontemplates need the new ID of the image!
@@ -259,7 +280,8 @@ async fn create_bos_sessiontemplate(
   if !vector.is_empty() {
     if !overwrite {
       return Err(Error::Message(
-        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
+        "BOS sessiontemplate already exists and --overwrite was not set"
+          .to_string(),
       ));
     } else {
       match shasta_client
@@ -346,10 +368,7 @@ async fn create_cfs_config(
     .cfs_configuration_v3_get(Some(&cfs_config_name))
     .await
     .map_err(|error| {
-      Error::Message(format!(
-        "Unable to fetch CFS configuration: {}",
-        error
-      ))
+      Error::Message(format!("Unable to fetch CFS configuration: {}", error))
     })?;
 
   if !cfs_config_vec.is_empty() {
@@ -476,13 +495,14 @@ async fn ims_update_image_add_manifest(
     socks5_proxy.map(str::to_owned),
   ) {
     Ok(client) => {
-      client.ims_image_patch(&ims_image_id.to_string(), &rec).await
+      client
+        .ims_image_patch(&ims_image_id.to_string(), &rec)
+        .await
     }
     Err(e) => Err(e),
   };
 
-  match patch_result
-  {
+  match patch_result {
     Ok(()) => log::debug!("Image updated"),
     Err(e) => panic!(
       "Error, unable to modify the record of the image. Err msg: {}",
@@ -547,7 +567,10 @@ async fn s3_upload_image_artifacts(
       format!("{}/{}", &object_path, &filename.to_string_lossy());
     log::info!(
       "File {:?} ({}) to s3://{}/{}.",
-      &file, &file_size, &bucket_name, &full_object_path
+      &file,
+      &file_size,
+      &bucket_name,
+      &full_object_path
     );
     let etag: String = if fs::metadata(file)?.len() > 1024 * 1024 * 5 {
       match ims::s3_client::s3_multipart_upload_object(
@@ -637,7 +660,9 @@ async fn s3_upload_image_artifacts(
   let new_manifest_file_name = String::from("new-manifest.json");
 
   let first_image_file = vec_image_files.first().ok_or_else(|| {
-    Error::Message("vec_image_files is empty; no manifest can be written".to_string())
+    Error::Message(
+      "vec_image_files is empty; no manifest can be written".to_string(),
+    )
   })?;
   let new_manifest_file_path = Path::new(first_image_file)
     .parent()
@@ -657,7 +682,9 @@ async fn s3_upload_image_artifacts(
   let manifest_full_object_path = format!("{}/manifest.json", &object_path);
   log::info!(
     "File {:?} -> s3://{}/{}.",
-    &new_manifest_file_name, &bucket_name, &manifest_full_object_path
+    &new_manifest_file_name,
+    &bucket_name,
+    &manifest_full_object_path
   );
 
   match ims::s3_client::s3_upload_object(
@@ -832,9 +859,7 @@ async fn ims_register_image(
     .get("id")
     .and_then(Value::as_str)
     .map(|id| id.replace('"', ""))
-    .ok_or_else(|| {
-      anyhow::anyhow!("IMS image post response is missing 'id'")
-    })
+    .ok_or_else(|| anyhow::anyhow!("IMS image post response is missing 'id'"))
 }
 
 /// Gets the image name off an IMS yaml file
@@ -851,13 +876,18 @@ pub fn get_image_name_from_ims_file(
     .and_then(Value::as_str)
     .map(|ims_name| ims_name.replace('"', ""))
     .ok_or_else(|| {
-      Error::Message(format!(
-        "IMS file '{}' is missing /0/name",
-        ims_file
-      ))
+      Error::Message(format!("IMS file '{}' is missing /0/name", ims_file))
     })
 }
 
+/// Recreate HSM groups from a backup file produced by
+/// [`crate::commands::migrate_backup::exec`].
+///
+/// `hsm_file` is the path to a JSON list of `Group` objects, e.g.
+/// `[{"gele":["x1001c7s1b1n1", …]}]`.
+///
+/// Failures inside this function are treated as fatal — the migrate
+/// flow cannot continue if HSM group creation is partial.
 // Anything in this function is critical, so the asserts will kill further processing
 pub async fn create_hsm_group_from_file(
   // backend: &StaticBackendDispatcher,
@@ -908,10 +938,7 @@ pub async fn create_hsm_group_from_file(
             match shasta_client.hsm_group_delete_group(&group.label).await {
               Ok(_) => {
                 // try creating the group again
-                match shasta_client
-                  .hsm_group_post(group.clone())
-                  .await
-                {
+                match shasta_client.hsm_group_post(group.clone()).await {
                   Ok(_json) => {
                     log::info!(
                       "The HSM group {} has been created successfully.",

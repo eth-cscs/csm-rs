@@ -1,3 +1,5 @@
+//! Run a CFS session against a set of nodes.
+
 use crate::{
   cfs::{
     self,
@@ -11,8 +13,9 @@ use crate::{
 use k8s_openapi::chrono;
 use serde_json::Value;
 
-/// Creates a CFS session target dynamic
-/// Returns a tuple like (<cfs configuration name>, <cfs session name>)
+/// Creates a CFS session target dynamic.
+///
+/// Returns a tuple like (`cfs configuration name`, `cfs session name`).
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   gitea_token: &str,
@@ -35,8 +38,6 @@ pub async fn exec(
 
   // Check andible limit matches the nodes in hsm_group
   let hsm_group_list;
-
-  
 
   let hsm_groups_node_list;
 
@@ -151,6 +152,15 @@ pub async fn exec(
   Ok((cfs_configuration_name, cfs_session_name))
 }
 
+/// Wait for the target nodes to be idle (no in-flight CFS session
+/// targeting them), then launch a CFS session against them.
+///
+/// Pulls in the Gitea repo state (`repo_name_vec` /
+/// `repo_last_commit_id_vec`) the configuration depends on, ensures
+/// each xname in `limit` is ready, and then dispatches a new CFS
+/// session for `cfs_configuration_name`. Useful as a pre-flight wrapper
+/// around the lower-level CFS session APIs when nodes might still be
+/// running a previous configuration.
 #[allow(clippy::too_many_arguments)]
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   cfs_configuration_name: &str,

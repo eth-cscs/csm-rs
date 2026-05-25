@@ -1,3 +1,7 @@
+//! Section-level helpers for the SAT-file workflow: SAT-file shape,
+//! conversions from SAT sections to BOS/CFS/IMS shapes, and per-section
+//! orchestration submodules.
+
 use std::collections::HashMap;
 
 use crate::{
@@ -48,9 +52,11 @@ impl SatFile {
       };
 
       // Remove configurations not used by any image
-      if let Some(configuration_vec) = self.configurations.as_mut() { configuration_vec.retain(|configuration| {
+      if let Some(configuration_vec) = self.configurations.as_mut() {
+        configuration_vec.retain(|configuration| {
           configuration_name_image_vec.contains(&configuration.name)
-        }) }
+        })
+      }
 
       // Remove section "session_templates"
       self.session_templates = None;
@@ -116,9 +122,11 @@ impl SatFile {
         .unwrap_or_default();
 
       // Remove images not used by any sessiontemplate
-      if let Some(image_vec) = self.images.as_mut() { image_vec.retain(|sat_image| {
+      if let Some(image_vec) = self.images.as_mut() {
+        image_vec.retain(|sat_image| {
           image_name_sessiontemplate_vec.contains(&sat_image.name)
-        }) }
+        })
+      }
 
       if self.images.as_ref().is_some_and(|images| images.is_empty()) {
         self.images = None;
@@ -132,8 +140,9 @@ impl SatFile {
 /// struct to represent the `session_templates` section in SAT file
 pub mod sessiontemplate;
 
-/// Convert from `sessiontemplate` in SAT file to mesa BosSessionTemplate
-/// example from https://doc.rust-lang.org/rust-by-example/conversion/try_from_try_into.html
+/// Convert from `sessiontemplate` in SAT file to mesa `BosSessionTemplate`.
+///
+/// Example from <https://doc.rust-lang.org/rust-by-example/conversion/try_from_try_into.html>.
 impl TryFrom<SessionTemplate> for BosSessionTemplate {
   type Error = ();
 
@@ -170,7 +179,9 @@ impl TryFrom<SessionTemplate> for BosSessionTemplate {
 
     let b_st = BosSessionTemplate {
       name: Some(value.name),
-      description: Some("BOS sessiontemplate created by manta from SAT file".to_string()),
+      description: Some(
+        "BOS sessiontemplate created by manta from SAT file".to_string(),
+      ),
       enable_cfs: Some(true),
       cfs: Some(b_st_cfs),
       boot_sets: Some(boot_set_map),
@@ -189,7 +200,6 @@ pub mod image;
 pub mod configuration;
 
 pub mod sat_file_image_old;
-
 
 pub mod configurations;
 pub mod images;

@@ -16,14 +16,14 @@ use crate::{
 };
 
 use super::{
-  configuration, image, sessiontemplate,
+  configuration, image,
   images::{
     filter_product_catalog_images, process_sat_file_image_ims_type_recipe,
     process_sat_file_image_old_version_struct,
     process_sat_file_image_product_type_ims_recipe,
   },
+  sessiontemplate,
 };
-
 
 #[allow(clippy::too_many_arguments)]
 pub async fn validate_sat_file_session_template_section(
@@ -63,7 +63,10 @@ pub async fn validate_sat_file_session_template_section(
       {
         boot_sets_uan.node_groups.clone().unwrap_or_default()
       } else {
-        return Err(Error::Message("No HSM group found in session_templates section in SAT file".to_string()));
+        return Err(Error::Message(
+          "No HSM group found in session_templates section in SAT file"
+            .to_string(),
+        ));
       };
 
     for hsm_group in bos_session_template_hsm_groups {
@@ -278,7 +281,6 @@ pub async fn process_session_template_section_in_sat_file(
             .await
             .unwrap_or_else(|_| {
               // In dry run mode, generate a mock image
-              
 
               if is_image_id {
                 // Image reference is an image ID
@@ -516,9 +518,7 @@ pub async fn process_session_template_section_in_sat_file(
       };
 
       let parameter_str = parameter.as_str().ok_or_else(|| {
-        Error::Message(
-          "SAT file: boot_set key is not a string".to_string(),
-        )
+        Error::Message("SAT file: boot_set key is not a string".to_string())
       })?;
       boot_set_vec.insert(parameter_str.to_string(), boot_set);
     }
@@ -725,8 +725,6 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   image_reference: &str,
   is_image_id: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {
-  
-
   if is_image_id {
     crate::ShastaClient::new(
       shasta_base_url,
@@ -738,14 +736,10 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {
-        Error::Message(format!(
-          "Image '{}' not found in CSM",
-          image_reference
-        ))
+        Error::Message(format!("Image '{}' not found in CSM", image_reference))
       })
     })
   } else {
-
     ims::image::utils::try_get_by_name(
       shasta_token,
       shasta_base_url,
@@ -758,15 +752,11 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {
-        Error::Message(format!(
-          "Image '{}' not found in CSM",
-          image_reference
-        ))
+        Error::Message(format!("Image '{}' not found in CSM", image_reference))
       })
     })
   }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn get_base_image_id_from_sat_file_image_yaml(

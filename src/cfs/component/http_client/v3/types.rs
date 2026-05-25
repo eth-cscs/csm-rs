@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 // TODO: Update/Review these structs because:
 // - PUT/PATH operations are tricky since some fields are read-only
 // - State.lastUpdate field may be missing

@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/smd/hsm/v2/Inventory/RedfishEndpoints`.
+
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};
@@ -5,6 +7,9 @@ use crate::{ShastaClient, common::http, error::Error};
 use super::types::{RedfishEndpoint, RedfishEndpointArray};
 
 impl ShastaClient {
+  /// Query Redfish endpoints filtered by xname.
+  ///
+  /// `GET /smd/hsm/v2/Inventory/RedfishEndpoint/Query/{xname}`.
   pub async fn hsm_redfish_get_query(
     &self,
     xname: &str,
@@ -26,6 +31,9 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// List Redfish endpoints with optional filters.
+  ///
+  /// `GET /smd/hsm/v2/Inventory/RedfishEndpoints`.
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_redfish_get(
     &self,
@@ -51,6 +59,9 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// Fetch one Redfish endpoint by xname.
+  ///
+  /// `GET /smd/hsm/v2/Inventory/RedfishEndpoints/{xname}`.
   pub async fn hsm_redfish_get_one(
     &self,
     xname: &str,
@@ -70,6 +81,9 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// Create a Redfish endpoint.
+  ///
+  /// `POST /smd/hsm/v2/Inventory/RedfishEndpoints`.
   pub async fn hsm_redfish_post(
     &self,
     redfish_endpoint: RedfishEndpoint,

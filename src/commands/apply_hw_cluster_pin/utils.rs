@@ -1,3 +1,5 @@
+//! Building blocks for [`super::command::exec`] (component counting, pattern matching).
+
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use crate::{error::Error, hsm};
@@ -96,18 +98,20 @@ pub fn get_best_candidate_in_hsm_pin(
   hsm_score_vec.sort_by_key(|elem| elem.0.clone());
   // f32 partial_cmp returns None for NaN; treat NaN as equal so the sort stays
   // total-ordered without panicking on degenerate input.
-  hsm_score_vec.sort_by(|b, a| {
-    a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-  });
+  hsm_score_vec
+    .sort_by(|b, a| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
   // Get node with highest normalized score (best candidate).
   // Non-empty check above guarantees first() is Some.
-  let best_candidate: (String, f32) =
-    hsm_score_vec.first().expect("non-empty: checked above").clone();
+  let best_candidate: (String, f32) = hsm_score_vec
+    .first()
+    .expect("non-empty: checked above")
+    .clone();
 
   hsm_hw_component_vec
     .iter()
-    .find(|(node, _)| node.eq(&best_candidate.0)).map(|best_candiate| (best_candidate, best_candiate.1.clone()))
+    .find(|(node, _)| node.eq(&best_candidate.0))
+    .map(|best_candiate| (best_candidate, best_candiate.1.clone()))
 }
 
 pub fn get_best_candidate_in_target_and_parent_hsm_pin(
@@ -117,10 +121,7 @@ pub fn get_best_candidate_in_target_and_parent_hsm_pin(
     String,
     HashMap<String, usize>,
   )],
-  parent_hsm_node_hw_component_count_vec: &[(
-    String,
-    HashMap<String, usize>,
-  )],
+  parent_hsm_node_hw_component_count_vec: &[(String, HashMap<String, usize>)],
 ) -> Option<((String, f32), HashMap<String, usize>)> {
   // Get best candidate in 'target' HSM group
   let target_best_candidate_tuple = get_best_candidate_in_hsm_pin(
@@ -379,9 +380,7 @@ pub fn calculate_hw_component_scarcity_scores(
 ) -> HashMap<String, f32> {
   let total_num_hw_components: usize = hsm_node_hw_component_count
     .iter()
-    .flat_map(|(_, hw_component_qty_hashmap)| {
-      hw_component_qty_hashmap.values()
-    })
+    .flat_map(|(_, hw_component_qty_hashmap)| hw_component_qty_hashmap.values())
     .sum();
 
   let mut hw_component_vec: Vec<&String> = hsm_node_hw_component_count
@@ -490,7 +489,7 @@ pub fn keep_iterating_final_hsm(
   false
 }
 
-/// Returns a triple like (<xname>, <list of hw components>, <list of memory capacity>)
+/// Returns a triple like (`xname`, `list of hw components`, `list of memory capacity`).
 /// Note: list of hw components can be either the hw componentn pattern provided by user or the
 /// description from the HSM API
 /// NOTE: backend it not borrowed because we need to clone it in order to use it across threads
@@ -612,7 +611,8 @@ pub async fn get_hsm_node_hw_component_counter(
   let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
 
   // Get HW inventory details for parent HSM group
-  #[allow(clippy::unnecessary_to_owned)] // `hsm_member` is moved into the `async move` block below
+  #[allow(clippy::unnecessary_to_owned)]
+  // `hsm_member` is moved into the `async move` block below
   for hsm_member in hsm_group_member_vec.iter().cloned() {
     let shasta_token_string = shasta_token.to_string(); // TODO: make it static
     let shasta_base_url_string = shasta_base_url.to_string(); // TODO: make it static

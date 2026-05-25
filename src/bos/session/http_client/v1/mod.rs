@@ -1,3 +1,5 @@
+//! BOS sessions v1 — `ShastaClient` methods for `/bos/v1/session`.
+
 use serde_json::{Value, json};
 
 use crate::{ShastaClient, common::http, error::Error};

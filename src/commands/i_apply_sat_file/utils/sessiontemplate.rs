@@ -1,3 +1,7 @@
+//! Serde shapes for one section of a SAT (System Admin Toolkit) YAML
+//! file; field names and shapes are dictated by the SAT format.
+#![allow(missing_docs)]
+
 use std::collections::HashMap;
 use strum_macros::Display;
 

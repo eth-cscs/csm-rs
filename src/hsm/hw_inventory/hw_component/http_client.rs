@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/smd/hsm/v2/Inventory/Hardware`.
+
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};
@@ -9,8 +11,7 @@ impl ShastaClient {
     &self,
     xname: &str,
   ) -> Result<NodeSummary, Error> {
-    let api_url =
-      format!("{}/smd/hsm/v2/Inventory/Hardware", self.base_url());
+    let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", self.base_url());
 
     let payload: Value = http::handle_json_or_text_response(
       self

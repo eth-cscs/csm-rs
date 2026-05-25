@@ -1,3 +1,5 @@
+//! `PCSTrait` impl for [`Csm`](super::Csm).
+
 use manta_backend_dispatcher::{
   error::Error,
   interfaces::pcs::PCSTrait,

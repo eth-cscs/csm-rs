@@ -1,3 +1,5 @@
+//! BOS sessions v2 — `ShastaClient` methods for `/bos/v2/sessions`.
+
 pub mod types;
 
 use types::BosSession;

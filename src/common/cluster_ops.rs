@@ -1,3 +1,5 @@
+//! Generic cluster-scoped helpers used by the commands layer.
+
 use crate::{
   cfs::{
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
@@ -6,7 +8,11 @@ use crate::{
   error::Error,
 };
 
+/// Snapshot of the CSM-side state belonging to one HSM group: its
+/// label, members, and the most-recent CFS configuration/session
+/// created against it.
 #[derive(Debug)]
+#[allow(missing_docs)]
 pub struct ClusterDetails {
   pub hsm_group_label: String,
   pub most_recent_cfs_configuration_name_created: CfsConfigurationResponse,
@@ -14,6 +20,8 @@ pub struct ClusterDetails {
   pub members: Vec<String>,
 }
 
+/// Build [`ClusterDetails`] for every HSM group whose label contains
+/// `hsm_group_name` (substring match).
 pub async fn get_details(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -119,13 +127,12 @@ pub async fn get_details(
         ))
         .await?;
 
-        cfs_configuration =
-          cfs_configuration_vec.first().ok_or_else(|| {
-            Error::Message(format!(
-              "CFS configuration for HSM '{}' not found in CSM",
-              hsm_group_name
-            ))
-          })?;
+        cfs_configuration = cfs_configuration_vec.first().ok_or_else(|| {
+          Error::Message(format!(
+            "CFS configuration for HSM '{}' not found in CSM",
+            hsm_group_name
+          ))
+        })?;
 
         let cluster_details = ClusterDetails {
           hsm_group_label: hsm_group_name.to_string(),

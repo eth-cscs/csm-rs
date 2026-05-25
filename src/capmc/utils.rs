@@ -1,3 +1,5 @@
+//! Helpers built on top of the CAPMC `ShastaClient` methods.
+
 use core::time;
 use serde_json::Value;
 use std::io::Write;
@@ -34,8 +36,7 @@ pub async fn wait_nodes_to_power_on(
 
     tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
 
-    node_status_value =
-      client.capmc_node_power_status_post(&xname_vec).await?;
+    node_status_value = client.capmc_node_power_status_post(&xname_vec).await?;
 
     node_off_vec = node_status_value
       .get("off")
@@ -78,17 +79,12 @@ pub async fn wait_nodes_to_power_off(
   while i <= max && xname_vec.iter().any(|xname| !node_off_vec.contains(xname))
   {
     let _ = client
-      .capmc_node_power_off_post(
-        xname_vec.clone(),
-        reason_opt.clone(),
-        force,
-      )
+      .capmc_node_power_off_post(xname_vec.clone(), reason_opt.clone(), force)
       .await?;
 
     tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
 
-    node_status_value =
-      client.capmc_node_power_status_post(&xname_vec).await?;
+    node_status_value = client.capmc_node_power_status_post(&xname_vec).await?;
 
     node_off_vec = node_status_value
       .get("off")

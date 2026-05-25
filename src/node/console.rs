@@ -1,3 +1,5 @@
+//! Open and interact with a node serial console via the CSM `cray-console-*` services.
+
 use core::time;
 
 use k8s_openapi::api::core::v1::Pod;
@@ -22,7 +24,8 @@ pub async fn get_container_attachment_to_conman(
 ) -> Result<AttachedProcess, Error> {
   log::info!("xname: {}", xname);
 
-  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+  let client =
+    get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   let pods_fabric: Api<Pod> = Api::namespaced(client, "services");
 
@@ -92,7 +95,8 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
   shasta_k8s_secrets: Value,
   socks5_proxy: Option<&str>,
 ) -> Result<AttachedProcess, Error> {
-  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+  let client =
+    get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   let pods_fabric: Api<Pod> = Api::namespaced(client.clone(), "services");
 

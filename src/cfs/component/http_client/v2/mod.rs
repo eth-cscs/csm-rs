@@ -1,3 +1,5 @@
+//! CFS components v2 — `ShastaClient` methods for `/cfs/v2/components`.
+
 pub mod types;
 
 use std::{sync::Arc, time::Instant};
@@ -8,6 +10,10 @@ use types::Component;
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// Fetch CFS components, optionally filtered by a comma-separated
+  /// `components_ids` list and/or a `status`.
+  ///
+  /// `GET /cfs/v2/components`.
   pub async fn cfs_component_v2_get(
     &self,
     components_ids: Option<&str>,
@@ -28,12 +34,18 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// List every CFS component.
+  ///
+  /// Convenience wrapper for `cfs_component_v2_get(None, None)`.
   pub async fn cfs_component_v2_get_all(
     &self,
   ) -> Result<Vec<Component>, Error> {
     self.cfs_component_v2_get(None, None).await
   }
 
+  /// Fetch one component by id.
+  ///
+  /// `GET /cfs/v2/components/{component_id}`.
   pub async fn cfs_component_v2_get_single_component(
     &self,
     component_id: &str,
@@ -52,9 +64,13 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
-  /// Get components data.
-  /// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
-  /// method will paralelize multiple calls, each with a batch of xnames
+  /// Fetch CFS components for an arbitrarily large list of xnames by
+  /// batching into requests of 60 ids and running up to 15 in flight at
+  /// a time.
+  ///
+  /// Works around the CSM-side limit on how many ids a single
+  /// `cfs_component_v2_get` request will accept. Order of returned
+  /// components is not preserved.
   pub async fn cfs_component_v2_get_multiple(
     &self,
     node_vec: &[String],
@@ -111,9 +127,9 @@ impl ShastaClient {
     Ok(component_vec)
   }
 
-  /// Get components data.
-  /// Currently, CSM will throw an error if many xnames are sent in the request, therefore, this
-  /// method will paralelize multiple calls, each with a batch of xnames
+  /// Same batching strategy as [`Self::cfs_component_v2_get_multiple`],
+  /// but each batch goes through [`Self::cfs_component_v2_get_query`]
+  /// so callers can also filter by configuration name / status.
   pub async fn cfs_component_v2_get_parallel(
     &self,
     node_vec: &[String],
@@ -173,6 +189,11 @@ impl ShastaClient {
     Ok(component_vec)
   }
 
+  /// Fetch CFS components with a richer filter set than
+  /// [`Self::cfs_component_v2_get`].
+  ///
+  /// `GET /cfs/v2/components` with `config_name`, `ids`, and `status`
+  /// query parameters.
   pub async fn cfs_component_v2_get_query(
     &self,
     configuration_name: Option<&str>,
@@ -200,18 +221,25 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// Replace one CFS component record.
+  ///
+  /// `PUT /cfs/v2/components/{component.id}`. Returns
+  /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v2_put_component(
     &self,
     component: Component,
   ) -> Result<Component, Error> {
-    let component_id = component.id.as_deref().ok_or_else(|| {
-      Error::CfsComponentFieldNotDefined("id".to_string())
-    })?;
+    let component_id = component
+      .id
+      .as_deref()
+      .ok_or_else(|| Error::CfsComponentFieldNotDefined("id".to_string()))?;
     let api_url =
       format!("{}/cfs/v2/components/{}", self.base_url(), component_id);
     http::put_json(self.http(), &api_url, self.token(), &component).await
   }
 
+  /// Replace many CFS component records sequentially. Stops at the
+  /// first error (the partial results before that error are dropped).
   pub async fn cfs_component_v2_put_component_list(
     &self,
     component_list: Vec<Component>,
@@ -226,6 +254,9 @@ impl ShastaClient {
     result_vec.into_iter().collect()
   }
 
+  /// Delete a CFS component by id.
+  ///
+  /// `DELETE /cfs/v2/components/{component_id}`.
   pub async fn cfs_component_v2_delete_single_component(
     &self,
     component_id: &str,

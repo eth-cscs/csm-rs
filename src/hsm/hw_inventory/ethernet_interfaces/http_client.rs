@@ -1,6 +1,7 @@
+//! `ShastaClient` methods for `/smd/hsm/v2/Inventory/EthernetInterfaces`.
+
 use crate::{
-  ShastaClient,
-  error::Error,
+  ShastaClient, error::Error,
   hsm::hw_inventory::ethernet_interfaces::types::EthernetInterface,
 };
 
@@ -85,8 +86,7 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
-  /// Get list of network interfaces
-  /// ref --> https://csm12-apidocs.svc.cscs.ch/iaas/hardware-state-manager/operation/doCompEthInterfacesGetV2/
+  /// Get list of network interfaces. Ref: <https://csm12-apidocs.svc.cscs.ch/iaas/hardware-state-manager/operation/doCompEthInterfacesGetV2/>.
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_eth_get(
     &self,

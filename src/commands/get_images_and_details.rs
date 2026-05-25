@@ -1,18 +1,32 @@
+//! Fetch IMS images plus the CFS configurations and BOS templates that reference them.
+
 use crate::{
   error::Error,
   ims::image::{self, http_client::types::Image},
 };
 
-/// Returns a tuple like(Image sruct, cfs configuration name, list of target - either hsm group name
-/// or xnames, bool - indicates if image is used to boot a node or not)
-/// This method tries to filter by HSM group which means it will make use of:
-///  - CFS sessions to find which image id was created against which HSM group
-///  - BOS sessiontemplates to find the HSM group related to nodes being rebooted in the past
-///  - Image ids in boot params for nodes in HSM groups we are looking for (This is needed to not miss
-/// images currenly used which name may not have HSM group we are looking for included not CFS
-/// session nor BOS sessiontemplate)
-///  - Image names with HSM group name included (This is a bad practice because this is a free text
-/// prone to human errors)
+/// Fetch IMS images plus the CFS configurations, BOS session
+/// templates, and boot-status they relate to, filtered by HSM group.
+///
+/// Returns a list of tuples
+/// `(Image, cfs_configuration_name, targets, is_boot_image)` where
+/// `targets` is either a list of HSM group names or xnames, and
+/// `is_boot_image` indicates whether the image is currently used to
+/// boot a node.
+///
+/// Filtering is performed against multiple sources to avoid missing
+/// images:
+///
+/// - CFS sessions — to find which image id was created against which
+///   HSM group.
+/// - BOS session templates — to find the HSM group related to nodes
+///   rebooted in the past.
+/// - Image ids in BSS boot parameters for nodes in the target HSM
+///   groups — needed to catch images currently used whose name does
+///   not contain the HSM group and which aren't referenced by any CFS
+///   session or BOS session template.
+/// - Image names containing the HSM group name — fragile, but a
+///   last-resort match because the name is free-form.
 pub async fn get_images_and_details(
   shasta_token: &str,
   shasta_base_url: &str,

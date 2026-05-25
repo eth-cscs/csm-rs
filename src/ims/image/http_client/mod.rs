@@ -1,3 +1,5 @@
+//! `ShastaClient` methods for `/ims/v3/images`.
+
 pub mod types;
 
 use serde_json::Value;
@@ -42,7 +44,10 @@ impl ShastaClient {
       })?;
 
     let image_vec: Vec<Image> = if image_id_opt.is_none() {
-      response.json::<Vec<Image>>().await.map_err(Error::NetError)?
+      response
+        .json::<Vec<Image>>()
+        .await
+        .map_err(Error::NetError)?
     } else {
       vec![response.json::<Image>().await.map_err(Error::NetError)?]
     };
@@ -123,8 +128,7 @@ impl ShastaClient {
     ims_image_id: &str,
     ims_link: &PatchImage,
   ) -> Result<(), Error> {
-    let api_url =
-      format!("{}/ims/v3/images/{}", self.base_url(), ims_image_id);
+    let api_url = format!("{}/ims/v3/images/{}", self.base_url(), ims_image_id);
 
     self
       .http()

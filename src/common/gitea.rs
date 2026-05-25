@@ -1,3 +1,5 @@
+//! Small client for the embedded CSM Gitea instance used by CFS configuration layers.
+
 pub mod http_client {
 
   use crate::{common::http, error::Error};
@@ -51,8 +53,14 @@ pub mod http_client {
   ) -> Result<Vec<Value>, Error> {
     let repo_name = get_repo_name_from_url(repo_url)?;
 
-    get_all_refs(gitea_base_url, gitea_token, &repo_name, shasta_root_cert, socks5_proxy)
-      .await
+    get_all_refs(
+      gitea_base_url,
+      gitea_token,
+      &repo_name,
+      shasta_root_cert,
+      socks5_proxy,
+    )
+    .await
   }
 
   /// Get all refs for a repository

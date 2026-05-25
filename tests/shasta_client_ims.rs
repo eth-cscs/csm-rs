@@ -85,7 +85,10 @@ async fn ims_image_delete_issues_soft_then_permanent_deletes() {
     .await;
 
   let client = make_client(&server.uri());
-  client.ims_image_delete("abc").await.expect("should succeed");
+  client
+    .ims_image_delete("abc")
+    .await
+    .expect("should succeed");
 }
 
 // ---------- ims/recipe ----------
@@ -121,7 +124,10 @@ async fn ims_recipe_get_by_id_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let recipes = client.ims_recipe_get(Some("abc")).await.expect("should succeed");
+  let recipes = client
+    .ims_recipe_get(Some("abc"))
+    .await
+    .expect("should succeed");
   assert_eq!(recipes.len(), 1);
 }
 
@@ -178,10 +184,7 @@ async fn ims_public_keys_v3_get_single_returns_some_on_exactly_one_match() {
     .await;
 
   let client = make_client(&server.uri());
-  let key = client
-    .ims_public_keys_v3_get_single("alice")
-    .await
-    .unwrap();
+  let key = client.ims_public_keys_v3_get_single("alice").await.unwrap();
   assert!(key.is_some());
 }
 

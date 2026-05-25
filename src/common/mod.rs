@@ -1,8 +1,32 @@
+//! Cross-cutting helpers shared by the CSM API modules.
+//!
+//! Nothing here is bound to a specific CSM service — these are the
+//! plumbing pieces other modules build on.
+//!
+//! Submodules:
+//!
+//! - [`authentication`] — Keycloak / OIDC token acquisition for Shasta.
+//! - [`jwt_ops`] — JWT decoding helpers (RFC 7519 base64url-aware) used
+//!   by callers that need to introspect a Shasta token without verifying
+//!   its signature.
+//! - [`kubernetes`] — in-cluster API client used to read CSM-side state
+//!   that isn't exposed over REST (e.g. the `cray-product-catalog`
+//!   ConfigMap).
+//! - [`vault`] — fetch K8s service-account secrets from Vault, which is
+//!   the supported way to obtain CSM cluster credentials off-cluster.
+//! - [`gitea`] — small client for the embedded CSM Gitea instance used
+//!   by CFS configuration layers.
+//! - [`cluster_ops`] — generic cluster-scoped helpers used by the
+//!   commands layer.
+//!
+//! `http` and `yaml` exist as crate-internal utilities and are not
+//! part of the public surface.
+
 pub mod authentication;
 pub mod cluster_ops;
 pub mod gitea;
 pub(crate) mod http;
-pub(crate) mod yaml;
 pub mod jwt_ops;
 pub mod kubernetes;
 pub mod vault;
+pub(crate) mod yaml;

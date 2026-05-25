@@ -1,9 +1,17 @@
+//! `ShastaClient` methods for `/smd/hsm/v2/State/Components`.
+
 use reqwest::Url;
 use serde_json::Value;
 
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// Fetch the HSM `Components` block for the given xnames in a single
+  /// request and return the raw JSON array.
+  ///
+  /// `GET /smd/hsm/v2/State/Components?id=…&id=…`. Use
+  /// [`Self::hsm_component_status_get`] instead when the list might be
+  /// large — CSM rejects requests with more than ~30 ids.
   pub async fn hsm_component_status_get_raw(
     &self,
     xname_vec: &[String],
@@ -35,9 +43,12 @@ impl ShastaClient {
     )
   }
 
-  /// Fetches nodes/components details using HSM v2.
-  /// Splits xname_vec into chunks of 30 (CSM rejects larger requests) and
-  /// parallelises across `tokio::spawn`.
+  /// Fetch HSM component state for an arbitrarily large xname list,
+  /// chunking into requests of 30 and running them concurrently.
+  ///
+  /// Wraps [`Self::hsm_component_status_get_raw`] to work around the
+  /// per-request id limit on `GET /smd/hsm/v2/State/Components`. Order
+  /// of the returned values is not preserved.
   pub async fn hsm_component_status_get(
     &self,
     xname_vec: &[String],
@@ -49,8 +60,9 @@ impl ShastaClient {
     for sub_node_list in xname_vec.chunks(chunk_size) {
       let client = self.clone();
       let node_vec = sub_node_list.to_vec();
-      tasks
-        .spawn(async move { client.hsm_component_status_get_raw(&node_vec).await });
+      tasks.spawn(async move {
+        client.hsm_component_status_get_raw(&node_vec).await
+      });
     }
 
     while let Some(message) = tasks.join_next().await {

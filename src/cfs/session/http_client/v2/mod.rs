@@ -1,3 +1,5 @@
+//! CFS sessions v2 — `ShastaClient` methods for `/cfs/v2/sessions`.
+
 pub mod types;
 
 use crate::{ShastaClient, common::http, error::Error};
@@ -5,8 +7,15 @@ use crate::{ShastaClient, common::http, error::Error};
 use super::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
 impl ShastaClient {
-  /// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
-  // FIX: change parameters types from '&String' to '&str'
+  /// Fetch CFS sessions, optionally by name or filtered by age / status
+  /// / success.
+  ///
+  /// `GET /cfs/v2/sessions[/{name}]`. When `session_name_opt` is set,
+  /// the returned `Vec` always has at most one element. The age filters
+  /// accept the CSM duration syntax (e.g. `"24h"`, `"7d"`).
+  ///
+  /// See <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>
+  /// for the underlying REST contract.
   pub async fn cfs_session_v2_get(
     &self,
     min_age_opt: Option<&String>,
@@ -60,14 +69,19 @@ impl ShastaClient {
     }
   }
 
+  /// List every CFS session.
+  ///
+  /// Convenience wrapper for `cfs_session_v2_get` with all filters
+  /// unset.
   pub async fn cfs_session_v2_get_all(
     &self,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    self
-      .cfs_session_v2_get(None, None, None, None, None)
-      .await
+    self.cfs_session_v2_get(None, None, None, None, None).await
   }
 
+  /// Create a new CFS session.
+  ///
+  /// `POST /cfs/v2/sessions`.
   pub async fn cfs_session_v2_post(
     &self,
     session: &CfsSessionPostRequest,
@@ -78,6 +92,9 @@ impl ShastaClient {
     http::post_json(self.http(), &api_url, self.token(), session).await
   }
 
+  /// Delete a CFS session by name.
+  ///
+  /// `DELETE /cfs/v2/sessions/{session_name}`.
   pub async fn cfs_session_v2_delete(
     &self,
     session_name: &str,

@@ -1,3 +1,5 @@
+//! Entry-point function for the apply-SAT-file workflow.
+
 use std::{collections::HashMap, time::Instant};
 
 use serde_yaml::Value;
@@ -15,6 +17,45 @@ use crate::{
   hsm::group::utils::update_hsm_group_members,
 };
 
+/// Apply a SAT (System Admin Toolkit) template file against a Shasta system.
+///
+/// Parses `sat_template_file_yaml`, validates each section against the
+/// current state of CSM and the HPE Cray product catalog (read from
+/// Kubernetes), and then realises the file by:
+///
+/// 1. Applying any `hardware` patterns to HSM groups (either component
+///    patterns via [`apply_hw_cluster_pin`] or explicit `nodespattern`
+///    membership updates).
+/// 2. Creating CFS configurations for each entry in `configurations`.
+/// 3. Importing every image in `images` (building it through IMS/CFS).
+/// 4. Creating BOS session templates from `session_templates`, optionally
+///    rebooting the targeted nodes.
+///
+/// # Arguments
+///
+/// - `sat_template_file_yaml` — the parsed SAT file as YAML.
+/// - `hsm_group_available_vec` — HSM groups the caller is allowed to
+///   target; used to reject SAT files that reference out-of-scope groups.
+/// - `shasta_k8s_secrets` / `k8s_api_url` — credentials for the in-cluster
+///   `cray-product-catalog` ConfigMap lookup.
+/// - `dry_run` — when `true`, validates and logs the intended actions
+///   without mutating CSM.
+/// - `overwrite` — replace existing CFS configurations / images with the
+///   same name instead of failing.
+/// - `reboot` — after creating BOS session templates, also reboot the
+///   target nodes through them.
+///
+/// # Errors
+///
+/// Returns [`Error`] if the SAT file is malformed, validation against the
+/// live CSM state fails, or any underlying API call (CFS, IMS, BOS, HSM,
+/// Kubernetes) fails.
+///
+/// # Deprecated
+///
+/// Marked deprecated since 0.86.2 because it streams CFS session logs
+/// directly to stdout, which is unsuitable for library consumers; prefer
+/// composing the lower-level `cfs`/`bos`/`ims` APIs in new code.
 #[deprecated(
   since = "0.86.2",
   note = "this function prints cfs session logs to stdout"
@@ -68,7 +109,8 @@ pub async fn exec(
 
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
   let kube_client =
-    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+      .await?;
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
@@ -96,9 +138,8 @@ pub async fn exec(
     duration
   );
 
-  let sat_file_struct: SatFile = serde_yaml::from_str(
-    &serde_yaml::to_string(&sat_template_file_yaml)?,
-  )?;
+  let sat_file_struct: SatFile =
+    serde_yaml::from_str(&serde_yaml::to_string(&sat_template_file_yaml)?)?;
 
   let configuration_struct_vec: Vec<configuration::Configuration> =
     sat_file_struct.configurations.unwrap_or_default();
@@ -224,7 +265,8 @@ pub async fn exec(
         if dry_run {
           log::info!(
             "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
-            target_hsm_group_name, new_target_hsm_group_members_vec
+            target_hsm_group_name,
+            new_target_hsm_group_members_vec
           );
         } else {
           update_hsm_group_members(

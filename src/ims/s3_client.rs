@@ -22,7 +22,8 @@ pub async fn s3_auth(
   socks5_proxy: Option<&str>,
 ) -> Result<Value, Error> {
   // STS
-  let client = crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
+  let client =
+    crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = shasta_base_url.to_owned() + "/sts/token";
 
@@ -171,18 +172,26 @@ pub async fn s3_get_object_size(
   }
 }
 
-/// Gets an object from S3
+/// Download an object from S3 to a local directory.
 ///
-/// # Needs
-/// - `sts_value` the temporary S3 token obtained from STS via `s3_auth()`
-/// - `object_path` path within the bucket in S3 of the object e.g. `392o1h-1-234-w1/manifest.json`
-/// - `bucket` bucket where the object is contained.
-/// - `destination_path` path in the local filesystem where the file will be downloaded to,
-///   e.g. `/tmp/my_images/392o1h-1-234-w1` the file will be downloaded then to
-///   `/tmp/my_images/392o1h-1-234-w1/manifest.json`
-/// # Returns
-///   * String: full path of the object downloaded OR
-///   * Box<dyn Error>: descriptive error if not possible to download or to store the object
+/// Streams the object body to disk with a progress bar. Returns the
+/// full path of the downloaded file.
+///
+/// # Arguments
+///
+/// - `sts_value` — temporary S3 credentials obtained from STS via
+///   `s3_auth()`.
+/// - `object_path` — path within `bucket`, e.g.
+///   `392o1h-1-234-w1/manifest.json`.
+/// - `bucket` — bucket containing the object.
+/// - `destination_path` — local directory to write into; the file is
+///   placed at `destination_path/<basename(object_path)>`. Created if
+///   missing.
+///
+/// # Errors
+///
+/// Returns [`Error`] if the local directory or file cannot be created,
+/// or if the S3 GET fails.
 pub async fn s3_download_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -264,16 +273,19 @@ pub async fn s3_download_object(
   Ok(file_path.to_string_lossy().to_string())
 }
 
-/// Uploads an object to S3
+/// Upload a local file to S3 in a single request.
 ///
-/// # Needs
-/// - `sts_value` the temporary S3 token obtained from STS via `s3_auth()`
-/// - `object_path` path within the bucket in S3 of the object e.g. `392o1h-1-234-w1/manifest.json`
-/// - `bucket` bucket where the object will be stored
-/// - `file_path` <p>path in the local filesystem where the file is located
-/// # Returns
-///   * String: size the object uploaded OR
-///   * Box<dyn Error>: descriptive error if not possible to upload the object
+/// Returns the ETag of the uploaded object.
+///
+/// # Arguments
+///
+/// - `sts_value` — temporary S3 credentials obtained from STS via
+///   `s3_auth()`.
+/// - `object_path` — path within `bucket` to upload to.
+/// - `bucket` — destination bucket.
+/// - `file_path` — local file to upload.
+///
+/// For large files prefer [`s3_multipart_upload_object`].
 pub async fn s3_upload_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -304,15 +316,14 @@ pub async fn s3_upload_object(
   })
 }
 
-/// Removes an object from S3
+/// Delete an object from S3.
 ///
-/// # Needs
-/// - `sts_value` the temporary S3 token obtained from STS via `s3_auth()`
-/// - `object_path` path within the bucket in S3 of the object e.g. `392o1h-1-234-w1/manifest.json`
-/// - `bucket` bucket where the object will be stored
-/// # Returns
-///   * String: size the object uploaded OR
-///   * Box<dyn Error>: descriptive error if not possible to upload the object
+/// # Arguments
+///
+/// - `sts_value` — temporary S3 credentials obtained from STS via
+///   `s3_auth()`.
+/// - `object_path` — path within `bucket` to delete.
+/// - `bucket` — source bucket.
 pub async fn s3_remove_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -339,16 +350,19 @@ pub async fn s3_remove_object(
   }
 }
 
-/// Uploads an object to S3 using the multipart method
+/// Upload a local file to S3 using the multipart-upload protocol.
 ///
-/// # Needs
-/// - `sts_value` the temporary S3 token obtained from STS via `s3_auth()`
-/// - `object_path` path within the bucket in S3 of the object e.g. `392o1h-1-234-w1/manifest.json`
-/// - `bucket` bucket where the object will be stored
-/// - `file_path` <p>path in the local filesystem where the file is located
-/// # Returns
-///   * String: size the object uploaded OR
-///   * Box<dyn Error>: descriptive error if not possible to upload the object
+/// Splits `file_path` into chunks and uploads them with a progress bar.
+/// Use this for files that exceed the single-PUT limit; for small files
+/// [`s3_upload_object`] is simpler.
+///
+/// # Arguments
+///
+/// - `sts_value` — temporary S3 credentials obtained from STS via
+///   `s3_auth()`.
+/// - `object_path` — path within `bucket` to upload to.
+/// - `bucket` — destination bucket.
+/// - `file_path` — local file to upload.
 pub async fn s3_multipart_upload_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -391,8 +405,7 @@ pub async fn s3_multipart_upload_object(
     .map_err(|e| {
       Error::Message(format!(
         "ERROR - Could not get file size from '{}'.\nReason\n{}",
-        file_path,
-        e
+        file_path, e
       ))
     })?
     .len();
@@ -489,10 +502,7 @@ pub async fn s3_multipart_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::Message(format!(
-        "ERROR - could not upload to S3.\nReason:\n{}",
-        e
-      ))
+      Error::Message(format!("ERROR - could not upload to S3.\nReason:\n{}", e))
     })?;
 
   bar.finish();

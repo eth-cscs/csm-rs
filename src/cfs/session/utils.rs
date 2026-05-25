@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::cfs_session_*` methods.
+
 use crate::{
   cfs,
   error::Error,
@@ -343,7 +345,10 @@ pub async fn wait_cfs_session_to_finish(
       io::stdout().flush()?;
       log::info!(
         "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
-        cfs_session_id, cfs_session_status, i, max
+        cfs_session_id,
+        cfs_session_status,
+        i,
+        max
       );
       io::stdout().flush()?;
 
@@ -353,7 +358,8 @@ pub async fn wait_cfs_session_to_finish(
     } else {
       log::info!(
         "CFS session '{}' finished with status '{}'",
-        cfs_session_id, cfs_session_status
+        cfs_session_id,
+        cfs_session_status
       );
       break Ok(());
     }
@@ -376,8 +382,7 @@ pub async fn get_list_xnames_related_to_session(
     vec![]
   };
 
-  let target_xname_vec =
-    cfs_session.get_target_xname().unwrap_or_default();
+  let target_xname_vec = cfs_session.get_target_xname().unwrap_or_default();
 
   Ok([target_xname_vec, target_group_xname_vec].concat())
 }
@@ -436,10 +441,7 @@ mod tests {
     s
   }
 
-  fn session_with_config(
-    name: &str,
-    config: &str,
-  ) -> CfsSessionGetResponse {
+  fn session_with_config(name: &str, config: &str) -> CfsSessionGetResponse {
     let mut s = session(name);
     s.configuration = Some(Configuration {
       name: Some(config.to_string()),
@@ -448,10 +450,7 @@ mod tests {
     s
   }
 
-  fn session_with_result(
-    name: &str,
-    result_id: &str,
-  ) -> CfsSessionGetResponse {
+  fn session_with_result(name: &str, result_id: &str) -> CfsSessionGetResponse {
     let mut s = session(name);
     s.status = Some(Status {
       artifacts: Some(vec![Artifact {
@@ -464,10 +463,7 @@ mod tests {
     s
   }
 
-  fn session_with_start(
-    name: &str,
-    start_time: &str,
-  ) -> CfsSessionGetResponse {
+  fn session_with_start(name: &str, start_time: &str) -> CfsSessionGetResponse {
     let mut s = session(name);
     s.status = Some(Status {
       artifacts: None,
@@ -556,7 +552,9 @@ mod tests {
   #[test]
   fn find_by_image_id_returns_none_when_no_match() {
     let sessions = vec![session_with_result("s1", "image-A")];
-    assert!(find_cfs_session_related_to_image_id(&sessions, "image-X").is_none());
+    assert!(
+      find_cfs_session_related_to_image_id(&sessions, "image-X").is_none()
+    );
   }
 
   #[test]

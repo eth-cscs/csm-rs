@@ -1,3 +1,6 @@
+//! Wire-format types for CAPMC requests and responses.
+#![allow(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default)]

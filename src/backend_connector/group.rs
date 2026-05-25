@@ -1,3 +1,5 @@
+//! `GroupTrait` impl for [`Csm`](super::Csm).
+
 use std::collections::HashMap;
 
 use manta_backend_dispatcher::{
@@ -296,7 +298,7 @@ impl GroupTrait for Csm {
     target_hsm_group_name: &str,
     parent_hsm_group_name: &str,
     new_target_hsm_members: &[&str],
-    dryrun: bool
+    dryrun: bool,
   ) -> Result<(Vec<String>, Vec<String>), Error> {
     hsm::group::utils::migrate_hsm_members(
       shasta_token,

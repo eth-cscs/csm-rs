@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use manta_backend_dispatcher::types::{
   Group as FrontEndGroup, Member as FrontEndMember,
 };
@@ -32,10 +36,8 @@ pub struct Member {
 impl Group {
   pub fn new(label: &str, member_vec_opt: Option<Vec<&str>>) -> Self {
     let members_opt = member_vec_opt.map(|member_vec| Members {
-        ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
-      });
-
-    
+      ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
+    });
 
     Self {
       label: label.to_string(),

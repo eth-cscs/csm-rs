@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use manta_backend_dispatcher::types::{
   ArtifactSummary as FrontEndArtifactSummary,
   ArtifactType as FrontEndArtifactType, HSNNICFRUInfo as FrontEndHSNNICFRUInfo,
@@ -508,7 +512,13 @@ pub struct HWInvByFRUProcessor {
 bidirectional_from_into!(
   HWInvByFRUProcessor,
   FrontEndHWInvByFRUProcessor,
-  [fru_id, r#type, fru_sub_type, hw_inventory_by_fru_type, processor_fru_info]
+  [
+    fru_id,
+    r#type,
+    fru_sub_type,
+    hw_inventory_by_fru_type,
+    processor_fru_info
+  ]
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -590,7 +600,13 @@ pub struct HWInvByFRUMemory {
 bidirectional_from_into!(
   HWInvByFRUMemory,
   FrontEndHWInvByFRUMemory,
-  [fru_id, r#type, fru_sub_type, hw_inventory_by_fru_type, memory_fru_info]
+  [
+    fru_id,
+    r#type,
+    fru_sub_type,
+    hw_inventory_by_fru_type,
+    memory_fru_info
+  ]
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -614,7 +630,13 @@ pub struct HWInvByFRUNodeAccel {
 bidirectional_from_into!(
   HWInvByFRUNodeAccel,
   FrontEndHWInvByFRUNodeAccel,
-  [fru_id, r#type, fru_sub_type, hw_inventory_by_fru_type, node_accel_fru_info]
+  [
+    fru_id,
+    r#type,
+    fru_sub_type,
+    hw_inventory_by_fru_type,
+    node_accel_fru_info
+  ]
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -662,7 +684,13 @@ pub struct HWInvByFRUHSNNIC {
 bidirectional_from_into!(
   HWInvByFRUHSNNIC,
   FrontEndHWInvByFRUHSNNIC,
-  [fru_id, r#type, fru_sub_type, hw_inventory_by_fru_type, hsn_nic_fru_info]
+  [
+    fru_id,
+    r#type,
+    fru_sub_type,
+    hw_inventory_by_fru_type,
+    hsn_nic_fru_info
+  ]
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -926,11 +954,7 @@ pub struct ProcessorSummary {
   model: Option<String>,
 }
 
-bidirectional_from!(
-  ProcessorSummary,
-  FrontEndProcessorSummary,
-  [count, model]
-);
+bidirectional_from!(ProcessorSummary, FrontEndProcessorSummary, [count, model]);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemorySummary {
@@ -1137,7 +1161,6 @@ bidirectional_from_mixed!(
   direct: [id, name, description],
   opt_into: [memory_location],
 );
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocMemory {
@@ -1587,7 +1610,6 @@ pub struct HWInvByLocRouterBMC {
   pub router_bmc_location_info: Option<RedfishManagerLocationInfo>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventory {
   #[serde(rename(serialize = "XName"))]
@@ -1774,7 +1796,13 @@ pub struct HWInvByFRUNode {
 bidirectional_from_into!(
   HWInvByFRUNode,
   FrontEndHWInvByFRUNode,
-  [fru_id, r#type, fru_sub_type, hw_inventory_by_fru_type, node_fru_info]
+  [
+    fru_id,
+    r#type,
+    fru_sub_type,
+    hw_inventory_by_fru_type,
+    node_fru_info
+  ]
 );
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
