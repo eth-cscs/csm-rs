@@ -1,4 +1,5 @@
 use aws_config::SdkConfig;
+use aws_sdk_s3::config::Credentials;
 use hyper::client::HttpConnector;
 use std::fs::File;
 use std::io::Write;
@@ -11,6 +12,27 @@ use aws_sdk_s3::{Client, primitives::ByteStream};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::error::Error;
+
+/// Extract the four interesting fields from a CSM STS response.
+fn parse_sts_credentials(
+  sts_value: &Value,
+) -> Result<(Credentials, String), Error> {
+  fn field<'a>(value: &'a Value, name: &str) -> Result<&'a str, Error> {
+    value
+      .pointer(&format!("/Credentials/{name}"))
+      .and_then(Value::as_str)
+      .ok_or_else(|| Error::Message(format!("Missing {name} in STS response")))
+  }
+  let credentials = Credentials::new(
+    field(sts_value, "AccessKeyId")?,
+    field(sts_value, "SecretAccessKey")?,
+    Some(field(sts_value, "SessionToken")?.to_string()),
+    None,
+    "csm-sts",
+  );
+  let endpoint_url = field(sts_value, "EndpointURL")?.to_string();
+  Ok((credentials, endpoint_url))
+}
 
 pub const BAR_FORMAT: &str = "[{elapsed_precise}] {bar:40.cyan/blue} ({bytes_per_sec}) {bytes:>7}/{total_bytes:7} {msg} [ETA {eta}]";
 // Get a token for S3 and return the result
@@ -45,34 +67,6 @@ pub async fn s3_auth(
   log::debug!("-- STS Token retrieved --");
   log::debug!("Debug - STS token:\n{:#?}", sts_value);
 
-  // SET AUTH ENVS
-  let session_token = sts_value
-    .pointer("/Credentials/SessionToken")
-    .and_then(Value::as_str)
-    .ok_or_else(|| {
-      Error::Message("Missing SessionToken in STS response".to_string())
-    })?;
-
-  let access_key_id = sts_value
-    .pointer("/Credentials/AccessKeyId")
-    .and_then(Value::as_str)
-    .ok_or_else(|| {
-      Error::Message("Missing AccessKeyId in STS response".to_string())
-    })?;
-
-  let secret_access_key = sts_value
-    .pointer("/Credentials/SecretAccessKey")
-    .and_then(Value::as_str)
-    .ok_or_else(|| {
-      Error::Message("Missing SecretAccessKey in STS response".to_string())
-    })?;
-
-  unsafe {
-    std::env::set_var("AWS_SESSION_TOKEN", session_token);
-    std::env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-    std::env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
-  }
-
   Ok(sts_value)
 }
 
@@ -82,11 +76,20 @@ async fn setup_client(
 ) -> Result<Client, Error> {
   use aws_smithy_runtime::client::http::hyper_014::HyperClientBuilder;
 
+  let (credentials, endpoint_url) = parse_sts_credentials(sts_value)?;
+
   // Default provider fallback to us-east-1 since CSM doesn't use the concept of regions
   let region_provider =
     aws_config::meta::region::RegionProviderChain::default_provider()
       .or_else("us-east-1");
-  let config: SdkConfig;
+  let app_name = aws_config::AppName::new("manta")
+    .map_err(|e| Error::Message(format!("Error setting app name: {}", e)))?;
+
+  let mut loader = aws_config::from_env()
+    .region(region_provider)
+    .endpoint_url(endpoint_url)
+    .app_name(app_name)
+    .credentials_provider(credentials);
 
   if let Some(socks5_env) = socks5_proxy {
     log::debug!("SOCKS5 enabled");
@@ -102,43 +105,10 @@ async fn setup_client(
     };
 
     let http_client = HyperClientBuilder::new().build(socks_http_connector);
-
-    config = aws_config::from_env()
-      .region(region_provider)
-      .http_client(http_client)
-      .endpoint_url(
-        sts_value
-          .get("Credentials")
-          .and_then(|credentials| credentials.get("EndpointURL"))
-          .and_then(Value::as_str)
-          .ok_or_else(|| {
-            Error::Message("Missing EndpointURL in STS response".to_string())
-          })?,
-      )
-      .app_name(aws_config::AppName::new("manta").map_err(|e| {
-        Error::Message(format!("Error setting app name: {}", e))
-      })?)
-      // .no_credentials()
-      .load()
-      .await;
-  } else {
-    config = aws_config::from_env()
-      .region(region_provider)
-      .endpoint_url(
-        sts_value
-          .get("Credentials")
-          .and_then(|credentials| credentials.get("EndpointURL"))
-          .and_then(Value::as_str)
-          .ok_or_else(|| {
-            Error::Message("Missing EndpointURL in STS response".to_string())
-          })?,
-      )
-      .app_name(aws_config::AppName::new("manta").map_err(|e| {
-        Error::Message(format!("Error setting app name: {}", e))
-      })?)
-      .load()
-      .await;
+    loader = loader.http_client(http_client);
   }
+
+  let config: SdkConfig = loader.load().await;
 
   let client = aws_sdk_s3::Client::from_conf(
     aws_sdk_s3::Client::new(&config)

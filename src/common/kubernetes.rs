@@ -500,7 +500,7 @@ pub(crate) fn init_container_exit_code(
     .map(|terminated_state| terminated_state.exit_code)
 }
 
-pub(crate) fn is_init_container_state_unkown(
+pub(crate) fn is_init_container_state_unknown(
   pod: &Pod,
   container_name: &str,
 ) -> bool {
@@ -547,7 +547,7 @@ pub(crate) fn container_status<'a>(
     })
 }
 
-pub(crate) fn is_container_state_unkown(
+pub(crate) fn is_container_state_unknown(
   pod: &Pod,
   container_name: &str,
 ) -> bool {
@@ -657,7 +657,7 @@ pub(crate) async fn get_init_container_and_wait_to_ready(
   let mut i = 0;
   let max = 60;
 
-  while (is_init_container_state_unkown(cfs_session_pod, &init_container.name)
+  while (is_init_container_state_unknown(cfs_session_pod, &init_container.name)
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name))
     && i <= max
   {
@@ -712,7 +712,7 @@ pub(crate) async fn get_init_container_logs_stream(
     get_init_container_and_wait_to_ready(cfs_session_pod, init_container_name)
       .await?;
 
-  if is_init_container_state_unkown(cfs_session_pod, &init_container.name)
+  if is_init_container_state_unknown(cfs_session_pod, &init_container.name)
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name)
   {
     return Err(Error::K8sError(format!(
@@ -801,7 +801,7 @@ pub(crate) async fn get_container_logs_stream(
   let mut i = 0;
   let max = 600;
 
-  while (is_container_state_unkown(&cfs_session_pod, &container.name)
+  while (is_container_state_unknown(&cfs_session_pod, &container.name)
     || is_container_state_waiting(&cfs_session_pod, &container.name))
     && i <= max
   {
@@ -821,7 +821,7 @@ pub(crate) async fn get_container_logs_stream(
     tokio::time::sleep(time::Duration::from_secs(2)).await;
   }
 
-  if is_container_state_unkown(&cfs_session_pod, &container.name)
+  if is_container_state_unknown(&cfs_session_pod, &container.name)
     || is_container_state_waiting(&cfs_session_pod, &container.name)
   {
     return Err(Error::K8sError(format!(
