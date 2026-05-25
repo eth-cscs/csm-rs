@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
 use serde_json::Map;
-use serde_yaml::Value;
 use uuid::Uuid;
 
 use crate::{
@@ -35,36 +34,6 @@ use super::{
 ///  - The image it depends to is already processed (image.base.image_ref included in
 ///  ref_name_processed)
 ///  - It has not been already processed
-#[deprecated(
-  since = "0.100.0",
-  note = "Please use 'get_next_image_in_sat_file_to_process_struct' istead"
-)]
-pub fn get_next_image_in_sat_file_to_process(
-  image_yaml_vec: &[serde_yaml::Value],
-  ref_name_processed_vec: &[String],
-) -> Option<serde_yaml::Value> {
-  image_yaml_vec
-    .iter()
-    .find(|image_yaml| {
-      #[allow(deprecated)]
-      let ref_name: &str = &get_image_name_or_ref_name_to_process(image_yaml); // Again, because we assume images in
-      // SAT file may or may not have ref_name value, we will use "get_ref_name" function to
-      // get the id of the image
-
-      let image_base_image_ref_opt: Option<&str> = image_yaml
-        .get("base")
-        .and_then(|image_base_yaml| image_base_yaml.get("image_ref"))
-        .and_then(Value::as_str);
-
-      !ref_name_processed_vec.contains(&ref_name.to_string())
-        && (image_base_image_ref_opt.is_none()
-          || image_base_image_ref_opt.is_some_and(|image_base_image_ref| {
-            ref_name_processed_vec.contains(&image_base_image_ref.to_string())
-          }))
-    })
-    .cloned()
-}
-
 /// Analyze a list of images in SAT file and returns the image to process next.
 /// Input values:
 ///  - image_yaml_vec: the list of images in the SAT file, each element is a serde_yaml::Value
@@ -112,27 +81,6 @@ pub fn get_next_image_in_sat_file_to_process_struct(
           }))
     })
     .cloned()
-}
-
-/// Get the "ref_name" from an image, because we need to be aware of which images in SAT file have
-/// been processed in order to find the next image to process. We assume not all images in the yaml
-/// will have an "image_ref" value, therefore we will use "ref_name" or "name" field if the former
-/// is missing
-#[deprecated(
-  since = "0.100.0",
-  note = "Please use 'get_image_name_or_ref_name_to_process_struct' istead"
-)]
-pub fn get_image_name_or_ref_name_to_process(
-  image_yaml: &serde_yaml::Value,
-) -> String {
-  // Prefer ref_name, fall back to name. If neither is a string, return empty
-  // (this fn is deprecated; the struct version is preferred).
-  image_yaml
-    .get("ref_name")
-    .and_then(Value::as_str)
-    .or_else(|| image_yaml.get("name").and_then(Value::as_str))
-    .map(str::to_string)
-    .unwrap_or_default()
 }
 
 /// Get the "ref_name" from an image, because we need to be aware of which images in SAT file have

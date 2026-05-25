@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::collections::BTreeMap;
 
 use crate::{
@@ -7,8 +5,8 @@ use crate::{
     CfsConfigurationResponse, Layer,
   },
   commands::i_apply_sat_file::utils::{
-    configuration, get_image_name_or_ref_name_to_process,
-    get_next_image_in_sat_file_to_process, image,
+    configuration, get_image_name_or_ref_name_to_process_struct,
+    get_next_image_in_sat_file_to_process_struct, image,
     validate_sat_file_images_section,
   },
   error::Error,
@@ -18,64 +16,41 @@ use crate::{
 /// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing
 #[test]
 fn test_get_ref_name() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
+  let ref_name_processed_vec: Vec<String> = Vec::new();
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
-  let ref_name_processed_vec: Vec<String> = Vec::new();
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let image_ref = get_image_name_or_ref_name_to_process_struct(
+    &next_image_to_process.unwrap(),
+  );
 
-  let image_ref =
-    get_image_name_or_ref_name_to_process(&next_image_to_process.unwrap());
-
-  assert!(image_ref == "base_image");
+  assert_eq!(image_ref, "base_image");
 }
 
 /// Test function "get_next_image_to_process" in an images section is SAT file with one image with ref_name
 #[test]
 fn test_get_next_image_to_process_1() {
-  let image_yaml_vec: serde_yaml::Value =
-    serde_yaml::from_str(r#"images: []"#).unwrap();
-
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
+  let image_vec: Vec<image::Image> = Vec::new();
 
   let ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  println!(
-    "next image to process:\n{}",
-    serde_yaml::to_string(&next_image_to_process).unwrap()
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
   assert!(next_image_to_process.is_none());
@@ -83,42 +58,26 @@ fn test_get_next_image_to_process_1() {
 
 #[test]
 fn test_get_next_image_to_process_2() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
-
   let ref_name_processed_vec: Vec<String> = Vec::new();
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  println!(
-    "next image to process:\n{}",
-    serde_yaml::to_string(&next_image_to_process).unwrap()
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
-  assert!(
-    next_image_to_process.unwrap()["name"].as_str().unwrap() == "base_image"
-  );
+  assert_eq!(next_image_to_process.unwrap().name, "base_image");
 }
 
 /// Test function "get_next_image_to_process" in an images section in SAT file with 2 images.
@@ -126,120 +85,84 @@ fn test_get_next_image_to_process_2() {
 /// second is the one which depends on the first one
 #[test]
 fn test_get_next_image_to_process_3() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-               - name: final_image
-                 ref_name: compute_image
-                 base:
-                    image_ref: base_cos_image
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    - name: final_image
+      ref_name: compute_image
+      base:
+        image_ref: base_cos_image
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
-
   let mut ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process_1: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_1 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("base_cos_image".to_string());
 
-  let next_image_to_process_2: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  assert!(
-    next_image_to_process_1.unwrap()["name"].as_str().unwrap() == "base_image"
-      && next_image_to_process_2.unwrap()["name"].as_str().unwrap()
-        == "final_image"
+  let next_image_to_process_2 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
+
+  assert_eq!(next_image_to_process_1.unwrap().name, "base_image");
+  assert_eq!(next_image_to_process_2.unwrap().name, "final_image");
 }
 
 #[test]
 fn test_get_next_image_to_process_4() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-               - name: final_image
-                 ref_name: compute_image
-                 base:
-                    image_ref: base_cos_image
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    - name: final_image
+      ref_name: compute_image
+      base:
+        image_ref: base_cos_image
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
-
   let mut ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process_1: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_1 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("base_cos_image".to_string());
 
-  let next_image_to_process_2: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_2 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("compute_image".to_string());
 
-  let next_image_to_process_3: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  assert!(
-    next_image_to_process_1.unwrap()["name"].as_str().unwrap() == "base_image"
-      && next_image_to_process_2.unwrap()["name"].as_str().unwrap()
-        == "final_image"
-      && next_image_to_process_3.is_none()
+  let next_image_to_process_3 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
+
+  assert_eq!(next_image_to_process_1.unwrap().name, "base_image");
+  assert_eq!(next_image_to_process_2.unwrap().name, "final_image");
+  assert!(next_image_to_process_3.is_none());
 }
 
 /// Test SAT file

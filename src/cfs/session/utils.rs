@@ -256,25 +256,6 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
 /// Return a list of the images ids related with a list of CFS sessions. The result list if
 /// filtered to CFS session completed and target def 'image' therefore the length of the
 /// resulting list may be smaller than the list of CFS sessions
-#[deprecated(note = "Use `images_id_from_cfs_session` instead")]
-pub fn get_image_id_from_cfs_session_vec(
-  cfs_session_vec: &[CfsSessionGetResponse],
-) -> Vec<String> {
-  let mut image_id_vec: Vec<String> = cfs_session_vec
-    .iter()
-    .flat_map(|cfs_session| cfs_session.results_id())
-    .map(str::to_string)
-    .collect();
-
-  image_id_vec.sort();
-  image_id_vec.dedup();
-
-  image_id_vec
-}
-
-/// Return a list of the images ids related with a list of CFS sessions. The result list if
-/// filtered to CFS session completed and target def 'image' therefore the length of the
-/// resulting list may be smaller than the list of CFS sessions
 pub fn images_id_from_cfs_session(
   cfs_session_vec: &[CfsSessionGetResponse],
 ) -> impl Iterator<Item = &str> {
