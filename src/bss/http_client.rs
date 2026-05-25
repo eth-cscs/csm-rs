@@ -1,9 +1,7 @@
 //! `ShastaClient` methods for `/bss/boot/v1/bootparameters`.
 
-use tokio::sync::Semaphore;
-
 use core::result::Result;
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 use crate::{ShastaClient, common::http, error::Error};
 
@@ -48,35 +46,19 @@ impl ShastaClient {
   ) -> Result<Vec<BootParameters>, Error> {
     let start = Instant::now();
 
-    let chunk_size = 30;
+    let client = self.clone();
+    let token = token.to_string();
+    let boot_params_vec = http::parallel_batch(xnames, 30, 10, move |chunk| {
+      let client = client.clone();
+      let token = token.clone();
+      async move { client.bss_bootparameters_get(&token, &chunk).await }
+    })
+    .await?;
 
-    let mut boot_params_vec = Vec::new();
-
-    let mut tasks = tokio::task::JoinSet::new();
-
-    let sem = Arc::new(Semaphore::new(10)); // CSM 1.3.1 higher number of concurrent tasks won't
-
-    for sub_node_list in xnames.chunks(chunk_size) {
-      let permit = Arc::clone(&sem).acquire_owned().await;
-
-      let node_vec = sub_node_list.to_vec();
-      let client = self.clone();
-      let token = token.to_string();
-
-      tasks.spawn(async move {
-        let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
-
-        client.bss_bootparameters_get(&token, &node_vec).await
-      });
-    }
-
-    while let Some(message) = tasks.join_next().await {
-      boot_params_vec.append(&mut message??);
-    }
-
-    let duration = start.elapsed();
-    log::info!("Time elapsed to get BSS bootparameters is: {:?}", duration);
-
+    log::info!(
+      "Time elapsed to get BSS bootparameters is: {:?}",
+      start.elapsed()
+    );
     Ok(boot_params_vec)
   }
 

@@ -2,9 +2,8 @@
 
 pub mod types;
 
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
-use tokio::sync::Semaphore;
 use types::Component;
 
 use crate::{ShastaClient, common::http, error::Error};
@@ -81,54 +80,22 @@ impl ShastaClient {
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
 
-    let num_xnames_per_request = 60;
-    let pipe_size = 15;
+    let client = self.clone();
+    let token = token.to_string();
+    let component_vec = http::parallel_batch(node_vec, 60, 15, move |chunk| {
+      let client = client.clone();
+      let token = token.clone();
+      async move {
+        let ids = chunk.join(",");
+        client.cfs_component_v2_get(&token, Some(&ids), None).await
+      }
+    })
+    .await?;
 
-    log::debug!(
-      "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
+    log::info!(
+      "Time elapsed to get CFS components is: {:?}",
+      start.elapsed()
     );
-
-    let mut component_vec = Vec::new();
-    let mut tasks = tokio::task::JoinSet::new();
-    let sem = Arc::new(Semaphore::new(pipe_size));
-    let num_requests = (node_vec.len() / num_xnames_per_request) + 1;
-    let mut i = 1;
-    let width = num_requests.checked_ilog10().unwrap_or(0) as usize + 1;
-
-    for sub_node_list in node_vec.chunks(num_xnames_per_request) {
-      let num_nodes_in_flight = sub_node_list.len();
-
-      log::info!(
-        "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
-      );
-
-      let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
-      let client = self.clone();
-      let token = token.to_string();
-
-      let permit = sem
-        .clone()
-        .acquire_owned()
-        .await
-        .expect("semaphore not closed");
-
-      tasks.spawn(async move {
-        let _permit = permit;
-        client
-          .cfs_component_v2_get(&token, Some(&hsm_subgroup_nodes_string), None)
-          .await
-      });
-
-      i += 1;
-    }
-
-    while let Some(message) = tasks.join_next().await {
-      component_vec.append(&mut message??);
-    }
-
-    let duration = start.elapsed();
-    log::info!("Time elapsed to get CFS components is: {:?}", duration);
-
     Ok(component_vec)
   }
 
@@ -142,54 +109,19 @@ impl ShastaClient {
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
 
-    let num_xnames_per_request = 60;
-    let pipe_size = 15;
-
-    log::debug!(
-      "Number of nodes per request: {num_xnames_per_request}; Pipe size (semaphore): {pipe_size}"
-    );
-
-    let mut component_vec = Vec::new();
-    let mut tasks = tokio::task::JoinSet::new();
-    let sem = Arc::new(Semaphore::new(pipe_size));
-    let num_requests = (node_vec.len() / num_xnames_per_request) + 1;
-    let mut i = 1;
-    let width = num_requests.checked_ilog10().unwrap_or(0) as usize + 1;
-
-    for sub_node_list in node_vec.chunks(num_xnames_per_request) {
-      let num_nodes_in_flight = sub_node_list.len();
-      log::info!(
-        "Getting CFS components: processing batch [{i:>width$}/{num_requests}] (batch size - {num_nodes_in_flight})"
-      );
-
-      let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
-      let client = self.clone();
-      let token = token.to_string();
-
-      let permit = sem
-        .clone()
-        .acquire_owned()
-        .await
-        .expect("semaphore not closed");
-
-      tasks.spawn(async move {
-        let _permit = permit;
+    let client = self.clone();
+    let token = token.to_string();
+    let component_vec = http::parallel_batch(node_vec, 60, 15, move |chunk| {
+      let client = client.clone();
+      let token = token.clone();
+      async move {
+        let ids = chunk.join(",");
         client
-          .cfs_component_v2_get_query(
-            &token,
-            None,
-            Some(&hsm_subgroup_nodes_string),
-            None,
-          )
+          .cfs_component_v2_get_query(&token, None, Some(&ids), None)
           .await
-      });
-
-      i += 1;
-    }
-
-    while let Some(message) = tasks.join_next().await {
-      component_vec.append(&mut message??);
-    }
+      }
+    })
+    .await?;
 
     let duration = start.elapsed();
     log::info!("Time elapsed to get CFS components is: {:?}", duration);

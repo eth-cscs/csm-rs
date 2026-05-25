@@ -55,23 +55,14 @@ impl ShastaClient {
     token: &str,
     xname_vec: &[String],
   ) -> Result<Vec<Value>, Error> {
-    let chunk_size = 30;
-    let mut hsm_component_status_vec: Vec<Value> = Vec::new();
-    let mut tasks = tokio::task::JoinSet::new();
-
-    for sub_node_list in xname_vec.chunks(chunk_size) {
-      let client = self.clone();
-      let node_vec = sub_node_list.to_vec();
-      let token = token.to_string();
-      tasks.spawn(async move {
-        client.hsm_component_status_get_raw(&token, &node_vec).await
-      });
-    }
-
-    while let Some(message) = tasks.join_next().await {
-      hsm_component_status_vec.append(&mut message??);
-    }
-
-    Ok(hsm_component_status_vec)
+    let client = self.clone();
+    let token = token.to_string();
+    // No semaphore in the original code — pick a high cap.
+    http::parallel_batch(xname_vec, 30, 1024, move |chunk| {
+      let client = client.clone();
+      let token = token.clone();
+      async move { client.hsm_component_status_get_raw(&token, &chunk).await }
+    })
+    .await
   }
 }

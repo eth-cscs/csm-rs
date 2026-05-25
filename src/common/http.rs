@@ -172,6 +172,57 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
   response.json().await.map_err(Error::NetError)
 }
 
+/// Run `f` across `items.chunks(chunk_size)` with at most
+/// `max_in_flight` tasks active at once and flatten the per-batch
+/// results into a single `Vec<U>`.
+///
+/// Each chunk is owned (`Vec<T>`) so the closure can be moved into a
+/// `tokio::spawn`'d task without borrowing from the caller. The
+/// closure is `Clone` so the helper can hand a fresh copy to each
+/// spawned task.
+///
+/// Errors short-circuit: the first failing batch returns its error
+/// (other in-flight batches are dropped when the `JoinSet` is dropped).
+pub(crate) async fn parallel_batch<T, U, F, Fut>(
+  items: &[T],
+  chunk_size: usize,
+  max_in_flight: usize,
+  f: F,
+) -> Result<Vec<U>, Error>
+where
+  T: Clone + Send + 'static,
+  U: Send + 'static,
+  F: Fn(Vec<T>) -> Fut + Clone + Send + 'static,
+  Fut: std::future::Future<Output = Result<Vec<U>, Error>> + Send + 'static,
+{
+  use std::sync::Arc;
+  use tokio::sync::Semaphore;
+
+  let sem = Arc::new(Semaphore::new(max_in_flight));
+  let mut tasks = tokio::task::JoinSet::new();
+
+  for chunk in items.chunks(chunk_size) {
+    let chunk = chunk.to_vec();
+    let f = f.clone();
+    let permit = sem
+      .clone()
+      .acquire_owned()
+      .await
+      .expect("semaphore should not be closed");
+
+    tasks.spawn(async move {
+      let _permit = permit;
+      f(chunk).await
+    });
+  }
+
+  let mut out = Vec::new();
+  while let Some(message) = tasks.join_next().await {
+    out.append(&mut message??);
+  }
+  Ok(out)
+}
+
 /// DELETE `url` with bearer auth. Returns unit on 2xx; otherwise
 /// `Error::CsmError(json)`.
 pub(crate) async fn delete(
@@ -490,6 +541,47 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       }
       other => panic!("expected CsmError, got {:?}", other),
     }
+  }
+
+  // ---------- parallel_batch ----------
+
+  #[tokio::test]
+  async fn parallel_batch_flattens_results() {
+    let items: Vec<i32> = (0..10).collect();
+    let out = parallel_batch(&items, 3, 4, |chunk: Vec<i32>| async move {
+      Ok::<_, Error>(chunk.into_iter().map(|x| x * 2).collect::<Vec<_>>())
+    })
+    .await
+    .expect("should succeed");
+    let mut sorted = out;
+    sorted.sort();
+    assert_eq!(sorted, (0..10).map(|x| x * 2).collect::<Vec<_>>());
+  }
+
+  #[tokio::test]
+  async fn parallel_batch_propagates_error() {
+    let items: Vec<i32> = (0..5).collect();
+    let result: Result<Vec<i32>, _> =
+      parallel_batch(&items, 2, 2, |_chunk: Vec<i32>| async move {
+        Err(Error::Message("boom".into()))
+      })
+      .await;
+    match result {
+      Err(Error::Message(m)) => assert_eq!(m, "boom"),
+      other => panic!("expected Message('boom'), got {:?}", other),
+    }
+  }
+
+  #[tokio::test]
+  async fn parallel_batch_empty_input_returns_empty() {
+    let items: Vec<i32> = vec![];
+    let out: Vec<i32> =
+      parallel_batch(&items, 3, 4, |_chunk: Vec<i32>| async move {
+        unreachable!("closure should not be called on empty input")
+      })
+      .await
+      .expect("should succeed");
+    assert!(out.is_empty());
   }
 
   // Bearer auth verification — make sure every helper actually sends the token
