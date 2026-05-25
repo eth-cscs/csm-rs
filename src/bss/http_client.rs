@@ -32,6 +32,8 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// `GET /bss/boot/v1/bootparameters` — fetch boot parameters for
+  /// every node BSS knows about.
   pub async fn bss_bootparameters_get_all(
     &self,
     token: &str,
@@ -39,6 +41,8 @@ impl ShastaClient {
     self.bss_bootparameters_get(token, &[]).await
   }
 
+  /// `GET /bss/boot/v1/bootparameters` for many xnames, parallelised
+  /// in chunks of 30 with up to 10 concurrent batches.
   pub async fn bss_bootparameters_get_multiple(
     &self,
     token: &str,
@@ -115,6 +119,8 @@ impl ShastaClient {
     }
   }
 
+  /// `PATCH /bss/boot/v1/bootparameters` — partial update of an
+  /// existing entry.
   pub async fn bss_bootparameters_patch(
     &self,
     token: &str,

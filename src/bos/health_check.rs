@@ -5,12 +5,15 @@ use serde_json::Value;
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// `GET /bos/v2/healthz` — BOS liveness/readiness probe.
   pub async fn bos_health_check(&self, token: &str) -> Result<Value, Error> {
     let api_url = format!("{}/bos/v2/healthz", self.base_url());
     http::get_json(self.http(), &api_url, token).await
   }
 }
 
+/// Convenience: build a transient `ShastaClient` and run a BOS health
+/// check in one call.
 pub async fn get(
   shasta_token: &str,
   shasta_base_url: &str,

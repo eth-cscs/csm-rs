@@ -5,6 +5,8 @@ use crate::{
 };
 use globset::Glob;
 
+/// Filter a vector of BOS session templates in place by configuration
+/// glob, target HSM groups, target xnames, and an optional row limit.
 pub fn filter(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   configuration_name_pattern_opt: Option<&str>,
@@ -59,6 +61,8 @@ pub fn filter(
   Ok(bos_sessiontemplate_vec.to_vec())
 }
 
+/// Retain only BOS session templates whose `configuration` equals the
+/// supplied CFS configuration name.
 pub async fn filter_by_configuration(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   cfs_configuration_name: &str,
@@ -68,6 +72,9 @@ pub async fn filter_by_configuration(
   });
 }
 
+/// For each BOS session template, return a tuple of
+/// `(image_id, cfs_configuration_name, target_xnames)` extracted from
+/// the template's boot sets.
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
   bos_sessiontemplate_value_vec: &Vec<BosSessionTemplate>,
 ) -> Vec<(String, String, Vec<String>)> {

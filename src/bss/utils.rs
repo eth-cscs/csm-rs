@@ -4,14 +4,19 @@ use std::collections::HashMap;
 
 use super::types::BootParameters;
 
-// Assumes s3 path looks like:
-// - s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/kernel
-// - craycps-s3:s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs:3dfae8d1fa3bb2bfb18152b4f9940ad0-667:dvs:api-gw-service-nmn.local:300:nmn0,hsn0:0
-// - url=s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/rootfs,etag=3dfae8d1fa3bb2bfb18152b4f9940ad0-667 bos_update_frequency=4h
+/// Extract the IMS image ID from a boot-images S3 path.
+///
+/// Recognises the path shapes:
+/// - `s3://boot-images/<image-id>/kernel`
+/// - `craycps-s3:s3://boot-images/<image-id>/rootfs:...`
+/// - `url=s3://boot-images/<image-id>/rootfs,etag=...`
 pub fn get_image_id_from_s3_path(s3_path: &str) -> Option<&str> {
   s3_path.split("/").nth(3)
 }
 
+/// Parse a whitespace-separated kernel command line into a
+/// `HashMap<key, value>`. Flags without `=` are stored with an empty
+/// value.
 pub fn convert_kernel_params_to_map(
   kernel_params: &str,
 ) -> HashMap<String, String> {
@@ -29,6 +34,8 @@ pub fn convert_kernel_params_to_map(
     .collect()
 }
 
+/// Find the [`BootParameters`] entry whose `hosts` list contains the
+/// requested node, returning a clone or `None`.
 pub fn find_boot_params_related_to_node(
   node_boot_params_list: &[BootParameters],
   node: &String,

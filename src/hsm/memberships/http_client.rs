@@ -5,6 +5,7 @@ use crate::{ShastaClient, common::http, error::Error};
 use super::types::Membership;
 
 impl ShastaClient {
+  /// `GET /hsm/v2/memberships` — every membership record HSM knows.
   pub async fn hsm_memberships_get_all(
     &self,
     token: &str,
@@ -13,6 +14,8 @@ impl ShastaClient {
     http::get_json(self.http(), &url, token).await
   }
 
+  /// `GET /hsm/v2/memberships/{xname}` — membership record for a
+  /// single component.
   pub async fn hsm_memberships_get_xname(
     &self,
     token: &str,

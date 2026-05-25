@@ -7,11 +7,11 @@ use crate::{
   ims::{self, image::http_client::types::Image},
 };
 
-// Get Image using fuzzy finder, meaning returns any image which name contains a specific
-// string.
-// Used to find an image created through a CFS session and has not been renamed because manta
-// does not rename the images as SAT tool does for the sake of keeping the original image ID in
-// the CFS session which created the image.
+/// Fuzzy lookup: return every image whose name *contains*
+/// `image_name_opt`, restricted to the caller's available HSM groups.
+///
+/// Used to find images created by a CFS session that manta deliberately
+/// leaves un-renamed (so the CFS session retains its original image ID).
 pub async fn get_fuzzy(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -47,6 +47,8 @@ pub async fn get_fuzzy(
   Ok(image_available_vec.to_vec())
 }
 
+/// Return images whose name *exactly equals* `image_name`, restricted
+/// to the caller's available HSM groups.
 pub async fn get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,

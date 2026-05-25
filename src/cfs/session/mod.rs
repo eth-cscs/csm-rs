@@ -21,6 +21,7 @@ use crate::{
   error::Error,
 };
 
+/// Fetch a single CFS session by name (errors if none or many match).
 pub async fn get_one(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -79,6 +80,8 @@ pub async fn get_and_sort(
   Ok(cfs_session_vec)
 }
 
+/// Convenience: build a transient `ShastaClient`, POST the CFS session
+/// request, and return the created session.
 pub async fn post(
   shasta_token: &str,
   shasta_base_url: &str,

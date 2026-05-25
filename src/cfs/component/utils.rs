@@ -2,6 +2,9 @@
 
 use crate::{cfs::component::http_client::v3::types::Component, error::Error};
 
+/// PATCH a single CFS component to set its desired configuration and
+/// enabled flag. Best-effort: failures are logged via the underlying
+/// client but not returned.
 pub async fn update_component_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -36,6 +39,8 @@ pub async fn update_component_desired_configuration(
     .await;
 }
 
+/// PATCH the desired configuration and enabled flag on a list of CFS
+/// components in one batch.
 pub async fn update_component_list_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,

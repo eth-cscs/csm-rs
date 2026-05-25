@@ -4,6 +4,9 @@ use std::time::Duration;
 
 use crate::error::Error;
 
+/// Verify connectivity to the CSM CFS service by issuing `GET /cfs/healthz`
+/// with a 3-second connect timeout. Used to short-circuit slow failure
+/// paths during startup.
 pub async fn test_connectivity_to_backend(
   shasta_base_url: &str,
 ) -> Result<(), Error> {

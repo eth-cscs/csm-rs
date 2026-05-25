@@ -9,6 +9,8 @@ use types::{Image, PatchImage};
 use crate::{ShastaClient, error::Error};
 
 impl ShastaClient {
+  /// `GET /ims/v3/images` (or `/ims/v3/images/{id}` if `image_id_opt`
+  /// is supplied) — list IMS images or fetch one by ID.
   pub async fn ims_image_get(
     &self,
     token: &str,
@@ -56,6 +58,7 @@ impl ShastaClient {
     Ok(image_vec)
   }
 
+  /// `GET /ims/v3/images` — every IMS image.
   pub async fn ims_image_get_all(
     &self,
     token: &str,

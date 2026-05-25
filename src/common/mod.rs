@@ -27,6 +27,8 @@ pub mod cluster_ops;
 pub mod gitea;
 pub(crate) mod http;
 pub mod jwt_ops;
+/// In-cluster Kubernetes client helpers (used to read ConfigMaps such
+/// as `cray-product-catalog`).
 pub mod kubernetes;
 pub mod vault;
 pub(crate) mod yaml;

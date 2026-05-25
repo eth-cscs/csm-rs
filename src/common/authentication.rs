@@ -6,6 +6,8 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 
+/// Validate a CSM bearer token by issuing `GET /cfs/healthz` and
+/// checking the response status.
 pub async fn validate_api_token(
   shasta_base_url: &str,
   shasta_token: &str,
@@ -33,6 +35,8 @@ pub async fn validate_api_token(
   }
 }
 
+/// Exchange Keycloak username/password credentials for a CSM bearer
+/// token via the `password` grant.
 pub async fn get_token_from_shasta_endpoint(
   keycloak_base_url: &str,
   shasta_root_cert: &[u8],

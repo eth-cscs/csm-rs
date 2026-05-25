@@ -5,6 +5,10 @@ use std::{collections::HashMap, time::Instant};
 use serde_yaml::Value;
 
 use crate::{
+  bos::{
+    session::http_client::v2::types::BosSession,
+    template::http_client::v2::types::BosSessionTemplate,
+  },
   cfs::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   commands::{
     apply_hw_cluster_pin,
@@ -15,6 +19,7 @@ use crate::{
   common::kubernetes::{self},
   error::Error,
   hsm::group::utils::update_hsm_group_members,
+  ims::image::http_client::types::Image as ImsImage,
 };
 
 /// Apply a SAT (System Admin Toolkit) template file against a Shasta system.
@@ -44,6 +49,14 @@ use crate::{
 ///   same name instead of failing.
 /// - `reboot` — after creating BOS session templates, also reboot the
 ///   target nodes through them.
+///
+/// # Returns
+///
+/// `(configurations, images, session_templates, sessions)` — the
+/// artifacts created from each section of the SAT file. In `dry_run`
+/// mode the same tuple is returned populated with the artifacts that
+/// *would* have been created. `sessions` is empty unless `reboot` is
+/// `true`.
 ///
 /// # Errors
 ///
@@ -82,7 +95,15 @@ pub async fn exec(
   debug_on_failure: bool,
   overwrite: bool,
   dry_run: bool,
-) -> Result<(), Error> {
+) -> Result<
+  (
+    Vec<CfsConfigurationResponse>,
+    Vec<ImsImage>,
+    Vec<BosSessionTemplate>,
+    Vec<BosSession>,
+  ),
+  Error,
+> {
   // GET DATA
   //
   // Get data from SAT YAML file
@@ -292,9 +313,8 @@ pub async fn exec(
   // Process "configurations" section in SAT file
   //
   log::info!("Process configurations section in SAT file");
-  let mut cfs_configuration_value_vec = Vec::new();
-
-  let mut cfs_configuration_name_vec = Vec::new();
+  let mut cfs_configurations_created: Vec<CfsConfigurationResponse> =
+    Vec::new();
 
   for configuration_yaml in configuration_yaml_vec_opt.unwrap_or(&vec![]).iter()
   {
@@ -314,13 +334,9 @@ pub async fn exec(
       )
       .await?;
 
-    let cfs_configuration_name = cfs_configuration.name.to_string();
+    log::info!("CFS configuration '{}' created", cfs_configuration.name);
 
-    log::info!("CFS configuration '{}' created", cfs_configuration_name);
-
-    cfs_configuration_name_vec.push(cfs_configuration_name.clone());
-
-    cfs_configuration_value_vec.push(cfs_configuration.clone());
+    cfs_configurations_created.push(cfs_configuration);
   }
 
   // Process "images" section in SAT file
@@ -330,7 +346,7 @@ pub async fn exec(
   let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
   #[allow(deprecated)]
-  let cfs_session_created_hashmap: HashMap<String, image::Image> =
+  let images_created: Vec<ImsImage> =
     utils::i_import_images_section_in_sat_file(
       shasta_token,
       shasta_base_url,
@@ -353,24 +369,33 @@ pub async fn exec(
 
   log::info!(
     "Images created: {:?}",
-    cfs_session_created_hashmap.keys().collect::<Vec<&String>>()
+    images_created
+      .iter()
+      .filter_map(|i| i.id.as_deref())
+      .collect::<Vec<&str>>()
   );
 
   // Process "session_templates" section in SAT file
   //
   log::info!("Process session_template section in SAT file");
-  utils::process_session_template_section_in_sat_file(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    ref_name_processed_hashmap,
-    hsm_group_available_vec,
-    sat_template_file_yaml,
-    reboot,
-    dry_run,
-  )
-  .await?;
+  let (sessiontemplates_created, bos_sessions_created) =
+    utils::process_session_template_section_in_sat_file(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      ref_name_processed_hashmap,
+      hsm_group_available_vec,
+      sat_template_file_yaml,
+      reboot,
+      dry_run,
+    )
+    .await?;
 
-  Ok(())
+  Ok((
+    cfs_configurations_created,
+    images_created,
+    sessiontemplates_created,
+    bos_sessions_created,
+  ))
 }

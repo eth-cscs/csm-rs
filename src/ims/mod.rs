@@ -14,6 +14,11 @@
 
 pub mod image;
 pub mod job;
+/// IMS public-key endpoints — register and look up user SSH keys.
 pub mod public_keys;
+/// IMS recipe endpoints — base images that get customised into final
+/// images via CFS sessions.
 pub mod recipe;
+/// Low-level S3 client used to upload/download IMS artifacts directly
+/// from the CSM-backing S3 store.
 pub mod s3_client;

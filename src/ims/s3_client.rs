@@ -34,9 +34,11 @@ fn parse_sts_credentials(
   Ok((credentials, endpoint_url))
 }
 
+/// `indicatif` progress bar template used by the S3 upload/download
+/// helpers in this module.
 pub const BAR_FORMAT: &str = "[{elapsed_precise}] {bar:40.cyan/blue} ({bytes_per_sec}) {bytes:>7}/{total_bytes:7} {msg} [ETA {eta}]";
-// Get a token for S3 and return the result
-// If something breaks, return an error
+/// Fetch an AWS STS token for the CSM-backing S3 store and return the
+/// raw STS JSON response.
 pub async fn s3_auth(
   shasta_token: &str,
   shasta_base_url: &str,

@@ -35,6 +35,8 @@ impl ShastaClient {
     }
   }
 
+  /// `POST /bos/v1/sessiontemplate` — create a v1 BOS session
+  /// template.
   pub async fn bos_template_v1_post(
     &self,
     token: &str,

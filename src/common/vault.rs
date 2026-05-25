@@ -1,10 +1,14 @@
 //! Fetch Kubernetes service-account secrets from Vault — the supported way to obtain CSM cluster credentials off-cluster.
 
+/// Vault HTTP helpers: OIDC login + secret fetching for CSM and VCS
+/// credentials stored under `secret/manta/data/<site>`.
 pub mod http_client {
 
   use crate::error::Error;
   use serde_json::{Value, json};
 
+  /// Exchange a Shasta (Keycloak) JWT for a Vault token via the OIDC
+  /// JWT auth backend. The Vault role is hard-coded to `manta`.
   pub async fn auth_oidc_jwt(
     vault_base_url: &str,
     // vault_role_id: &str,
@@ -56,6 +60,8 @@ pub mod http_client {
     }
   }
 
+  /// Low-level Vault read: `GET <vault_base_url><secret_path>` with the
+  /// supplied Vault token, returning the secret's `.data` payload.
   pub async fn fetch_secret(
     vault_auth_token: &str,
     vault_base_url: &str,
@@ -91,6 +97,9 @@ pub mod http_client {
     }
   }
 
+  /// Fetch the VCS (Gitea) bearer token from
+  /// `secret/manta/data/<site>/vcs`. Authenticates against Vault via
+  /// the OIDC JWT backend using the caller's Shasta token.
   pub async fn fetch_shasta_vcs_token(
     shasta_token: &str,
     vault_base_url: &str,
@@ -125,6 +134,10 @@ pub mod http_client {
       }) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
   }
 
+  /// Fetch the Kubernetes API URL, token, and CA cert from
+  /// `secret/manta/data/<site>/k8s` — the credentials csm-rs uses to
+  /// read the in-cluster `cray-product-catalog` ConfigMap and to attach
+  /// node consoles.
   pub async fn fetch_shasta_k8s_secrets_from_vault(
     vault_base_url: &str,
     // vault_role_id: &str,

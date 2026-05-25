@@ -6,6 +6,9 @@ use std::io::Write;
 
 use crate::{ShastaClient, error::Error};
 
+/// Issue repeated CAPMC power-on requests, polling status every 3
+/// seconds until every xname reports as "on" or the 60-attempt cap is
+/// reached.
 pub async fn wait_nodes_to_power_on(
   client: &ShastaClient,
   token: &str,
@@ -67,6 +70,9 @@ pub async fn wait_nodes_to_power_on(
   Ok(node_status_value)
 }
 
+/// Issue repeated CAPMC power-off requests (graceful unless `force`),
+/// polling status until every xname reports "off" or the 60-attempt
+/// cap is reached.
 pub async fn wait_nodes_to_power_off(
   client: &ShastaClient,
   token: &str,

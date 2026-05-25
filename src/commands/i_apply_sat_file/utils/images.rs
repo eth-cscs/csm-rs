@@ -105,6 +105,9 @@ pub fn get_image_name_or_ref_name_to_process_struct(
   note = "this function prints cfs session logs to stdout"
 )]
 #[allow(clippy::too_many_arguments)]
+/// Build every entry in the SAT file's `images` section: import the
+/// base recipe / image and run the associated CFS session, optionally
+/// streaming logs to stdout.
 pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -123,10 +126,10 @@ pub async fn i_import_images_section_in_sat_file(
   dry_run: bool,
   watch_logs: bool,
   timestamps: bool,
-) -> Result<HashMap<String, image::Image>, Error> {
+) -> Result<Vec<ims::image::http_client::types::Image>, Error> {
   if image_yaml_vec.is_empty() {
     log::warn!("No images found in SAT file. Nothing to process.");
-    return Ok(HashMap::new());
+    return Ok(Vec::new());
   }
 
   // Get an image to process (the image either has no dependency or it's image dependency has
@@ -142,12 +145,12 @@ pub async fn i_import_images_section_in_sat_file(
 
   // Process images
   log::info!("Processing image '{:?}'", next_image_to_process_opt);
-  let mut image_processed_hashmap: HashMap<String, image::Image> =
-    HashMap::new();
+  let mut images_created: Vec<ims::image::http_client::types::Image> =
+    Vec::new();
 
   while let Some(image_yaml) = &next_image_to_process_opt {
     #[allow(deprecated)]
-    let image_id = i_create_image_from_sat_file_serde_yaml(
+    let image = i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -167,12 +170,14 @@ pub async fn i_import_images_section_in_sat_file(
     )
     .await?;
 
-    image_processed_hashmap.insert(image_id.clone(), image_yaml.clone());
+    let image_id = image.id.clone().unwrap_or_default();
 
     ref_name_processed_hashmap.insert(
       get_image_name_or_ref_name_to_process_struct(image_yaml),
-      image_id.clone(),
+      image_id,
     );
+
+    images_created.push(image);
 
     next_image_to_process_opt = get_next_image_in_sat_file_to_process_struct(
       image_yaml_vec,
@@ -183,7 +188,7 @@ pub async fn i_import_images_section_in_sat_file(
     );
   }
 
-  Ok(image_processed_hashmap)
+  Ok(images_created)
 }
 
 #[deprecated(
@@ -191,6 +196,9 @@ pub async fn i_import_images_section_in_sat_file(
   note = "this function prints cfs session logs to stdout"
 )]
 #[allow(clippy::too_many_arguments)]
+/// Build one image entry from a SAT file YAML node: resolve the base
+/// (recipe or existing image), create the IMS image, kick off a CFS
+/// session, and (optionally) stream its logs to stdout.
 pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -209,7 +217,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   dry_run: bool,
   watch_logs: bool,
   timestamps: bool,
-) -> Result<String, Error> {
+) -> Result<ims::image::http_client::types::Image, Error> {
   // Get CFS session from SAT file image yaml
   let cfs_session = get_session_from_image_yaml(
     shasta_token,
@@ -264,14 +272,25 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     let image_id = cfs_session.first_result_id().unwrap_or_default();
     log::info!("Image '{}' ({}) created", image_name, image_id);
 
-    Ok(image_id.to_string())
+    let image = crate::ShastaClient::new(
+      shasta_base_url,
+      shasta_root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )?
+    .ims_image_get(shasta_token, Some(image_id))
+    .await?
+    .into_iter()
+    .next()
+    .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
+
+    Ok(image)
   } else {
     log::info!(
       "Dry run mode: Create CFS session:\n{}",
       serde_json::to_string_pretty(&cfs_session)?
     );
 
-    let image_id = Uuid::new_v4().to_string();
+    let image_id = format!("DRYRUN_{}", Uuid::new_v4());
 
     log::info!(
       "Dry run mode: Image '{}' ({}) created",
@@ -279,7 +298,11 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       image_id
     );
 
-    Ok(image_id)
+    Ok(ims::image::http_client::types::Image {
+      id: Some(image_id),
+      name: image_name.clone(),
+      ..Default::default()
+    })
   }
 }
 
@@ -575,6 +598,8 @@ pub(super) fn process_sat_file_image_old_version_struct(
   }
 }
 
+/// Apply a SAT-file `Filter` (prefix/wildcard rules) to a list of
+/// product catalog images and return the matching ones.
 pub fn filter_product_catalog_images(
   filter: &Filter,
   image_map: Map<String, serde_json::Value>,
@@ -685,6 +710,9 @@ pub fn filter_product_catalog_images(
   }
 }
 
+/// Pre-flight validation for a SAT file's `images` section: rejects
+/// entries that reference unknown configurations, out-of-scope HSM
+/// groups, or unavailable product catalog images.
 pub fn validate_sat_file_images_section(
   image_yaml_vec: &[image::Image],
   configuration_yaml_vec: &[configuration::Configuration],

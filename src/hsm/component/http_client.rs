@@ -69,6 +69,8 @@ impl ShastaClient {
       .await
   }
 
+  /// `GET /hsm/v2/State/Components` then filter the result down to
+  /// components whose xname appears in `xname_list`.
   pub async fn hsm_component_get_and_filter(
     &self,
     token: &str,
@@ -85,6 +87,10 @@ impl ShastaClient {
     Ok(component_vec)
   }
 
+  /// `GET /hsm/v2/State/Components` with the full set of HSM query
+  /// parameters (id, type, state, flag, role, subrole, enabled,
+  /// software status, subtype, arch, class, nid, nid range, partition,
+  /// group, and the `*only` projection toggles).
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_component_get(
     &self,
@@ -155,6 +161,7 @@ impl ShastaClient {
     http::handle_json_or_text_response(response).await
   }
 
+  /// `GET /hsm/v2/State/Components/{xname}` — fetch a single component.
   pub async fn hsm_component_get_one(
     &self,
     token: &str,
@@ -179,6 +186,7 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `POST /hsm/v2/State/Components` — create components in bulk.
   pub async fn hsm_component_post(
     &self,
     token: &str,
@@ -208,6 +216,8 @@ impl ShastaClient {
     Ok(())
   }
 
+  /// `POST /hsm/v2/State/Components` query — components matching the
+  /// supplied criteria.
   pub async fn hsm_component_post_query(
     &self,
     token: &str,
@@ -237,6 +247,8 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `POST /hsm/v2/State/Components/ByNID/Query` — components matching
+  /// the supplied NID query.
   pub async fn hsm_component_post_bynid_query(
     &self,
     token: &str,
@@ -267,6 +279,7 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `PUT /hsm/v2/State/Components/{xname}` — replace a component.
   pub async fn hsm_component_put(
     &self,
     token: &str,
@@ -298,6 +311,8 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `DELETE /hsm/v2/State/Components/{xname}` — remove a single
+  /// component.
   pub async fn hsm_component_delete_one(
     &self,
     token: &str,
@@ -327,6 +342,7 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `DELETE /hsm/v2/State/Components` — remove all components.
   pub async fn hsm_component_delete(
     &self,
     token: &str,

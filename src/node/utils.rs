@@ -374,6 +374,8 @@ pub async fn get_node_details(
   Ok(node_details_map.into_values().collect())
 }
 
+/// Render a list of node JSON values into a single comma-separated
+/// line of xnames.
 pub fn nodes_to_string_format_one_line(nodes: Option<&Vec<Value>>) -> String {
   if let Some(nodes_content) = nodes {
     nodes_to_string_format_discrete_columns(nodes, nodes_content.len() + 1)
@@ -382,6 +384,8 @@ pub fn nodes_to_string_format_one_line(nodes: Option<&Vec<Value>>) -> String {
   }
 }
 
+/// Render a list of node JSON values into `num_columns` evenly-sized
+/// columns of xnames, joined by newlines.
 pub fn nodes_to_string_format_discrete_columns(
   nodes: Option<&Vec<Value>>,
   num_columns: usize,

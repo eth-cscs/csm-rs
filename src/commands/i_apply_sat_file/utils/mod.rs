@@ -14,12 +14,20 @@ use serde::{Deserialize, Serialize};
 
 use self::sessiontemplate::SessionTemplate;
 
+/// Deserialised representation of a SAT (System Admin Toolkit) YAML
+/// file: up to three top-level sections describing CFS configurations
+/// to create, IMS images to build, and BOS session templates to apply.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SatFile {
+  /// CFS configurations to create (mirrors the SAT `configurations`
+  /// section).
   #[serde(skip_serializing_if = "Option::is_none")]
   pub configurations: Option<Vec<configuration::Configuration>>,
+  /// IMS images to build (mirrors the SAT `images` section).
   #[serde(skip_serializing_if = "Option::is_none")]
   pub images: Option<Vec<image::Image>>,
+  /// BOS session templates to apply (mirrors the SAT
+  /// `session_templates` section).
   #[serde(skip_serializing_if = "Option::is_none")]
   pub session_templates: Option<Vec<sessiontemplate::SessionTemplate>>,
 }
@@ -199,10 +207,16 @@ pub mod image;
 /// struct to represent the `configurations` section in SAT file
 pub mod configuration;
 
+/// Legacy SAT `images` section types kept for backward compatibility.
 pub mod sat_file_image_old;
 
+/// CFS configuration creation helpers driven by a SAT file's
+/// `configurations` section.
 pub mod configurations;
+/// IMS image build helpers driven by a SAT file's `images` section.
 pub mod images;
+/// BOS session template creation helpers driven by a SAT file's
+/// `session_templates` section.
 pub mod session_templates;
 
 // Re-export functions at the original `utils::*` paths so existing callers
@@ -210,3 +224,7 @@ pub mod session_templates;
 pub use configurations::*;
 pub use images::*;
 pub use session_templates::*;
+
+/// Helpers for reading the in-cluster `cray-product-catalog`
+/// ConfigMap used during SAT-file apply.
+pub mod hpe_products;

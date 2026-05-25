@@ -112,6 +112,8 @@ impl ShastaClient {
       })
   }
 
+  /// `GET /ims/v3/jobs` (or `/ims/v3/jobs/{id}` if `job_id_opt` is
+  /// supplied) — list IMS jobs or fetch one by ID.
   pub async fn ims_job_get(
     &self,
     token: &str,

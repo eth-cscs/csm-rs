@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// `POST /bos/v1/session` — create a v1 BOS session for the given
+  /// template name and operation (e.g. `boot`, `reboot`, `shutdown`).
   pub async fn bos_session_v1_post(
     &self,
     token: &str,

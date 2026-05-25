@@ -12,6 +12,9 @@ use crate::{
 
 use super::types::Member;
 
+/// Return the full HSM groups visible to the caller — all groups for
+/// admins (`pa_admin` realm role), otherwise filtered to those named in
+/// the caller's Keycloak roles, with site-wide groups stripped.
 pub async fn get_group_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
@@ -57,6 +60,9 @@ pub async fn get_group_available(
   }
 }
 
+/// Return the names of HSM groups visible to the caller — all groups
+/// for admins, otherwise derived from the JWT's Keycloak roles with
+/// site-wide group names stripped.
 pub async fn get_group_name_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
@@ -368,8 +374,8 @@ pub async fn update_hsm_group_members(
   Ok(())
 }
 
-// Returns a HashMap with keys being the xnames and values the list of group names each xname
-// belongs to
+/// Return a `HashMap` keyed by xname, valued with the group labels each
+/// xname belongs to. Restricted to the provided `xname_vec`.
 pub async fn get_xname_map_and_filter_by_xname_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -401,8 +407,8 @@ pub async fn get_xname_map_and_filter_by_xname_vec(
   Ok(xname_map)
 }
 
-// Returns a HashMap with keys being the hsm names/labels the user has access a curated list of xnames
-// for each hsm name as values
+/// Return a `HashMap` keyed by HSM group label with the member xnames
+/// as values, restricted to the given `hsm_name_vec` labels.
 pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -424,8 +430,8 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   ))
 }
 
-// Returns a HashMap with keys being the hsm names/labels the user has access a curated list of xnames
-// for each hsm name as values
+/// Return a `HashMap` keyed by HSM group label with member xnames as
+/// values, restricted to groups containing any xname in `member_vec`.
 pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -493,6 +499,7 @@ pub fn filter_by_hsm_group_members_and_convert_to_map(
   hsm_group_map
 }
 
+/// Extract `members.ids[]` xnames from an HSM group JSON Value.
 pub fn get_member_vec_from_hsm_group_value(hsm_group: &Value) -> Vec<String> {
   // Take all nodes for all hsm_groups found and put them in a Vec
   hsm_group
@@ -507,6 +514,7 @@ pub fn get_member_vec_from_hsm_group_value(hsm_group: &Value) -> Vec<String> {
     .unwrap_or_default()
 }
 
+/// Extract member xnames from a typed HSM `Group`.
 pub fn get_member_vec_from_hsm_group(hsm_group: &Group) -> Vec<String> {
   // Take all nodes for all hsm_groups found and put them in a Vec
   hsm_group.get_members()
@@ -545,6 +553,8 @@ pub async fn get_member_vec_from_hsm_name_vec(
   Ok(hsm_group_member_vec)
 }
 
+/// Collect the union of `members.ids[]` xnames across multiple HSM
+/// group JSON Values, deduplicated into a `HashSet`.
 pub fn get_member_vec_from_hsm_group_value_vec(
   hsm_groups: &[Value],
 ) -> HashSet<String> {
@@ -554,6 +564,8 @@ pub fn get_member_vec_from_hsm_group_value_vec(
     .collect()
 }
 
+/// Collect the union of member xnames across multiple typed HSM
+/// `Group`s, deduplicated into a `HashSet`.
 pub fn get_member_vec_from_hsm_group_vec(
   hsm_groups: &[Group],
 ) -> HashSet<String> {
@@ -586,6 +598,7 @@ pub fn group_members_by_hsm_group_from_hsm_groups_value(
   member_hsm_map
 }
 
+/// Fetch a single HSM group by label and return its member xnames.
 pub async fn get_member_vec_from_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,

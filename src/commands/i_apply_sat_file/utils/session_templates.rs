@@ -26,6 +26,9 @@ use super::{
 };
 
 #[allow(clippy::too_many_arguments)]
+/// Pre-flight validation for the SAT file's `session_templates`
+/// section: rejects entries referencing missing images, unknown
+/// configurations, or out-of-scope HSM groups / xnames.
 pub async fn validate_sat_file_session_template_section(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -230,6 +233,9 @@ pub async fn validate_sat_file_session_template_section(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Apply every entry in the SAT file's `session_templates` section:
+/// rewrite image references using the freshly-built image IDs (from
+/// `ref_name_processed_hashmap`) and PUT each template into BOS.
 pub async fn process_session_template_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -240,7 +246,7 @@ pub async fn process_session_template_section_in_sat_file(
   sat_file_yaml: Value,
   reboot: bool,
   dry_run: bool,
-) -> Result<(), Error> {
+) -> Result<(Vec<BosSessionTemplate>, Vec<BosSession>), Error> {
   let empty_vec = Vec::new();
   let bos_session_template_list_yaml = sat_file_yaml
     .get("session_templates")
@@ -251,10 +257,11 @@ pub async fn process_session_template_section_in_sat_file(
     log::warn!(
       "No 'session_templates' section found in SAT file. Skipping session template processing"
     );
-    return Ok(());
+    return Ok((Vec::new(), Vec::new()));
   }
 
-  let mut bos_st_created_vec: Vec<String> = Vec::new();
+  let mut bos_st_created_vec: Vec<BosSessionTemplate> = Vec::new();
+  let mut bos_sessions_created: Vec<BosSession> = Vec::new();
 
   for bos_sessiontemplate_yaml in bos_session_template_list_yaml {
     // Get boot image details in BOS sessiontemplate. This is needed to create the BOS
@@ -553,7 +560,9 @@ pub async fn process_session_template_section_in_sat_file(
         "Dry Run Mode: BOS sessiontemplate name '{}' created",
         dry_run_bos_sessiontemplate_name
       );
-      bos_st_created_vec.push(dry_run_bos_sessiontemplate_name);
+      let mut mock_template = create_bos_session_template_payload.clone();
+      mock_template.name = Some(dry_run_bos_sessiontemplate_name);
+      bos_st_created_vec.push(mock_template);
     } else {
       let bos_sessiontemplate = crate::ShastaClient::new(
         shasta_base_url,
@@ -572,12 +581,12 @@ pub async fn process_session_template_section_in_sat_file(
         bos_sessiontemplate_name
       );
 
-      let created_name = bos_sessiontemplate.name.ok_or_else(|| {
-        Error::Message(
+      if bos_sessiontemplate.name.is_none() {
+        return Err(Error::Message(
           "BOS sessiontemplate API response is missing 'name'".to_string(),
-        )
-      })?;
-      bos_st_created_vec.push(created_name);
+        ));
+      }
+      bos_st_created_vec.push(bos_sessiontemplate);
     }
   }
 
@@ -587,7 +596,8 @@ pub async fn process_session_template_section_in_sat_file(
   if reboot {
     log::info!("Rebooting");
 
-    for bos_st_name in bos_st_created_vec {
+    for bos_st in &bos_st_created_vec {
+      let bos_st_name = bos_st.name.clone().unwrap_or_default();
       log::info!(
         "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
         bos_st_name
@@ -598,7 +608,7 @@ pub async fn process_session_template_section_in_sat_file(
         name: None,
         tenant: None,
         operation: Some(Operation::Reboot),
-        template_name: bos_st_name.clone(),
+        template_name: bos_st_name,
         limit: None,
         stage: None,
         include_disabled: None,
@@ -612,13 +622,14 @@ pub async fn process_session_template_section_in_sat_file(
           serde_json::to_string_pretty(&bos_session)?
         );
       } else {
-        crate::ShastaClient::new(
+        let created = crate::ShastaClient::new(
           shasta_base_url,
           shasta_root_cert.to_vec(),
           socks5_proxy.map(str::to_owned),
         )?
         .bos_session_v2_post(shasta_token, bos_session)
         .await?;
+        bos_sessions_created.push(created);
       }
     }
   }
@@ -629,7 +640,7 @@ pub async fn process_session_template_section_in_sat_file(
 
   log::info!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
 
-  Ok(())
+  Ok((bos_st_created_vec, bos_sessions_created))
 }
 
 /// Returns image reference related to a session template in SAT file.

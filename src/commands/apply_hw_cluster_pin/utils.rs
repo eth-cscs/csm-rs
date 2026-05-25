@@ -9,8 +9,11 @@ use tokio::sync::Semaphore;
 /// `(node_xname, hw_component_name -> count)` for one node.
 pub type NodeHwComponentCount = (String, HashMap<String, usize>);
 
-// Returns a tuple (target_hsm, parent_hsm) with 2 list of nodes and its hardware components.
-// The left tuple element are the nodes moved from the
+/// Solve the hardware-pinning problem: pick xnames from the parent HSM
+/// to satisfy `user_defined_target_hsm_hw_component_count_hashmap`,
+/// returning `(target_hsm, parent_hsm)` — the left element is the
+/// nodes moved into the target group, the right is what remains in the
+/// parent.
 pub fn resolve_hw_description_to_xnames(
   mut target_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
   mut parent_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
@@ -114,6 +117,9 @@ pub fn get_best_candidate_in_hsm_pin(
     .map(|best_candiate| (best_candidate, best_candiate.1.clone()))
 }
 
+/// Pick the highest-scoring candidate node across both target and
+/// parent HSM scoring vectors; updates the target vector in place if
+/// the winner came from the target side.
 pub fn get_best_candidate_in_target_and_parent_hsm_pin(
   target_hsm_node_score_tuple_vec: &mut [(String, f32)],
   parent_hsm_node_score_tuple_vec: &mut [(String, f32)],
@@ -375,6 +381,9 @@ pub fn calculate_target_hsm_pin(
   Ok(nodes_migrated_from_combination_target_parent_hsm)
 }
 
+/// Compute a scarcity score per hardware component name — components
+/// that appear fewer times across the HSM score higher. Used to
+/// prioritise nodes carrying rare hardware during pinning.
 pub fn calculate_hw_component_scarcity_scores(
   hsm_node_hw_component_count: &Vec<(String, HashMap<String, usize>)>,
 ) -> HashMap<String, f32> {
@@ -467,6 +476,9 @@ pub fn calculate_hsm_node_scores_from_final_hsm(
   node_score_vec
 }
 
+/// Return `true` while the current HSM summary still exceeds the
+/// target (final) per-component minimum — i.e. there's slack to keep
+/// moving nodes during pinning.
 pub fn keep_iterating_final_hsm(
   hsm_final_hw_component_summary_hashmap: &HashMap<String, usize>, // hw components in
   // the target hsm group asked by the user (this is the minimum boundary, we can't provide
@@ -517,7 +529,8 @@ pub async fn get_node_hw_component_count(
   Ok((hsm_member.to_string(), node_hw_profile.0, node_hw_profile.1))
 }
 
-// Calculate/groups hw component counters
+/// Sum per-node hardware component counts into a single
+/// `component -> total` map for the HSM group.
 pub fn calculate_hsm_hw_component_summary(
   target_hsm_group_node_hw_component_vec: &Vec<(
     String,
@@ -586,6 +599,10 @@ pub fn get_node_hw_properties_from_value(
   (node_hw_component_pattern_vec, memory_vec)
 }
 
+/// For each member of `hsm_group_member_vec`, query HSM Hardware
+/// Inventory and produce a `(xname, component -> count)` row covering
+/// the `user_defined_hw_component_vec` of interest, with memory
+/// normalised against the supplied LCM.
 pub async fn get_hsm_node_hw_component_counter(
   shasta_token: &str,
   shasta_base_url: &str,

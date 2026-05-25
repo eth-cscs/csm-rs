@@ -32,6 +32,8 @@ impl ShastaClient {
     }
   }
 
+  /// `GET /bos/v2/sessiontemplates` — list every BOS v2 session
+  /// template.
   pub async fn bos_template_v2_get_all(
     &self,
     token: &str,
@@ -39,6 +41,8 @@ impl ShastaClient {
     self.bos_template_v2_get(token, None).await
   }
 
+  /// `PUT /bos/v2/sessiontemplates/{name}` — create or replace a BOS
+  /// v2 session template.
   pub async fn bos_template_v2_put(
     &self,
     token: &str,

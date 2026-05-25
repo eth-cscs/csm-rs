@@ -43,6 +43,8 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
   })
 }
 
+/// Extract the `name` claim from a Keycloak JWT (typically the user's
+/// display name).
 pub fn get_name(token: &str) -> Result<String, Error> {
   let jwt_claims = get_claims_from_jwt_token(token)?;
 
@@ -56,6 +58,8 @@ pub fn get_name(token: &str) -> Result<String, Error> {
   }
 }
 
+/// Extract the `preferred_username` claim from a Keycloak JWT — the
+/// stable login identifier.
 pub fn get_preferred_username(token: &str) -> Result<String, Error> {
   let jwt_claims = get_claims_from_jwt_token(token)?;
 

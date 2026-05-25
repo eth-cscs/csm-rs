@@ -7,6 +7,8 @@ use crate::{ShastaClient, common::http, error::Error};
 use super::types::{HWInventoryByLocationList, NodeSummary};
 
 impl ShastaClient {
+  /// `GET /hsm/v2/Inventory/Hardware` — fetch the hardware inventory
+  /// for a single node, summarised as a [`NodeSummary`].
   pub async fn hsm_hw_inventory_get(
     &self,
     token: &str,
@@ -34,6 +36,8 @@ impl ShastaClient {
     }
   }
 
+  /// `GET /hsm/v2/Inventory/Hardware/Query/{xname}` — raw HSM hardware
+  /// inventory query for one xname.
   pub async fn hsm_hw_inventory_get_query(
     &self,
     token: &str,
@@ -47,6 +51,8 @@ impl ShastaClient {
     http::get_json(self.http(), &api_url, token).await
   }
 
+  /// `POST /hsm/v2/Inventory/Hardware` — submit a hardware inventory
+  /// payload (typically used by node discovery agents).
   pub async fn hsm_hw_inventory_post(
     &self,
     token: &str,

@@ -101,6 +101,8 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// `PUT /hsm/v2/State/Components/{xname}` — replace a Redfish
+  /// endpoint definition.
   pub async fn hsm_redfish_put(
     &self,
     token: &str,
@@ -121,6 +123,8 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// `DELETE /hsm/v2/Inventory/RedfishEndpoints` — remove every Redfish
+  /// endpoint.
   pub async fn hsm_redfish_delete_all(
     &self,
     token: &str,
@@ -138,6 +142,8 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
+  /// `DELETE /hsm/v2/Inventory/RedfishEndpoints/{xname}` — remove one
+  /// Redfish endpoint.
   pub async fn hsm_redfish_delete_one(
     &self,
     token: &str,

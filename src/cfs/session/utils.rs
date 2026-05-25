@@ -13,7 +13,8 @@ use std::io::{self, Write};
 use super::http_client::v2::types::CfsSessionGetResponse;
 use globset::Glob;
 
-// Check if a session is related to a group the user has access to
+/// `true` if the CFS session's target HSM groups overlap with any HSM
+/// group in `group_available` (used to enforce per-user visibility).
 pub fn check_cfs_session_against_groups_available(
   cfs_session: &CfsSessionGetResponse,
   group_available: Vec<Group>,
@@ -76,6 +77,10 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
   }
 }
 
+/// Filter CFS sessions in place by configuration-name glob, HSM groups
+/// the caller has access to, optional xname allow-list, session type,
+/// row limit, and a flag controlling whether "generic" (non-targeted)
+/// sessions are retained.
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
@@ -347,6 +352,8 @@ pub async fn wait_cfs_session_to_finish(
   }
 }
 
+/// Expand a CFS session's target (xnames + HSM groups) into a flat
+/// xname list, restricted to groups the caller can see.
 pub async fn get_list_xnames_related_to_session(
   group_available_vec: Vec<Group>,
   cfs_session: CfsSessionGetResponse,

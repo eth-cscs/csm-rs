@@ -4,14 +4,22 @@ use crate::{common, error::Error, hsm};
 
 use super::types::Group;
 
+/// Keycloak role name that grants full admin access (bypasses HSM-group
+/// scoping checks).
 pub static PA_ADMIN: &str = "pa_admin";
+/// HSM group labels treated as site-wide buckets — pruned from the
+/// per-user visible-groups list so they don't pollute access control.
 pub static SYSTEM_WIDE_HSM_GROUPS: [&str; 4] =
   ["alps", "prealps", "alpse", "alpsb"];
+/// Keycloak realm roles that are infrastructural rather than HSM-group
+/// names; stripped before resolving "groups visible to this user."
 pub static KEYCLOAK_ROLES_TO_IGNORE: [&str; 3] = [
   "offline_access",
   "uma_authorization",
   "default-roles-shasta",
 ];
+/// Canonical HSM component `Role` values (used to filter roles supplied
+/// by the user against the closed set CSM accepts).
 pub static ROLES: [&str; 6] = [
   "Compute",
   "Service",
@@ -20,6 +28,7 @@ pub static ROLES: [&str; 6] = [
   "Storage",
   "Management",
 ];
+/// Canonical HSM component `SubRole` values.
 pub static SUBROLES: [&str; 8] = [
   "Worker",
   "Master",

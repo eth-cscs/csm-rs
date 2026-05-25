@@ -8,6 +8,8 @@ use crate::{
 use super::types::{ComponentEthernetInterface, IpAddressMapping};
 
 impl ShastaClient {
+  /// `POST /hsm/v2/Inventory/EthernetInterfaces` — register a new
+  /// ethernet interface for a component.
   pub async fn hsm_eth_post(
     &self,
     token: &str,
@@ -44,6 +46,8 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
+  /// `POST /hsm/v2/Inventory/EthernetInterfaces/{component_id}/IPAddresses`
+  /// — add IP address mappings to an existing component's interface.
   pub async fn hsm_eth_post_ip_addresses(
     &self,
     token: &str,
@@ -125,6 +129,9 @@ impl ShastaClient {
       .map_err(Error::NetError)
   }
 
+  /// `PATCH /hsm/v2/Inventory/EthernetInterfaces/{id}` — update the
+  /// description, owning component, or IP/network mapping of an
+  /// existing ethernet interface.
   pub async fn hsm_eth_patch(
     &self,
     token: &str,

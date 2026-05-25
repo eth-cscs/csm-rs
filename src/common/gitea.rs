@@ -1,10 +1,13 @@
 //! Small client for the embedded CSM Gitea instance used by CFS configuration layers.
 
+/// HTTP helpers for the embedded CSM Gitea instance.
 pub mod http_client {
 
   use crate::{common::http, error::Error};
   use serde_json::Value;
 
+  /// Extract the repo name (the path after `vcs/cray/`) from a Gitea
+  /// URL, trimming the trailing `.git` if present.
   pub fn get_repo_name_from_url(repo_url: &str) -> Result<String, Error> {
     if repo_url.starts_with("https://api-gw-service-nmn.local") {
       let gitea_internal_base_url =
@@ -211,9 +214,12 @@ pub mod http_client {
     http::handle_json_or_text_response(response).await
   }
 
-  // Get commit details.
-  // NOTE: repo_name value must not contain the group (eg in CSCS gitlab we have
-  // alps/csm-config/template-management and in gitea is vcs/api/v1/repos/template-management
+  /// Fetch commit details for `commitid` from the site's external Gitea
+  /// URL (`api.cmn.<site>.cscs.ch/vcs/`).
+  ///
+  /// Note: `repo_name` must NOT contain the group prefix (e.g. CSCS
+  /// gitlab has `alps/csm-config/template-management` whereas Gitea
+  /// expects just `template-management`).
   pub async fn get_commit_details_from_external_url(
     // repo_url: &str,
     repo_name: &str,
@@ -237,6 +243,9 @@ pub mod http_client {
     .await
   }
 
+  /// Fetch commit details for `commitid` from an arbitrary Gitea base
+  /// URL. Lower-level companion to
+  /// [`get_commit_details_from_external_url`].
   pub async fn get_commit_details(
     gitea_base_url: &str,
     repo_name: &str,
@@ -269,6 +278,8 @@ pub mod http_client {
     }
   }
 
+  /// Return the most-recent commit in `repo_name` sorted by committer
+  /// date.
   pub async fn get_last_commit_from_repo_name(
     gitea_api_base_url: &str,
     repo_name: &str,
@@ -302,6 +313,9 @@ pub mod http_client {
       .cloned()
   }
 
+  /// Return the most-recent commit in a repo identified by URL —
+  /// resolves the URL to a repo name via [`get_repo_name_from_url`]
+  /// before delegating to [`get_last_commit_from_repo_name`].
   pub async fn get_last_commit_from_url(
     gitea_api_base_url: &str,
     repo_url: &str,

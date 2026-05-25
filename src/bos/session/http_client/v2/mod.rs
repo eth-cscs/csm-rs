@@ -7,6 +7,7 @@ use types::BosSession;
 use crate::{ShastaClient, common::http, error::Error};
 
 impl ShastaClient {
+  /// `POST /bos/v2/sessions` — create a BOS session.
   pub async fn bos_session_v2_post(
     &self,
     token: &str,
@@ -29,6 +30,8 @@ impl ShastaClient {
     Ok(created)
   }
 
+  /// `GET /bos/v2/sessions` (or `/bos/v2/sessions/{id}` if `id_opt` is
+  /// supplied) — list sessions or fetch one by ID.
   pub async fn bos_session_v2_get(
     &self,
     token: &str,
@@ -51,6 +54,7 @@ impl ShastaClient {
     }
   }
 
+  /// `DELETE /bos/v2/sessions/{id}` — delete a BOS session.
   pub async fn bos_session_v2_delete(
     &self,
     token: &str,

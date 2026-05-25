@@ -14,6 +14,9 @@ use crate::{
 use super::{configuration, image, sessiontemplate};
 
 #[allow(clippy::too_many_arguments)]
+/// Create a CFS configuration from a single SAT-file `configurations`
+/// entry — resolves Git/product layer references, validates them, and
+/// posts to CFS.
 pub async fn create_cfs_configuration_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -75,6 +78,9 @@ pub async fn create_cfs_configuration_from_sat_file(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Build (but do not yet POST) a CFS configuration request struct from
+/// a SAT-file configuration entry. Used during dry-run and as the
+/// inner step of [`create_cfs_configuration_from_sat_file`].
 pub async fn create_cfs_configuration_struct_from_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -135,6 +141,10 @@ pub async fn create_cfs_configuration_struct_from_sat_file(
   }
 }
 
+/// Pre-flight check that the SAT file's `configurations` section is
+/// self-consistent with its `images` and `session_templates` sections
+/// (no orphan references, no empty configuration with referencing
+/// downstream entries).
 pub fn validate_sat_file_configurations_section(
   configuration_yaml_vec: &[configuration::Configuration],
   image_yaml_vec_opt: &[image::Image],

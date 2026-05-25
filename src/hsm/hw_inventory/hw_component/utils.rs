@@ -2,6 +2,8 @@
 
 use serde_json::Value;
 
+/// Extract processor model names from a node's HSM HW Inventory Value
+/// (path `/Nodes/0/Processors[*]/PopulatedFRU/ProcessorFRUInfo/Model`).
 pub fn get_list_processor_model_from_hw_inventory_value(
   hw_inventory: &Value,
 ) -> Option<Vec<String>> {
@@ -26,6 +28,9 @@ pub fn get_list_processor_model_from_hw_inventory_value(
     })
 }
 
+/// Extract accelerator (GPU) model names from a node's HSM HW
+/// Inventory Value (path
+/// `/Nodes/0/NodeAccels[*]/PopulatedFRU/NodeAccelFRUInfo/Model`).
 pub fn get_list_accelerator_model_from_hw_inventory_value(
   hw_inventory: &Value,
 ) -> Option<Vec<String>> {
@@ -50,6 +55,8 @@ pub fn get_list_accelerator_model_from_hw_inventory_value(
     })
 }
 
+/// Extract HSN NIC descriptions from a node's HSM HW Inventory Value
+/// (path `/Nodes/0/NodeHsnNics[*]/NodeHsnNicLocationInfo/Description`).
 pub fn get_list_hsn_nics_model_from_hw_inventory_value(
   hw_inventory: &Value,
 ) -> Option<Vec<String>> {
@@ -74,6 +81,9 @@ pub fn get_list_hsn_nics_model_from_hw_inventory_value(
     })
 }
 
+/// Extract per-DIMM memory capacities (MiB) from a node's HSM HW
+/// Inventory Value (path
+/// `/Nodes/0/Memory[*]/PopulatedFRU/MemoryFRUInfo/CapacityMiB`).
 pub fn get_list_memory_capacity_from_hw_inventory_value(
   hw_inventory: &Value,
 ) -> Option<Vec<u64>> {

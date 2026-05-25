@@ -24,6 +24,8 @@ use super::http_client::{
   },
 };
 
+/// Create (or replace, when `overwrite=true`) a CFS v2 configuration
+/// by name.
 pub async fn create_new_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -278,7 +280,9 @@ pub async fn get_and_filter(
   Ok(cfs_configuration_vec)
 }
 
-// Get all CFS sessions, IMS images and BOS sessiontemplates related to a CFS configuration
+/// Collect everything that references a CFS configuration: the CFS
+/// sessions that ran against it, the IMS images it produced, and the
+/// BOS session templates that consume those images.
 pub async fn get_derivatives(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -348,6 +352,8 @@ pub async fn get_derivatives(
   ))
 }
 
+/// Resolve a CFS configuration layer to its detailed view by calling
+/// Gitea for the layer's repo metadata (commit message, author, etc.).
 pub async fn get_configuration_layer_details(
   shasta_root_cert: &[u8],
   gitea_base_url: &str,

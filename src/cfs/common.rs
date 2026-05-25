@@ -15,6 +15,8 @@ impl ShastaClient {
   }
 }
 
+/// Convenience: build a transient `ShastaClient` and run a CFS health
+/// check in one call.
 pub async fn health_check(
   shasta_token: &str,
   shasta_base_url: &str,
