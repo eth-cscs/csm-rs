@@ -18,7 +18,7 @@ impl PCSTrait for Csm {
     nodes: &[String],
   ) -> Result<TransitionResponse, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .pcs_transitions_post_block(auth_token, "on", nodes)
       .await
       .map(Into::into)
@@ -34,7 +34,7 @@ impl PCSTrait for Csm {
     let operation = if force { "force-off" } else { "soft-off" };
 
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .pcs_transitions_post_block(auth_token, operation, nodes)
       .await
       .map(Into::into)
@@ -54,7 +54,7 @@ impl PCSTrait for Csm {
     };
 
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .pcs_transitions_post_block(auth_token, operation, nodes)
       .await
       .map(Into::into)
@@ -71,7 +71,7 @@ impl PCSTrait for Csm {
     let nodes_str: Vec<&str> = nodes.iter().map(String::as_str).collect();
 
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .pcs_power_status_post(
         auth_token,
         Some(nodes_str.as_slice()),

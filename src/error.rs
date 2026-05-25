@@ -32,6 +32,7 @@ use tokio::task::JoinError;
 /// description; per-variant rustdoc is intentionally omitted.
 #[derive(thiserror::Error, Debug)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 pub enum Error {
   #[error("CSM-RS > Generic error: {0}")]
   Message(String),

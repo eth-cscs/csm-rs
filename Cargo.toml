@@ -1,5 +1,6 @@
 [package]
 edition = "2024"
+rust-version = "1.85"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
 name = "csm-rs"
 description = "Async Rust client for the HPE Cray Shasta CSM (Cray System Management) API."

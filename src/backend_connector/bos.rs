@@ -67,7 +67,7 @@ impl ClusterSessionTrait for Csm {
   ) -> Result<BosSession, Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_session_v2_post(shasta_token, bos_session.into())
       .await
       .map(|bos_session| bos_session.into())
@@ -85,7 +85,7 @@ impl ClusterTemplateTrait for Csm {
   ) -> Result<Vec<BosSessionTemplate>, Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_template_v2_get(shasta_token, bos_session_template_id_opt)
       .await
       .map(|bos_session_template_vec| {
@@ -109,7 +109,7 @@ impl ClusterTemplateTrait for Csm {
   ) -> Result<Vec<BosSessionTemplate>, Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     let mut bos_sessiontemplate_vec = self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_template_v2_get(shasta_token, bos_sessiontemplate_name_opt)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -139,7 +139,7 @@ impl ClusterTemplateTrait for Csm {
   ) -> Result<Vec<BosSessionTemplate>, Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_template_v2_get_all(shasta_token)
       .await
       .map(|bos_session_template_vec| {
@@ -161,7 +161,7 @@ impl ClusterTemplateTrait for Csm {
   ) -> Result<BosSessionTemplate, Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_template_v2_put(
         shasta_token,
         &bos_template.clone().into(),
@@ -181,7 +181,7 @@ impl ClusterTemplateTrait for Csm {
   ) -> Result<(), Error> {
     let _ = (shasta_base_url, shasta_root_cert);
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .bos_template_v2_delete(shasta_token, bos_template_id)
       .await
       .map_err(|e| Error::Message(e.to_string()))

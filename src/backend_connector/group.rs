@@ -54,7 +54,7 @@ impl GroupTrait for Csm {
     group: FrontEndGroup,
   ) -> Result<FrontEndGroup, Error> {
     let group_csm = self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_post(auth_token, group.clone().into())
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -121,7 +121,7 @@ impl GroupTrait for Csm {
   ) -> Result<Vec<FrontEndGroup>, Error> {
     // Get all HSM groups
     let hsm_group_backend_vec = self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_get_all(auth_token)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -142,7 +142,7 @@ impl GroupTrait for Csm {
   ) -> Result<FrontEndGroup, Error> {
     // Get all HSM groups
     let hsm_group_backend_vec = self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_get(auth_token, Some(&[hsm_name.to_string()]), None)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -174,7 +174,7 @@ impl GroupTrait for Csm {
   ) -> Result<Vec<FrontEndGroup>, Error> {
     // Get all HSM groups
     let hsm_group_backend_vec = self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_get(auth_token, hsm_name_vec_opt, None)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
@@ -195,7 +195,7 @@ impl GroupTrait for Csm {
     label: &str,
   ) -> Result<Value, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_delete_group(auth_token, &label.to_string())
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -228,7 +228,7 @@ impl GroupTrait for Csm {
     };
 
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_post_member(auth_token, group_label, member)
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -265,7 +265,7 @@ impl GroupTrait for Csm {
     xname: &str,
   ) -> Result<(), Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_group_delete_member(auth_token, group_label, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))

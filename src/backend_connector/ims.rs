@@ -15,7 +15,7 @@ impl ImsTrait for Csm {
     image_id_opt: Option<&str>,
   ) -> Result<Vec<FrontEndImage>, Error> {
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .ims_image_get(shasta_token, image_id_opt)
       .await
       .map(|v| v.into_iter().map(Into::into).collect())
@@ -29,7 +29,7 @@ impl ImsTrait for Csm {
     _shasta_root_cert: &[u8],
   ) -> Result<Vec<FrontEndImage>, Error> {
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .ims_image_get_all(shasta_token)
       .await
       .map(|v| v.into_iter().map(Into::into).collect())
@@ -55,7 +55,7 @@ impl ImsTrait for Csm {
     image: &PatchImage,
   ) -> Result<(), Error> {
     let _ = self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .ims_image_patch(shasta_token, image_id, &image.clone().into())
       .await
       .map_err(|e| Error::Message(e.to_string()));
@@ -71,7 +71,7 @@ impl ImsTrait for Csm {
     image_id: &str,
   ) -> Result<(), Error> {
     self
-      .shasta_client(shasta_token)?
+      .shasta_client()
       .ims_image_delete(shasta_token, image_id)
       .await
       .map_err(|e| Error::Message(e.to_string()))

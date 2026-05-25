@@ -31,42 +31,57 @@ pub mod sat; // SatTrait, ApplyHwClusterPin
 /// Connection metadata for one Shasta installation, used by the
 /// [`manta_backend_dispatcher`] trait implementations in this module.
 ///
-/// Holds the long-lived parts (base URL, PEM root cert, optional SOCKS5
-/// proxy) but **not** the bearer token — tokens are short-lived and
-/// supplied per request by the dispatcher.
+/// Holds the base URL, PEM root cert, optional SOCKS5 proxy, and a
+/// pre-built [`crate::ShastaClient`] (constructed once at `Csm::new`
+/// time and shared across every dispatcher call). Bearer tokens are
+/// passed in per request by the dispatcher and are **not** stored.
 #[derive(Debug, Clone)]
 pub struct Csm {
   pub(crate) base_url: String,
   pub(crate) root_cert: Vec<u8>,
   pub(crate) socks5_proxy: Option<String>,
+  pub(crate) client: crate::ShastaClient,
 }
 
 impl Csm {
   /// Construct a `Csm` from a base URL, PEM-encoded root cert, and an
   /// optional SOCKS5 proxy URL.
+  ///
+  /// Builds the underlying `reqwest::Client` (cert parse, connection
+  /// pool, DNS resolver, TLS context) once and caches it on `self.
+  /// client`; trait-method implementations reuse it across all calls.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if [`crate::ShastaClient::new`] fails — typically
+  /// because the proxy URL is malformed.
   pub fn new(
     base_url: &str,
     root_cert: &[u8],
     socks5_proxy: Option<&str>,
-  ) -> Self {
-    Self {
+  ) -> Result<Self, manta_backend_dispatcher::error::Error> {
+    let client = crate::ShastaClient::new(
+      base_url,
+      root_cert.to_vec(),
+      socks5_proxy.map(str::to_owned),
+    )
+    .map_err(|e| {
+      manta_backend_dispatcher::error::Error::Message(e.to_string())
+    })?;
+    Ok(Self {
       base_url: base_url.to_string(),
       root_cert: root_cert.to_vec(),
       socks5_proxy: socks5_proxy.map(str::to_owned),
-    }
+      client,
+    })
   }
 
-  /// Build a `ShastaClient` for this `Csm` + the supplied per-call token.
-  /// Cheap: cert parse + reqwest::Client::build per call (microseconds).
-  pub(crate) fn shasta_client(
-    &self,
-    token: &str,
-  ) -> Result<crate::ShastaClient, manta_backend_dispatcher::error::Error> {
-    crate::ShastaClient::new(
-      &self.base_url,
-      self.root_cert.clone(),
-      self.socks5_proxy.clone(),
-    )
-    .map_err(|e| manta_backend_dispatcher::error::Error::Message(e.to_string()))
+  /// Borrow the cached [`crate::ShastaClient`].
+  ///
+  /// One client serves every dispatcher trait call — the underlying
+  /// `reqwest::Client` (with its connection pool) is reused across all
+  /// of them.
+  pub(crate) fn shasta_client(&self) -> &crate::ShastaClient {
+    &self.client
   }
 }

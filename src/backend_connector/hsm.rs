@@ -32,7 +32,7 @@ impl HardwareInventory for Csm {
     xname: &str,
   ) -> Result<Value, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_hw_inventory_get(auth_token, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -53,7 +53,7 @@ impl HardwareInventory for Csm {
     _format: Option<&str>,
   ) -> Result<Value, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_hw_inventory_get_query(auth_token, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -65,7 +65,7 @@ impl HardwareInventory for Csm {
     hw_inventory: FrontEndHWInventoryByLocationList,
   ) -> Result<Value, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_hw_inventory_post(auth_token, hw_inventory.into())
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -79,7 +79,7 @@ impl ComponentTrait for Csm {
     nid_only: Option<&str>,
   ) -> Result<NodeMetadataArray, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_component_get_all_nodes(auth_token, nid_only)
       .await
       .map(|c| c.into())
@@ -144,7 +144,7 @@ impl ComponentTrait for Csm {
   ) -> Result<NodeMetadataArray, Error> {
     let _ = role_only;
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_component_get(
         auth_token,
         id,
@@ -180,7 +180,7 @@ impl ComponentTrait for Csm {
     let component_backend: ComponentArrayPostArray = component.into();
 
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_component_post(auth_token, component_backend)
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -192,7 +192,7 @@ impl ComponentTrait for Csm {
     id: &str,
   ) -> Result<Value, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_component_delete_one(auth_token, id)
       .await
       .map_err(|e| Error::Message(e.to_string()))
@@ -220,7 +220,7 @@ impl ComponentTrait for Csm {
 
       // Get all HSM components (list of xnames + nids)
       let hsm_component_vec = self
-        .shasta_client(shasta_token)?
+        .shasta_client()
         .hsm_component_get_all_nodes(shasta_token, Some("true"))
         .await
         .map_err(|e| Error::Message(e.to_string()))?
@@ -290,7 +290,7 @@ impl ComponentTrait for Csm {
       log::debug!("short NID list: {}", nid_short);
 
       let hsm_components = self
-        .shasta_client(shasta_token)?
+        .shasta_client()
         .hsm_component_get(
           shasta_token,
           None,
@@ -410,7 +410,7 @@ impl RedfishEndpointTrait for Csm {
     last_status: Option<&str>,
   ) -> Result<FrontEndRedfishEndpointArray, Error> {
     self
-      .shasta_client(auth_token)?
+      .shasta_client()
       .hsm_redfish_get(
         auth_token,
         id,
