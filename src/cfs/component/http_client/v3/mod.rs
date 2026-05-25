@@ -18,13 +18,16 @@ impl ShastaClient {
   ///
   /// `GET /cfs/v3/options`. Returns the raw JSON object of CFS
   /// service-level options.
-  pub async fn cfs_component_v3_get_options(&self) -> Result<Value, Error> {
+  pub async fn cfs_component_v3_get_options(
+    &self,
+    token: &str,
+  ) -> Result<Value, Error> {
     let api_url = format!("{}/cfs/v3/options", self.base_url());
 
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -37,6 +40,7 @@ impl ShastaClient {
   /// `GET /cfs/v3/components`.
   pub async fn cfs_component_v3_get(
     &self,
+    token: &str,
     components_ids: Option<&str>,
     status: Option<&str>,
   ) -> Result<Vec<Component>, Error> {
@@ -46,7 +50,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&[("ids", components_ids), ("status", status)])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -61,6 +65,7 @@ impl ShastaClient {
   /// `GET /cfs/v3/components/{component_id}`.
   pub async fn cfs_component_v3_get_single_by_id(
     &self,
+    token: &str,
     component_id: &str,
   ) -> Result<Component, Error> {
     let api_url =
@@ -69,7 +74,7 @@ impl ShastaClient {
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -84,6 +89,7 @@ impl ShastaClient {
   /// returned components is not preserved.
   pub async fn cfs_component_v3_get_parallel(
     &self,
+    token: &str,
     node_vec: &[String],
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
@@ -110,6 +116,7 @@ impl ShastaClient {
 
       let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
       let client = self.clone();
+      let token = token.to_string();
 
       let permit = sem
         .clone()
@@ -121,6 +128,7 @@ impl ShastaClient {
         let _permit = permit;
         client
           .cfs_component_v3_get_query(
+            &token,
             None,
             Some(&hsm_subgroup_nodes_string),
             None,
@@ -148,6 +156,7 @@ impl ShastaClient {
   /// and a large `limit`.
   pub async fn cfs_component_v3_get_query(
     &self,
+    token: &str,
     configuration_name: Option<&str>,
     components_ids: Option<&str>,
     status: Option<&str>,
@@ -165,7 +174,7 @@ impl ShastaClient {
         ("status", status),
         ("limit", Some(&stupid_limit.to_string())),
       ])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -181,6 +190,7 @@ impl ShastaClient {
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v3_patch_component(
     &self,
+    token: &str,
     component: Component,
   ) -> Result<Vec<Value>, Error> {
     let component_id = component
@@ -193,7 +203,7 @@ impl ShastaClient {
     let response = self
       .http()
       .patch(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component)
       .send()
       .await
@@ -207,6 +217,7 @@ impl ShastaClient {
   /// `PATCH /cfs/v3/components` with the full list as JSON body.
   pub async fn cfs_component_v3_patch_component_list(
     &self,
+    token: &str,
     component_list: Vec<Component>,
   ) -> Result<(), Error> {
     let api_url = format!("{}/cfs/v3/components", self.base_url());
@@ -214,7 +225,7 @@ impl ShastaClient {
     let response = self
       .http()
       .patch(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component_list)
       .send()
       .await
@@ -234,6 +245,7 @@ impl ShastaClient {
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v3_put_component(
     &self,
+    token: &str,
     component: Component,
   ) -> Result<Component, Error> {
     let component_id = component
@@ -242,19 +254,20 @@ impl ShastaClient {
       .ok_or_else(|| Error::CfsComponentFieldNotDefined("id".to_string()))?;
     let api_url =
       format!("{}/cfs/v3/components/{}", self.base_url(), component_id);
-    http::put_json(self.http(), &api_url, self.token(), &component).await
+    http::put_json(self.http(), &api_url, token, &component).await
   }
 
   /// Replace many CFS component records sequentially. Stops at the
   /// first error.
   pub async fn cfs_component_v3_put_component_list(
     &self,
+    token: &str,
     component_list: Vec<Component>,
   ) -> Result<Vec<Component>, Error> {
     let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
 
     for component in component_list {
-      let result = self.cfs_component_v3_put_component(component).await;
+      let result = self.cfs_component_v3_put_component(token, component).await;
       result_vec.push(result);
     }
 
@@ -266,6 +279,7 @@ impl ShastaClient {
   /// `DELETE /cfs/v3/components/{component_id}`.
   pub async fn cfs_component_v3_delete_single_component(
     &self,
+    token: &str,
     component_id: &str,
   ) -> Result<Component, Error> {
     let api_url =
@@ -274,7 +288,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;

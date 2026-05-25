@@ -103,12 +103,15 @@ pub async fn exec(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   match shasta_client
-    .hsm_group_get(Some(&[target_hsm_group_name.to_string()]), None)
+    .hsm_group_get(
+      shasta_token,
+      Some(&[target_hsm_group_name.to_string()]),
+      None,
+    )
     .await
   {
     Ok(_) => {
@@ -129,7 +132,7 @@ pub async fn exec(
             exclusive_group: Some("false".to_string()),
           };
 
-          let _ = shasta_client.hsm_group_post(group).await?;
+          let _ = shasta_client.hsm_group_post(shasta_token, group).await?;
         } else {
           return Err(Error::Message(
             "Dryrun selected, cannot create the new group and continue."
@@ -352,7 +355,10 @@ pub async fn exec(
           parent_hsm_group_name
         );
         match shasta_client
-          .hsm_group_delete_group(&parent_hsm_group_name.to_string())
+          .hsm_group_delete_group(
+            shasta_token,
+            &parent_hsm_group_name.to_string(),
+          )
           .await
         {
           Ok(_) => log::info!("HSM group removed successfully."),

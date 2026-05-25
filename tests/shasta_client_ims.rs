@@ -23,7 +23,10 @@ async fn ims_image_get_all_returns_vec_from_v3_images() {
     .await;
 
   let client = make_client(&server.uri());
-  let images = client.ims_image_get_all().await.expect("should succeed");
+  let images = client
+    .ims_image_get_all(TEST_TOKEN)
+    .await
+    .expect("should succeed");
   assert_eq!(images.len(), 1);
   assert_eq!(images[0].name, "img-a");
 }
@@ -42,7 +45,7 @@ async fn ims_image_get_with_id_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let images = client.ims_image_get(Some("abc")).await.unwrap();
+  let images = client.ims_image_get(TEST_TOKEN, Some("abc")).await.unwrap();
   assert_eq!(images.len(), 1);
   assert_eq!(images[0].id.as_deref(), Some("abc"));
 }
@@ -58,7 +61,7 @@ async fn ims_image_get_404_returns_image_not_found_error() {
 
   let client = make_client(&server.uri());
   let err = client
-    .ims_image_get(Some("missing"))
+    .ims_image_get(TEST_TOKEN, Some("missing"))
     .await
     .expect_err("should error");
   assert!(
@@ -86,7 +89,7 @@ async fn ims_image_delete_issues_soft_then_permanent_deletes() {
 
   let client = make_client(&server.uri());
   client
-    .ims_image_delete("abc")
+    .ims_image_delete(TEST_TOKEN, "abc")
     .await
     .expect("should succeed");
 }
@@ -104,7 +107,10 @@ async fn ims_recipe_get_all_hits_v2_recipes() {
     .await;
 
   let client = make_client(&server.uri());
-  let recipes = client.ims_recipe_get(None).await.expect("should succeed");
+  let recipes = client
+    .ims_recipe_get(TEST_TOKEN, None)
+    .await
+    .expect("should succeed");
   assert!(recipes.is_empty());
 }
 
@@ -125,7 +131,7 @@ async fn ims_recipe_get_by_id_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   let recipes = client
-    .ims_recipe_get(Some("abc"))
+    .ims_recipe_get(TEST_TOKEN, Some("abc"))
     .await
     .expect("should succeed");
   assert_eq!(recipes.len(), 1);
@@ -144,7 +150,7 @@ async fn ims_job_get_all_hits_v3_jobs() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.ims_job_get(None).await;
+  let result = client.ims_job_get(TEST_TOKEN, None).await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }
 
@@ -165,7 +171,7 @@ async fn ims_public_keys_v3_get_filters_by_username() {
 
   let client = make_client(&server.uri());
   let keys = client
-    .ims_public_keys_v3_get(Some("alice"))
+    .ims_public_keys_v3_get(TEST_TOKEN, Some("alice"))
     .await
     .expect("should succeed");
   assert_eq!(keys.len(), 1);
@@ -184,7 +190,10 @@ async fn ims_public_keys_v3_get_single_returns_some_on_exactly_one_match() {
     .await;
 
   let client = make_client(&server.uri());
-  let key = client.ims_public_keys_v3_get_single("alice").await.unwrap();
+  let key = client
+    .ims_public_keys_v3_get_single(TEST_TOKEN, "alice")
+    .await
+    .unwrap();
   assert!(key.is_some());
 }
 
@@ -213,6 +222,6 @@ async fn ims_image_post_sends_json_body_to_v3_images() {
     arch: None,
     metadata: None,
   };
-  let result = client.ims_image_post(&image).await.unwrap();
+  let result = client.ims_image_post(TEST_TOKEN, &image).await.unwrap();
   assert_eq!(result["id"], "new-id");
 }

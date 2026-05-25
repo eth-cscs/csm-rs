@@ -9,6 +9,7 @@ impl ShastaClient {
   /// returned (wrapped in a single-element Vec); otherwise all recipes.
   pub async fn ims_recipe_get(
     &self,
+    token: &str,
     recipe_id_opt: Option<&str>,
   ) -> Result<Vec<RecipeGetResponse>, Error> {
     let api_url = if let Some(recipe_id) = recipe_id_opt {
@@ -20,7 +21,7 @@ impl ShastaClient {
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?
       .error_for_status()?;

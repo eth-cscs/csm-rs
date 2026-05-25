@@ -14,7 +14,6 @@ pub async fn wait_ims_job_to_finish(
 ) -> Result<(), Error> {
   let client = ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
@@ -22,7 +21,7 @@ pub async fn wait_ims_job_to_finish(
   let max = 1800;
   loop {
     let ims_job: Job = client
-      .ims_job_get(Some(ims_job_id))
+      .ims_job_get(shasta_token, Some(ims_job_id))
       .await?
       .first()
       .cloned()

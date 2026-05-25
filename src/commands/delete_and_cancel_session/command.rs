@@ -74,11 +74,10 @@ pub async fn exec(
 
     let cfs_global_options = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .cfs_component_v3_get_options()
+    .cfs_component_v3_get_options(shasta_token)
     .await?;
 
     let retry_policy = cfs_global_options
@@ -132,11 +131,10 @@ pub async fn exec(
   } else {
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .cfs_session_v3_delete(cfs_session_name)
+    .cfs_session_v3_delete(shasta_token, cfs_session_name)
     .await?;
   }
 
@@ -167,11 +165,10 @@ async fn delete_images(
       } else {
         crate::ShastaClient::new(
           shasta_base_url,
-          shasta_token,
           shasta_root_cert.to_vec(),
           socks5_proxy.map(str::to_owned),
         )?
-        .ims_image_delete(image_id)
+        .ims_image_delete(shasta_token, image_id)
         .await?;
       }
     } else {
@@ -233,11 +230,10 @@ async fn cancel_session(
   } else {
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .cfs_component_v2_put_component_list(cfs_component_vec)
+    .cfs_component_v2_put_component_list(shasta_token, cfs_component_vec)
     .await?;
   }
 

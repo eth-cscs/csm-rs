@@ -157,7 +157,6 @@ pub async fn get_node_details(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
@@ -169,11 +168,11 @@ pub async fn get_node_details(
     cfs_session_vec_rslt,
   ) = tokio::join!(
     // Get CFS component status
-    shasta_client.cfs_component_v2_get_multiple(&xname_list),
+    shasta_client.cfs_component_v2_get_multiple(shasta_token, &xname_list),
     // Get boot params to get the boot image id for each node
-    shasta_client.bss_bootparameters_get_multiple(&xname_list),
+    shasta_client.bss_bootparameters_get_multiple(shasta_token, &xname_list),
     // Get HSM component status (needed to get NIDS)
-    shasta_client.hsm_component_get_and_filter(&xname_list),
+    shasta_client.hsm_component_get_and_filter(shasta_token, &xname_list),
     // Get CFS sessions
     cfs::session::get_and_sort(
       shasta_token,
@@ -335,11 +334,10 @@ pub async fn get_node_details(
 
       crate::ShastaClient::new(
         &shasta_base_url_string,
-        &shasta_token_string,
         shasta_root_cert_vec.clone(),
         socks5_proxy_opt.clone(),
       )?
-      .hsm_memberships_get_xname(&xname)
+      .hsm_memberships_get_xname(&shasta_token_string, &xname)
       .await
     });
   }

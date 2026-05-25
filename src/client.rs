@@ -1,34 +1,31 @@
-//! [`ShastaClient`] — the single entry point for talking to a Shasta CSM API.
+//! [`ShastaClient`] — connection-pool-owning entry point for talking to a
+//! Shasta CSM API.
 //!
-//! Bundles the four parameters every HTTP call used to take individually
-//! (`shasta_token`, `shasta_base_url`, `shasta_root_cert`, `socks5_proxy`)
-//! into one struct, and holds a pre-built `reqwest::Client` so we don't
-//! re-construct it per request.
+//! Holds the base URL, root certificate, optional SOCKS5 proxy, and a
+//! pre-built `reqwest::Client` (with its connection pool, TLS context,
+//! and DNS resolver). The bearer token is **not** stored on the client
+//! — it is passed per request.
 //!
-//! All API calls hang off this type as methods. There are no free
-//! `pub async fn x(token, base_url, ...)` functions anymore — those were
-//! removed in 0.107.0. Callers should construct one `ShastaClient` per
-//! Shasta installation and reuse it across calls.
+//! Construct one `ShastaClient` per Shasta installation and reuse it
+//! across calls; clones are cheap (`reqwest::Client` is reference-
+//! counted internally).
 
 use crate::common::http;
 use crate::error::Error;
 
 /// Connection details + a reusable `reqwest::Client` for one Shasta CSM
-/// installation.
-///
-/// `ShastaClient` is the single entry point for every HTTP call csm-rs
-/// makes. Construct it once per Shasta installation and reuse it; cloning
-/// is cheap (the inner `reqwest::Client` is reference-counted).
+/// installation. Token is passed per request, not stored.
 ///
 /// # Method naming
 ///
 /// Methods follow the convention `<module>_<resource>_<verb>`, optionally
-/// suffixed with an API version. Examples:
+/// suffixed with an API version. Each method takes a bearer token as its
+/// first argument. Examples:
 ///
-/// - `ims_image_get_all` — GET /ims/v3/images
-/// - `cfs_configuration_v2_put` — PUT /cfs/v2/configurations/{name}
-/// - `hsm_group_delete_member` — DELETE /smd/hsm/v2/groups/{label}/members/{id}
-/// - `pcs_transitions_post_block` — POST /power-control/v1/transitions and poll until completion
+/// - `ims_image_get_all(token)` — GET /ims/v3/images
+/// - `cfs_configuration_v2_put(token, …)` — PUT /cfs/v2/configurations/{name}
+/// - `hsm_group_delete_member(token, label, id)` — DELETE /smd/hsm/v2/groups/{label}/members/{id}
+/// - `pcs_transitions_post_block(token, …)` — POST /power-control/v1/transitions and poll until completion
 ///
 /// # Example
 ///
@@ -36,21 +33,20 @@ use crate::error::Error;
 /// # async fn example() -> Result<(), csm_rs::error::Error> {
 /// let client = csm_rs::ShastaClient::new(
 ///     "https://api.shasta.example.com",
-///     "your-bearer-token",
 ///     std::fs::read("/etc/shasta/ca.crt").unwrap(),
 ///     None,
 /// )?;
 ///
-/// // Single shared client across many calls:
-/// let images = client.ims_image_get_all().await?;
-/// let group = client.hsm_group_get_one("zinal").await?;
+/// // Token is supplied per call; one client serves any number of tokens:
+/// let token = "your-bearer-token";
+/// let images = client.ims_image_get_all(token).await?;
+/// let group = client.hsm_group_get_one(token, "zinal").await?;
 /// # Ok(())
 /// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct ShastaClient {
   pub(crate) base_url: String,
-  pub(crate) token: String,
   pub(crate) root_cert: Vec<u8>,
   pub(crate) socks5_proxy: Option<String>,
   pub(crate) http: reqwest::Client,
@@ -68,7 +64,6 @@ impl ShastaClient {
   /// empty trust chain), so this constructor does not surface PEM errors.
   pub fn new(
     base_url: impl Into<String>,
-    token: impl Into<String>,
     root_cert: impl Into<Vec<u8>>,
     socks5_proxy: Option<String>,
   ) -> Result<Self, Error> {
@@ -76,7 +71,6 @@ impl ShastaClient {
     let http = http::build_client(&root_cert, socks5_proxy.as_deref())?;
     Ok(Self {
       base_url: base_url.into(),
-      token: token.into(),
       root_cert,
       socks5_proxy,
       http,
@@ -86,11 +80,6 @@ impl ShastaClient {
   /// The Shasta API base URL (e.g. `https://api.shasta.example.com`).
   pub fn base_url(&self) -> &str {
     &self.base_url
-  }
-
-  /// The bearer token used to authenticate every request.
-  pub fn token(&self) -> &str {
-    &self.token
   }
 
   /// The PEM-encoded root certificate trusted for HTTPS calls.
@@ -130,14 +119,12 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
   fn new_with_valid_pem_and_no_proxy_succeeds() {
     let client = ShastaClient::new(
       "https://api.shasta.example.com",
-      "tok",
       TEST_PEM.as_bytes().to_vec(),
       None,
     )
     .expect("client construction should succeed");
 
     assert_eq!(client.base_url(), "https://api.shasta.example.com");
-    assert_eq!(client.token(), "tok");
     assert_eq!(client.root_cert(), TEST_PEM.as_bytes());
     assert!(client.socks5_proxy().is_none());
   }
@@ -146,7 +133,6 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
   fn new_with_socks5_proxy_succeeds() {
     let client = ShastaClient::new(
       "https://api.example.com",
-      "tok",
       TEST_PEM.as_bytes().to_vec(),
       Some("socks5://localhost:9050".to_string()),
     )
@@ -159,7 +145,6 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
   fn new_with_invalid_proxy_url_fails() {
     let result = ShastaClient::new(
       "https://api.example.com",
-      "tok",
       TEST_PEM.as_bytes().to_vec(),
       Some(":::not a url:::".to_string()),
     );
@@ -174,7 +159,6 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
   fn clone_preserves_all_fields() {
     let client = ShastaClient::new(
       "https://api.example.com",
-      "tok",
       TEST_PEM.as_bytes().to_vec(),
       None,
     )
@@ -182,7 +166,6 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     let cloned = client.clone();
 
     assert_eq!(client.base_url(), cloned.base_url());
-    assert_eq!(client.token(), cloned.token());
     assert_eq!(client.root_cert(), cloned.root_cert());
     assert_eq!(client.socks5_proxy(), cloned.socks5_proxy());
   }
@@ -192,18 +175,13 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     // String
     let _ = ShastaClient::new(
       "https://api.example.com".to_string(),
-      "tok".to_string(),
       TEST_PEM.as_bytes().to_vec(),
       None,
     )
     .unwrap();
     // &str
-    let _ = ShastaClient::new(
-      "https://api.example.com",
-      "tok",
-      TEST_PEM.as_bytes(),
-      None,
-    )
-    .unwrap();
+    let _ =
+      ShastaClient::new("https://api.example.com", TEST_PEM.as_bytes(), None)
+        .unwrap();
   }
 }

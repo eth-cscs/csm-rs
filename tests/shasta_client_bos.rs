@@ -20,7 +20,10 @@ async fn bos_session_v2_get_all_hits_v2_sessions() {
     .await;
 
   let client = make_client(&server.uri());
-  let sessions = client.bos_session_v2_get(None).await.expect("ok");
+  let sessions = client
+    .bos_session_v2_get(TEST_TOKEN, None)
+    .await
+    .expect("ok");
   assert!(sessions.is_empty());
 }
 
@@ -38,7 +41,10 @@ async fn bos_session_v2_get_by_id_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let sessions = client.bos_session_v2_get(Some("sess-1")).await.unwrap();
+  let sessions = client
+    .bos_session_v2_get(TEST_TOKEN, Some("sess-1"))
+    .await
+    .unwrap();
   assert_eq!(sessions.len(), 1);
   assert_eq!(sessions[0].name.as_deref(), Some("sess-1"));
 }
@@ -54,7 +60,10 @@ async fn bos_session_v2_delete_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  client.bos_session_v2_delete("sess-1").await.expect("ok");
+  client
+    .bos_session_v2_delete(TEST_TOKEN, "sess-1")
+    .await
+    .expect("ok");
 }
 
 // ---------- bos/template/v2 ----------
@@ -70,7 +79,10 @@ async fn bos_template_v2_get_all_hits_v2_sessiontemplates() {
     .await;
 
   let client = make_client(&server.uri());
-  client.bos_template_v2_get_all().await.expect("ok");
+  client
+    .bos_template_v2_get_all(TEST_TOKEN)
+    .await
+    .expect("ok");
 }
 
 #[tokio::test]
@@ -86,7 +98,10 @@ async fn bos_template_v2_get_by_name_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let templates = client.bos_template_v2_get(Some("tmpl-1")).await.unwrap();
+  let templates = client
+    .bos_template_v2_get(TEST_TOKEN, Some("tmpl-1"))
+    .await
+    .unwrap();
   assert_eq!(templates.len(), 1);
   assert_eq!(templates[0].name.as_deref(), Some("tmpl-1"));
 }
@@ -103,7 +118,7 @@ async fn bos_template_v2_delete_propagates_non_2xx_errors() {
 
   let client = make_client(&server.uri());
   let err = client
-    .bos_template_v2_delete("tmpl-1")
+    .bos_template_v2_delete(TEST_TOKEN, "tmpl-1")
     .await
     .expect_err("500 should propagate");
   assert!(matches!(err, csm_rs::error::Error::NetError(_)));
@@ -120,7 +135,10 @@ async fn bos_template_v2_delete_succeeds_on_204() {
     .await;
 
   let client = make_client(&server.uri());
-  client.bos_template_v2_delete("tmpl-1").await.expect("ok");
+  client
+    .bos_template_v2_delete(TEST_TOKEN, "tmpl-1")
+    .await
+    .expect("ok");
 }
 
 // ---------- bos/health_check ----------
@@ -138,6 +156,6 @@ async fn bos_health_check_hits_v2_healthz() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.bos_health_check().await.unwrap();
+  let result = client.bos_health_check(TEST_TOKEN).await.unwrap();
   assert_eq!(result["status"], "ok");
 }

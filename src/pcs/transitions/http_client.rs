@@ -19,10 +19,11 @@ impl ShastaClient {
   /// `GET /power-control/v1/transitions`.
   pub async fn pcs_transitions_get(
     &self,
+    token: &str,
   ) -> Result<Vec<TransitionResponse>, Error> {
     let url = format!("{}/power-control/v1/transitions", self.base_url());
     let list: TransitionResponseList =
-      http::get_json(self.http(), &url, self.token()).await?;
+      http::get_json(self.http(), &url, token).await?;
     Ok(list.transitions)
   }
 
@@ -31,12 +32,13 @@ impl ShastaClient {
   /// `GET /power-control/v1/transitions/{id}`.
   pub async fn pcs_transitions_get_by_id(
     &self,
+    token: &str,
     id: &str,
   ) -> Result<TransitionResponse, Error> {
     let url =
       format!("{}/power-control/v1/transitions/{}", self.base_url(), id);
     let transition: TransitionResponse =
-      http::get_json(self.http(), &url, self.token()).await?;
+      http::get_json(self.http(), &url, token).await?;
     log::debug!("PCS transition details\n{:#?}", transition);
     Ok(transition)
   }
@@ -53,6 +55,7 @@ impl ShastaClient {
   /// Returns an error if `operation` is not a valid PCS [`Operation`].
   pub async fn pcs_transitions_post(
     &self,
+    token: &str,
     operation: &str,
     xname_vec: &[String],
   ) -> Result<TransitionStartOutput, Error> {
@@ -73,22 +76,25 @@ impl ShastaClient {
     };
 
     let url = format!("{}/power-control/v1/transitions", self.base_url());
-    http::post_json(self.http(), &url, self.token(), &request_payload).await
+    http::post_json(self.http(), &url, token, &request_payload).await
   }
 
   /// Like [`Self::pcs_transitions_post`] but waits for the transition to
   /// finish before returning.
   pub async fn pcs_transitions_post_block(
     &self,
+    token: &str,
     operation: &str,
     xname_vec: &[String],
   ) -> Result<TransitionResponse, Error> {
-    let started = self.pcs_transitions_post(operation, xname_vec).await?;
+    let started = self
+      .pcs_transitions_post(token, operation, xname_vec)
+      .await?;
 
     log::info!("PCS transition ID: {}", started.transition_id);
 
     self
-      .pcs_transitions_wait_to_complete(&started.transition_id)
+      .pcs_transitions_wait_to_complete(token, &started.transition_id)
       .await
   }
 
@@ -96,16 +102,17 @@ impl ShastaClient {
   /// (15 minutes at the 3-second poll interval).
   pub async fn pcs_transitions_wait_to_complete(
     &self,
+    token: &str,
     transition_id: &str,
   ) -> Result<TransitionResponse, Error> {
     let mut transition: TransitionResponse =
-      self.pcs_transitions_get_by_id(transition_id).await?;
+      self.pcs_transitions_get_by_id(token, transition_id).await?;
 
     let max_attempt = 300;
     let mut i = 1;
 
     while i <= max_attempt && transition.transition_status != "completed" {
-      transition = self.pcs_transitions_get_by_id(transition_id).await?;
+      transition = self.pcs_transitions_get_by_id(token, transition_id).await?;
 
       log::warn!(
         "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",

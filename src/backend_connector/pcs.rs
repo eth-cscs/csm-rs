@@ -19,7 +19,7 @@ impl PCSTrait for Csm {
   ) -> Result<TransitionResponse, Error> {
     self
       .shasta_client(auth_token)?
-      .pcs_transitions_post_block("on", nodes)
+      .pcs_transitions_post_block(auth_token, "on", nodes)
       .await
       .map(Into::into)
       .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
@@ -35,7 +35,7 @@ impl PCSTrait for Csm {
 
     self
       .shasta_client(auth_token)?
-      .pcs_transitions_post_block(operation, nodes)
+      .pcs_transitions_post_block(auth_token, operation, nodes)
       .await
       .map(Into::into)
       .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
@@ -55,7 +55,7 @@ impl PCSTrait for Csm {
 
     self
       .shasta_client(auth_token)?
-      .pcs_transitions_post_block(operation, nodes)
+      .pcs_transitions_post_block(auth_token, operation, nodes)
       .await
       .map(Into::into)
       .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
@@ -73,6 +73,7 @@ impl PCSTrait for Csm {
     self
       .shasta_client(auth_token)?
       .pcs_power_status_post(
+        auth_token,
         Some(nodes_str.as_slice()),
         power_state_filter,
         management_state_filter,

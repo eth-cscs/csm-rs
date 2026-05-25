@@ -66,7 +66,6 @@ pub async fn get_data_to_delete(
   log::info!("Fetching data from the backend...");
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
@@ -77,11 +76,11 @@ pub async fn get_data_to_delete(
     bos_sessiontemplate_vec,
     bss_bootparameters_vec,
   ) = tokio::try_join!(
-    shasta_client.cfs_component_v2_get_all(),
-    shasta_client.cfs_configuration_v2_get_all(),
-    shasta_client.cfs_session_v2_get_all(),
-    shasta_client.bos_template_v2_get_all(),
-    shasta_client.bss_bootparameters_get_all(),
+    shasta_client.cfs_component_v2_get_all(shasta_token),
+    shasta_client.cfs_configuration_v2_get_all(shasta_token),
+    shasta_client.cfs_session_v2_get_all(shasta_token),
+    shasta_client.bos_template_v2_get_all(shasta_token),
+    shasta_client.bss_bootparameters_get_all(shasta_token),
   )?;
 
   let duration = start.elapsed();
@@ -392,11 +391,10 @@ pub async fn delete(
     log::info!("Deleting IMS image '{}'", image_id);
     let image_deleted_value_rslt = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .ims_image_delete(image_id)
+    .ims_image_delete(shasta_token, image_id)
     .await;
 
     // process api response
@@ -411,11 +409,11 @@ pub async fn delete(
   // DELETE BOS SESSIONS
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
-  let bos_session_vec = shasta_client.bos_session_v2_get(None).await?;
+  let bos_session_vec =
+    shasta_client.bos_session_v2_get(shasta_token, None).await?;
 
   // Match BOS SESSIONS with the BOS SESSIONTEMPLATE RELATED
   for bos_session in bos_session_vec {
@@ -426,7 +424,9 @@ pub async fn delete(
     log::info!("Deleting BOS sesion '{}'", bos_session_id);
 
     if bos_sessiontemplate_name_vec.contains(&bos_session.template_name) {
-      shasta_client.bos_session_v2_delete(bos_session_id).await?;
+      shasta_client
+        .bos_session_v2_delete(shasta_token, bos_session_id)
+        .await?;
 
       log::info!(
         "BOS session deleted: {}",
@@ -445,8 +445,9 @@ pub async fn delete(
     log::info!("Deleting IMS image '{}'", cfs_session_name);
     let mut counter = 0;
     loop {
-      let deletion_rslt =
-        shasta_client.cfs_session_v3_delete(cfs_session_name).await;
+      let deletion_rslt = shasta_client
+        .cfs_session_v3_delete(shasta_token, cfs_session_name)
+        .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
@@ -481,7 +482,7 @@ pub async fn delete(
     let mut counter = 0;
     loop {
       let deletion_rslt = shasta_client
-        .bos_template_v2_delete(bos_sessiontemplate_name)
+        .bos_template_v2_delete(shasta_token, bos_sessiontemplate_name)
         .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {
@@ -514,7 +515,7 @@ pub async fn delete(
     let mut counter = 0;
     loop {
       let deletion_rslt = shasta_client
-        .cfs_configuration_v3_delete(cfs_configuration)
+        .cfs_configuration_v3_delete(shasta_token, cfs_configuration)
         .await;
 
       if deletion_rslt.is_err() && counter <= max_attempts {

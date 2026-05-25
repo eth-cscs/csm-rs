@@ -14,7 +14,7 @@ impl BootParametersTrait for Csm {
   ) -> Result<Vec<FrontEndBootParameters>, Error> {
     let boot_parameter_vec = self
       .shasta_client(auth_token)?
-      .bss_bootparameters_get_all()
+      .bss_bootparameters_get_all(auth_token)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -33,7 +33,7 @@ impl BootParametersTrait for Csm {
   ) -> Result<Vec<FrontEndBootParameters>, Error> {
     let boot_parameter_vec = self
       .shasta_client(auth_token)?
-      .bss_bootparameters_get_multiple(nodes)
+      .bss_bootparameters_get_multiple(auth_token, nodes)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -52,7 +52,7 @@ impl BootParametersTrait for Csm {
   ) -> Result<(), Error> {
     self
       .shasta_client(auth_token)?
-      .bss_bootparameters_post(boot_parameters.clone().into())
+      .bss_bootparameters_post(auth_token, boot_parameters.clone().into())
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -64,7 +64,7 @@ impl BootParametersTrait for Csm {
   ) -> Result<(), Error> {
     self
       .shasta_client(auth_token)?
-      .bss_bootparameters_patch(&boot_parameter.clone().into())
+      .bss_bootparameters_patch(auth_token, &boot_parameter.clone().into())
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }

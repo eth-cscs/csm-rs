@@ -7,10 +7,12 @@ impl ShastaClient {
   /// Returns None if public key not found or multiple fould
   pub async fn ims_public_keys_v3_get_single(
     &self,
+    token: &str,
     username_opt: &str,
   ) -> Result<Option<Value>, Error> {
-    let public_key_value_list =
-      self.ims_public_keys_v3_get(Some(username_opt)).await?;
+    let public_key_value_list = self
+      .ims_public_keys_v3_get(token, Some(username_opt))
+      .await?;
 
     if public_key_value_list.len() == 1 {
       Ok(public_key_value_list.first().cloned())
@@ -22,12 +24,13 @@ impl ShastaClient {
   /// Fetch IMS public keys. Ref: <https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/>.
   pub async fn ims_public_keys_v3_get(
     &self,
+    token: &str,
     username_opt: Option<&str>,
   ) -> Result<Vec<Value>, Error> {
     let api_url = format!("{}/ims/v3/public-keys", self.base_url());
 
     let json_response: Value =
-      http::get_json(self.http(), &api_url, self.token()).await?;
+      http::get_json(self.http(), &api_url, token).await?;
 
     let public_key_value_list = json_response.as_array().unwrap().to_vec();
 

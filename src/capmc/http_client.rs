@@ -20,6 +20,7 @@ impl ShastaClient {
   /// nodes report as `off`.
   pub async fn capmc_node_power_off_post(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -34,7 +35,7 @@ impl ShastaClient {
       self
         .http()
         .post(api_url)
-        .bearer_auth(self.token())
+        .bearer_auth(token)
         .json(&power_off)
         .send()
         .await?
@@ -50,14 +51,15 @@ impl ShastaClient {
   /// `xname_status` until every target is down before returning.
   pub async fn capmc_node_power_off_post_sync(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
   ) -> Result<Value, Error> {
     // Check Nodes are shutdown
-    let _ = self.capmc_node_power_status_post(&xname_vec).await?;
+    let _ = self.capmc_node_power_status_post(token, &xname_vec).await?;
 
-    wait_nodes_to_power_off(self, xname_vec, reason_opt, force).await
+    wait_nodes_to_power_off(self, token, xname_vec, reason_opt, force).await
   }
 
   /// Issue a CAPMC power-on request for the given xnames and return
@@ -66,6 +68,7 @@ impl ShastaClient {
   /// `POST /capmc/capmc/v1/xname_on`.
   pub async fn capmc_node_power_on_post(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason: Option<String>,
   ) -> Result<Value, Error> {
@@ -77,7 +80,7 @@ impl ShastaClient {
       self
         .http()
         .post(api_url)
-        .bearer_auth(self.token())
+        .bearer_auth(token)
         .json(&power_on)
         .send()
         .await?
@@ -90,12 +93,13 @@ impl ShastaClient {
   /// as `on`.
   pub async fn capmc_node_power_on_post_sync(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason: Option<String>,
   ) -> Result<Value, Error> {
-    let _ = self.capmc_node_power_status_post(&xname_vec).await?;
+    let _ = self.capmc_node_power_status_post(token, &xname_vec).await?;
 
-    wait_nodes_to_power_on(self, xname_vec, reason).await
+    wait_nodes_to_power_on(self, token, xname_vec, reason).await
   }
 
   /// Issue a CAPMC reinit (power-cycle) request and return immediately.
@@ -103,6 +107,7 @@ impl ShastaClient {
   /// `POST /capmc/capmc/v1/xname_reinit`.
   pub async fn capmc_node_power_reset_post(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason: Option<String>,
     force: bool,
@@ -115,7 +120,7 @@ impl ShastaClient {
       self
         .http()
         .post(api_url)
-        .bearer_auth(self.token())
+        .bearer_auth(token)
         .json(&node_restart)
         .send()
         .await?
@@ -131,6 +136,7 @@ impl ShastaClient {
   /// `power_on_post_sync` for the same set of xnames.
   pub async fn capmc_node_power_reset_post_sync(
     &self,
+    token: &str,
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -139,6 +145,7 @@ impl ShastaClient {
 
     let _ = self
       .capmc_node_power_off_post_sync(
+        token,
         xname_vec.clone(),
         reason_opt.clone(),
         force,
@@ -146,7 +153,7 @@ impl ShastaClient {
       .await?;
 
     self
-      .capmc_node_power_on_post_sync(xname_vec, reason_opt)
+      .capmc_node_power_on_post_sync(token, xname_vec, reason_opt)
       .await
   }
 
@@ -159,6 +166,7 @@ impl ShastaClient {
   /// large and waiting for them serially would be too slow.
   pub async fn capmc_node_power_reset_post_sync_vec(
     &self,
+    token: &str,
     xnames: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
@@ -170,10 +178,16 @@ impl ShastaClient {
     for xname in xnames {
       let client = self.clone();
       let reason_cloned = reason_opt.clone();
+      let token = token.to_string();
 
       tasks.spawn(async move {
         client
-          .capmc_node_power_reset_post_sync(vec![xname], reason_cloned, force)
+          .capmc_node_power_reset_post_sync(
+            &token,
+            vec![xname],
+            reason_cloned,
+            force,
+          )
           .await
       });
     }
@@ -191,6 +205,7 @@ impl ShastaClient {
   /// `POST /capmc/capmc/v1/get_xname_status` with source `redfish`.
   pub async fn capmc_node_power_status_post(
     &self,
+    token: &str,
     xnames: &Vec<String>,
   ) -> core::result::Result<Value, Error> {
     log::info!("Checking nodes status: {:?}", xnames);
@@ -205,7 +220,7 @@ impl ShastaClient {
       self
         .http()
         .post(url_api)
-        .bearer_auth(self.token())
+        .bearer_auth(token)
         .json(&node_status_payload)
         .send()
         .await?

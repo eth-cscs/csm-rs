@@ -26,6 +26,7 @@ impl ShastaClient {
   /// lookups; both are normalised here.
   pub async fn cfs_configuration_v3_get(
     &self,
+    token: &str,
     configuration_name_opt: Option<&str>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     log::info!("Get CFS configuration {:?}", configuration_name_opt);
@@ -40,7 +41,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&[("limit", STUPID_LIMIT)])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -67,6 +68,7 @@ impl ShastaClient {
   /// name is already present.
   pub async fn cfs_configuration_v3_put(
     &self,
+    token: &str,
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
   ) -> Result<CfsConfigurationResponse, Error> {
@@ -74,7 +76,7 @@ impl ShastaClient {
     log::info!("Check CFS configuration '{}' exists", configuration_name);
 
     let cfs_configuration_rslt = self
-      .cfs_configuration_v3_get(Some(configuration_name))
+      .cfs_configuration_v3_get(token, Some(configuration_name))
       .await;
 
     if cfs_configuration_rslt
@@ -111,7 +113,7 @@ impl ShastaClient {
       .http()
       .put(api_url)
       .json(&request_payload)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -124,6 +126,7 @@ impl ShastaClient {
   /// `DELETE /cfs/v3/configurations/{configuration_id}`.
   pub async fn cfs_configuration_v3_delete(
     &self,
+    token: &str,
     configuration_id: &str,
   ) -> Result<(), Error> {
     log::info!("Delete CFS configuration '{}'", configuration_id);
@@ -133,6 +136,6 @@ impl ShastaClient {
       self.base_url(),
       configuration_id
     );
-    http::delete(self.http(), &api_url, self.token()).await
+    http::delete(self.http(), &api_url, token).await
   }
 }

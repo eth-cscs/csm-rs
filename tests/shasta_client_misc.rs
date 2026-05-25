@@ -20,7 +20,10 @@ async fn bss_bootparameters_get_all_hits_boot_v1_bootparameters() {
     .await;
 
   let client = make_client(&server.uri());
-  let params = client.bss_bootparameters_get_all().await.expect("ok");
+  let params = client
+    .bss_bootparameters_get_all(TEST_TOKEN)
+    .await
+    .expect("ok");
   assert!(params.is_empty());
 }
 
@@ -37,7 +40,7 @@ async fn bss_bootparameters_get_passes_xnames_as_name_query_params() {
 
   let client = make_client(&server.uri());
   let _ = client
-    .bss_bootparameters_get(&["x1000c0s0b0n0".to_string()])
+    .bss_bootparameters_get(TEST_TOKEN, &["x1000c0s0b0n0".to_string()])
     .await
     .expect("ok");
 }
@@ -63,7 +66,10 @@ async fn bss_bootparameters_post_hits_bss_boot_v1_bootparameters() {
     initrd: "i".to_string(),
     cloud_init: None,
   };
-  client.bss_bootparameters_post(bp).await.expect("ok");
+  client
+    .bss_bootparameters_post(TEST_TOKEN, bp)
+    .await
+    .expect("ok");
 }
 
 #[tokio::test]
@@ -87,7 +93,10 @@ async fn bss_bootparameters_patch_sends_patch_request() {
     initrd: "i".to_string(),
     cloud_init: None,
   };
-  client.bss_bootparameters_patch(&bp).await.expect("ok");
+  client
+    .bss_bootparameters_patch(TEST_TOKEN, &bp)
+    .await
+    .expect("ok");
 }
 
 // ---------- capmc/node_power ----------
@@ -110,6 +119,7 @@ async fn capmc_node_power_off_post_hits_xname_off_endpoint() {
   let client = make_client(&server.uri());
   let result = client
     .capmc_node_power_off_post(
+      TEST_TOKEN,
       vec!["x1000c0s0b0n0".to_string()],
       Some("test reason".to_string()),
       false,
@@ -130,7 +140,11 @@ async fn capmc_node_power_on_post_hits_xname_on_endpoint() {
 
   let client = make_client(&server.uri());
   let result = client
-    .capmc_node_power_on_post(vec!["x1000c0s0b0n0".to_string()], None)
+    .capmc_node_power_on_post(
+      TEST_TOKEN,
+      vec!["x1000c0s0b0n0".to_string()],
+      None,
+    )
     .await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }
@@ -147,7 +161,10 @@ async fn capmc_node_power_status_post_hits_get_xname_status_endpoint() {
 
   let client = make_client(&server.uri());
   let result = client
-    .capmc_node_power_status_post(&vec!["x1000c0s0b0n0".to_string()])
+    .capmc_node_power_status_post(
+      TEST_TOKEN,
+      &vec!["x1000c0s0b0n0".to_string()],
+    )
     .await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }

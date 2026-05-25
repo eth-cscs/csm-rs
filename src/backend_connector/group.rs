@@ -55,7 +55,7 @@ impl GroupTrait for Csm {
   ) -> Result<FrontEndGroup, Error> {
     let group_csm = self
       .shasta_client(auth_token)?
-      .hsm_group_post(group.clone().into())
+      .hsm_group_post(auth_token, group.clone().into())
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -122,7 +122,7 @@ impl GroupTrait for Csm {
     // Get all HSM groups
     let hsm_group_backend_vec = self
       .shasta_client(auth_token)?
-      .hsm_group_get_all()
+      .hsm_group_get_all(auth_token)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -143,7 +143,7 @@ impl GroupTrait for Csm {
     // Get all HSM groups
     let hsm_group_backend_vec = self
       .shasta_client(auth_token)?
-      .hsm_group_get(Some(&[hsm_name.to_string()]), None)
+      .hsm_group_get(auth_token, Some(&[hsm_name.to_string()]), None)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -175,7 +175,7 @@ impl GroupTrait for Csm {
     // Get all HSM groups
     let hsm_group_backend_vec = self
       .shasta_client(auth_token)?
-      .hsm_group_get(hsm_name_vec_opt, None)
+      .hsm_group_get(auth_token, hsm_name_vec_opt, None)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -196,7 +196,7 @@ impl GroupTrait for Csm {
   ) -> Result<Value, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_group_delete_group(&label.to_string())
+      .hsm_group_delete_group(auth_token, &label.to_string())
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -229,7 +229,7 @@ impl GroupTrait for Csm {
 
     self
       .shasta_client(auth_token)?
-      .hsm_group_post_member(group_label, member)
+      .hsm_group_post_member(auth_token, group_label, member)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -266,7 +266,7 @@ impl GroupTrait for Csm {
   ) -> Result<(), Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_group_delete_member(group_label, xname)
+      .hsm_group_delete_member(auth_token, group_label, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }

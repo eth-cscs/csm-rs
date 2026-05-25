@@ -261,12 +261,11 @@ async fn create_bos_sessiontemplate(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   let vector = shasta_client
-    .bos_template_v2_get(Some(&bos_sessiontemplate_name))
+    .bos_template_v2_get(shasta_token, Some(&bos_sessiontemplate_name))
     .await
     .map_err(|error| {
       Error::Message(format!(
@@ -285,7 +284,7 @@ async fn create_bos_sessiontemplate(
       ));
     } else {
       match shasta_client
-        .bos_template_v2_delete(&bos_sessiontemplate_name)
+        .bos_template_v2_delete(shasta_token, &bos_sessiontemplate_name)
         .await
       {
         Ok(_) => log::debug!(
@@ -323,7 +322,11 @@ async fn create_bos_sessiontemplate(
   log::debug!("BOS sessiontemplate modified:\n{:#?}", &bos_sessiontemplate);
 
   match shasta_client
-    .bos_template_v2_put(&bos_sessiontemplate, &bos_sessiontemplate_name)
+    .bos_template_v2_put(
+      shasta_token,
+      &bos_sessiontemplate,
+      &bos_sessiontemplate_name,
+    )
     .await
   {
     Ok(_result) => log::info!(
@@ -360,12 +363,11 @@ async fn create_cfs_config(
   // Get all CFS configurations, this is ugly
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   let cfs_config_vec = shasta_client
-    .cfs_configuration_v3_get(Some(&cfs_config_name))
+    .cfs_configuration_v3_get(shasta_token, Some(&cfs_config_name))
     .await
     .map_err(|error| {
       Error::Message(format!("Unable to fetch CFS configuration: {}", error))
@@ -380,7 +382,7 @@ async fn create_cfs_config(
     }
 
     match shasta_client
-      .cfs_configuration_v3_delete(cfs_config_name.as_str())
+      .cfs_configuration_v3_delete(shasta_token, cfs_config_name.as_str())
       .await
     {
       Ok(_) => {
@@ -404,7 +406,11 @@ async fn create_cfs_config(
   log::debug!("CFS config:\n{:#?}", &cfs_configuration);
 
   match shasta_client
-    .cfs_configuration_v3_put(&cfs_configuration, cfs_config_name.as_str())
+    .cfs_configuration_v3_put(
+      shasta_token,
+      &cfs_configuration,
+      cfs_config_name.as_str(),
+    )
     .await
   {
     Ok(result) => {
@@ -490,13 +496,12 @@ async fn ims_update_image_add_manifest(
 
   let patch_result = match crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   ) {
     Ok(client) => {
       client
-        .ims_image_patch(&ims_image_id.to_string(), &rec)
+        .ims_image_patch(shasta_token, &ims_image_id.to_string(), &rec)
         .await
     }
     Err(e) => Err(e),
@@ -848,11 +853,10 @@ async fn ims_register_image(
 
   let json_response = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .ims_image_post(&ims_record)
+  .ims_image_post(shasta_token, &ims_record)
   .await?;
 
   json_response
@@ -907,7 +911,6 @@ pub async fn create_hsm_group_from_file(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
@@ -917,6 +920,7 @@ pub async fn create_hsm_group_from_file(
       group.members.clone().and_then(|members| members.ids);
     match shasta_client
       .hsm_group_create_new_group(
+        shasta_token,
         &group.label,
         &group_members_opt.unwrap_or_default(),
         &group.exclusive_group.clone().unwrap_or_default(),
@@ -935,10 +939,16 @@ pub async fn create_hsm_group_from_file(
         if error.to_string().to_lowercase().contains("409") {
           if overwrite {
             log::info!("Looks like you want to continue");
-            match shasta_client.hsm_group_delete_group(&group.label).await {
+            match shasta_client
+              .hsm_group_delete_group(shasta_token, &group.label)
+              .await
+            {
               Ok(_) => {
                 // try creating the group again
-                match shasta_client.hsm_group_post(group.clone()).await {
+                match shasta_client
+                  .hsm_group_post(shasta_token, group.clone())
+                  .await
+                {
                   Ok(_json) => {
                     log::info!(
                       "The HSM group {} has been created successfully.",

@@ -9,6 +9,7 @@ use super::types::{HWInventoryByLocationList, NodeSummary};
 impl ShastaClient {
   pub async fn hsm_hw_inventory_get(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<NodeSummary, Error> {
     let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", self.base_url());
@@ -17,7 +18,7 @@ impl ShastaClient {
       self
         .http()
         .get(api_url)
-        .bearer_auth(self.token())
+        .bearer_auth(token)
         .send()
         .await
         .map_err(Error::NetError)?,
@@ -35,6 +36,7 @@ impl ShastaClient {
 
   pub async fn hsm_hw_inventory_get_query(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<Value, Error> {
     let api_url = format!(
@@ -42,11 +44,12 @@ impl ShastaClient {
       self.base_url(),
       xname
     );
-    http::get_json(self.http(), &api_url, self.token()).await
+    http::get_json(self.http(), &api_url, token).await
   }
 
   pub async fn hsm_hw_inventory_post(
     &self,
+    token: &str,
     hw_inventory_by_location: HWInventoryByLocationList,
   ) -> Result<Value, Error> {
     let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", self.base_url());
@@ -54,7 +57,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&hw_inventory_by_location)
       .send()
       .await?;

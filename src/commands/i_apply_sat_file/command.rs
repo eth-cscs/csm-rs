@@ -122,14 +122,13 @@ pub async fn exec(
   log::info!("Fetching data from the backend...");
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   let (configuration_vec, image_vec, ims_recipe_vec) = tokio::try_join!(
-    shasta_client.cfs_configuration_v2_get_all(),
-    shasta_client.ims_image_get_all(),
-    shasta_client.ims_recipe_get(None),
+    shasta_client.cfs_configuration_v2_get_all(shasta_token),
+    shasta_client.ims_image_get_all(shasta_token),
+    shasta_client.ims_recipe_get(shasta_token, None),
   )?;
 
   let duration = start.elapsed();

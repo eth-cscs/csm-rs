@@ -30,11 +30,10 @@ pub async fn get_one(
 ) -> Result<CfsSessionGetResponse, Error> {
   let cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .cfs_session_v2_get(None, None, None, Some(session_name), None)
+  .cfs_session_v2_get(shasta_token, None, None, None, Some(session_name), None)
   .await?;
 
   if cfs_session_vec.len() == 1 {
@@ -61,11 +60,11 @@ pub async fn get_and_sort(
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
   let mut cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
   .cfs_session_v2_get(
+    shasta_token,
     min_age_opt,
     max_age_opt,
     status_opt,
@@ -92,11 +91,10 @@ pub async fn post(
 
   crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .cfs_session_v2_post(session)
+  .cfs_session_v2_post(shasta_token, session)
   .await
 }
 

@@ -29,7 +29,7 @@ async fn pcs_transitions_post_hits_v1_transitions_endpoint() {
 
   let client = make_client(&server.uri());
   let result = client
-    .pcs_transitions_post("on", &["x1000c0s0b0n0".to_string()])
+    .pcs_transitions_post(TEST_TOKEN, "on", &["x1000c0s0b0n0".to_string()])
     .await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }
@@ -40,7 +40,11 @@ async fn pcs_transitions_post_rejects_invalid_operation_before_dispatch() {
   let server = MockServer::start().await;
   let client = make_client(&server.uri());
   let result = client
-    .pcs_transitions_post("invalid-op", &["x1000c0s0b0n0".to_string()])
+    .pcs_transitions_post(
+      TEST_TOKEN,
+      "invalid-op",
+      &["x1000c0s0b0n0".to_string()],
+    )
     .await;
   assert!(result.is_err());
 }
@@ -67,7 +71,9 @@ async fn pcs_transitions_get_by_id_hits_correct_url() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.pcs_transitions_get_by_id("xform-1").await;
+  let result = client
+    .pcs_transitions_get_by_id(TEST_TOKEN, "xform-1")
+    .await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }
 
@@ -93,6 +99,7 @@ async fn pcs_power_status_post_hits_correct_endpoint_with_filters() {
   let client = make_client(&server.uri());
   let result = client
     .pcs_power_status_post(
+      TEST_TOKEN,
       Some(&["x1000c0s0b0n0"]),
       Some("on"),
       Some("available"),
@@ -123,6 +130,6 @@ async fn pcs_power_cap_get_hits_correct_url() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.pcs_power_cap_get().await;
+  let result = client.pcs_power_cap_get(TEST_TOKEN).await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }

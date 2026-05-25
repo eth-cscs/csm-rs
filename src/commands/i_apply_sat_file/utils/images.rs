@@ -437,11 +437,10 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .ims_public_keys_v3_get_single(root_ims_key_name)
+  .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
   .await?
   .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
@@ -489,11 +488,10 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   } else {
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .ims_job_post_sync(&ims_job)
+    .ims_job_post_sync(shasta_token, &ims_job)
     .await?
   };
 
@@ -519,11 +517,10 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   let recipe_detail_vec: Vec<ims::recipe::types::RecipeGetResponse> =
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .ims_recipe_get(None)
+    .ims_recipe_get(shasta_token, None)
     .await?;
 
   // Filter recipes by name
@@ -551,11 +548,10 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   // Get root public ssh key
   let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .ims_public_keys_v3_get_single(root_ims_key_name)
+  .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
   .await?
   .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
@@ -600,11 +596,10 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   } else {
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .ims_job_post_sync(&ims_job)
+    .ims_job_post_sync(shasta_token, &ims_job)
     .await?
   };
 

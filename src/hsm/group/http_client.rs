@@ -15,6 +15,7 @@ impl ShastaClient {
   /// before deciding how to deserialise the body.
   pub async fn hsm_group_get_raw(
     &self,
+    token: &str,
     group_name_opt: Option<&String>,
   ) -> Result<reqwest::Response, Error> {
     let api_url = if let Some(group_name) = group_name_opt {
@@ -26,7 +27,7 @@ impl ShastaClient {
     self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)
@@ -38,15 +39,14 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/groups/{label}`. Distinguishes unauthorized
   /// responses as [`Error::RequestError`] so callers can react to token
   /// problems differently from other HTTP errors.
-  pub async fn hsm_group_get_one(&self, label: &str) -> Result<Group, Error> {
+  pub async fn hsm_group_get_one(
+    &self,
+    token: &str,
+    label: &str,
+  ) -> Result<Group, Error> {
     let api_url = format!("{}/smd/hsm/v2/groups/{}", self.base_url(), label);
 
-    let response = self
-      .http()
-      .get(api_url)
-      .bearer_auth(self.token())
-      .send()
-      .await?;
+    let response = self.http().get(api_url).bearer_auth(token).send().await?;
 
     if let Err(e) = response.error_for_status_ref() {
       match response.status() {
@@ -75,6 +75,7 @@ impl ShastaClient {
   /// query parameter.
   pub async fn hsm_group_get(
     &self,
+    token: &str,
     label_vec_opt: Option<&[String]>,
     tag_vec_opt: Option<&[String]>,
   ) -> Result<Vec<Group>, Error> {
@@ -97,7 +98,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(query.as_slice())
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -123,8 +124,11 @@ impl ShastaClient {
   /// List every HSM group on the system.
   ///
   /// Convenience wrapper for `hsm_group_get(None, None)`.
-  pub async fn hsm_group_get_all(&self) -> Result<Vec<Group>, Error> {
-    self.hsm_group_get(None, None).await
+  pub async fn hsm_group_get_all(
+    &self,
+    token: &str,
+  ) -> Result<Vec<Group>, Error> {
+    self.hsm_group_get(token, None, None).await
   }
 
   /// Find every HSM group whose label *contains* `hsm_group_name_opt`
@@ -133,9 +137,10 @@ impl ShastaClient {
   /// Returns an empty `Vec` if `hsm_group_name_opt` is `None`.
   pub async fn hsm_group_get_hsm_group_vec(
     &self,
+    token: &str,
     hsm_group_name_opt: Option<&String>,
   ) -> Result<Vec<Group>, Error> {
-    let json_response = self.hsm_group_get_all().await?;
+    let json_response = self.hsm_group_get_all(token).await?;
 
     let mut hsm_groups: Vec<Group> = Vec::new();
 
@@ -154,7 +159,11 @@ impl ShastaClient {
   ///
   /// `POST /smd/hsm/v2/groups`. Returns the response body as text
   /// because CSM's success payload here is a plain string id, not JSON.
-  pub async fn hsm_group_post(&self, group: Group) -> Result<String, Error> {
+  pub async fn hsm_group_post(
+    &self,
+    token: &str,
+    group: Group,
+  ) -> Result<String, Error> {
     log::info!("Add/Create HSM group");
     log::debug!("Add HSM group payload:\n{:#?}", group);
 
@@ -163,7 +172,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&group)
       .send()
       .await?;
@@ -196,6 +205,7 @@ impl ShastaClient {
   /// shape; success of the underlying POST is logged.
   pub async fn hsm_group_create_new_group(
     &self,
+    token: &str,
     hsm_group_name_opt: &str,
     xnames: &[String],
     exclusive: &str,
@@ -216,7 +226,7 @@ impl ShastaClient {
 
     log::debug!("{:#?}", &group);
 
-    let add_group_rslt = self.hsm_group_post(group.clone()).await;
+    let add_group_rslt = self.hsm_group_post(token, group.clone()).await;
 
     log::info!("Group created: {:?}", add_group_rslt);
 
@@ -228,6 +238,7 @@ impl ShastaClient {
   /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}`.
   pub async fn hsm_group_delete_group(
     &self,
+    token: &str,
     hsm_group_name: &String,
   ) -> Result<Value, Error> {
     log::info!("Delete HSM group '{}'", hsm_group_name);
@@ -238,7 +249,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(url_api)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -251,6 +262,7 @@ impl ShastaClient {
   /// `POST /smd/hsm/v2/groups/{hsm_group_name}/members`.
   pub async fn hsm_group_post_member(
     &self,
+    token: &str,
     hsm_group_name: &str,
     member: Member,
   ) -> Result<Value, Error> {
@@ -264,7 +276,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&member)
       .send()
       .await?;
@@ -296,6 +308,7 @@ impl ShastaClient {
   /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}/members/{member_id}`.
   pub async fn hsm_group_delete_member(
     &self,
+    token: &str,
     hsm_group_name: &str,
     member_id: &str,
   ) -> Result<(), Error> {
@@ -311,7 +324,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;

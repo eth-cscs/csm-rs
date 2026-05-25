@@ -20,7 +20,10 @@ async fn cfs_component_v2_get_all_hits_v2_components() {
     .await;
 
   let client = make_client(&server.uri());
-  let components = client.cfs_component_v2_get_all().await.expect("ok");
+  let components = client
+    .cfs_component_v2_get_all(TEST_TOKEN)
+    .await
+    .expect("ok");
   assert!(components.is_empty());
 }
 
@@ -38,7 +41,7 @@ async fn cfs_component_v2_get_single_component_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   let c = client
-    .cfs_component_v2_get_single_component("xname-1")
+    .cfs_component_v2_get_single_component(TEST_TOKEN, "xname-1")
     .await
     .unwrap();
   assert_eq!(c.id.as_deref(), Some("xname-1"));
@@ -59,7 +62,10 @@ async fn cfs_component_v3_get_options_hits_v3_options() {
     .await;
 
   let client = make_client(&server.uri());
-  let opts = client.cfs_component_v3_get_options().await.unwrap();
+  let opts = client
+    .cfs_component_v3_get_options(TEST_TOKEN)
+    .await
+    .unwrap();
   assert_eq!(opts["default_batcher_retry_policy"], 3);
 }
 
@@ -78,7 +84,10 @@ async fn cfs_component_v3_get_returns_components_from_wrapped_payload() {
     .await;
 
   let client = make_client(&server.uri());
-  let components = client.cfs_component_v3_get(None, None).await.unwrap();
+  let components = client
+    .cfs_component_v3_get(TEST_TOKEN, None, None)
+    .await
+    .unwrap();
   assert_eq!(components.len(), 1);
   assert_eq!(components[0].id.as_deref(), Some("xname-1"));
 }
@@ -96,7 +105,10 @@ async fn cfs_configuration_v2_get_all_hits_v2_configurations() {
     .await;
 
   let client = make_client(&server.uri());
-  client.cfs_configuration_v2_get_all().await.expect("ok");
+  client
+    .cfs_configuration_v2_get_all(TEST_TOKEN)
+    .await
+    .expect("ok");
 }
 
 #[tokio::test]
@@ -115,7 +127,7 @@ async fn cfs_configuration_v2_get_by_name_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   let configs = client
-    .cfs_configuration_v2_get(Some("zinal-config"))
+    .cfs_configuration_v2_get(TEST_TOKEN, Some("zinal-config"))
     .await
     .unwrap();
   assert_eq!(configs.len(), 1);
@@ -133,7 +145,7 @@ async fn cfs_configuration_v2_delete_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   client
-    .cfs_configuration_v2_delete("zinal-config")
+    .cfs_configuration_v2_delete(TEST_TOKEN, "zinal-config")
     .await
     .expect("ok");
 }
@@ -151,7 +163,7 @@ async fn cfs_session_v2_get_all_hits_v2_sessions() {
     .await;
 
   let client = make_client(&server.uri());
-  client.cfs_session_v2_get_all().await.expect("ok");
+  client.cfs_session_v2_get_all(TEST_TOKEN).await.expect("ok");
 }
 
 #[tokio::test]
@@ -165,7 +177,10 @@ async fn cfs_session_v2_delete_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  client.cfs_session_v2_delete("sess-1").await.expect("ok");
+  client
+    .cfs_session_v2_delete(TEST_TOKEN, "sess-1")
+    .await
+    .expect("ok");
 }
 
 // ---------- cfs/session v3 ----------
@@ -185,7 +200,9 @@ async fn cfs_session_v3_get_returns_sessions_from_wrapped_payload() {
 
   let client = make_client(&server.uri());
   let sessions = client
-    .cfs_session_v3_get(None, None, None, None, None, None, None, None, None)
+    .cfs_session_v3_get(
+      TEST_TOKEN, None, None, None, None, None, None, None, None, None,
+    )
     .await
     .unwrap();
   assert_eq!(sessions.len(), 1);
@@ -207,6 +224,6 @@ async fn cfs_health_check_hits_healthz() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.cfs_health_check().await.unwrap();
+  let result = client.cfs_health_check(TEST_TOKEN).await.unwrap();
   assert_eq!(result["status"], "ok");
 }

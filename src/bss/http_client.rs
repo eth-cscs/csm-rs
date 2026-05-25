@@ -13,6 +13,7 @@ impl ShastaClient {
   /// Get node boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/get/>.
   pub async fn bss_bootparameters_get(
     &self,
+    token: &str,
     xnames: &[String],
   ) -> Result<Vec<BootParameters>, Error> {
     log::info!("Get BSS bootparameters");
@@ -25,7 +26,7 @@ impl ShastaClient {
       .http()
       .get(url_api)
       .query(&params)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -35,12 +36,14 @@ impl ShastaClient {
 
   pub async fn bss_bootparameters_get_all(
     &self,
+    token: &str,
   ) -> Result<Vec<BootParameters>, Error> {
-    self.bss_bootparameters_get(&[]).await
+    self.bss_bootparameters_get(token, &[]).await
   }
 
   pub async fn bss_bootparameters_get_multiple(
     &self,
+    token: &str,
     xnames: &[String],
   ) -> Result<Vec<BootParameters>, Error> {
     let start = Instant::now();
@@ -58,11 +61,12 @@ impl ShastaClient {
 
       let node_vec = sub_node_list.to_vec();
       let client = self.clone();
+      let token = token.to_string();
 
       tasks.spawn(async move {
         let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
 
-        client.bss_bootparameters_get(&node_vec).await
+        client.bss_bootparameters_get(&token, &node_vec).await
       });
     }
 
@@ -79,6 +83,7 @@ impl ShastaClient {
   /// Change nodes boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/put/>.
   pub async fn bss_bootparameters_put(
     &self,
+    token: &str,
     boot_parameters: BootParameters,
   ) -> Result<BootParameters, Error> {
     let api_url = format!("{}/bss/boot/v1/bootparameters", self.base_url());
@@ -92,7 +97,7 @@ impl ShastaClient {
       .http()
       .put(api_url)
       .json(&boot_parameters)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -107,6 +112,7 @@ impl ShastaClient {
   /// POST a single set of BootParameters. Used to create new entries.
   pub async fn bss_bootparameters_post(
     &self,
+    token: &str,
     boot_parameters: BootParameters,
   ) -> Result<(), Error> {
     let api_url = format!("{}/bss/boot/v1/bootparameters", self.base_url());
@@ -114,7 +120,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&boot_parameters)
       .send()
       .await
@@ -129,6 +135,7 @@ impl ShastaClient {
 
   pub async fn bss_bootparameters_patch(
     &self,
+    token: &str,
     boot_parameters: &BootParameters,
   ) -> Result<(), Error> {
     let api_url = format!("{}/bss/boot/v1/bootparameters", self.base_url());
@@ -137,7 +144,7 @@ impl ShastaClient {
       .http()
       .patch(api_url)
       .json(&boot_parameters)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;

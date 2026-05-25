@@ -12,6 +12,7 @@ impl ShastaClient {
   /// Get BOS session templates. Ref: <https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/>.
   pub async fn bos_template_v1_get(
     &self,
+    token: &str,
     bos_session_template_id_opt: Option<&String>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
     log::info!(
@@ -26,16 +27,17 @@ impl ShastaClient {
     };
 
     if bos_session_template_id_opt.is_none() {
-      http::get_json(self.http(), &api_url, self.token()).await
+      http::get_json(self.http(), &api_url, token).await
     } else {
       let single: BosSessionTemplate =
-        http::get_json(self.http(), &api_url, self.token()).await?;
+        http::get_json(self.http(), &api_url, token).await?;
       Ok(vec![single])
     }
   }
 
   pub async fn bos_template_v1_post(
     &self,
+    token: &str,
     bos_template: &BosSessionTemplate,
   ) -> Result<String, Error> {
     log::info!("Create BOS sessiontemplate '{}'", bos_template.name);
@@ -49,6 +51,6 @@ impl ShastaClient {
 
     log::debug!("API URL request: {}", api_url);
 
-    http::post_json(self.http(), &api_url, self.token(), bos_template).await
+    http::post_json(self.http(), &api_url, token, bos_template).await
   }
 }

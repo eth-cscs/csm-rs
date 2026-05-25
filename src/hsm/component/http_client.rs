@@ -26,12 +26,13 @@ impl ShastaClient {
   /// Fetch all HSM components. `nid_only` toggles the lightweight nid-only response.
   pub async fn hsm_component_get_all(
     &self,
+    token: &str,
     nid_only: Option<&str>,
   ) -> Result<ComponentArray, Error> {
     self
       .hsm_component_get(
-        None, None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None, None, nid_only,
+        token, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None, None, None, None, None, nid_only,
       )
       .await
   }
@@ -39,10 +40,12 @@ impl ShastaClient {
   /// Fetch all HSM components with `Type=Node`.
   pub async fn hsm_component_get_all_nodes(
     &self,
+    token: &str,
     nid_only: Option<&str>,
   ) -> Result<ComponentArray, Error> {
     self
       .hsm_component_get(
+        token,
         None,
         Some("Node"),
         None,
@@ -68,10 +71,11 @@ impl ShastaClient {
 
   pub async fn hsm_component_get_and_filter(
     &self,
+    token: &str,
     xname_list: &[String],
   ) -> Result<Vec<Component>, Error> {
     let mut component_vec = self
-      .hsm_component_get_all(None)
+      .hsm_component_get_all(token, None)
       .await?
       .components
       .unwrap_or_default();
@@ -84,6 +88,7 @@ impl ShastaClient {
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_component_get(
     &self,
+    token: &str,
     id: Option<&str>,
     r#type: Option<&str>,
     state: Option<&str>,
@@ -143,7 +148,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&query_params)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -152,17 +157,13 @@ impl ShastaClient {
 
   pub async fn hsm_component_get_one(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<Component, Error> {
     let api_url =
       format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
 
-    let response = self
-      .http()
-      .get(api_url)
-      .bearer_auth(self.token())
-      .send()
-      .await?;
+    let response = self.http().get(api_url).bearer_auth(token).send().await?;
 
     if !response.status().is_success() {
       match response.status() {
@@ -180,6 +181,7 @@ impl ShastaClient {
 
   pub async fn hsm_component_post(
     &self,
+    token: &str,
     component: ComponentArrayPostArray,
   ) -> Result<(), Error> {
     let api_url = format!("{}/hsm/v2/State/Components", self.base_url());
@@ -187,7 +189,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component)
       .send()
       .await?;
@@ -208,6 +210,7 @@ impl ShastaClient {
 
   pub async fn hsm_component_post_query(
     &self,
+    token: &str,
     component: ComponentArrayPostQuery,
   ) -> Result<ComponentArray, Error> {
     let api_url = format!("{}/hsm/v2/State/Components", self.base_url());
@@ -215,7 +218,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component)
       .send()
       .await?;
@@ -236,6 +239,7 @@ impl ShastaClient {
 
   pub async fn hsm_component_post_bynid_query(
     &self,
+    token: &str,
     component: ComponentArrayPostByNidQuery,
   ) -> Result<ComponentArray, Error> {
     let api_url =
@@ -244,7 +248,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component)
       .send()
       .await?;
@@ -265,6 +269,7 @@ impl ShastaClient {
 
   pub async fn hsm_component_put(
     &self,
+    token: &str,
     xname: &str,
     component: ComponentPut,
   ) -> Result<(), Error> {
@@ -274,7 +279,7 @@ impl ShastaClient {
     let response = self
       .http()
       .put(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&component)
       .send()
       .await?;
@@ -295,6 +300,7 @@ impl ShastaClient {
 
   pub async fn hsm_component_delete_one(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<Value, Error> {
     let api_url =
@@ -303,7 +309,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -321,13 +327,16 @@ impl ShastaClient {
     response.json().await.map_err(Error::NetError)
   }
 
-  pub async fn hsm_component_delete(&self) -> Result<Value, Error> {
+  pub async fn hsm_component_delete(
+    &self,
+    token: &str,
+  ) -> Result<Value, Error> {
     let api_url = format!("{}/hsm/v2/State/Componnets", self.base_url());
 
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 

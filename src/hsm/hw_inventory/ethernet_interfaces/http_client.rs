@@ -10,6 +10,7 @@ use super::types::{ComponentEthernetInterface, IpAddressMapping};
 impl ShastaClient {
   pub async fn hsm_eth_post(
     &self,
+    token: &str,
     eht_interface: ComponentEthernetInterface,
   ) -> Result<(), Error> {
     let api_url =
@@ -18,7 +19,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&eht_interface)
       .send()
       .await?;
@@ -45,6 +46,7 @@ impl ShastaClient {
 
   pub async fn hsm_eth_post_ip_addresses(
     &self,
+    token: &str,
     eht_interface: ComponentEthernetInterface,
   ) -> Result<EthernetInterface, Error> {
     let component_id =
@@ -62,7 +64,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&eht_interface)
       .send()
       .await?;
@@ -90,6 +92,7 @@ impl ShastaClient {
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_eth_get(
     &self,
+    token: &str,
     mac_address: &str,
     ip_address: &str,
     network: &str,
@@ -115,7 +118,7 @@ impl ShastaClient {
         ("OlderThan", olther_than),
         ("NewerThan", newer_than),
       ])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?
       .error_for_status()
@@ -124,6 +127,7 @@ impl ShastaClient {
 
   pub async fn hsm_eth_patch(
     &self,
+    token: &str,
     eth_interface_id: &str,
     description: Option<&str>,
     component_id: &str,
@@ -150,7 +154,7 @@ impl ShastaClient {
       .http()
       .patch(api_url)
       .query(&[("ethInterfaceID", ip_address), ("ipAddress", ip_address)])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&cei)
       .send()
       .await

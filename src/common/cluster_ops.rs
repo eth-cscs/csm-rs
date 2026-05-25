@@ -34,11 +34,10 @@ pub async fn get_details(
   // Get HSM groups matching cluster name
   let hsm_group_value_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .hsm_group_get_hsm_group_vec(Some(&hsm_group_name.to_string()))
+  .hsm_group_get_hsm_group_vec(shasta_token, Some(&hsm_group_name.to_string()))
   .await?;
 
   for hsm_group in hsm_group_value_vec {
@@ -109,22 +108,24 @@ pub async fn get_details(
         // members
         let cfs_configuration_vec = crate::ShastaClient::new(
           shasta_base_url,
-          shasta_token,
           shasta_root_cert.to_vec(),
           socks5_proxy.map(str::to_owned),
         )?
-        .cfs_configuration_v2_get(Some(
-          most_recent_cfs_session
-            .configuration
-            .as_ref()
-            .and_then(|configuration| configuration.name.as_ref())
-            .ok_or_else(|| {
-              Error::Message(format!(
-                "CFS session for HSM '{}' has no configuration name",
-                hsm_group_name
-              ))
-            })?,
-        ))
+        .cfs_configuration_v2_get(
+          shasta_token,
+          Some(
+            most_recent_cfs_session
+              .configuration
+              .as_ref()
+              .and_then(|configuration| configuration.name.as_ref())
+              .ok_or_else(|| {
+                Error::Message(format!(
+                  "CFS session for HSM '{}' has no configuration name",
+                  hsm_group_name
+                ))
+              })?,
+          ),
+        )
         .await?;
 
         cfs_configuration = cfs_configuration_vec.first().ok_or_else(|| {

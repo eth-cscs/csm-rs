@@ -38,12 +38,11 @@ pub async fn create_new_configuration(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   let cfs_configuration_vec = shasta_client
-    .cfs_configuration_v2_get(Some(configuration_name))
+    .cfs_configuration_v2_get(shasta_token, Some(configuration_name))
     .await
     .map_err(|e| Error::Message(e.to_string()))
     .unwrap_or_default();
@@ -72,7 +71,11 @@ pub async fn create_new_configuration(
   );
 
   shasta_client
-    .cfs_configuration_v2_put(&configuration.clone(), configuration_name)
+    .cfs_configuration_v2_put(
+      shasta_token,
+      &configuration.clone(),
+      configuration_name,
+    )
     .await
     .map_err(|e| Error::Message(e.to_string()))
 }
@@ -239,7 +242,6 @@ pub async fn get_and_filter(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
@@ -249,10 +251,11 @@ pub async fn get_and_filter(
     mut bos_sessiontemplate_vec,
     cfs_component_vec,
   ) = tokio::try_join!(
-    shasta_client.cfs_configuration_v2_get(configuration_name),
-    shasta_client.cfs_session_v2_get_all(),
-    shasta_client.bos_template_v2_get_all(),
-    shasta_client.cfs_component_v2_get_parallel(&xname_from_groups_vec),
+    shasta_client.cfs_configuration_v2_get(shasta_token, configuration_name),
+    shasta_client.cfs_session_v2_get_all(shasta_token),
+    shasta_client.bos_template_v2_get_all(shasta_token),
+    shasta_client
+      .cfs_component_v2_get_parallel(shasta_token, &xname_from_groups_vec),
   )?;
 
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
@@ -295,14 +298,13 @@ pub async fn get_derivatives(
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?;
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
-    shasta_client.cfs_session_v2_get_all(),
-    shasta_client.bos_template_v2_get_all(),
-    shasta_client.ims_image_get_all(),
+    shasta_client.cfs_session_v2_get_all(shasta_token),
+    shasta_client.bos_template_v2_get_all(shasta_token),
+    shasta_client.ims_image_get_all(shasta_token),
   )?;
 
   // Filter CFS sessions

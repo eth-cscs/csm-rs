@@ -160,11 +160,10 @@ pub async fn validate_sat_file_session_template_section(
 
           let image_found = crate::ShastaClient::new(
             shasta_base_url,
-            shasta_token,
             shasta_root_cert.to_vec(),
             socks5_proxy.map(str::to_owned),
           )?
-          .ims_image_get(Some(image_id.as_str()))
+          .ims_image_get(shasta_token, Some(image_id.as_str()))
           .await
           .is_ok();
 
@@ -208,11 +207,13 @@ pub async fn validate_sat_file_session_template_section(
 
       configuration_found = crate::ShastaClient::new(
         shasta_base_url,
-        shasta_token,
         shasta_root_cert.to_vec(),
         socks5_proxy.map(str::to_owned),
       )?
-      .cfs_configuration_v3_get(Some(&session_template_yaml.configuration))
+      .cfs_configuration_v3_get(
+        shasta_token,
+        Some(&session_template_yaml.configuration),
+      )
       .await
       .is_ok();
 
@@ -357,11 +358,13 @@ pub async fn process_session_template_section_in_sat_file(
     } else {
       crate::ShastaClient::new(
         shasta_base_url,
-        shasta_token,
         shasta_root_cert.to_vec(),
         socks5_proxy.map(str::to_owned),
       )?
-      .cfs_configuration_v3_get(Some(&bos_session_template_configuration_name))
+      .cfs_configuration_v3_get(
+        shasta_token,
+        Some(&bos_session_template_configuration_name),
+      )
       .await?;
     };
 
@@ -554,11 +557,11 @@ pub async fn process_session_template_section_in_sat_file(
     } else {
       let bos_sessiontemplate = crate::ShastaClient::new(
         shasta_base_url,
-        shasta_token,
         shasta_root_cert.to_vec(),
         socks5_proxy.map(str::to_owned),
       )?
       .bos_template_v2_put(
+        shasta_token,
         &create_bos_session_template_payload,
         &bos_sessiontemplate_name,
       )
@@ -611,11 +614,10 @@ pub async fn process_session_template_section_in_sat_file(
       } else {
         crate::ShastaClient::new(
           shasta_base_url,
-          shasta_token,
           shasta_root_cert.to_vec(),
           socks5_proxy.map(str::to_owned),
         )?
-        .bos_session_v2_post(bos_session)
+        .bos_session_v2_post(shasta_token, bos_session)
         .await?;
       }
     }
@@ -728,11 +730,10 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   if is_image_id {
     crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .ims_image_get(Some(image_reference))
+    .ims_image_get(shasta_token, Some(image_reference))
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {

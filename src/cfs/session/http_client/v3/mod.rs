@@ -24,6 +24,7 @@ impl ShastaClient {
   #[allow(clippy::too_many_arguments)]
   pub async fn cfs_session_v3_get(
     &self,
+    token: &str,
     session_name_opt: Option<&String>,
     limit_opt: Option<u8>,
     after_id_opt: Option<String>,
@@ -67,22 +68,14 @@ impl ShastaClient {
     }
 
     if session_name_opt.is_some() {
-      let payload: CfsSessionGetResponse = http::get_json_with_query(
-        self.http(),
-        &api_url,
-        self.token(),
-        &query_params,
-      )
-      .await?;
+      let payload: CfsSessionGetResponse =
+        http::get_json_with_query(self.http(), &api_url, token, &query_params)
+          .await?;
       Ok(vec![payload])
     } else {
-      let payload: CfsSessionGetResponseList = http::get_json_with_query(
-        self.http(),
-        &api_url,
-        self.token(),
-        &query_params,
-      )
-      .await?;
+      let payload: CfsSessionGetResponseList =
+        http::get_json_with_query(self.http(), &api_url, token, &query_params)
+          .await?;
       Ok(payload.sessions)
     }
   }
@@ -92,12 +85,13 @@ impl ShastaClient {
   /// `POST /cfs/v3/sessions`.
   pub async fn cfs_session_v3_post(
     &self,
+    token: &str,
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
     log::debug!("Session:\n{:#?}", session);
 
     let api_url = format!("{}/cfs/v3/sessions", self.base_url());
-    http::post_json(self.http(), &api_url, self.token(), session).await
+    http::post_json(self.http(), &api_url, token, session).await
   }
 
   /// Delete a CFS session by name via the v3 API.
@@ -105,12 +99,13 @@ impl ShastaClient {
   /// `DELETE /cfs/v3/sessions/{session_name}`.
   pub async fn cfs_session_v3_delete(
     &self,
+    token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
     log::info!("Deleting CFS session id: {}", session_name);
 
     let api_url =
       format!("{}/cfs/v3/sessions/{}", self.base_url(), session_name);
-    http::delete(self.http(), &api_url, self.token()).await
+    http::delete(self.http(), &api_url, token).await
   }
 }

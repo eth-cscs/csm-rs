@@ -64,7 +64,6 @@ impl Csm {
   ) -> Result<crate::ShastaClient, manta_backend_dispatcher::error::Error> {
     crate::ShastaClient::new(
       &self.base_url,
-      token,
       self.root_cert.clone(),
       self.socks5_proxy.clone(),
     )

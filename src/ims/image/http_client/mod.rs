@@ -11,6 +11,7 @@ use crate::{ShastaClient, error::Error};
 impl ShastaClient {
   pub async fn ims_image_get(
     &self,
+    token: &str,
     image_id_opt: Option<&str>,
   ) -> Result<Vec<Image>, Error> {
     log::info!(
@@ -27,7 +28,7 @@ impl ShastaClient {
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?
@@ -55,13 +56,17 @@ impl ShastaClient {
     Ok(image_vec)
   }
 
-  pub async fn ims_image_get_all(&self) -> Result<Vec<Image>, Error> {
-    self.ims_image_get(None).await
+  pub async fn ims_image_get_all(
+    &self,
+    token: &str,
+  ) -> Result<Vec<Image>, Error> {
+    self.ims_image_get(token, None).await
   }
 
   /// Register a new image in IMS.
   pub async fn ims_image_post(
     &self,
+    token: &str,
     ims_image: &Image,
   ) -> Result<Value, Error> {
     let api_url = format!("{}/ims/v3/images", self.base_url());
@@ -69,7 +74,7 @@ impl ShastaClient {
     self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&ims_image)
       .send()
       .await
@@ -82,7 +87,11 @@ impl ShastaClient {
   }
 
   /// Delete an IMS image (soft delete + permanent deletion in sequence).
-  pub async fn ims_image_delete(&self, image_id: &str) -> Result<(), Error> {
+  pub async fn ims_image_delete(
+    &self,
+    token: &str,
+    image_id: &str,
+  ) -> Result<(), Error> {
     let map_delete_err = |e: reqwest::Error| match e.status() {
       Some(reqwest::StatusCode::NOT_FOUND) => {
         Error::ImageNotFound(image_id.to_string())
@@ -99,7 +108,7 @@ impl ShastaClient {
     self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?
@@ -113,7 +122,7 @@ impl ShastaClient {
     self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?
@@ -125,6 +134,7 @@ impl ShastaClient {
   /// Patch an IMS image record (link to S3 manifest, metadata, etc).
   pub async fn ims_image_patch(
     &self,
+    token: &str,
     ims_image_id: &str,
     ims_link: &PatchImage,
   ) -> Result<(), Error> {
@@ -133,7 +143,7 @@ impl ShastaClient {
     self
       .http()
       .patch(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&ims_link)
       .send()
       .await

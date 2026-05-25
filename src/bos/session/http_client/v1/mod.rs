@@ -7,6 +7,7 @@ use crate::{ShastaClient, common::http, error::Error};
 impl ShastaClient {
   pub async fn bos_session_v1_post(
     &self,
+    token: &str,
     bos_template_name: &str,
     operation: &str,
   ) -> Result<Value, Error> {
@@ -19,6 +20,6 @@ impl ShastaClient {
     log::debug!("Create BOS session v1 payload:\n{:#?}", payload);
 
     let url = format!("{}/bos/v1/session", self.base_url());
-    http::post_json(self.http(), &url, self.token(), &payload).await
+    http::post_json(self.http(), &url, token, &payload).await
   }
 }

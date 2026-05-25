@@ -6,9 +6,12 @@ impl ShastaClient {
   /// List all power-cap tasks known to PCS.
   ///
   /// `GET /power-control/v1/power-cap`.
-  pub async fn pcs_power_cap_get(&self) -> Result<PowerCapTaskInfo, Error> {
+  pub async fn pcs_power_cap_get(
+    &self,
+    token: &str,
+  ) -> Result<PowerCapTaskInfo, Error> {
     let url = format!("{}/power-control/v1/power-cap", self.base_url());
-    http::get_json(self.http(), &url, self.token()).await
+    http::get_json(self.http(), &url, token).await
   }
 
   /// Fetch a single power-cap task by its `task_id`.
@@ -16,11 +19,12 @@ impl ShastaClient {
   /// `GET /power-control/v1/power-cap/{task_id}`.
   pub async fn pcs_power_cap_get_task_id(
     &self,
+    token: &str,
     task_id: &str,
   ) -> Result<PowerCapTaskInfo, Error> {
     let url =
       format!("{}/power-control/v1/power-cap/{}", self.base_url(), task_id);
-    http::get_json(self.http(), &url, self.token()).await
+    http::get_json(self.http(), &url, token).await
   }
 
   /// Capture a power-cap snapshot for the given component xnames.
@@ -28,6 +32,7 @@ impl ShastaClient {
   /// `PUT /power-control/v1/power-cap/snapshot` with `{"xnames": [...]}`.
   pub async fn pcs_power_cap_post_snapshot(
     &self,
+    token: &str,
     xname_vec: Vec<&str>,
   ) -> Result<PowerCapTaskInfo, Error> {
     log::info!("Create PCS power snapshot for nodes:\n{:?}", xname_vec);
@@ -36,7 +41,7 @@ impl ShastaClient {
     let url =
       format!("{}/power-control/v1/power-cap/snapshot", self.base_url());
     let body = serde_json::json!({ "xnames": xname_vec });
-    http::put_json(self.http(), &url, self.token(), &body).await
+    http::put_json(self.http(), &url, token, &body).await
   }
 
   /// Apply a set of power-cap values to the given components.
@@ -45,6 +50,7 @@ impl ShastaClient {
   /// per-component cap definitions.
   pub async fn pcs_power_cap_patch(
     &self,
+    token: &str,
     power_cap: Vec<PowerCapComponent>,
   ) -> Result<PowerCapTaskInfo, Error> {
     log::info!("Create PCS power cap:\n{:#?}", power_cap);
@@ -52,6 +58,6 @@ impl ShastaClient {
 
     let url =
       format!("{}/power-control/v1/power-cap/snapshot", self.base_url());
-    http::put_json(self.http(), &url, self.token(), &power_cap).await
+    http::put_json(self.http(), &url, token, &power_cap).await
   }
 }

@@ -6,13 +6,13 @@ use super::types::Role;
 
 impl ShastaClient {
   /// Get list of HSM Roles.
-  pub async fn hsm_roles_get(&self) -> Result<Vec<String>, Error> {
+  pub async fn hsm_roles_get(&self, token: &str) -> Result<Vec<String>, Error> {
     let api_url = format!("{}/smd/hsm/v2/service/values/role", self.base_url());
 
     self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?

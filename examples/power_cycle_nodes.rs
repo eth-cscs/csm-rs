@@ -26,10 +26,10 @@ async fn main() -> anyhow::Result<()> {
     anyhow::bail!("usage: power_cycle_nodes <xname> [<xname>...]");
   }
 
-  let client = ShastaClient::new(base_url, token, root_cert, None)?;
+  let client = ShastaClient::new(base_url, root_cert, None)?;
 
   let response = client
-    .pcs_transitions_post_block(&operation, &xnames)
+    .pcs_transitions_post_block(&token, &operation, &xnames)
     .await?;
 
   println!("Transition completed: {response:#?}");

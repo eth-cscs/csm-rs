@@ -9,6 +9,7 @@ use crate::{ShastaClient, common::http, error::Error};
 impl ShastaClient {
   pub async fn bos_session_v2_post(
     &self,
+    token: &str,
     bos_session: BosSession,
   ) -> Result<BosSession, Error> {
     log::info!(
@@ -19,8 +20,7 @@ impl ShastaClient {
 
     let api_url = format!("{}/bos/v2/sessions", self.base_url());
     let created: BosSession =
-      http::post_json(self.http(), &api_url, self.token(), &bos_session)
-        .await?;
+      http::post_json(self.http(), &api_url, token, &bos_session).await?;
 
     log::info!(
       "BOS session '{}' created successfully",
@@ -31,6 +31,7 @@ impl ShastaClient {
 
   pub async fn bos_session_v2_get(
     &self,
+    token: &str,
     id_opt: Option<&str>,
   ) -> Result<Vec<BosSession>, Error> {
     log::info!("Get BOS sessions '{}'", id_opt.unwrap_or("all available"));
@@ -43,19 +44,20 @@ impl ShastaClient {
 
     if id_opt.is_some() {
       let single: BosSession =
-        http::get_json(self.http(), &api_url, self.token()).await?;
+        http::get_json(self.http(), &api_url, token).await?;
       Ok(vec![single])
     } else {
-      http::get_json(self.http(), &api_url, self.token()).await
+      http::get_json(self.http(), &api_url, token).await
     }
   }
 
   pub async fn bos_session_v2_delete(
     &self,
+    token: &str,
     bos_session_id: &str,
   ) -> Result<(), Error> {
     let api_url =
       format!("{}/bos/v2/sessions/{}", self.base_url(), bos_session_id);
-    http::delete(self.http(), &api_url, self.token()).await
+    http::delete(self.http(), &api_url, token).await
   }
 }

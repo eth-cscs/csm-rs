@@ -7,17 +7,19 @@ use super::types::Membership;
 impl ShastaClient {
   pub async fn hsm_memberships_get_all(
     &self,
+    token: &str,
   ) -> Result<Vec<Membership>, Error> {
     let url = format!("{}/smd/hsm/v2/memberships", self.base_url());
-    http::get_json(self.http(), &url, self.token()).await
+    http::get_json(self.http(), &url, token).await
   }
 
   pub async fn hsm_memberships_get_xname(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<Membership, Error> {
     log::debug!("Get membership of node '{}'", xname);
     let url = format!("{}/smd/hsm/v2/memberships/{}", self.base_url(), xname);
-    http::get_json(self.http(), &url, self.token()).await
+    http::get_json(self.http(), &url, token).await
   }
 }

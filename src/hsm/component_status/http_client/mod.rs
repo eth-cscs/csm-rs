@@ -14,6 +14,7 @@ impl ShastaClient {
   /// large — CSM rejects requests with more than ~30 ids.
   pub async fn hsm_component_status_get_raw(
     &self,
+    token: &str,
     xname_vec: &[String],
   ) -> Result<Vec<Value>, Error> {
     let url_params: Vec<_> =
@@ -32,7 +33,7 @@ impl ShastaClient {
     })?;
 
     let response: Value =
-      http::get_json(self.http(), api_url.as_str(), self.token()).await?;
+      http::get_json(self.http(), api_url.as_str(), token).await?;
 
     Ok(
       response
@@ -51,6 +52,7 @@ impl ShastaClient {
   /// of the returned values is not preserved.
   pub async fn hsm_component_status_get(
     &self,
+    token: &str,
     xname_vec: &[String],
   ) -> Result<Vec<Value>, Error> {
     let chunk_size = 30;
@@ -60,8 +62,9 @@ impl ShastaClient {
     for sub_node_list in xname_vec.chunks(chunk_size) {
       let client = self.clone();
       let node_vec = sub_node_list.to_vec();
+      let token = token.to_string();
       tasks.spawn(async move {
-        client.hsm_component_status_get_raw(&node_vec).await
+        client.hsm_component_status_get_raw(&token, &node_vec).await
       });
     }
 

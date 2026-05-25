@@ -68,7 +68,7 @@ impl ClusterSessionTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .bos_session_v2_post(bos_session.into())
+      .bos_session_v2_post(shasta_token, bos_session.into())
       .await
       .map(|bos_session| bos_session.into())
       .map_err(|e| Error::Message(e.to_string()))
@@ -86,7 +86,7 @@ impl ClusterTemplateTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .bos_template_v2_get(bos_session_template_id_opt)
+      .bos_template_v2_get(shasta_token, bos_session_template_id_opt)
       .await
       .map(|bos_session_template_vec| {
         bos_session_template_vec
@@ -110,7 +110,7 @@ impl ClusterTemplateTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     let mut bos_sessiontemplate_vec = self
       .shasta_client(shasta_token)?
-      .bos_template_v2_get(bos_sessiontemplate_name_opt)
+      .bos_template_v2_get(shasta_token, bos_sessiontemplate_name_opt)
       .await
       .map_err(|e| Error::Message(e.to_string()))?;
 
@@ -140,7 +140,7 @@ impl ClusterTemplateTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .bos_template_v2_get_all()
+      .bos_template_v2_get_all(shasta_token)
       .await
       .map(|bos_session_template_vec| {
         bos_session_template_vec
@@ -162,7 +162,11 @@ impl ClusterTemplateTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .bos_template_v2_put(&bos_template.clone().into(), bos_template_name)
+      .bos_template_v2_put(
+        shasta_token,
+        &bos_template.clone().into(),
+        bos_template_name,
+      )
       .await
       .map(|bos_session_template| bos_session_template.into())
       .map_err(|e| Error::Message(e.to_string()))
@@ -178,7 +182,7 @@ impl ClusterTemplateTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .bos_template_v2_delete(bos_template_id)
+      .bos_template_v2_delete(shasta_token, bos_template_id)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }

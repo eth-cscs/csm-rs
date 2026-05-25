@@ -25,14 +25,15 @@ pub async fn update_component_desired_configuration(
 
   let Ok(client) = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   ) else {
     return;
   };
 
-  let _ = client.cfs_component_v3_patch_component(component).await;
+  let _ = client
+    .cfs_component_v3_patch_component(shasta_token, component)
+    .await;
 }
 
 pub async fn update_component_list_desired_configuration(
@@ -64,11 +65,10 @@ pub async fn update_component_list_desired_configuration(
 
   crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .cfs_component_v3_patch_component_list(component_list)
+  .cfs_component_v3_patch_component_list(shasta_token, component_list)
   .await?;
 
   Ok(())

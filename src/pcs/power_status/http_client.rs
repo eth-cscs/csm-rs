@@ -20,6 +20,7 @@ impl ShastaClient {
   ///   `"unavailable"`.
   pub async fn pcs_power_status_post(
     &self,
+    token: &str,
     xname_vec_opt: Option<&[&str]>,
     power_state_filter_opt: Option<&str>,
     management_state_filter_opt: Option<&str>,
@@ -34,6 +35,6 @@ impl ShastaClient {
       "managementStateFilter": management_state_filter_opt.unwrap_or(""),
     });
 
-    http::post_json(self.http(), &url, self.token(), &body).await
+    http::post_json(self.http(), &url, token, &body).await
   }
 }

@@ -14,6 +14,7 @@ impl ShastaClient {
   /// 'ephemeral-environments'.
   pub async fn ims_job_post_customize(
     &self,
+    token: &str,
     image_root_archive_name: &str,
     artifact_id: &str,
     public_key_id: &str,
@@ -47,17 +48,21 @@ impl ShastaClient {
     };
 
     let url = format!("{}/ims/v3/jobs", self.base_url());
-    http::post_json(self.http(), &url, self.token(), &ims_job).await
+    http::post_json(self.http(), &url, token, &ims_job).await
   }
 
   /// Creates an IMS job. Returns immediately after the create call.
-  pub async fn ims_job_post(&self, ims_job: &Job) -> Result<Job, Error> {
+  pub async fn ims_job_post(
+    &self,
+    token: &str,
+    ims_job: &Job,
+  ) -> Result<Job, Error> {
     let api_url = format!("{}/ims/v3/jobs", self.base_url());
 
     self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&ims_job)
       .send()
       .await
@@ -70,14 +75,18 @@ impl ShastaClient {
   }
 
   /// Like `ims_job_post`, but waits for the job to finish before returning.
-  pub async fn ims_job_post_sync(&self, ims_job: &Job) -> Result<Job, Error> {
+  pub async fn ims_job_post_sync(
+    &self,
+    token: &str,
+    ims_job: &Job,
+  ) -> Result<Job, Error> {
     log::info!("Create IMS job");
     log::debug!(
       "Create IMS job request payload:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
 
-    let created = self.ims_job_post(ims_job).await?;
+    let created = self.ims_job_post(token, ims_job).await?;
 
     let ims_job_id = created.id.clone().ok_or_else(|| {
       Error::Message("IMS job creation response is missing 'id'".to_string())
@@ -85,7 +94,7 @@ impl ShastaClient {
 
     // Wait till the IMS job finishes
     wait_ims_job_to_finish(
-      self.token(),
+      token,
       self.base_url(),
       self.root_cert(),
       self.socks5_proxy(),
@@ -94,7 +103,7 @@ impl ShastaClient {
     .await?;
 
     self
-      .ims_job_get(Some(&ims_job_id))
+      .ims_job_get(token, Some(&ims_job_id))
       .await?
       .first()
       .cloned()
@@ -105,6 +114,7 @@ impl ShastaClient {
 
   pub async fn ims_job_get(
     &self,
+    token: &str,
     job_id_opt: Option<&str>,
   ) -> Result<Vec<Job>, Error> {
     let api_url = if let Some(job_id) = job_id_opt {
@@ -116,7 +126,7 @@ impl ShastaClient {
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?

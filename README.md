@@ -35,16 +35,16 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-csm-rs = "0.107"
+csm-rs = "0.108"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ## Quick start
 
 All HTTP calls are exposed as methods on [`ShastaClient`]. Construct one
-per Shasta installation and reuse it — it bundles the auth token, base
-URL, root certificate, and an optional SOCKS5 proxy with a pre-built
-`reqwest::Client`:
+per Shasta installation and reuse it — it caches a pre-built
+`reqwest::Client` (connection pool, TLS context, DNS resolver). The
+bearer token is supplied per call, so one client can serve many tokens:
 
 ```rust,no_run
 use csm_rs::ShastaClient;
@@ -53,15 +53,17 @@ use csm_rs::ShastaClient;
 async fn main() -> Result<(), csm_rs::error::Error> {
     let client = ShastaClient::new(
         "https://api.shasta.example.com",
-        "your-bearer-token",
         std::fs::read("/etc/shasta/ca.crt").unwrap(),
         None, // or Some("socks5://localhost:9050".to_string())
     )?;
 
+    let token = "your-bearer-token";
+
     // Methods are namespaced by API module: `<module>_<resource>_<verb>`.
-    let images  = client.ims_image_get_all().await?;
-    let groups  = client.hsm_group_get_all().await?;
-    let configs = client.cfs_configuration_v2_get_all().await?;
+    // The first argument is always the bearer token.
+    let images  = client.ims_image_get_all(token).await?;
+    let groups  = client.hsm_group_get_all(token).await?;
+    let configs = client.cfs_configuration_v2_get_all(token).await?;
 
     Ok(())
 }
@@ -85,26 +87,27 @@ Runnable programs under [`examples/`](examples/):
 Each reads `CSM_BASE_URL`, `CSM_TOKEN`, and `CSM_ROOT_CERT_PATH` from
 the environment. Run with `cargo run --example <name>`.
 
-## Migrating from 0.106 and earlier
+## Migrating between releases
 
-Releases up to and including 0.106 exposed each HTTP call as a free
-function with a 4-parameter auth quartet:
+- **≤ 0.106**: exposed each HTTP call as a free function taking a
+  4-parameter auth quartet (`token`, `base_url`, `root_cert`, `proxy`).
+  Removed in 0.107.
+- **0.107.x**: free functions replaced by methods on [`ShastaClient`];
+  the token was stored on the client.
+- **0.108 (current)**: the token was removed from [`ShastaClient`] —
+  it is now passed per call as the method's first argument. One client
+  can serve many tokens; the underlying `reqwest::Client` (and its
+  connection pool) is reused across all of them.
 
 ```rust,ignore
-// 0.106 and earlier — removed in 0.107.
-ims::image::http_client::get_all(token, base_url, root_cert, proxy).await?;
-```
-
-In 0.107 these free functions were removed in favor of methods on
-[`ShastaClient`]:
-
-```rust,ignore
-// 0.107+
+// 0.107.x
+let client = ShastaClient::new(base_url, token, cert, proxy)?;
 client.ims_image_get_all().await?;
-```
 
-The auth context now lives on the client, so callers no longer need to
-thread token/base-url/cert/proxy through every call site.
+// 0.108+
+let client = ShastaClient::new(base_url, cert, proxy)?;
+client.ims_image_get_all(token).await?;
+```
 
 ## Building & testing
 

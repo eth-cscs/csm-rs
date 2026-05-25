@@ -18,6 +18,7 @@ impl ShastaClient {
   /// for the underlying REST contract.
   pub async fn cfs_session_v2_get(
     &self,
+    token: &str,
     min_age_opt: Option<&String>,
     max_age_opt: Option<&String>,
     status_opt: Option<&String>,
@@ -50,22 +51,13 @@ impl ShastaClient {
     }
 
     if session_name_opt.is_some() {
-      let payload: CfsSessionGetResponse = http::get_json_with_query(
-        self.http(),
-        &api_url,
-        self.token(),
-        &query_params,
-      )
-      .await?;
+      let payload: CfsSessionGetResponse =
+        http::get_json_with_query(self.http(), &api_url, token, &query_params)
+          .await?;
       Ok(vec![payload])
     } else {
-      http::get_json_with_query(
-        self.http(),
-        &api_url,
-        self.token(),
-        &query_params,
-      )
-      .await
+      http::get_json_with_query(self.http(), &api_url, token, &query_params)
+        .await
     }
   }
 
@@ -75,8 +67,11 @@ impl ShastaClient {
   /// unset.
   pub async fn cfs_session_v2_get_all(
     &self,
+    token: &str,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    self.cfs_session_v2_get(None, None, None, None, None).await
+    self
+      .cfs_session_v2_get(token, None, None, None, None, None)
+      .await
   }
 
   /// Create a new CFS session.
@@ -84,12 +79,13 @@ impl ShastaClient {
   /// `POST /cfs/v2/sessions`.
   pub async fn cfs_session_v2_post(
     &self,
+    token: &str,
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
     log::debug!("Session:\n{:#?}", session);
 
     let api_url = format!("{}/cfs/v2/sessions", self.base_url());
-    http::post_json(self.http(), &api_url, self.token(), session).await
+    http::post_json(self.http(), &api_url, token, session).await
   }
 
   /// Delete a CFS session by name.
@@ -97,12 +93,13 @@ impl ShastaClient {
   /// `DELETE /cfs/v2/sessions/{session_name}`.
   pub async fn cfs_session_v2_delete(
     &self,
+    token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
     log::info!("Deleting CFS session id: {}", session_name);
 
     let api_url =
       format!("{}/cfs/v2/sessions/{}", self.base_url(), session_name);
-    http::delete(self.http(), &api_url, self.token()).await
+    http::delete(self.http(), &api_url, token).await
   }
 }

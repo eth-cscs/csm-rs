@@ -16,6 +16,7 @@ impl ShastaClient {
   /// `GET /cfs/v2/components`.
   pub async fn cfs_component_v2_get(
     &self,
+    token: &str,
     components_ids: Option<&str>,
     status: Option<&str>,
   ) -> Result<Vec<Component>, Error> {
@@ -26,7 +27,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&[("ids", components_ids), ("status", status)])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -39,8 +40,9 @@ impl ShastaClient {
   /// Convenience wrapper for `cfs_component_v2_get(None, None)`.
   pub async fn cfs_component_v2_get_all(
     &self,
+    token: &str,
   ) -> Result<Vec<Component>, Error> {
-    self.cfs_component_v2_get(None, None).await
+    self.cfs_component_v2_get(token, None, None).await
   }
 
   /// Fetch one component by id.
@@ -48,6 +50,7 @@ impl ShastaClient {
   /// `GET /cfs/v2/components/{component_id}`.
   pub async fn cfs_component_v2_get_single_component(
     &self,
+    token: &str,
     component_id: &str,
   ) -> Result<Component, Error> {
     let api_url =
@@ -56,7 +59,7 @@ impl ShastaClient {
     let response = self
       .http()
       .get(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -73,6 +76,7 @@ impl ShastaClient {
   /// components is not preserved.
   pub async fn cfs_component_v2_get_multiple(
     &self,
+    token: &str,
     node_vec: &[String],
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
@@ -100,6 +104,7 @@ impl ShastaClient {
 
       let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
       let client = self.clone();
+      let token = token.to_string();
 
       let permit = sem
         .clone()
@@ -110,7 +115,7 @@ impl ShastaClient {
       tasks.spawn(async move {
         let _permit = permit;
         client
-          .cfs_component_v2_get(Some(&hsm_subgroup_nodes_string), None)
+          .cfs_component_v2_get(&token, Some(&hsm_subgroup_nodes_string), None)
           .await
       });
 
@@ -132,6 +137,7 @@ impl ShastaClient {
   /// so callers can also filter by configuration name / status.
   pub async fn cfs_component_v2_get_parallel(
     &self,
+    token: &str,
     node_vec: &[String],
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
@@ -158,6 +164,7 @@ impl ShastaClient {
 
       let hsm_subgroup_nodes_string: String = sub_node_list.join(",");
       let client = self.clone();
+      let token = token.to_string();
 
       let permit = sem
         .clone()
@@ -169,6 +176,7 @@ impl ShastaClient {
         let _permit = permit;
         client
           .cfs_component_v2_get_query(
+            &token,
             None,
             Some(&hsm_subgroup_nodes_string),
             None,
@@ -196,6 +204,7 @@ impl ShastaClient {
   /// query parameters.
   pub async fn cfs_component_v2_get_query(
     &self,
+    token: &str,
     configuration_name: Option<&str>,
     components_ids: Option<&str>,
     status: Option<&str>,
@@ -213,7 +222,7 @@ impl ShastaClient {
         ("status", status),
         ("limit", Some(&stupid_limit.to_string())),
       ])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -227,6 +236,7 @@ impl ShastaClient {
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
   pub async fn cfs_component_v2_put_component(
     &self,
+    token: &str,
     component: Component,
   ) -> Result<Component, Error> {
     let component_id = component
@@ -235,19 +245,20 @@ impl ShastaClient {
       .ok_or_else(|| Error::CfsComponentFieldNotDefined("id".to_string()))?;
     let api_url =
       format!("{}/cfs/v2/components/{}", self.base_url(), component_id);
-    http::put_json(self.http(), &api_url, self.token(), &component).await
+    http::put_json(self.http(), &api_url, token, &component).await
   }
 
   /// Replace many CFS component records sequentially. Stops at the
   /// first error (the partial results before that error are dropped).
   pub async fn cfs_component_v2_put_component_list(
     &self,
+    token: &str,
     component_list: Vec<Component>,
   ) -> Result<Vec<Component>, Error> {
     let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
 
     for component in component_list {
-      let result = self.cfs_component_v2_put_component(component).await;
+      let result = self.cfs_component_v2_put_component(token, component).await;
       result_vec.push(result);
     }
 
@@ -259,6 +270,7 @@ impl ShastaClient {
   /// `DELETE /cfs/v2/components/{component_id}`.
   pub async fn cfs_component_v2_delete_single_component(
     &self,
+    token: &str,
     component_id: &str,
   ) -> Result<Component, Error> {
     let api_url =
@@ -267,7 +279,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await
       .map_err(Error::NetError)?;

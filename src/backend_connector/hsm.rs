@@ -33,7 +33,7 @@ impl HardwareInventory for Csm {
   ) -> Result<Value, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_hw_inventory_get(xname)
+      .hsm_hw_inventory_get(auth_token, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))
       .and_then(|hw_inventory| {
@@ -54,7 +54,7 @@ impl HardwareInventory for Csm {
   ) -> Result<Value, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_hw_inventory_get_query(xname)
+      .hsm_hw_inventory_get_query(auth_token, xname)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -66,7 +66,7 @@ impl HardwareInventory for Csm {
   ) -> Result<Value, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_hw_inventory_post(hw_inventory.into())
+      .hsm_hw_inventory_post(auth_token, hw_inventory.into())
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -80,7 +80,7 @@ impl ComponentTrait for Csm {
   ) -> Result<NodeMetadataArray, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_component_get_all_nodes(nid_only)
+      .hsm_component_get_all_nodes(auth_token, nid_only)
       .await
       .map(|c| c.into())
       .map_err(|e| Error::Message(e.to_string()))
@@ -146,6 +146,7 @@ impl ComponentTrait for Csm {
     self
       .shasta_client(auth_token)?
       .hsm_component_get(
+        auth_token,
         id,
         r#type,
         state,
@@ -180,7 +181,7 @@ impl ComponentTrait for Csm {
 
     self
       .shasta_client(auth_token)?
-      .hsm_component_post(component_backend)
+      .hsm_component_post(auth_token, component_backend)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -192,7 +193,7 @@ impl ComponentTrait for Csm {
   ) -> Result<Value, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_component_delete_one(id)
+      .hsm_component_delete_one(auth_token, id)
       .await
       .map_err(|e| Error::Message(e.to_string()))
   }
@@ -220,7 +221,7 @@ impl ComponentTrait for Csm {
       // Get all HSM components (list of xnames + nids)
       let hsm_component_vec = self
         .shasta_client(shasta_token)?
-        .hsm_component_get_all_nodes(Some("true"))
+        .hsm_component_get_all_nodes(shasta_token, Some("true"))
         .await
         .map_err(|e| Error::Message(e.to_string()))?
         .components
@@ -291,6 +292,7 @@ impl ComponentTrait for Csm {
       let hsm_components = self
         .shasta_client(shasta_token)?
         .hsm_component_get(
+          shasta_token,
           None,
           None,
           None,
@@ -409,7 +411,16 @@ impl RedfishEndpointTrait for Csm {
   ) -> Result<FrontEndRedfishEndpointArray, Error> {
     self
       .shasta_client(auth_token)?
-      .hsm_redfish_get(id, fqdn, r#type, uuid, macaddr, ip_address, last_status)
+      .hsm_redfish_get(
+        auth_token,
+        id,
+        fqdn,
+        r#type,
+        uuid,
+        macaddr,
+        ip_address,
+        last_status,
+      )
       .await
       .map(|arr| arr.into())
       .map_err(|e| Error::Message(e.to_string()))

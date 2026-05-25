@@ -9,9 +9,9 @@ impl ShastaClient {
   ///
   /// `GET /cfs/healthz`. Returns the raw JSON body produced by CFS;
   /// success only means the service was reachable and authenticated.
-  pub async fn cfs_health_check(&self) -> Result<Value, Error> {
+  pub async fn cfs_health_check(&self, token: &str) -> Result<Value, Error> {
     let api_url = format!("{}/cfs/healthz", self.base_url());
-    http::get_json(self.http(), &api_url, self.token()).await
+    http::get_json(self.http(), &api_url, token).await
   }
 }
 
@@ -23,10 +23,9 @@ pub async fn health_check(
 ) -> Result<Value, Error> {
   crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .cfs_health_check()
+  .cfs_health_check(shasta_token)
   .await
 }

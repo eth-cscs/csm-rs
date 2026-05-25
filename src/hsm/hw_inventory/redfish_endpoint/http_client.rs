@@ -12,6 +12,7 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/Inventory/RedfishEndpoint/Query/{xname}`.
   pub async fn hsm_redfish_get_query(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<RedfishEndpointArray, Error> {
     let api_url = format!(
@@ -24,7 +25,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&[xname])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -37,6 +38,7 @@ impl ShastaClient {
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_redfish_get(
     &self,
+    token: &str,
     id: Option<&str>,
     fqdn: Option<&str>,
     r#type: Option<&str>,
@@ -52,7 +54,7 @@ impl ShastaClient {
       .http()
       .get(api_url)
       .query(&[id, fqdn, r#type, uuid, macaddr, ip_address, last_status])
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -64,6 +66,7 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/Inventory/RedfishEndpoints/{xname}`.
   pub async fn hsm_redfish_get_one(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<RedfishEndpoint, Error> {
     let api_url = format!(
@@ -72,12 +75,7 @@ impl ShastaClient {
       xname
     );
 
-    let response = self
-      .http()
-      .get(api_url)
-      .bearer_auth(self.token())
-      .send()
-      .await?;
+    let response = self.http().get(api_url).bearer_auth(token).send().await?;
     http::handle_json_or_request_error(response).await
   }
 
@@ -86,6 +84,7 @@ impl ShastaClient {
   /// `POST /smd/hsm/v2/Inventory/RedfishEndpoints`.
   pub async fn hsm_redfish_post(
     &self,
+    token: &str,
     redfish_endpoint: RedfishEndpoint,
   ) -> Result<Value, Error> {
     let api_url =
@@ -94,7 +93,7 @@ impl ShastaClient {
     let response = self
       .http()
       .post(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&redfish_endpoint)
       .send()
       .await?;
@@ -104,6 +103,7 @@ impl ShastaClient {
 
   pub async fn hsm_redfish_put(
     &self,
+    token: &str,
     xname: &str,
     redfish_endpoint: RedfishEndpoint,
   ) -> Result<RedfishEndpoint, Error> {
@@ -113,7 +113,7 @@ impl ShastaClient {
     let response = self
       .http()
       .put(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .json(&redfish_endpoint)
       .send()
       .await?;
@@ -121,14 +121,17 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
-  pub async fn hsm_redfish_delete_all(&self) -> Result<Value, Error> {
+  pub async fn hsm_redfish_delete_all(
+    &self,
+    token: &str,
+  ) -> Result<Value, Error> {
     let api_url =
       format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", self.base_url());
 
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 
@@ -137,6 +140,7 @@ impl ShastaClient {
 
   pub async fn hsm_redfish_delete_one(
     &self,
+    token: &str,
     xname: &str,
   ) -> Result<Value, Error> {
     let api_url = format!(
@@ -148,7 +152,7 @@ impl ShastaClient {
     let response = self
       .http()
       .delete(api_url)
-      .bearer_auth(self.token())
+      .bearer_auth(token)
       .send()
       .await?;
 

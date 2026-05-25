@@ -45,7 +45,7 @@ impl CfsTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .cfs_session_v3_post(&session.clone().into())
+      .cfs_session_v3_post(shasta_token, &session.clone().into())
       .await
       .map(|cfs_session| cfs_session.into())
       .map_err(|e| Error::Message(e.to_string()))
@@ -72,6 +72,7 @@ impl CfsTrait for Csm {
     let local_cfs_session_vec = self
       .shasta_client(shasta_token)?
       .cfs_session_v3_get(
+        shasta_token,
         session_name_opt,
         limit_opt,
         after_id_opt,
@@ -270,7 +271,7 @@ impl CfsTrait for Csm {
           > = self
             .shasta_client(shasta_token)
             .map_err(|e| crate::error::Error::Message(e.to_string()))?
-            .ims_image_get(image_id)
+            .ims_image_get(shasta_token, image_id)
             .await;
 
           if let Ok(Some(new_image)) = new_image_vec_rslt
@@ -382,6 +383,7 @@ impl CfsTrait for Csm {
     let cfs_configuration_vec = self
       .shasta_client(auth_token)?
       .cfs_configuration_v3_get(
+        auth_token,
         configuration_name_opt.map(|elem| elem.as_str()),
       )
       .await
@@ -629,7 +631,12 @@ impl CfsTrait for Csm {
     let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client(shasta_token)?
-      .cfs_component_v3_get_query(configuration_name, components_ids, status)
+      .cfs_component_v3_get_query(
+        shasta_token,
+        configuration_name,
+        components_ids,
+        status,
+      )
       .await
       .map(|component_vec| {
         component_vec

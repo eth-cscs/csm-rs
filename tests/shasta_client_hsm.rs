@@ -20,7 +20,7 @@ async fn hsm_group_get_all_hits_smd_v2_groups() {
     .await;
 
   let client = make_client(&server.uri());
-  let groups = client.hsm_group_get_all().await.expect("ok");
+  let groups = client.hsm_group_get_all(TEST_TOKEN).await.expect("ok");
   assert!(groups.is_empty());
 }
 
@@ -37,7 +37,7 @@ async fn hsm_group_get_one_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let g = client.hsm_group_get_one("zinal").await.unwrap();
+  let g = client.hsm_group_get_one(TEST_TOKEN, "zinal").await.unwrap();
   assert_eq!(g.label, "zinal");
 }
 
@@ -51,7 +51,10 @@ async fn hsm_group_get_one_unauthorized_returns_request_error() {
     .await;
 
   let client = make_client(&server.uri());
-  let err = client.hsm_group_get_one("zinal").await.expect_err("err");
+  let err = client
+    .hsm_group_get_one(TEST_TOKEN, "zinal")
+    .await
+    .expect_err("err");
   assert!(
     matches!(err, csm_rs::error::Error::RequestError { .. }),
     "expected RequestError, got: {:?}",
@@ -71,7 +74,7 @@ async fn hsm_group_delete_member_hits_nested_endpoint() {
 
   let client = make_client(&server.uri());
   client
-    .hsm_group_delete_member("zinal", "x1000c0s0b0n0")
+    .hsm_group_delete_member(TEST_TOKEN, "zinal", "x1000c0s0b0n0")
     .await
     .expect("ok");
 }
@@ -91,7 +94,10 @@ async fn hsm_component_get_all_hits_smd_v2_state_components() {
     .await;
 
   let client = make_client(&server.uri());
-  let arr = client.hsm_component_get_all(None).await.unwrap();
+  let arr = client
+    .hsm_component_get_all(TEST_TOKEN, None)
+    .await
+    .unwrap();
   assert!(arr.components.unwrap_or_default().is_empty());
 }
 
@@ -115,7 +121,7 @@ async fn hsm_component_status_get_hits_correct_endpoint() {
   // Even if the wiremock path doesn't match, the call should not panic;
   // we're really just smoke-testing the method exists and is callable.
   let _ = client
-    .hsm_component_status_get(&["x1000c0s0b0n0".to_string()])
+    .hsm_component_status_get(TEST_TOKEN, &["x1000c0s0b0n0".to_string()])
     .await;
 }
 
@@ -132,7 +138,10 @@ async fn hsm_memberships_get_all_hits_v2_memberships() {
     .await;
 
   let client = make_client(&server.uri());
-  client.hsm_memberships_get_all().await.expect("ok");
+  client
+    .hsm_memberships_get_all(TEST_TOKEN)
+    .await
+    .expect("ok");
 }
 
 #[tokio::test]
@@ -151,7 +160,7 @@ async fn hsm_memberships_get_xname_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   let m = client
-    .hsm_memberships_get_xname("x1000c0s0b0n0")
+    .hsm_memberships_get_xname(TEST_TOKEN, "x1000c0s0b0n0")
     .await
     .unwrap();
   assert_eq!(m.id, "x1000c0s0b0n0");
@@ -173,7 +182,7 @@ async fn hsm_redfish_get_one_hits_singular_endpoint() {
     .await;
 
   let client = make_client(&server.uri());
-  let result = client.hsm_redfish_get_one("x1000c0s0b0").await;
+  let result = client.hsm_redfish_get_one(TEST_TOKEN, "x1000c0s0b0").await;
   assert!(result.is_ok(), "got: {:?}", result.err());
 }
 
@@ -193,7 +202,7 @@ async fn hsm_hw_inventory_get_query_hits_correct_endpoint() {
 
   let client = make_client(&server.uri());
   client
-    .hsm_hw_inventory_get_query("x1000c0s0b0n0")
+    .hsm_hw_inventory_get_query(TEST_TOKEN, "x1000c0s0b0n0")
     .await
     .expect("ok");
 }
@@ -213,6 +222,6 @@ async fn hsm_roles_get_hits_service_values_role() {
     .await;
 
   let client = make_client(&server.uri());
-  let roles = client.hsm_roles_get().await.unwrap();
+  let roles = client.hsm_roles_get(TEST_TOKEN).await.unwrap();
   assert_eq!(roles, vec!["Compute", "Service", "Storage"]);
 }

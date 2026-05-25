@@ -59,11 +59,10 @@ pub async fn exec(
   let _empty_hsm_group_name: Vec<String> = Vec::new();
   let mut bos_templates = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .bos_template_v2_get(Some(bos))
+  .bos_template_v2_get(shasta_token, Some(bos))
   .await?;
 
   let _ =
@@ -117,11 +116,10 @@ pub async fn exec(
 
     let hsm_group_json = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .hsm_group_get(Some(&[hsm_group_name.to_string()]), None)
+    .hsm_group_get(shasta_token, Some(&[hsm_group_name.to_string()]), None)
     .await?;
 
     log::debug!("{:#?}", &hsm_group_json);
@@ -141,11 +139,10 @@ pub async fn exec(
 
     let cfs_configurations = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .cfs_configuration_v3_get(Some(configuration_name))
+    .cfs_configuration_v3_get(shasta_token, Some(configuration_name))
     .await?;
 
     let cfs_file_name =
@@ -201,11 +198,13 @@ pub async fn exec(
         );
         match crate::ShastaClient::new(
           shasta_base_url,
-          shasta_token,
           shasta_root_cert.to_vec(),
           socks5_proxy.map(str::to_owned),
         )?
-        .ims_image_get(Some(&image_id_related_to_bos_sessiontemplate))
+        .ims_image_get(
+          shasta_token,
+          Some(&image_id_related_to_bos_sessiontemplate),
+        )
         .await
         {
           Ok(ims_record) => {

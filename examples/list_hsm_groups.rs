@@ -22,9 +22,9 @@ async fn main() -> anyhow::Result<()> {
   let root_cert_path = std::env::var("CSM_ROOT_CERT_PATH")?;
   let root_cert = std::fs::read(&root_cert_path)?;
 
-  let client = ShastaClient::new(base_url, token, root_cert, None)?;
+  let client = ShastaClient::new(base_url, root_cert, None)?;
 
-  let groups = client.hsm_group_get_all().await?;
+  let groups = client.hsm_group_get_all(&token).await?;
 
   println!("Found {} HSM group(s):", groups.len());
   for g in &groups {

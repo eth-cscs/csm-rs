@@ -257,20 +257,18 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
 
     let component_status = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .cfs_component_v2_get_single_component(&xname)
+    .cfs_component_v2_get_single_component(shasta_token, &xname)
     .await?;
 
     let hsm_component_status_rslt = crate::ShastaClient::new(
       shasta_base_url,
-      shasta_token,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .hsm_component_status_get(std::slice::from_ref(&xname))
+    .hsm_component_status_get(shasta_token, std::slice::from_ref(&xname))
     .await?;
 
     let hsm_component_status_state: &str = hsm_component_status_rslt
@@ -316,11 +314,14 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // Update/PUT CFS configuration
   let cfs_configuration_name: String = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_token,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
   )?
-  .cfs_configuration_v3_put(&cfs_configuration, cfs_configuration_name)
+  .cfs_configuration_v3_put(
+    shasta_token,
+    &cfs_configuration,
+    cfs_configuration_name,
+  )
   .await?
   .name;
 

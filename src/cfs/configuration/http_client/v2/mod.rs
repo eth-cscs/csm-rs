@@ -24,6 +24,7 @@ impl ShastaClient {
   /// one-element vector.
   pub async fn cfs_configuration_v2_get(
     &self,
+    token: &str,
     configuration_name_opt: Option<&str>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     log::info!(
@@ -41,7 +42,7 @@ impl ShastaClient {
       let payload: CfsConfigurationResponse = http::get_json_with_query(
         self.http(),
         &api_url,
-        self.token(),
+        token,
         &[("limit", STUPID_LIMIT)],
       )
       .await?;
@@ -50,7 +51,7 @@ impl ShastaClient {
       http::get_json_with_query(
         self.http(),
         &api_url,
-        self.token(),
+        token,
         &[("limit", STUPID_LIMIT)],
       )
       .await
@@ -62,8 +63,9 @@ impl ShastaClient {
   /// Convenience wrapper for `cfs_configuration_v2_get(None)`.
   pub async fn cfs_configuration_v2_get_all(
     &self,
+    token: &str,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    self.cfs_configuration_v2_get(None).await
+    self.cfs_configuration_v2_get(token, None).await
   }
 
   /// Create or replace a CFS configuration by name with the supplied
@@ -73,6 +75,7 @@ impl ShastaClient {
   /// is `{ "layers": configuration.layers }`.
   pub async fn cfs_configuration_v2_put(
     &self,
+    token: &str,
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
   ) -> Result<CfsConfigurationResponse, Error> {
@@ -93,7 +96,7 @@ impl ShastaClient {
         .unwrap_or_else(|e| format!("<serialize error: {}>", e))
     );
 
-    http::put_json(self.http(), &api_url, self.token(), &request_payload).await
+    http::put_json(self.http(), &api_url, token, &request_payload).await
   }
 
   /// Delete a CFS configuration by id.
@@ -103,6 +106,7 @@ impl ShastaClient {
   /// or runtime binding; that surfaces as an HTTP error.
   pub async fn cfs_configuration_v2_delete(
     &self,
+    token: &str,
     configuration_id: &str,
   ) -> Result<(), Error> {
     log::info!("Delete CFS configuration {:?}", configuration_id);
@@ -112,6 +116,6 @@ impl ShastaClient {
       self.base_url(),
       configuration_id
     );
-    http::delete(self.http(), &api_url, self.token()).await
+    http::delete(self.http(), &api_url, token).await
   }
 }
