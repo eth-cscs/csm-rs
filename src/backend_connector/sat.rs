@@ -1,51 +1,58 @@
 //! `SatTrait`, `ApplyHwClusterPin` impls for [`Csm`](super::Csm).
+//!
+//! `apply_sat_file` is a thin shim over
+//! [`crate::commands::i_apply_sat_file::command::exec`]: it destructures
+//! the [`ApplySatFileParams`] bag, transcodes the structured SAT value
+//! from `serde_json::Value` to `serde_yaml::Value` (lossless for any
+//! valid SAT file), fetches the Kubernetes secrets from Vault
+//! (consistent with the `console`, `cfs`, and `cfs::session` backend
+//! paths), forwards every other argument unchanged, and then maps the
+//! per-crate `CfsConfigurationResponse` / `Image` /
+//! `BosSessionTemplate` / `BosSession` types into the corresponding
+//! `manta_backend_dispatcher::types::*` types via the existing `From`
+//! impls so the returned tuple satisfies the trait.
 
 use manta_backend_dispatcher::{
   error::Error,
   interfaces::{
-    apply_hw_cluster_pin::ApplyHwClusterPin, apply_sat_file::SatTrait,
+    apply_hw_cluster_pin::ApplyHwClusterPin,
+    apply_sat_file::{ApplySatFileParams, SatTrait},
+  },
+  types::{
+    bos::{session::BosSession, session_template::BosSessionTemplate},
+    cfs::cfs_configuration_response::CfsConfigurationResponse,
+    ims::Image,
   },
 };
 
 use super::Csm;
+use crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault;
 
 impl SatTrait for Csm {
   async fn apply_sat_file(
     &self,
-    shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
-    vault_base_url: &str,
-    site_name: &str,
-    k8s_api_url: &str,
-    shasta_k8s_secrets: serde_json::Value,
-    sat_template_file_yaml: serde_yaml::Value,
-    hsm_group_available_vec: &[String],
-    ansible_verbosity_opt: Option<u8>,
-    ansible_passthrough_opt: Option<&str>,
-    gitea_base_url: &str,
-    gitea_token: &str,
-    reboot: bool,
-    watch_logs: bool,
-    timestamps: bool,
-    debug_on_failure: bool,
-    overwrite: bool,
-    dry_run: bool,
-  ) -> Result<(), Error> {
-    #[allow(deprecated)]
-    crate::commands::i_apply_sat_file::command::exec(
+    params: ApplySatFileParams<'_>,
+  ) -> Result<
+    (
+      Vec<CfsConfigurationResponse>,
+      Vec<Image>,
+      Vec<BosSessionTemplate>,
+      Vec<BosSession>,
+    ),
+    Error,
+  > {
+    let ApplySatFileParams {
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
-      self.socks5_proxy.as_deref(),
+      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
-      shasta_k8s_secrets,
-      sat_template_file_yaml,
+      sat_file,
       hsm_group_available_vec,
-      ansible_verbosity_opt,
-      ansible_passthrough_opt,
+      ansible_verbosity,
+      ansible_passthrough,
       gitea_base_url,
       gitea_token,
       reboot,
@@ -54,9 +61,61 @@ impl SatTrait for Csm {
       debug_on_failure,
       overwrite,
       dry_run,
+    } = params;
+
+    // The trait carries the SAT file as a structured `serde_json::Value`
+    // (parsed once by the CLI). Transcode into `serde_yaml::Value` for
+    // the existing `exec` signature — lossless for any valid SAT file
+    // since the SAT spec is JSON-compatible.
+    let sat_template_file_yaml: serde_yaml::Value =
+      serde_json::from_value(sat_file).map_err(|e| {
+        Error::Message(format!(
+          "SAT file value is not a valid YAML mapping: {e}"
+        ))
+      })?;
+
+    let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
+      vault_base_url,
+      shasta_token,
+      site_name,
+      socks5_proxy,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(|e| Error::Message(e.to_string()))?;
+
+    #[allow(deprecated)]
+    let (configurations, images, session_templates, sessions) =
+      crate::commands::i_apply_sat_file::command::exec(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        socks5_proxy,
+        vault_base_url,
+        site_name,
+        k8s_api_url,
+        shasta_k8s_secrets,
+        sat_template_file_yaml,
+        hsm_group_available_vec,
+        ansible_verbosity,
+        ansible_passthrough,
+        gitea_base_url,
+        gitea_token,
+        reboot,
+        watch_logs,
+        timestamps,
+        debug_on_failure,
+        overwrite,
+        dry_run,
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
+
+    Ok((
+      configurations.into_iter().map(Into::into).collect(),
+      images.into_iter().map(Into::into).collect(),
+      session_templates.into_iter().map(Into::into).collect(),
+      sessions.into_iter().map(Into::into).collect(),
+    ))
   }
 }
 
