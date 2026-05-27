@@ -116,11 +116,14 @@ impl SatFile {
           {
             session_template_vec.iter().filter_map(|sessiontemplate| {
               match &sessiontemplate.image {
-                sessiontemplate::Image::ImageRef(name) => Some(name),
+                sessiontemplate::Image::ImageRef { image_ref: name } => {
+                  Some(name)
+                }
                 sessiontemplate::Image::Ims { ims } => match ims {
                   sessiontemplate::ImsDetails::Name { name } => Some(name),
                   sessiontemplate::ImsDetails::Id { .. } => None,
                 },
+                sessiontemplate::Image::ImageName(name) => Some(name),
               }
             })
           }

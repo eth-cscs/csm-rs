@@ -26,7 +26,8 @@ pub enum ImsDetails {
 #[serde(untagged)] // <-- this is important. More info https://serde.rs/enum-representations.html#untagged
 pub enum Image {
   Ims { ims: ImsDetails },
-  ImageRef(String),
+  ImageRef { image_ref: String },
+  ImageName(String),
 }
 
 #[derive(Deserialize, Serialize, Debug)]

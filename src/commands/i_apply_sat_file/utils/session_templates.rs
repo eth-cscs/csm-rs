@@ -87,8 +87,9 @@ pub async fn validate_sat_file_session_template_section(
       session_template_yaml.name
     );
 
-    if let sessiontemplate::Image::ImageRef(ref_name_to_find) =
-      &session_template_yaml.image
+    if let sessiontemplate::Image::ImageRef {
+      image_ref: ref_name_to_find,
+    } = &session_template_yaml.image
     {
       // Validate image_ref (session_template.image.image_ref). Search in SAT file for any
       // image with images[].ref_name
@@ -177,6 +178,22 @@ pub async fn validate_sat_file_session_template_section(
             )));
           }
         }
+      }
+    } else if let sessiontemplate::Image::ImageName(image_name) =
+      &session_template_yaml.image
+    {
+      // Validate image name (session_template.image.image). Search in SAT file for any
+      log::info!("Searching image name '{}' in SAT file", image_name,);
+
+      let image_ref_name_found = image_yaml_vec
+        .iter()
+        .any(|image| image.name.eq(&image_name.clone()));
+
+      if !image_ref_name_found {
+        return Err(Error::Message(format!(
+          "Could not find image '{}' in SAT file. Exit",
+          image_name
+        )));
       }
     }
 
