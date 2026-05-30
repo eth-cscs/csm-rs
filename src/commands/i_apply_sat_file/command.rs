@@ -1,6 +1,9 @@
 //! Entry-point function for the apply-SAT-file workflow.
 
-use std::{collections::HashMap, time::Instant};
+use std::{
+  collections::{BTreeMap, HashMap},
+  time::Instant,
+};
 
 use serde_yaml::Value;
 
@@ -12,9 +15,7 @@ use crate::{
   cfs::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   commands::{
     apply_hw_cluster_pin,
-    i_apply_sat_file::utils::{
-      self, SatFile, configuration, image, sessiontemplate,
-    },
+    i_apply_sat_file::utils::{self, SatFile},
   },
   common::kubernetes::{self},
   error::Error,
@@ -106,28 +107,150 @@ pub async fn exec(
 > {
   // GET DATA
   //
-  // Get data from SAT YAML file
+  // Parse the SAT file and fetch the live CSM / k8s state it is validated
+  // against.
+  let (sat_file, cray_product_catalog, configuration_vec, image_vec, ims_recipe_vec) =
+    gather_sat_apply_data(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      k8s_api_url,
+      shasta_k8s_secrets,
+      &sat_template_file_yaml,
+    )
+    .await?;
+
+  // VALIDATION
   //
-  // Get hardware pattern from SAT YAML file
-  let hardware_yaml_value_vec_opt = sat_template_file_yaml
-    .get("hardware")
-    .and_then(Value::as_sequence);
+  // Validate the SAT file sections against the live CSM state.
+  validate_sat_file_sections(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    &sat_file,
+    hsm_group_available_vec,
+    &cray_product_catalog,
+    image_vec,
+    configuration_vec,
+    ims_recipe_vec,
+  )
+  .await?;
 
-  // Get CFS configurations from SAT YAML file
-  let configuration_yaml_vec_opt = sat_template_file_yaml
-    .get("configurations")
-    .and_then(Value::as_sequence);
+  // PROCESS SAT FILE
+  //
+  // Process "hardware" / "clusters" section in SAT file
+  process_hardware_section(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    &sat_template_file_yaml,
+    dry_run,
+  )
+  .await?;
 
-  // Get images from SAT YAML file
-  let _image_yaml_vec_opt = sat_template_file_yaml
-    .get("images")
-    .and_then(Value::as_sequence);
+  // Process "configurations" section in SAT file
+  let cfs_configurations_created = process_configurations_section(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    gitea_base_url,
+    gitea_token,
+    &cray_product_catalog,
+    &sat_template_file_yaml,
+    dry_run,
+    site_name,
+    overwrite,
+  )
+  .await?;
 
-  // Get images from SAT YAML file
-  let _bos_session_template_yaml_vec_opt = sat_template_file_yaml
-    .get("session_templates")
-    .and_then(Value::as_sequence);
+  // Process "images" section in SAT file
+  //
+  log::info!("Process images section in SAT file");
+  let image_struct_vec = sat_file.images.as_deref().unwrap_or_default();
+  // List of image.ref_name already processed
+  let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
+  #[allow(deprecated)]
+  let images_created: Vec<ImsImage> =
+    utils::i_import_images_section_in_sat_file(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      vault_base_url,
+      site_name,
+      k8s_api_url,
+      &mut ref_name_processed_hashmap,
+      image_struct_vec,
+      &cray_product_catalog,
+      ansible_verbosity_opt,
+      ansible_passthrough_opt,
+      debug_on_failure,
+      dry_run,
+      watch_logs,
+      timestamps,
+    )
+    .await?;
+
+  log::info!(
+    "Images created: {:?}",
+    images_created
+      .iter()
+      .filter_map(|i| i.id.as_deref())
+      .collect::<Vec<&str>>()
+  );
+
+  // Process "session_templates" section in SAT file
+  //
+  log::info!("Process session_template section in SAT file");
+  let (sessiontemplates_created, bos_sessions_created) =
+    utils::process_session_template_section_in_sat_file(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      ref_name_processed_hashmap,
+      hsm_group_available_vec,
+      sat_template_file_yaml,
+      reboot,
+      dry_run,
+    )
+    .await?;
+
+  Ok((
+    cfs_configurations_created,
+    images_created,
+    sessiontemplates_created,
+    bos_sessions_created,
+  ))
+}
+
+/// Parse the SAT file into a [`SatFile`] and fetch the live state it is
+/// validated against: the `cray-product-catalog` ConfigMap from Kubernetes
+/// and the current CFS configurations, IMS images and IMS recipes from CSM.
+#[allow(clippy::too_many_arguments)]
+async fn gather_sat_apply_data(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  k8s_api_url: &str,
+  shasta_k8s_secrets: serde_json::Value,
+  sat_template_file_yaml: &serde_yaml::Value,
+) -> Result<
+  (
+    SatFile,
+    BTreeMap<String, String>,
+    Vec<CfsConfigurationResponse>,
+    Vec<ImsImage>,
+    Vec<crate::ims::recipe::types::RecipeGetResponse>,
+  ),
+  Error,
+> {
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
   let kube_client =
     kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
@@ -138,7 +261,6 @@ pub async fn exec(
     kubernetes::try_get_configmap(kube_client, "cray-product-catalog").await?;
 
   // Get data from CSM
-  //
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
   let shasta_client = crate::ShastaClient::new(
@@ -158,33 +280,55 @@ pub async fn exec(
     duration
   );
 
-  let sat_file_struct: SatFile =
-    serde_yaml::from_str(&serde_yaml::to_string(&sat_template_file_yaml)?)?;
+  let sat_file: SatFile =
+    serde_yaml::from_str(&serde_yaml::to_string(sat_template_file_yaml)?)?;
 
-  let configuration_struct_vec: Vec<configuration::Configuration> =
-    sat_file_struct.configurations.unwrap_or_default();
+  Ok((
+    sat_file,
+    cray_product_catalog,
+    configuration_vec,
+    image_vec,
+    ims_recipe_vec,
+  ))
+}
 
-  let image_struct_vec: Vec<image::Image> =
-    sat_file_struct.images.unwrap_or_default();
+/// Validate the `configurations`, `images` and `session_templates` sections of
+/// the SAT file against the live CSM state.
+///
+/// `image_vec` / `configuration_vec` / `ims_recipe_vec` are the live CSM
+/// snapshots; they are consumed here (forwarded to the images validator).
+#[allow(clippy::too_many_arguments)]
+async fn validate_sat_file_sections(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  sat_file: &SatFile,
+  hsm_group_available_vec: &[String],
+  cray_product_catalog: &BTreeMap<String, String>,
+  image_vec: Vec<ImsImage>,
+  configuration_vec: Vec<CfsConfigurationResponse>,
+  ims_recipe_vec: Vec<crate::ims::recipe::types::RecipeGetResponse>,
+) -> Result<(), Error> {
+  let configuration_struct_vec =
+    sat_file.configurations.as_deref().unwrap_or_default();
+  let image_struct_vec = sat_file.images.as_deref().unwrap_or_default();
+  let bos_session_template_struct_vec =
+    sat_file.session_templates.as_deref().unwrap_or_default();
 
-  let bos_session_template_struct_vec: Vec<sessiontemplate::SessionTemplate> =
-    sat_file_struct.session_templates.unwrap_or_default();
-
-  // VALIDATION
-  //
   // Validate 'configurations' section
   utils::validate_sat_file_configurations_section(
-    &configuration_struct_vec,
-    &image_struct_vec,
-    &bos_session_template_struct_vec,
+    configuration_struct_vec,
+    image_struct_vec,
+    bos_session_template_struct_vec,
   )?;
 
   // Validate 'images' section
   utils::validate_sat_file_images_section(
-    &image_struct_vec,
-    &configuration_struct_vec,
+    image_struct_vec,
+    configuration_struct_vec,
     hsm_group_available_vec,
-    &cray_product_catalog,
+    cray_product_catalog,
     image_vec,
     configuration_vec,
     ims_recipe_vec,
@@ -196,20 +340,33 @@ pub async fn exec(
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    &image_struct_vec,
-    &configuration_struct_vec,
-    &bos_session_template_struct_vec,
+    image_struct_vec,
+    configuration_struct_vec,
+    bos_session_template_struct_vec,
     hsm_group_available_vec,
   )
   .await?;
 
-  // PROCESS SAT FILE
-  //
-  // Process "hardware" section in SAT file
+  Ok(())
+}
+
+/// Process the `hardware` section of the SAT file: apply component patterns to
+/// HSM groups (via [`apply_hw_cluster_pin`]) or update group membership from an
+/// explicit `nodespattern`.
+async fn process_hardware_section(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  sat_template_file_yaml: &serde_yaml::Value,
+  dry_run: bool,
+) -> Result<(), Error> {
+  let hardware_yaml_value_vec_opt = sat_template_file_yaml
+    .get("hardware")
+    .and_then(Value::as_sequence);
+
   log::info!("hardware pattern: {:?}", hardware_yaml_value_vec_opt);
 
-  // Process "clusters" section
-  //
   if let Some(hw_component_pattern_vec) = hardware_yaml_value_vec_opt {
     for hw_component_pattern in hw_component_pattern_vec {
       let target_hsm_group_name = hw_component_pattern
@@ -310,8 +467,29 @@ pub async fn exec(
     }
   }
 
-  // Process "configurations" section in SAT file
-  //
+  Ok(())
+}
+
+/// Process the `configurations` section of the SAT file, creating a CFS
+/// configuration for each entry and returning the created configurations.
+#[allow(clippy::too_many_arguments)]
+async fn process_configurations_section(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  gitea_base_url: &str,
+  gitea_token: &str,
+  cray_product_catalog: &BTreeMap<String, String>,
+  sat_template_file_yaml: &serde_yaml::Value,
+  dry_run: bool,
+  site_name: &str,
+  overwrite: bool,
+) -> Result<Vec<CfsConfigurationResponse>, Error> {
+  let configuration_yaml_vec_opt = sat_template_file_yaml
+    .get("configurations")
+    .and_then(Value::as_sequence);
+
   log::info!("Process configurations section in SAT file");
   let mut cfs_configurations_created: Vec<CfsConfigurationResponse> =
     Vec::new();
@@ -326,7 +504,7 @@ pub async fn exec(
         socks5_proxy,
         gitea_base_url,
         gitea_token,
-        &cray_product_catalog,
+        cray_product_catalog,
         configuration_yaml,
         dry_run,
         site_name,
@@ -339,63 +517,5 @@ pub async fn exec(
     cfs_configurations_created.push(cfs_configuration);
   }
 
-  // Process "images" section in SAT file
-  //
-  log::info!("Process images section in SAT file");
-  // List of image.ref_name already processed
-  let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
-
-  #[allow(deprecated)]
-  let images_created: Vec<ImsImage> =
-    utils::i_import_images_section_in_sat_file(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      vault_base_url,
-      site_name,
-      k8s_api_url,
-      &mut ref_name_processed_hashmap,
-      &image_struct_vec,
-      &cray_product_catalog,
-      ansible_verbosity_opt,
-      ansible_passthrough_opt,
-      debug_on_failure,
-      dry_run,
-      watch_logs,
-      timestamps,
-    )
-    .await?;
-
-  log::info!(
-    "Images created: {:?}",
-    images_created
-      .iter()
-      .filter_map(|i| i.id.as_deref())
-      .collect::<Vec<&str>>()
-  );
-
-  // Process "session_templates" section in SAT file
-  //
-  log::info!("Process session_template section in SAT file");
-  let (sessiontemplates_created, bos_sessions_created) =
-    utils::process_session_template_section_in_sat_file(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      ref_name_processed_hashmap,
-      hsm_group_available_vec,
-      sat_template_file_yaml,
-      reboot,
-      dry_run,
-    )
-    .await?;
-
-  Ok((
-    cfs_configurations_created,
-    images_created,
-    sessiontemplates_created,
-    bos_sessions_created,
-  ))
+  Ok(cfs_configurations_created)
 }
