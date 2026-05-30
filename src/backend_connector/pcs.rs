@@ -5,57 +5,35 @@ use manta_backend_dispatcher::{
   interfaces::pcs::PCSTrait,
   types::pcs::{
     power_status::types::PowerStatusAll as FrontEndPowerStatusAll,
-    transitions::types::TransitionResponse,
+    transitions::types::{TransitionResponse, TransitionStartOutput},
   },
 };
 
 use super::Csm;
 
 impl PCSTrait for Csm {
-  async fn power_on_sync(
+  async fn pcs_transitions_post(
     &self,
     auth_token: &str,
+    operation: &str,
     nodes: &[String],
-  ) -> Result<TransitionResponse, Error> {
+  ) -> Result<TransitionStartOutput, Error> {
     self
       .shasta_client()
-      .pcs_transitions_post_block(auth_token, "on", nodes)
+      .pcs_transitions_post(auth_token, operation, nodes)
       .await
       .map(Into::into)
       .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
   }
 
-  async fn power_off_sync(
+  async fn pcs_transitions_get(
     &self,
     auth_token: &str,
-    nodes: &[String],
-    force: bool,
+    transition_id: &str,
   ) -> Result<TransitionResponse, Error> {
-    let operation = if force { "force-off" } else { "soft-off" };
-
     self
       .shasta_client()
-      .pcs_transitions_post_block(auth_token, operation, nodes)
-      .await
-      .map(Into::into)
-      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
-  }
-
-  async fn power_reset_sync(
-    &self,
-    auth_token: &str,
-    nodes: &[String],
-    force: bool,
-  ) -> Result<TransitionResponse, Error> {
-    let operation = if force {
-      "hard-restart"
-    } else {
-      "soft-restart"
-    };
-
-    self
-      .shasta_client()
-      .pcs_transitions_post_block(auth_token, operation, nodes)
+      .pcs_transitions_get_by_id(auth_token, transition_id)
       .await
       .map(Into::into)
       .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
