@@ -30,8 +30,10 @@ use manta_backend_dispatcher::{
 
 use super::Csm;
 use crate::{
-  common::{kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault},
   commands::i_apply_sat_file::utils,
+  common::{
+    kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
+  },
 };
 
 impl SatTrait for Csm {
@@ -222,9 +224,11 @@ impl SatTrait for Csm {
           "SAT image value is not a valid YAML mapping: {e}"
         ))
       })?;
-    let image_struct: utils::image::Image =
-      serde_yaml::from_value(image_yaml).map_err(|e| {
-        Error::Message(format!("SAT image does not match the expected shape: {e}"))
+    let image_struct: utils::image::Image = serde_yaml::from_value(image_yaml)
+      .map_err(|e| {
+        Error::Message(format!(
+          "SAT image does not match the expected shape: {e}"
+        ))
       })?;
 
     // Live state the per-image creator depends on.
@@ -320,9 +324,7 @@ impl SatTrait for Csm {
       .map_err(|e| Error::Message(e.to_string()))?;
 
     let template = templates.pop().ok_or_else(|| {
-      Error::Message(
-        "session_template apply returned no template".to_string(),
-      )
+      Error::Message("session_template apply returned no template".to_string())
     })?;
     // If reboot was requested, a BosSession was created (and added to
     // the returned vec only in non-dry-run mode — that's the existing
