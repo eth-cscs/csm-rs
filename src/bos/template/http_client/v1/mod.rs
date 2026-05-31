@@ -1,7 +1,7 @@
 //! BOS session templates v1 — `ShastaClient` methods for
 //! `/bos/v1/sessiontemplate`.
 
-pub mod types;
+pub(crate) mod types;
 
 use crate::{
   ShastaClient, bos::template::http_client::v1::types::BosSessionTemplate,

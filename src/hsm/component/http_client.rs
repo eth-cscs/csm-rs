@@ -178,7 +178,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -208,7 +210,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -239,7 +243,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -271,7 +277,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -303,7 +311,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -334,7 +344,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }
@@ -362,7 +374,9 @@ impl ShastaClient {
           return Err(Error::Message(response.text().await?));
         }
         _ => {
-          return Err(Error::CsmError(response.json::<Value>().await?));
+          let status = response.status().as_u16();
+          let payload = response.json::<Value>().await?;
+          return Err(Error::csm_from_response(status, payload));
         }
       }
     }

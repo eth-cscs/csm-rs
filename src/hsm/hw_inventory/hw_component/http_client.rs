@@ -78,8 +78,9 @@ impl ShastaClient {
           });
         }
         _ => {
+          let status = response.status().as_u16();
           let error_payload = response.json::<Value>().await?;
-          return Err(Error::CsmError(error_payload));
+          return Err(Error::csm_from_response(status, error_payload));
         }
       }
     }

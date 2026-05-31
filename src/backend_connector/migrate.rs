@@ -41,7 +41,7 @@ impl MigrateRestoreTrait for Csm {
       overwrite_template,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }
 
@@ -63,6 +63,6 @@ impl MigrateBackupTrait for Csm {
       destination,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

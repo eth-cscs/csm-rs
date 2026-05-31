@@ -11,7 +11,6 @@ pub mod utils;
 
 use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
-#[allow(deprecated)]
 use crate::common::kubernetes::i_print_cfs_session_logs;
 
 use crate::{
@@ -101,12 +100,9 @@ pub async fn post(
   .await
 }
 
-/// Creates a CFS session and waits for it to finish.
-/// Optionally, it can also print the CFS session logs if `watch_logs` is set to true.
-#[deprecated(
-  since = "0.42.3-beta.71",
-  note = "this function prints CFS logs to stdout"
-)]
+/// Creates a CFS session and waits for it to finish. When `watch_logs`
+/// is true the session's container logs are streamed line-by-line
+/// through `log::info!` (no direct stdout writes).
 #[allow(clippy::too_many_arguments)]
 pub async fn i_post_sync(
   shasta_token: &str,
@@ -149,7 +145,6 @@ pub async fn i_post_sync(
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
         .await?;
 
-    #[allow(deprecated)]
     i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
 

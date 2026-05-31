@@ -22,3 +22,9 @@ pub mod recipe;
 /// Low-level S3 client used to upload/download IMS artifacts directly
 /// from the CSM-backing S3 store.
 pub mod s3_client;
+
+// Domain-root canonical names for the most commonly used IMS image
+// types. Callers should prefer these over the deeper
+// `image::http_client::types::*` paths so the internal layout can
+// evolve without rippling through every command.
+pub use image::http_client::types::{Image, Link, PatchImage};

@@ -30,7 +30,7 @@ impl AuthenticationTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     self.validate_api_token(&token).await?;
 
@@ -45,6 +45,6 @@ impl AuthenticationTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

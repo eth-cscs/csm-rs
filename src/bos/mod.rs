@@ -20,3 +20,9 @@ pub mod session;
 pub mod template;
 #[cfg(test)]
 pub mod tests;
+
+// Domain-root canonical names for the most commonly used BOS types.
+// Callers should prefer these over the deep `*::http_client::v2::types::*`
+// paths so an eventual v3 bump only needs to flip these re-exports.
+pub use session::http_client::v2::types::BosSession;
+pub use template::http_client::v2::types::BosSessionTemplate;

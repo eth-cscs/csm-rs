@@ -23,7 +23,7 @@ impl GroupTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     // Convert all HSM groups from mesa to infra
     let hsm_group_backend_vec = hsm_group_vec
@@ -45,7 +45,7 @@ impl GroupTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn add_group(
@@ -57,7 +57,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_post(auth_token, group.clone().into())
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     // let group: FrontEndGroup = group_csm.into();
     log::info!("Group created: {}", group_csm);
@@ -80,7 +80,7 @@ impl GroupTrait for Csm {
       hsm_group_name_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn get_group_map_and_filter_by_group_vec(
@@ -96,7 +96,7 @@ impl GroupTrait for Csm {
       hsm_name_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn get_group_map_and_filter_by_member_vec(
@@ -112,7 +112,7 @@ impl GroupTrait for Csm {
       member_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn get_all_groups(
@@ -124,7 +124,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_get_all(auth_token)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     // Convert all HSM groups from mesa to infra
     let hsm_group_vec = hsm_group_backend_vec
@@ -145,7 +145,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_get(auth_token, Some(&[hsm_name.to_string()]), None)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     // Error if more than one HSM group found
     if hsm_group_backend_vec.len() > 1 {
@@ -177,7 +177,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_get(auth_token, hsm_name_vec_opt, None)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     // Convert from HsmGroup (silla) to HsmGroup (infra)
     let mut hsm_group_vec = Vec::new();
@@ -198,7 +198,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_delete_group(auth_token, &label.to_string())
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn get_hsm_map_and_filter_by_hsm_name_vec(
@@ -214,7 +214,7 @@ impl GroupTrait for Csm {
       hsm_name_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn post_member(
@@ -231,7 +231,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_post_member(auth_token, group_label, member)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn add_members_to_group(
@@ -252,7 +252,7 @@ impl GroupTrait for Csm {
         new_member,
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
     }
 
     Ok(sol)
@@ -268,7 +268,7 @@ impl GroupTrait for Csm {
       .shasta_client()
       .hsm_group_delete_member(auth_token, group_label, xname)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn update_group_members(
@@ -288,7 +288,7 @@ impl GroupTrait for Csm {
       members_to_add,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   // HSM/GROUP
@@ -311,6 +311,6 @@ impl GroupTrait for Csm {
       dryrun,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

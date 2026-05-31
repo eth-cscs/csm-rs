@@ -2,36 +2,6 @@
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
-use manta_backend_dispatcher::types::{
-  ArtifactSummary as FrontEndArtifactSummary,
-  ArtifactType as FrontEndArtifactType, HSNNICFRUInfo as FrontEndHSNNICFRUInfo,
-  HSNNICLocationInfo as FrontEndHSNNICLocationInfo,
-  HWInvByFRUHSNNIC as FrontEndHWInvByFRUHSNNIC,
-  HWInvByFRUMemory as FrontEndHWInvByFRUMemory,
-  HWInvByFRUNode as FrontEndHWInvByFRUNode,
-  HWInvByFRUNodeAccel as FrontEndHWInvByFRUNodeAccel,
-  HWInvByFRUProcessor as FrontEndHWInvByFRUProcessor,
-  HWInvByLocHSNNIC as FrontEndHWInvByLocHSNNIC,
-  HWInvByLocMemory as FrontEndHWInvByLocMemory,
-  HWInvByLocNode as FrontEndHWInvByLocNode,
-  HWInvByLocNodeAccel as FrontEndHWInvByLocNodeAccel,
-  HWInvByLocProcessor as FrontEndHWInvByLocProcessor,
-  HWInventory as FrontEndHWInventory,
-  HWInventoryByLocation as FrontEndHWInventoryByLocation,
-  HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
-  MemoryLocation as FrontEndMemoryLocation,
-  MemorySummary as FrontEndMemorySummary,
-  NodeLocationInfo as FrontEndNodeLocationInfo,
-  NodeSummary as FrontEndNodeSummary,
-  ProcessorSummary as FrontEndProcessorSummary,
-  RedfishMemoryFRUInfo as FrontEndRedfishMemoryFRUInfo,
-  RedfishMemoryLocationInfo as FrontEndRedfishMemoryLocationInfo,
-  RedfishProcessorFRUInfo as FrontEndRedfishProcessorFRUInfo,
-  RedfishProcessorLocationInfo as FrontEndRedfishProcessorLocationInfo,
-  RedfishSystemFRUInfo as FrontEndRedfishSystemFRUInfo,
-  RedfishSystemLocationInfo as FrontEndRedfishSystemLocationInfo,
-};
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
@@ -41,6 +11,10 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 /// Generate bidirectional `From` impls for two structs with identical field
 /// names where each field has the same type on both sides (primitives,
 /// `Option<String>`, etc). Fields are moved unchanged.
+///
+/// Used by [`super::dispatcher_conv`] when the `manta-dispatcher` Cargo
+/// feature is enabled.
+#[allow(unused_macros)]
 macro_rules! bidirectional_from {
   ($our:ty, $fe:ty, [ $($field:ident),* $(,)? ]) => {
     impl From<$fe> for $our {
@@ -59,6 +33,10 @@ macro_rules! bidirectional_from {
 /// Like `bidirectional_from!` but each field is converted via `Into`.
 /// Appropriate when one or more field types differ between sides and each
 /// has its own paired `From` impls (so `.into()` recurses).
+///
+/// Used by [`super::dispatcher_conv`] when the `manta-dispatcher` Cargo
+/// feature is enabled.
+#[allow(unused_macros)]
 macro_rules! bidirectional_from_into {
   ($our:ty, $fe:ty, [ $($field:ident),* $(,)? ]) => {
     impl From<$fe> for $our {
@@ -81,15 +59,21 @@ macro_rules! bidirectional_from_into {
 ///   - `into`: converted via `.into()` (paired nested types)
 ///   - `opt_into`: `Option<T>` → `.map(Into::into)`
 ///   - `vec_into`: `Vec<T>` → `.into_iter().map(Into::into).collect()`
+///   - `opt_vec_into`: `Option<Vec<T>>` → `.map(|v| v.into_iter().map(Into::into).collect())`
 ///
 /// Any category may be omitted.
+///
+/// Used by [`super::dispatcher_conv`] when the `manta-dispatcher` Cargo
+/// feature is enabled.
+#[allow(unused_macros)]
 macro_rules! bidirectional_from_mixed {
   (
     $our:ty, $fe:ty,
     $(direct: [ $($df:ident),* $(,)? ],)?
     $(into: [ $($if:ident),* $(,)? ],)?
     $(opt_into: [ $($of:ident),* $(,)? ],)?
-    $(vec_into: [ $($vf:ident),* $(,)? ] $(,)?)?
+    $(vec_into: [ $($vf:ident),* $(,)? ],)?
+    $(opt_vec_into: [ $($ovf:ident),* $(,)? ] $(,)?)?
   ) => {
     impl From<$fe> for $our {
       fn from(v: $fe) -> Self {
@@ -98,6 +82,7 @@ macro_rules! bidirectional_from_mixed {
           $($($if: v.$if.into(),)*)?
           $($($of: v.$of.map(Into::into),)*)?
           $($($vf: v.$vf.into_iter().map(Into::into).collect(),)*)?
+          $($($ovf: v.$ovf.map(|vec| vec.into_iter().map(Into::into).collect()),)*)?
         }
       }
     }
@@ -108,6 +93,7 @@ macro_rules! bidirectional_from_mixed {
           $($($if: v.$if.into(),)*)?
           $($($of: v.$of.map(Into::into),)*)?
           $($($vf: v.$vf.into_iter().map(Into::into).collect(),)*)?
+          $($($ovf: v.$ovf.map(|vec| vec.into_iter().map(Into::into).collect()),)*)?
         }
       }
     }
@@ -142,52 +128,6 @@ pub enum ArtifactType {
   RouterBMC,
 }
 
-impl From<FrontEndArtifactType> for ArtifactType {
-  fn from(value: FrontEndArtifactType) -> Self {
-    match value {
-      FrontEndArtifactType::Memory => ArtifactType::Memory,
-      FrontEndArtifactType::Processor => ArtifactType::Processor,
-      FrontEndArtifactType::NodeAccel => ArtifactType::NodeAccel,
-      FrontEndArtifactType::NodeHsnNic => ArtifactType::NodeHsnNic,
-      FrontEndArtifactType::Drive => ArtifactType::Drive,
-      FrontEndArtifactType::CabinetPDU => ArtifactType::CabinetPDU,
-      FrontEndArtifactType::CabinetPDUPowerConnector => {
-        ArtifactType::CabinetPDUPowerConnector
-      }
-      FrontEndArtifactType::CMMRectifier => ArtifactType::CMMRectifier,
-      FrontEndArtifactType::NodeAccelRiser => ArtifactType::NodeAccelRiser,
-      FrontEndArtifactType::NodeEnclosurePowerSupplie => {
-        ArtifactType::NodeEnclosurePowerSupplie
-      }
-      FrontEndArtifactType::NodeBMC => ArtifactType::NodeBMC,
-      FrontEndArtifactType::RouterBMC => ArtifactType::RouterBMC,
-    }
-  }
-}
-
-impl From<ArtifactType> for FrontEndArtifactType {
-  fn from(val: ArtifactType) -> Self {
-    match val {
-      ArtifactType::Memory => FrontEndArtifactType::Memory,
-      ArtifactType::Processor => FrontEndArtifactType::Processor,
-      ArtifactType::NodeAccel => FrontEndArtifactType::NodeAccel,
-      ArtifactType::NodeHsnNic => FrontEndArtifactType::NodeHsnNic,
-      ArtifactType::Drive => FrontEndArtifactType::Drive,
-      ArtifactType::CabinetPDU => FrontEndArtifactType::CabinetPDU,
-      ArtifactType::CabinetPDUPowerConnector => {
-        FrontEndArtifactType::CabinetPDUPowerConnector
-      }
-      ArtifactType::CMMRectifier => FrontEndArtifactType::CMMRectifier,
-      ArtifactType::NodeAccelRiser => FrontEndArtifactType::NodeAccelRiser,
-      ArtifactType::NodeEnclosurePowerSupplie => {
-        FrontEndArtifactType::NodeEnclosurePowerSupplie
-      }
-      ArtifactType::NodeBMC => FrontEndArtifactType::NodeBMC,
-      ArtifactType::RouterBMC => FrontEndArtifactType::RouterBMC,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeSummary {
   pub xname: String,
@@ -197,13 +137,6 @@ pub struct NodeSummary {
   pub node_accels: Vec<ArtifactSummary>,
   pub node_hsn_nics: Vec<ArtifactSummary>,
 }
-
-bidirectional_from_mixed!(
-  NodeSummary,
-  FrontEndNodeSummary,
-  direct: [xname, r#type],
-  vec_into: [processors, memory, node_accels, node_hsn_nics]
-);
 
 impl NodeSummary {
   pub fn from_csm_value(hw_artifact_value: Value) -> Self {
@@ -284,12 +217,6 @@ pub struct ArtifactSummary {
   pub r#type: ArtifactType,
   pub info: Option<String>,
 }
-
-bidirectional_from_into!(
-  ArtifactSummary,
-  FrontEndArtifactSummary,
-  [xname, r#type, info]
-);
 
 impl ArtifactSummary {
   fn from_processor_value(processor_value: Value) -> Self {
@@ -460,38 +387,6 @@ pub struct RedfishProcessorFRUInfo {
   pub total_threads: Option<usize>,
 }
 
-impl From<FrontEndRedfishProcessorFRUInfo> for RedfishProcessorFRUInfo {
-  fn from(value: FrontEndRedfishProcessorFRUInfo) -> Self {
-    RedfishProcessorFRUInfo {
-      instruction_set: value.instruction_set,
-      manufacturer: value.manufacturer,
-      max_speed_mhz: value.max_speed_mhz,
-      model: value.model,
-      processor_architecture: value.processor_architecture,
-      processor_id: None,
-      processor_type: value.processor_type,
-      total_cores: value.total_cores,
-      total_threads: value.total_threads,
-    }
-  }
-}
-
-impl From<RedfishProcessorFRUInfo> for FrontEndRedfishProcessorFRUInfo {
-  fn from(val: RedfishProcessorFRUInfo) -> Self {
-    FrontEndRedfishProcessorFRUInfo {
-      instruction_set: val.instruction_set,
-      manufacturer: val.manufacturer,
-      max_speed_mhz: val.max_speed_mhz,
-      model: val.model,
-      processor_architecture: val.processor_architecture,
-      processor_id: None, // FIXME: Implement From and Into traits for this field/type
-      processor_type: val.processor_type,
-      total_cores: val.total_cores,
-      total_threads: val.total_threads,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUProcessor {
   #[serde(rename(serialize = "FRUID"))]
@@ -508,18 +403,6 @@ pub struct HWInvByFRUProcessor {
   #[serde(rename(serialize = "ProcessorFRUInfo"))]
   pub processor_fru_info: RedfishProcessorFRUInfo,
 }
-
-bidirectional_from_into!(
-  HWInvByFRUProcessor,
-  FrontEndHWInvByFRUProcessor,
-  [
-    fru_id,
-    r#type,
-    fru_sub_type,
-    hw_inventory_by_fru_type,
-    processor_fru_info
-  ]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishMemoryFRUInfo {
@@ -561,25 +444,6 @@ pub struct RedfishMemoryFRUInfo {
   pub serial_number: Option<String>,
 }
 
-bidirectional_from!(
-  RedfishMemoryFRUInfo,
-  FrontEndRedfishMemoryFRUInfo,
-  [
-    base_module_type,
-    bus_width_bits,
-    capacity_mib,
-    data_width_bits,
-    error_correction,
-    manufacturer,
-    memory_type,
-    memory_device_type,
-    operating_speed_mhz,
-    part_number,
-    rank_count,
-    serial_number,
-  ]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUMemory {
   #[serde(rename(serialize = "FRUID"))]
@@ -596,18 +460,6 @@ pub struct HWInvByFRUMemory {
   #[serde(rename(serialize = "MemoryFRUInfo"))]
   pub memory_fru_info: RedfishMemoryFRUInfo,
 }
-
-bidirectional_from_into!(
-  HWInvByFRUMemory,
-  FrontEndHWInvByFRUMemory,
-  [
-    fru_id,
-    r#type,
-    fru_sub_type,
-    hw_inventory_by_fru_type,
-    memory_fru_info
-  ]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUNodeAccel {
@@ -626,18 +478,6 @@ pub struct HWInvByFRUNodeAccel {
   pub node_accel_fru_info: RedfishProcessorFRUInfo, // NOTE: according to API
                                                     // docs, yes this is using the redfish for "processor"
 }
-
-bidirectional_from_into!(
-  HWInvByFRUNodeAccel,
-  FrontEndHWInvByFRUNodeAccel,
-  [
-    fru_id,
-    r#type,
-    fru_sub_type,
-    hw_inventory_by_fru_type,
-    node_accel_fru_info
-  ]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HSNNICFRUInfo {
@@ -658,12 +498,6 @@ pub struct HSNNICFRUInfo {
   pub serial_number: Option<String>,
 }
 
-bidirectional_from!(
-  HSNNICFRUInfo,
-  FrontEndHSNNICFRUInfo,
-  [manufacturer, model, part_number, sku, serial_number]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUHSNNIC {
   #[serde(rename(serialize = "FRUID"))]
@@ -680,18 +514,6 @@ pub struct HWInvByFRUHSNNIC {
   #[serde(rename(serialize = "HSNNICFRUInfo"))]
   pub hsn_nic_fru_info: HSNNICFRUInfo,
 }
-
-bidirectional_from_into!(
-  HWInvByFRUHSNNIC,
-  FrontEndHWInvByFRUHSNNIC,
-  [
-    fru_id,
-    r#type,
-    fru_sub_type,
-    hw_inventory_by_fru_type,
-    hsn_nic_fru_info
-  ]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventoryByFRU {
@@ -737,8 +559,6 @@ pub struct HWInvByLocChassis {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -766,8 +586,6 @@ pub struct HWInvByLocNodeEnclosure {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -789,8 +607,6 @@ pub struct HWInvByLocComputeModule {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -815,8 +631,6 @@ pub struct HWInvByLocHSNBoard {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -838,8 +652,6 @@ pub struct HWInvByLocRouterModule {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -862,8 +674,6 @@ pub struct HWInvByLocCabinet {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -888,8 +698,6 @@ pub struct HWInvByLocMgmtSwitch {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -911,8 +719,6 @@ pub struct HWInvByLocMgmtHLSwitch {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -934,8 +740,6 @@ pub struct HWInvByLocCDUMgmtSwitch {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -948,13 +752,11 @@ pub struct HWInvByLocCDUMgmtSwitch {
 pub struct ProcessorSummary {
   #[serde(rename(serialize = "Count"))]
   #[serde(skip_serializing_if = "Option::is_none")]
-  count: Option<u32>,
+  pub(super) count: Option<u32>,
   #[serde(rename(serialize = "Model"))]
   #[serde(skip_serializing_if = "Option::is_none")]
-  model: Option<String>,
+  pub(super) model: Option<String>,
 }
-
-bidirectional_from!(ProcessorSummary, FrontEndProcessorSummary, [count, model]);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemorySummary {
@@ -962,12 +764,6 @@ pub struct MemorySummary {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub total_system_memory_gib: Option<u32>,
 }
-
-bidirectional_from!(
-  MemorySummary,
-  FrontEndMemorySummary,
-  [total_system_memory_gib]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishSystemLocationInfo {
@@ -991,13 +787,6 @@ pub struct RedfishSystemLocationInfo {
   pub memory_summary: Option<MemorySummary>,
 }
 
-bidirectional_from_mixed!(
-  RedfishSystemLocationInfo,
-  FrontEndRedfishSystemLocationInfo,
-  direct: [id, name, description, hostname],
-  opt_into: [processor_summary, memory_summary],
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishProcessorLocationInfo {
   #[serde(rename(serialize = "Id"))]
@@ -1014,12 +803,6 @@ pub struct RedfishProcessorLocationInfo {
   pub socket: Option<String>,
 }
 
-bidirectional_from!(
-  RedfishProcessorLocationInfo,
-  FrontEndRedfishProcessorLocationInfo,
-  [id, name, description, socket]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocProcessor {
   #[serde(rename(serialize = "ID"))]
@@ -1033,22 +816,12 @@ pub struct HWInvByLocProcessor {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUProcessor>,
   #[serde(rename(serialize = "ProcessorLocationInfo"))]
   pub processor_location_info: RedfishProcessorLocationInfo,
 }
-
-bidirectional_from_mixed!(
-  HWInvByLocProcessor,
-  FrontEndHWInvByLocProcessor,
-  direct: [id, r#type, ordinal, status, hw_inventory_by_location_type],
-  into: [processor_location_info],
-  opt_into: [populated_fru],
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodeAccel {
@@ -1063,8 +836,6 @@ pub struct HWInvByLocNodeAccel {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUNodeAccel>,
@@ -1073,13 +844,6 @@ pub struct HWInvByLocNodeAccel {
   pub node_accel_location_info: Option<RedfishProcessorLocationInfo>, // NOTE: according to API
                                                                       // docs, yes this is using the redfish for "processor""
 }
-
-bidirectional_from_mixed!(
-  HWInvByLocNodeAccel,
-  FrontEndHWInvByLocNodeAccel,
-  direct: [id, r#type, ordinal, status, hw_inventory_by_location_type],
-  opt_into: [populated_fru, node_accel_location_info],
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishDriveLocationInfo {
@@ -1107,8 +871,6 @@ pub struct HWInvByLocDrive {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1133,12 +895,6 @@ pub struct MemoryLocation {
   pub slot: Option<u32>,
 }
 
-bidirectional_from!(
-  MemoryLocation,
-  FrontEndMemoryLocation,
-  [socket, memory_controller, channel, slot]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishMemoryLocationInfo {
   #[serde(rename(serialize = "Id"))]
@@ -1155,13 +911,6 @@ pub struct RedfishMemoryLocationInfo {
   pub memory_location: Option<MemoryLocation>,
 }
 
-bidirectional_from_mixed!(
-  RedfishMemoryLocationInfo,
-  FrontEndRedfishMemoryLocationInfo,
-  direct: [id, name, description],
-  opt_into: [memory_location],
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocMemory {
   #[serde(rename(serialize = "ID"))]
@@ -1175,22 +924,12 @@ pub struct HWInvByLocMemory {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUMemory>,
   #[serde(rename(serialize = "MemoryLocationInfo"))]
   pub memory_location_info: RedfishMemoryLocationInfo,
 }
-
-bidirectional_from_mixed!(
-  HWInvByLocMemory,
-  FrontEndHWInvByLocMemory,
-  direct: [id, r#type, ordinal, status, hw_inventory_by_location_type],
-  into: [memory_location_info],
-  opt_into: [populated_fru],
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishNodeAccelRiserLocationInfo {
@@ -1215,8 +954,6 @@ pub struct HWInvByLocNodeAccelRiser {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1238,12 +975,6 @@ pub struct HSNNICLocationInfo {
   pub description: Option<String>,
 }
 
-bidirectional_from!(
-  HSNNICLocationInfo,
-  FrontEndHSNNICLocationInfo,
-  [id, name, description]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocHSNNIC {
   #[serde(rename(serialize = "ID"))]
@@ -1257,8 +988,6 @@ pub struct HWInvByLocHSNNIC {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUHSNNIC>,
@@ -1267,14 +996,6 @@ pub struct HWInvByLocHSNNIC {
   #[serde(rename = "HSNNICLocationInfo")]
   pub hsn_nic_location_info: HSNNICLocationInfo,
 }
-
-bidirectional_from_mixed!(
-  HWInvByLocHSNNIC,
-  FrontEndHWInvByLocHSNNIC,
-  direct: [id, r#type, ordinal, status, hw_inventory_by_location_type],
-  into: [hsn_nic_location_info],
-  opt_into: [populated_fru],
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Hardware {
@@ -1296,8 +1017,6 @@ pub struct HWInvByLocNode {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUNode>,
@@ -1322,79 +1041,6 @@ pub struct HWInvByLocNode {
   #[serde(rename(serialize = "NodeHsnNICs"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_hsn_nics: Option<Vec<HWInvByLocHSNNIC>>,
-}
-
-impl From<FrontEndHWInvByLocNode> for HWInvByLocNode {
-  fn from(value: FrontEndHWInvByLocNode) -> Self {
-    HWInvByLocNode {
-      id: value.id,
-      r#type: value.r#type,
-      ordinal: value.ordinal,
-      status: value.status,
-      hw_inventory_by_location_type: value.hw_inventory_by_location_type,
-      populated_fru: value.populated_fru.map(HWInvByFRUNode::from),
-      node_location_info: value
-        .node_location_info
-        .map(RedfishSystemLocationInfo::from),
-      processors: value.processors.map(|processor_vec| {
-        processor_vec
-          .into_iter()
-          .map(HWInvByLocProcessor::from)
-          .collect()
-      }),
-      node_accels: value.node_accels.map(|node_accel_vec| {
-        node_accel_vec
-          .into_iter()
-          .map(HWInvByLocNodeAccel::from)
-          .collect()
-      }),
-      drives: None,
-      memory: value.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(HWInvByLocMemory::from).collect()
-      }),
-      node_accel_risers: None,
-      node_hsn_nics: value.node_hsn_nics.map(|node_hsn_nic_vec| {
-        node_hsn_nic_vec
-          .into_iter()
-          .map(HWInvByLocHSNNIC::from)
-          .collect()
-      }),
-    }
-  }
-}
-
-impl From<HWInvByLocNode> for FrontEndHWInvByLocNode {
-  fn from(val: HWInvByLocNode) -> Self {
-    FrontEndHWInvByLocNode {
-      id: val.id,
-      r#type: val.r#type,
-      ordinal: val.ordinal,
-      status: val.status,
-      hw_inventory_by_location_type: val.hw_inventory_by_location_type,
-      populated_fru: val.populated_fru.map(|v| v.into()),
-      node_location_info: val.node_location_info.map(|v| v.into()),
-      processors: val.processors.map(|processor_vec| {
-        processor_vec
-          .into_iter()
-          .map(|processor| processor.into())
-          .collect()
-      }),
-      node_accels: val.node_accels.map(|node_accel_vec| {
-        node_accel_vec
-          .into_iter()
-          .map(|node_accel| node_accel.into())
-          .collect()
-      }),
-      drives: None,
-      memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(|memory| memory.into()).collect()
-      }),
-      node_accel_risers: None,
-      node_hsn_nics: val.node_hsn_nics.map(|node_hsn_nic_vec| {
-        node_hsn_nic_vec.into_iter().map(|v| v.into()).collect()
-      }),
-    }
-  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1439,8 +1085,6 @@ pub struct HWInvByLocOutlet {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1462,8 +1106,6 @@ pub struct HWInvByLocPDU {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1498,14 +1140,12 @@ pub struct HWInvByLocCMMRectifier {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
   #[serde(rename(serialize = "CMMRectifierLocationInfo"))]
   #[serde(skip_serializing_if = "Option::is_none")]
-  cmm_rectifier_location_info: Option<RedfishCMMRectifierLocationInfo>,
+  pub cmm_rectifier_location_info: Option<RedfishCMMRectifierLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1531,8 +1171,6 @@ pub struct HWInvByLocNodePowerSupply {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1577,8 +1215,6 @@ pub struct HWInvByLocNodeBMC {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1600,8 +1236,6 @@ pub struct HWInvByLocRouterBMC {
   #[serde(rename(serialize = "Status"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByLocationType"))]
-  pub hw_inventory_by_location_type: String,
   #[serde(rename(serialize = "PopulatedFRU"))]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
@@ -1686,96 +1320,6 @@ pub struct HWInventory {
   pub router_bmc: Option<Vec<HWInvByLocRouterBMC>>,
 }
 
-impl From<FrontEndHWInventory> for HWInventory {
-  fn from(value: FrontEndHWInventory) -> Self {
-    HWInventory {
-      xname: value.xname,
-      format: value.format,
-      cabinets: None, // FIXME: Implement From and Into traits for this field/type
-      chassis: None, // FIXME: Implement From and Into traits for this field/type
-      compute_modules: None, // FIXME: Implement From and Into traits for this field/type
-      router_modules: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosures: None, // FIXME: Implement From and Into traits for this field/type
-      hsn_boards: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_hl_switches: None, // FIXME: Implement From and Into traits for this field/type
-      cdu_mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      nodes: value.nodes.map(|node_vec| {
-        node_vec.into_iter().map(HWInvByLocNode::from).collect()
-      }),
-      processors: value.processors.map(|processor_vec| {
-        processor_vec
-          .into_iter()
-          .map(HWInvByLocProcessor::from)
-          .collect()
-      }),
-      node_accels: value.node_accels.map(|node_accel_vec| {
-        node_accel_vec
-          .into_iter()
-          .map(HWInvByLocNodeAccel::from)
-          .collect()
-      }),
-      drives: None, // FIXME: Implement From and Into traits for this field/type
-      memory: value.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(HWInvByLocMemory::from).collect()
-      }),
-      cabinet_pdus: None, // FIXME: Implement From and Into traits for this field/type
-      cabinet_pdu_power_connectors: None, // FIXME: Implement From and Into traits for this field/type
-      cmm_rectifiers: None, // FIXME: Implement From and Into traits for this field/type
-      node_accel_risers: None, // FIXME: Implement From and Into traits for this field/type
-      node_hsn_nics: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosure_power_supplies: None, // FIXME: Implement From and Into traits for this field/type
-      node_bmc: None, // FIXME: Implement From and Into traits for this field/type
-      router_bmc: None, // FIXME: Implement From and Into traits for this field/type
-    }
-  }
-}
-
-impl From<HWInventory> for FrontEndHWInventory {
-  fn from(val: HWInventory) -> Self {
-    FrontEndHWInventory {
-      xname: val.xname,
-      format: val.format,
-      cabinets: None, // FIXME: Implement From and Into traits for this field/type
-      chassis: None, // FIXME: Implement From and Into traits for this field/type
-      compute_modules: None, // FIXME: Implement From and Into traits for this field/type
-      router_modules: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosures: None, // FIXME: Implement From and Into traits for this field/type
-      hsn_boards: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_hl_switches: None, // FIXME: Implement From and Into traits for this field/type
-      cdu_mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      nodes: val
-        .nodes
-        .map(|node_vec| node_vec.into_iter().map(|node| node.into()).collect()),
-      processors: val.processors.map(|processor_vec| {
-        processor_vec
-          .into_iter()
-          .map(|processor| processor.into())
-          .collect()
-      }),
-      node_accels: val.node_accels.map(|node_accel_vec| {
-        node_accel_vec
-          .into_iter()
-          .map(|node_accel| node_accel.into())
-          .collect()
-      }),
-      drives: None, // FIXME: Implement From and Into traits for this field/type
-      memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(|memory| memory.into()).collect()
-      }),
-      cabinet_pdus: None, // FIXME: Implement From and Into traits for this field/type
-      cabinet_pdu_power_connectors: None, // FIXME: Implement From and Into traits for this field/type
-      cmm_rectifiers: None, // FIXME: Implement From and Into traits for this field/type
-      node_accel_risers: None, // FIXME: Implement From and Into traits for this field/type
-      node_hsn_nics: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosure_power_supplies: None, // FIXME: Implement From and Into traits for this field/type
-      node_bmc: None, // FIXME: Implement From and Into traits for this field/type
-      router_bmc: None, // FIXME: Implement From and Into traits for this field/type
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUNode {
   #[serde(rename(serialize = "FRUID"))]
@@ -1792,18 +1336,6 @@ pub struct HWInvByFRUNode {
   #[serde(rename(serialize = "NodeFRUInfo"))]
   pub node_fru_info: RedfishSystemFRUInfo,
 }
-
-bidirectional_from_into!(
-  HWInvByFRUNode,
-  FrontEndHWInvByFRUNode,
-  [
-    fru_id,
-    r#type,
-    fru_sub_type,
-    hw_inventory_by_fru_type,
-    node_fru_info
-  ]
-);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishSystemFRUInfo {
@@ -1836,22 +1368,6 @@ pub struct RedfishSystemFRUInfo {
   pub uuid: Option<String>,
 }
 
-bidirectional_from!(
-  RedfishSystemFRUInfo,
-  FrontEndRedfishSystemFRUInfo,
-  [
-    asset_tag,
-    bios_version,
-    model,
-    manufacturer,
-    part_number,
-    serial_number,
-    sku,
-    system_type,
-    uuid,
-  ]
-);
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeLocationInfo {
   #[serde(rename = "Id")]
@@ -1873,77 +1389,38 @@ pub struct NodeLocationInfo {
   pub memory_summary: Option<MemorySummary>,
 }
 
-bidirectional_from_mixed!(
-  NodeLocationInfo,
-  FrontEndNodeLocationInfo,
-  direct: [id, name, description, hostname],
-  opt_into: [processor_summary, memory_summary],
-);
-
+// Internally tagged: the CSM/HSM wire format puts the discriminator in
+// the `HWInventoryByLocationType` field alongside the variant's other
+// fields. Serde reads it to choose the variant, then deserializes the
+// remaining fields into the inner struct — which is why each leaf
+// struct no longer carries a `hw_inventory_by_location_type` field of
+// its own. The tag value must match the Rust variant name (e.g.
+// `HWInvByLocCabinet`).
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)] // <-- this is important. More info https://serde.rs/enum-representations.html#untagged
+#[serde(tag = "HWInventoryByLocationType")]
 pub enum HWInventoryByLocation {
-  HWInvByLocNode(HWInvByLocNode),
-  HWInvByLocProcessor(HWInvByLocProcessor),
-  HWInvByLocNodeAccel(HWInvByLocNodeAccel),
-  HWInvByLocMemory(HWInvByLocMemory),
+  HWInvByLocCDUMgmtSwitch(HWInvByLocCDUMgmtSwitch),
+  HWInvByLocCMMRectifier(HWInvByLocCMMRectifier),
+  HWInvByLocCabinet(HWInvByLocCabinet),
+  HWInvByLocChassis(HWInvByLocChassis),
+  HWInvByLocComputeModule(HWInvByLocComputeModule),
+  HWInvByLocDrive(HWInvByLocDrive),
+  HWInvByLocHSNBoard(HWInvByLocHSNBoard),
   HWInvByLocHSNNIC(HWInvByLocHSNNIC),
-}
-
-impl From<FrontEndHWInventoryByLocation> for HWInventoryByLocation {
-  fn from(f: FrontEndHWInventoryByLocation) -> Self {
-    match f {
-      FrontEndHWInventoryByLocation::HWInvByLocNode(hwinv_by_loc_nnode) => {
-        HWInventoryByLocation::HWInvByLocNode(HWInvByLocNode::from(
-          hwinv_by_loc_nnode,
-        ))
-      }
-      FrontEndHWInventoryByLocation::HWInvByLocProcessor(
-        hwinv_by_loc_processor,
-      ) => HWInventoryByLocation::HWInvByLocProcessor(
-        HWInvByLocProcessor::from(hwinv_by_loc_processor),
-      ),
-      FrontEndHWInventoryByLocation::HWInvByLocNodeAccel(
-        hwinv_by_node_accel,
-      ) => HWInventoryByLocation::HWInvByLocNodeAccel(
-        HWInvByLocNodeAccel::from(hwinv_by_node_accel),
-      ),
-      FrontEndHWInventoryByLocation::HWInvByLocMemory(hwinv_by_loc_memory) => {
-        HWInventoryByLocation::HWInvByLocMemory(HWInvByLocMemory::from(
-          hwinv_by_loc_memory,
-        ))
-      }
-      FrontEndHWInventoryByLocation::HWInvByLocHSNNIC(hwinv_by_loc_hsnnic) => {
-        HWInventoryByLocation::HWInvByLocHSNNIC(HWInvByLocHSNNIC::from(
-          hwinv_by_loc_hsnnic,
-        ))
-      }
-    }
-  }
-}
-
-impl From<HWInventoryByLocation> for FrontEndHWInventoryByLocation {
-  fn from(val: HWInventoryByLocation) -> Self {
-    match val {
-      HWInventoryByLocation::HWInvByLocNode(f) => {
-        FrontEndHWInventoryByLocation::HWInvByLocNode(f.into())
-      }
-      HWInventoryByLocation::HWInvByLocProcessor(f) => {
-        FrontEndHWInventoryByLocation::HWInvByLocProcessor(f.into())
-      }
-      HWInventoryByLocation::HWInvByLocNodeAccel(f) => {
-        FrontEndHWInventoryByLocation::HWInvByLocNodeAccel(f.into())
-      }
-      HWInventoryByLocation::HWInvByLocMemory(f) => {
-        FrontEndHWInventoryByLocation::HWInvByLocMemory(f.into())
-      }
-      HWInventoryByLocation::HWInvByLocHSNNIC(hwinv_by_loc_hsnnic) => {
-        FrontEndHWInventoryByLocation::HWInvByLocHSNNIC(
-          hwinv_by_loc_hsnnic.into(),
-        )
-      }
-    }
-  }
+  HWInvByLocMemory(HWInvByLocMemory),
+  HWInvByLocMgmtHLSwitch(HWInvByLocMgmtHLSwitch),
+  HWInvByLocMgmtSwitch(HWInvByLocMgmtSwitch),
+  HWInvByLocNode(HWInvByLocNode),
+  HWInvByLocNodeAccel(HWInvByLocNodeAccel),
+  HWInvByLocNodeAccelRiser(HWInvByLocNodeAccelRiser),
+  HWInvByLocNodeBMC(HWInvByLocNodeBMC),
+  HWInvByLocNodeEnclosure(HWInvByLocNodeEnclosure),
+  HWInvByLocNodePowerSupply(HWInvByLocNodePowerSupply),
+  HWInvByLocOutlet(HWInvByLocOutlet),
+  HWInvByLocPDU(HWInvByLocPDU),
+  HWInvByLocProcessor(HWInvByLocProcessor),
+  HWInvByLocRouterBMC(HWInvByLocRouterBMC),
+  HWInvByLocRouterModule(HWInvByLocRouterModule),
 }
 
 /// struct used in POST and GET endpoints that manage multiple instances of 'HWInventoryByLocation'
@@ -1954,32 +1431,3 @@ pub struct HWInventoryByLocationList {
   pub hardware: Option<Vec<HWInventoryByLocation>>,
 }
 
-impl From<FrontEndHWInventoryByLocationList> for HWInventoryByLocationList {
-  fn from(value: FrontEndHWInventoryByLocationList) -> Self {
-    HWInventoryByLocationList {
-      hardware: value.hardware.map(|hardware_vec| {
-        hardware_vec
-          .into_iter()
-          .map(|hardware_inventory_by_location| {
-            hardware_inventory_by_location.into()
-          })
-          .collect()
-      }),
-    }
-  }
-}
-
-impl From<HWInventoryByLocationList> for FrontEndHWInventoryByLocationList {
-  fn from(val: HWInventoryByLocationList) -> Self {
-    FrontEndHWInventoryByLocationList {
-      hardware: val.hardware.map(|hardware_vec| {
-        hardware_vec
-          .into_iter()
-          .map(|hardware_inventory_by_location| {
-            hardware_inventory_by_location.into()
-          })
-          .collect()
-      }),
-    }
-  }
-}

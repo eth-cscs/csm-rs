@@ -272,9 +272,15 @@ pub mod http_client {
       response.json().await.map_err(Error::NetError)
     } else {
       // Bespoke: wraps the text body in a synthetic JSON object so callers
-      // can match on `CsmError`. Preserving the existing shape.
+      // can match on `CsmError`. status=0 marks "no real HTTP status from
+      // CSM" — this is a gitea error smuggled through CsmError; a future
+      // cleanup should introduce a proper GiteaError variant.
+      let status = response.status().as_u16();
       let payload = response.text().await?;
-      Err(Error::CsmError(serde_json::json!({ "message": payload })))
+      Err(Error::csm_from_response(
+        status,
+        serde_json::json!({ "detail": payload }),
+      ))
     }
   }
 

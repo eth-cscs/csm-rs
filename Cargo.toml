@@ -16,10 +16,20 @@ publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["manta-dispatcher"]
+# Enables the `backend_connector` adapter, the `From<csm_rs::Error> for
+# manta_backend_dispatcher::Error` impl, and the PCS/HSM type
+# conversions to/from the dispatcher. Users who only want csm-rs as a
+# direct CSM client (not behind Manta) can disable this with
+# `default-features = false` to skip pulling the dispatcher dep and its
+# transitive deps.
+manta-dispatcher = ["dep:manta-backend-dispatcher"]
+
 [dependencies]
 # manta-backend-dispatcher = "1.0.0-beta.3"
 
-manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
+manta-backend-dispatcher = { path = "../manta-backend-dispatcher", optional = true } # Only for development purposes
 # manta-backend-dispatcher = { git = "https://github.com/eth-cscs/manta-backend-dispatcher", branch="feature/power-status" } # Only for development purposes
 
 strum = { version = "0.27.1", default-features = false }

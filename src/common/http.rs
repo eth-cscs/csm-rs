@@ -42,8 +42,9 @@ pub(crate) async fn handle_json_response<T: DeserializeOwned>(
   if response.status().is_success() {
     response.json::<T>().await.map_err(Error::NetError)
   } else {
+    let status = response.status().as_u16();
     let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-    Err(Error::CsmError(payload))
+    Err(Error::csm_from_response(status, payload))
   }
 }
 
@@ -162,9 +163,10 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
         });
       }
       _ => {
+        let status = response.status().as_u16();
         let payload =
           response.json::<Value>().await.map_err(Error::NetError)?;
-        return Err(Error::CsmError(payload));
+        return Err(Error::csm_from_response(status, payload));
       }
     }
   }
@@ -240,8 +242,9 @@ pub(crate) async fn delete(
   if response.status().is_success() {
     Ok(())
   } else {
+    let status = response.status().as_u16();
     let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-    Err(Error::CsmError(payload))
+    Err(Error::csm_from_response(status, payload))
   }
 }
 
@@ -346,8 +349,8 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       get_json(&client, &format!("{}/widgets/missing", server.uri()), "tok")
         .await;
     match result {
-      Err(Error::CsmError(v)) => {
-        assert_eq!(v["detail"], "not found")
+      Err(Error::CsmError { detail, .. }) => {
+        assert_eq!(detail, "not found")
       }
       other => panic!("expected CsmError, got {:?}", other),
     }
@@ -456,8 +459,8 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     let result =
       delete(&client, &format!("{}/widgets/locked", server.uri()), "tok").await;
     match result {
-      Err(Error::CsmError(v)) => {
-        assert_eq!(v["detail"], "in use")
+      Err(Error::CsmError { detail, .. }) => {
+        assert_eq!(detail, "in use")
       }
       other => panic!("expected CsmError, got {:?}", other),
     }
@@ -536,8 +539,8 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     let result: Result<Widget, _> =
       handle_json_or_request_error(response).await;
     match result {
-      Err(Error::CsmError(v)) => {
-        assert_eq!(v["detail"], "db unavailable")
+      Err(Error::CsmError { detail, .. }) => {
+        assert_eq!(detail, "db unavailable")
       }
       other => panic!("expected CsmError, got {:?}", other),
     }

@@ -52,7 +52,7 @@ impl ConsoleTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?,
+      .map_err(Error::from)?,
     };
 
     let mut attached: AttachedProcess =
@@ -63,7 +63,7 @@ impl ConsoleTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     let mut terminal_size_writer: Sender<TerminalSize> =
       attached.terminal_size().ok_or_else(|| {
@@ -126,7 +126,7 @@ impl ConsoleTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?,
+      .map_err(Error::from)?,
     };
 
     let mut attached: AttachedProcess =
@@ -137,7 +137,7 @@ impl ConsoleTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     let mut terminal_size_writer: Sender<TerminalSize> =
       attached.terminal_size().ok_or_else(|| {

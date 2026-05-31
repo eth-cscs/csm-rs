@@ -1,18 +1,15 @@
 //! Restore a system from the bundle produced by [`crate::commands::migrate_backup`].
 
-use crate::bos::template::http_client::v2::types::BosSessionTemplate;
+use crate::bos::BosSessionTemplate;
 use crate::cfs::configuration::http_client::v3::types::{
   cfs_configuration_request::CfsConfigurationRequest,
   cfs_configuration_response::CfsConfigurationResponse,
 };
 use crate::hsm::group::types::Group;
 use crate::ims;
-use crate::ims::image::{
-  http_client::types::{Image, Link},
-  utils::get_by_name,
-  utils::get_fuzzy,
-};
+use crate::ims::image::utils::{get_by_name, get_fuzzy};
 use crate::ims::s3_client::BAR_FORMAT;
+use crate::ims::{Image, Link};
 use chrono::Local;
 use humansize::DECIMAL;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -26,7 +23,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::error::Error;
-use crate::ims::image::http_client::types::PatchImage;
+use crate::ims::PatchImage;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Artifact {

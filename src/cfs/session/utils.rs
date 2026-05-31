@@ -8,7 +8,6 @@ use crate::{
     types::Group,
   },
 };
-use std::io::{self, Write};
 
 use super::http_client::v2::types::CfsSessionGetResponse;
 use globset::Glob;
@@ -327,8 +326,6 @@ pub async fn wait_cfs_session_to_finish(
       })?;
 
     if cfs_session_status != "complete" && i < max {
-      log::info!("\x1B[2K"); // Clear current line
-      io::stdout().flush()?;
       log::info!(
         "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
         cfs_session_id,
@@ -336,7 +333,6 @@ pub async fn wait_cfs_session_to_finish(
         i,
         max
       );
-      io::stdout().flush()?;
 
       tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 

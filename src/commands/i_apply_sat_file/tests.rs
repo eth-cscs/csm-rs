@@ -5,8 +5,11 @@ use crate::{
     CfsConfigurationResponse, Layer,
   },
   commands::i_apply_sat_file::utils::{
-    configuration, get_image_name_or_ref_name_to_process_struct,
-    get_next_image_in_sat_file_to_process_struct, image,
+    configuration, image,
+    images::{
+      get_image_name_or_ref_name_to_process_struct,
+      get_next_image_in_sat_file_to_process_struct,
+    },
     validate_sat_file_images_section,
   },
   error::Error,

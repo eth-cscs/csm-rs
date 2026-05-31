@@ -14,11 +14,36 @@ use serde::{Deserialize, Serialize};
 
 use self::sessiontemplate::SessionTemplate;
 
+/// One entry in the SAT file's `hardware` section: either a component
+/// pattern (`pattern`, applied via `apply_hw_cluster_pin`) or an
+/// explicit node-membership update (`nodespattern`). Exactly one of
+/// the two should be set; the workflow checks `pattern` first.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct HardwarePattern {
+  /// HSM group to pin / membership-update against.
+  pub target: String,
+  /// HSM group from which to draw members.
+  pub parent: String,
+  /// Component pattern to evaluate against `parent` and apply to
+  /// `target`. When present, takes precedence over `nodespattern`.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub pattern: Option<String>,
+  /// Comma-separated explicit xname list to add to `target` (members
+  /// of `target` are preserved; only the diff is applied).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub nodespattern: Option<String>,
+}
+
 /// Deserialised representation of a SAT (System Admin Toolkit) YAML
-/// file: up to three top-level sections describing CFS configurations
-/// to create, IMS images to build, and BOS session templates to apply.
+/// file: up to four top-level sections describing HSM group hardware
+/// patterns, CFS configurations to create, IMS images to build, and
+/// BOS session templates to apply.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SatFile {
+  /// HSM group hardware patterns (mirrors the SAT `hardware`
+  /// section).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub hardware: Option<Vec<HardwarePattern>>,
   /// CFS configurations to create (mirrors the SAT `configurations`
   /// section).
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -211,23 +236,38 @@ pub mod image;
 pub mod configuration;
 
 /// Legacy SAT `images` section types kept for backward compatibility.
-pub mod sat_file_image_old;
+pub(crate) mod sat_file_image_old;
 
 /// CFS configuration creation helpers driven by a SAT file's
 /// `configurations` section.
-pub mod configurations;
+pub(crate) mod configurations;
 /// IMS image build helpers driven by a SAT file's `images` section.
-pub mod images;
+pub(crate) mod images;
 /// BOS session template creation helpers driven by a SAT file's
 /// `session_templates` section.
-pub mod session_templates;
+pub(crate) mod session_templates;
 
-// Re-export functions at the original `utils::*` paths so existing callers
-// (manta, tests.rs, command.rs, etc.) keep compiling without changes.
-pub use configurations::*;
-pub use images::*;
-pub use session_templates::*;
+// Re-export the orchestration helpers actually called through
+// `utils::name` at the original paths. Restricted to `pub(crate)` —
+// these are stages of the SAT-file apply workflow, not building blocks
+// an external consumer should depend on. Public entry points are
+// `SatFile`, `HardwarePattern`, and `command::exec` (plus
+// `Csm::apply_sat_file`). Helpers that are reached through their
+// submodule path (e.g. `utils::images::i_create_image_*` from
+// `backend_connector/sat.rs`) or only used inside the leaf submodule
+// are intentionally not re-exported here.
+pub(crate) use configurations::{
+  create_cfs_configuration_from_sat_file,
+  validate_sat_file_configurations_section,
+};
+pub(crate) use images::{
+  i_import_images_section_in_sat_file, validate_sat_file_images_section,
+};
+pub(crate) use session_templates::{
+  process_session_template_section_in_sat_file,
+  validate_sat_file_session_template_section,
+};
 
 /// Helpers for reading the in-cluster `cray-product-catalog`
 /// ConfigMap used during SAT-file apply.
-pub mod hpe_products;
+pub(crate) mod hpe_products;

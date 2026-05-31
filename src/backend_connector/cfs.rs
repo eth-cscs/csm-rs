@@ -32,7 +32,7 @@ impl CfsTrait for Csm {
   async fn get_cfs_health(&self) -> Result<(), Error> {
     crate::cfs::health::test_connectivity_to_backend(self.base_url.as_str())
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn post_session(
@@ -48,7 +48,7 @@ impl CfsTrait for Csm {
       .cfs_session_v3_post(shasta_token, &session.clone().into())
       .await
       .map(|cfs_session| cfs_session.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   /// Fetch CFS sessions. Ref: <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>.
@@ -94,7 +94,7 @@ impl CfsTrait for Csm {
           .map(|cfs_session| cfs_session.into())
           .collect::<Vec<CfsSessionGetResponse>>()
       })
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn get_and_filter_sessions(
@@ -127,11 +127,8 @@ impl CfsTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      // .map_err(|e| Error::Message(e.to_string()))?;
-      .map_err(|e: crate::error::Error| {
-        let manta_error: manta_backend_dispatcher::error::Error = e.into();
-        manta_error
-      })?;
+      // .map_err(Error::from)?;
+      .map_err(Error::from)?;
 
     let (hsm_group_name_vec, xname_vec) = if !hsm_group_name_vec.is_empty() {
       // Filter HSM groups based on argument
@@ -211,11 +208,8 @@ impl CfsTrait for Csm {
       is_succeded_opt,
     )
     .await
-    // .map_err(|e| Error::Message(e.to_string()))?;
-    .map_err(|e: crate::error::Error| {
-      let manta_error: manta_backend_dispatcher::error::Error = e.into();
-      manta_error
-    })?;
+    // .map_err(Error::from)?;
+    .map_err(Error::from)?;
 
     crate::cfs::session::utils::filter(
       &mut cfs_session_vec,
@@ -226,11 +220,8 @@ impl CfsTrait for Csm {
       limit_number_opt,
       jwt_ops::is_user_admin(shasta_token),
     )
-    // .map_err(|e| Error::Message(e.to_string()))?;
-    .map_err(|e: crate::error::Error| {
-      let manta_error: manta_backend_dispatcher::error::Error = e.into();
-      manta_error
-    })?;
+    // .map_err(Error::from)?;
+    .map_err(Error::from)?;
 
     if cfs_session_vec.is_empty() {
       return Err(Error::SessionNotFound);
@@ -348,7 +339,7 @@ impl CfsTrait for Csm {
       dry_run,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn create_configuration_from_repos(
@@ -368,7 +359,7 @@ impl CfsTrait for Csm {
             repo_name_vec,
             local_git_commit_vec,
             playbook_file_name_opt,
-        ).await.map_err(|e| Error::Message(e.to_string()))?.into())
+        ).await.map_err(Error::from)?.into())
   }
 
   async fn get_configuration(
@@ -386,7 +377,7 @@ impl CfsTrait for Csm {
         configuration_name_opt.map(|elem| elem.as_str()),
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()));
+      .map_err(Error::from);
 
     cfs_configuration_vec
       .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
@@ -418,10 +409,7 @@ impl CfsTrait for Csm {
     )
     .await
     .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
-    .map_err(|e: crate::error::Error| {
-      let manta_error: manta_backend_dispatcher::error::Error = e.into();
-      manta_error
-    })
+    .map_err(Error::from)
   }
 
   async fn get_configuration_layer_details(
@@ -466,7 +454,7 @@ impl CfsTrait for Csm {
     )
     .await
     .map(|cfs_configuration| cfs_configuration.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn get_session_logs_stream(
@@ -492,7 +480,7 @@ impl CfsTrait for Csm {
         self.socks5_proxy.as_deref(),
       )
       .await
-      .map_err(|e| Error::Message(format!("{e}")))?,
+      .map_err(Error::from)?,
     };
 
     let client = kubernetes::get_client(
@@ -501,7 +489,7 @@ impl CfsTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(format!("{e}")))?;
+    .map_err(Error::from)?;
 
     let (log_stream_git_clone, exit_code) =
       kubernetes::get_cfs_session_init_container_git_clone_logs_stream(
@@ -510,7 +498,7 @@ impl CfsTrait for Csm {
         timestamps,
       )
       .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
+      .map_err(Error::from)?;
 
     if exit_code != 0 {
       log::error!(
@@ -528,7 +516,7 @@ impl CfsTrait for Csm {
         timestamps,
       )
       .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
+      .map_err(Error::from)?;
 
     let log_stream_ansible =
       kubernetes::get_cfs_session_container_ansible_logs_stream(
@@ -537,7 +525,7 @@ impl CfsTrait for Csm {
         timestamps,
       )
       .await
-      .map_err(|e| Error::Message(format!("{e}")))?;
+      .map_err(Error::from)?;
 
     // NOTE: here is where we convert from impl AsyncBufRead to Pin<Box<dyn AsyncBufRead>>
     // through dynamic dispatch
@@ -567,7 +555,7 @@ impl CfsTrait for Csm {
       enabled,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   // Get all CFS sessions, IMS images and BOS sessiontemplates related to a CFS configuration
@@ -612,7 +600,7 @@ impl CfsTrait for Csm {
         }),
       )
     })
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn get_cfs_components(
@@ -643,6 +631,6 @@ impl CfsTrait for Csm {
           .map(|component| component.into())
           .collect()
       })
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 }

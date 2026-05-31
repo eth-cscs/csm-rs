@@ -201,7 +201,7 @@ async fn ims_public_keys_v3_get_single_returns_some_on_exactly_one_match() {
 
 #[tokio::test]
 async fn ims_image_post_sends_json_body_to_v3_images() {
-  use csm_rs::ims::image::http_client::types::Image;
+  use csm_rs::ims::Image;
   let server = MockServer::start().await;
   Mock::given(method("POST"))
     .and(path("/ims/v3/images"))

@@ -23,7 +23,7 @@ impl PCSTrait for Csm {
       .pcs_transitions_post(auth_token, operation, nodes)
       .await
       .map(Into::into)
-      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn pcs_transitions_get(
@@ -36,7 +36,7 @@ impl PCSTrait for Csm {
       .pcs_transitions_get_by_id(auth_token, transition_id)
       .await
       .map(Into::into)
-      .map_err(|e: crate::error::Error| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn power_status(
@@ -61,6 +61,6 @@ impl PCSTrait for Csm {
         log::info!("return value from async fn power_status : {:?}", status);
         status.into()
       })
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 }

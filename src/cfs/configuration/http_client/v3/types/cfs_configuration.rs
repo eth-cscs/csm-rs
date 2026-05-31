@@ -1,5 +1,3 @@
-use manta_backend_dispatcher::types::cfs::cfs_configuration_details::LayerDetails as FrontendLayerDetails;
-
 use std::fmt;
 
 /// Struct used by get_configuration when only one CFS configuration is fetched. This means we will
@@ -49,36 +47,6 @@ pub struct LayerDetails {
   pub branch: String,
   pub tag: String,
   pub playbook: String, // pub most_recent_commit: bool,
-}
-
-impl From<FrontendLayerDetails> for LayerDetails {
-  fn from(frontend_layer_details: FrontendLayerDetails) -> Self {
-    Self {
-      name: frontend_layer_details.name,
-      repo_name: frontend_layer_details.repo_name,
-      commit_id: frontend_layer_details.commit_id,
-      author: frontend_layer_details.author,
-      commit_date: frontend_layer_details.commit_date,
-      branch: frontend_layer_details.branch,
-      tag: frontend_layer_details.tag,
-      playbook: frontend_layer_details.playbook,
-    }
-  }
-}
-
-impl From<LayerDetails> for FrontendLayerDetails {
-  fn from(val: LayerDetails) -> Self {
-    FrontendLayerDetails {
-      name: val.name,
-      repo_name: val.repo_name,
-      commit_id: val.commit_id,
-      author: val.author,
-      commit_date: val.commit_date,
-      branch: val.branch,
-      tag: val.tag,
-      playbook: val.playbook,
-    }
-  }
 }
 
 impl LayerDetails {

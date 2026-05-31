@@ -1,6 +1,12 @@
 //! CFS sessions v3 — `ShastaClient` methods for `/cfs/v3/sessions`.
 
-pub mod types;
+pub(crate) mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// CFS v3 session mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;
 
 use crate::{
   ShastaClient,

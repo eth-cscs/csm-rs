@@ -100,14 +100,11 @@ pub fn get_image_name_or_ref_name_to_process_struct(
   }
 }
 
-#[deprecated(
-  since = "0.86.2",
-  note = "this function prints cfs session logs to stdout"
-)]
-#[allow(clippy::too_many_arguments)]
 /// Build every entry in the SAT file's `images` section: import the
-/// base recipe / image and run the associated CFS session, optionally
-/// streaming logs to stdout.
+/// base recipe / image and run the associated CFS session. When
+/// `watch_logs` is true the CFS session's container logs are streamed
+/// line-by-line through `log::info!`.
+#[allow(clippy::too_many_arguments)]
 pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -149,7 +146,6 @@ pub async fn i_import_images_section_in_sat_file(
     Vec::new();
 
   while let Some(image_yaml) = &next_image_to_process_opt {
-    #[allow(deprecated)]
     let image = i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
@@ -191,14 +187,11 @@ pub async fn i_import_images_section_in_sat_file(
   Ok(images_created)
 }
 
-#[deprecated(
-  since = "0.86.2",
-  note = "this function prints cfs session logs to stdout"
-)]
-#[allow(clippy::too_many_arguments)]
 /// Build one image entry from a SAT file YAML node: resolve the base
 /// (recipe or existing image), create the IMS image, kick off a CFS
-/// session, and (optionally) stream its logs to stdout.
+/// session, and (optionally) stream its container logs through
+/// `log::info!` (no direct stdout writes).
+#[allow(clippy::too_many_arguments)]
 pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -237,7 +230,6 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
 
   // Create CFS session to build image
   if !dry_run {
-    #[allow(deprecated)]
     let cfs_session_rslt = cfs::session::i_post_sync(
       shasta_token,
       shasta_base_url,

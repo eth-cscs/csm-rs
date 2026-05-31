@@ -63,7 +63,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
         )
       },
     )
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn delete(
@@ -87,6 +87,6 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
       bos_sessiontemplate_name_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

@@ -1,6 +1,12 @@
 //! CFS components v2 — `ShastaClient` methods for `/cfs/v2/components`.
 
-pub mod types;
+pub(crate) mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// CFS v2 component mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;
 
 use std::time::Instant;
 

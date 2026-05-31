@@ -1,8 +1,3 @@
-use manta_backend_dispatcher::types::cfs::cfs_configuration_request::{
-  AdditionalInventory as FrontEndAdditionalInventory,
-  CfsConfigurationRequest as FrontEndCfsConfigurationRequest,
-  Layer as FrontEndLayer, SpecialParameter as FrontEndSpecialParameter,
-};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -38,46 +33,6 @@ pub struct Layer {
   pub special_parameters: Option<Vec<SpecialParameter>>,
 }
 
-impl From<FrontEndLayer> for Layer {
-  fn from(front_end_layer: FrontEndLayer) -> Self {
-    Self {
-      name: front_end_layer.name,
-      clone_url: front_end_layer.clone_url,
-      source: front_end_layer.source,
-      playbook: front_end_layer.playbook,
-      commit: front_end_layer.commit,
-      branch: front_end_layer.branch,
-      special_parameters: front_end_layer.special_parameters.map(
-        |special_parameters| {
-          special_parameters
-            .into_iter()
-            .map(|special_parameter| special_parameter.into())
-            .collect()
-        },
-      ),
-    }
-  }
-}
-
-impl From<Layer> for FrontEndLayer {
-  fn from(val: Layer) -> Self {
-    FrontEndLayer {
-      name: val.name,
-      clone_url: val.clone_url,
-      source: val.source,
-      playbook: val.playbook,
-      commit: val.commit,
-      branch: val.branch,
-      special_parameters: val.special_parameters.map(|special_parameters| {
-        special_parameters
-          .into_iter()
-          .map(|special_parameter| special_parameter.into())
-          .collect()
-      }),
-    }
-  }
-}
-
 impl Layer {
   pub fn new(
     name: Option<String>,
@@ -106,22 +61,6 @@ pub struct SpecialParameter {
   pub ims_required_dkms: Option<bool>,
 }
 
-impl From<FrontEndSpecialParameter> for SpecialParameter {
-  fn from(front_end_special_parameter: FrontEndSpecialParameter) -> Self {
-    Self {
-      ims_required_dkms: front_end_special_parameter.ims_required_dkms,
-    }
-  }
-}
-
-impl From<SpecialParameter> for FrontEndSpecialParameter {
-  fn from(val: SpecialParameter) -> Self {
-    FrontEndSpecialParameter {
-      ims_required_dkms: val.ims_required_dkms,
-    }
-  }
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AdditionalInventory {
   pub name: Option<String>,
@@ -131,65 +70,11 @@ pub struct AdditionalInventory {
   pub branch: Option<String>,
 }
 
-impl From<FrontEndAdditionalInventory> for AdditionalInventory {
-  fn from(front_end_additional_inventory: FrontEndAdditionalInventory) -> Self {
-    Self {
-      name: front_end_additional_inventory.name,
-      clone_url: front_end_additional_inventory.clone_url,
-      source: front_end_additional_inventory.source,
-      commit: front_end_additional_inventory.commit,
-      branch: front_end_additional_inventory.branch,
-    }
-  }
-}
-
-impl From<AdditionalInventory> for FrontEndAdditionalInventory {
-  fn from(val: AdditionalInventory) -> Self {
-    FrontEndAdditionalInventory {
-      name: val.name,
-      clone_url: val.clone_url,
-      source: val.source,
-      commit: val.commit,
-      branch: val.branch,
-    }
-  }
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CfsConfigurationRequest {
   pub description: Option<String>,
   pub layers: Option<Vec<Layer>>,
   pub additional_inventory: Option<AdditionalInventory>,
-}
-
-impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
-  fn from(
-    front_end_cfs_configuration_request: FrontEndCfsConfigurationRequest,
-  ) -> Self {
-    Self {
-      description: front_end_cfs_configuration_request.description,
-      layers: front_end_cfs_configuration_request
-        .layers
-        .map(|layer_vec| layer_vec.into_iter().map(Layer::from).collect()),
-      additional_inventory: front_end_cfs_configuration_request
-        .additional_inventory
-        .map(|additional_inventory| additional_inventory.into()),
-    }
-  }
-}
-
-impl From<CfsConfigurationRequest> for FrontEndCfsConfigurationRequest {
-  fn from(val: CfsConfigurationRequest) -> Self {
-    FrontEndCfsConfigurationRequest {
-      description: val.description,
-      layers: val
-        .layers
-        .map(|layer_vec| layer_vec.into_iter().map(Layer::into).collect()),
-      additional_inventory: val
-        .additional_inventory
-        .map(|additional_inventory| additional_inventory.into()),
-    }
-  }
 }
 
 impl Default for CfsConfigurationRequest {

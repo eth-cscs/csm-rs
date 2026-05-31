@@ -1,10 +1,3 @@
-use manta_backend_dispatcher::types::cfs::cfs_configuration_response::{
-  AdditionalInventory as FrontEndAdditionalInventory,
-  CfsConfigurationResponse as FrontendCfsConfigurationResponse,
-  CfsConfigurationVecResponse as FrontendCfsConfigurationVecResponse,
-  Layer as FrontendLayer, Next as FrontendNext,
-};
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -22,31 +15,6 @@ pub struct Layer {
   // pub source: Option<String>,
 }
 
-impl From<FrontendLayer> for Layer {
-  fn from(frontend_layer: FrontendLayer) -> Self {
-    Self {
-      name: frontend_layer.name,
-      clone_url: frontend_layer.clone_url,
-      commit: frontend_layer.commit,
-      playbook: frontend_layer.playbook,
-      branch: frontend_layer.branch,
-    }
-  }
-}
-
-impl From<Layer> for FrontendLayer {
-  fn from(val: Layer) -> Self {
-    FrontendLayer {
-      name: val.name,
-      clone_url: val.clone_url,
-      source: None,
-      commit: val.commit,
-      playbook: val.playbook,
-      branch: val.branch,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AdditionalInventory {
   #[serde(rename = "cloneUrl")]
@@ -60,28 +28,6 @@ pub struct AdditionalInventory {
   pub branch: Option<String>,
 }
 
-impl From<FrontEndAdditionalInventory> for AdditionalInventory {
-  fn from(value: FrontEndAdditionalInventory) -> Self {
-    Self {
-      clone_url: value.clone_url,
-      commit: value.commit,
-      name: value.name,
-      branch: value.branch,
-    }
-  }
-}
-
-impl From<AdditionalInventory> for FrontEndAdditionalInventory {
-  fn from(val: AdditionalInventory) -> Self {
-    FrontEndAdditionalInventory {
-      clone_url: val.clone_url,
-      commit: val.commit,
-      name: val.name,
-      branch: val.branch,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsConfigurationResponse {
   pub name: String,
@@ -93,83 +39,17 @@ pub struct CfsConfigurationResponse {
   pub additional_inventory: Option<AdditionalInventory>,
 }
 
-impl From<FrontendCfsConfigurationResponse> for CfsConfigurationResponse {
-  fn from(value: FrontendCfsConfigurationResponse) -> Self {
-    CfsConfigurationResponse {
-      name: value.name,
-      last_updated: value.last_updated,
-      layers: value.layers.into_iter().map(Layer::from).collect(),
-      additional_inventory: value
-        .additional_inventory
-        .map(AdditionalInventory::from),
-    }
-  }
-}
-
-impl From<CfsConfigurationResponse> for FrontendCfsConfigurationResponse {
-  fn from(val: CfsConfigurationResponse) -> Self {
-    FrontendCfsConfigurationResponse {
-      name: val.name,
-      last_updated: val.last_updated,
-      layers: val.layers.into_iter().map(Into::into).collect(),
-      additional_inventory: val.additional_inventory.map(Into::into),
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsConfigurationVecResponse {
   pub configurations: Vec<CfsConfigurationResponse>,
   pub next: Option<Next>,
 }
 
-impl From<FrontendCfsConfigurationVecResponse> for CfsConfigurationVecResponse {
-  fn from(value: FrontendCfsConfigurationVecResponse) -> Self {
-    CfsConfigurationVecResponse {
-      configurations: value
-        .configurations
-        .into_iter()
-        .map(CfsConfigurationResponse::from)
-        .collect(),
-      next: value.next.map(Next::from),
-    }
-  }
-}
-
-impl From<CfsConfigurationVecResponse> for FrontendCfsConfigurationVecResponse {
-  fn from(val: CfsConfigurationVecResponse) -> Self {
-    FrontendCfsConfigurationVecResponse {
-      configurations: val.configurations.into_iter().map(Into::into).collect(),
-      next: val.next.map(Into::into),
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Next {
-  limit: Option<u8>,
-  after_id: Option<String>,
-  in_use: Option<bool>,
-}
-
-impl From<FrontendNext> for Next {
-  fn from(value: FrontendNext) -> Self {
-    Next {
-      limit: value.limit,
-      after_id: value.after_id,
-      in_use: value.in_use,
-    }
-  }
-}
-
-impl From<Next> for FrontendNext {
-  fn from(val: Next) -> Self {
-    FrontendNext {
-      limit: val.limit,
-      after_id: val.after_id,
-      in_use: val.in_use,
-    }
-  }
+  pub(super) limit: Option<u8>,
+  pub(super) after_id: Option<String>,
+  pub(super) in_use: Option<bool>,
 }
 
 impl Layer {

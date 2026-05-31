@@ -16,7 +16,7 @@ impl BootParametersTrait for Csm {
       .shasta_client()
       .bss_bootparameters_get_all(auth_token)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
@@ -35,7 +35,7 @@ impl BootParametersTrait for Csm {
       .shasta_client()
       .bss_bootparameters_get_multiple(auth_token, nodes)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
@@ -54,7 +54,7 @@ impl BootParametersTrait for Csm {
       .shasta_client()
       .bss_bootparameters_post(auth_token, boot_parameters.clone().into())
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn update_bootparameters(
@@ -66,7 +66,7 @@ impl BootParametersTrait for Csm {
       .shasta_client()
       .bss_bootparameters_patch(auth_token, &boot_parameter.clone().into())
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn delete_bootparameters(

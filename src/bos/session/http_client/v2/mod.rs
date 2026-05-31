@@ -1,6 +1,12 @@
 //! BOS sessions v2 — `ShastaClient` methods for `/bos/v2/sessions`.
 
-pub mod types;
+pub(crate) mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// BOS v2 session mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;
 
 use types::BosSession;
 

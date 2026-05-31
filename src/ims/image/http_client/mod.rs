@@ -1,6 +1,12 @@
 //! `ShastaClient` methods for `/ims/v3/images`.
 
-pub mod types;
+pub(crate) mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// IMS image mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;
 
 use serde_json::Value;
 

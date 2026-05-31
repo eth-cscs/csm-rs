@@ -89,9 +89,8 @@ impl SatTrait for Csm {
       socks5_proxy,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
-    #[allow(deprecated)]
     let (configurations, images, session_templates, sessions) =
       crate::commands::i_apply_sat_file::command::exec(
         shasta_token,
@@ -116,7 +115,7 @@ impl SatTrait for Csm {
         dry_run,
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     Ok((
       configurations.into_iter().map(Into::into).collect(),
@@ -165,15 +164,15 @@ impl SatTrait for Csm {
       socks5_proxy,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
     let kube_client =
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
         .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+        .map_err(Error::from)?;
     let cray_product_catalog =
       kubernetes::try_get_configmap(kube_client, "cray-product-catalog")
         .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+        .map_err(Error::from)?;
 
     let cfs_configuration = utils::create_cfs_configuration_from_sat_file(
       shasta_token,
@@ -189,7 +188,7 @@ impl SatTrait for Csm {
       overwrite,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     Ok(cfs_configuration.into())
   }
@@ -239,17 +238,16 @@ impl SatTrait for Csm {
       socks5_proxy,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
     let kube_client =
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
         .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+        .map_err(Error::from)?;
     let cray_product_catalog =
       kubernetes::try_get_configmap(kube_client, "cray-product-catalog")
         .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+        .map_err(Error::from)?;
 
-    #[allow(deprecated)]
     let image = utils::images::i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
@@ -269,7 +267,7 @@ impl SatTrait for Csm {
       timestamps,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     Ok(image.into())
   }
@@ -321,7 +319,7 @@ impl SatTrait for Csm {
         dry_run,
       )
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     let template = templates.pop().ok_or_else(|| {
       Error::Message("session_template apply returned no template".to_string())
@@ -361,6 +359,6 @@ impl ApplyHwClusterPin for Csm {
       delete_empty_parent_hsm_group,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

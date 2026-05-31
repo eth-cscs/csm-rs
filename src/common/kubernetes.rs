@@ -158,16 +158,12 @@ pub async fn get_client(
 /// containers of the pod backing `cfs_session_name` in order, retrying
 /// the pod-lookup up to three times.
 ///
-/// **Deprecated**: writes directly to stdout, which is unsuitable for
-/// library consumers. Compose
+/// Emits each line through `log::info!`, so output is routed by the
+/// caller's `log` backend (no direct stdout writes). Callers wanting
+/// to consume the lines themselves should compose
 /// [`get_cfs_session_init_container_git_clone_logs_stream`],
 /// [`get_cfs_session_container_inventory_logs_stream`], and
-/// [`get_cfs_session_container_ansible_logs_stream`] with your own
-/// writer instead.
-#[deprecated(
-  since = "0.42.3-beta.71",
-  note = "this function prints CFS logs to stdout"
-)]
+/// [`get_cfs_session_container_ansible_logs_stream`] instead.
 pub async fn i_print_cfs_session_logs(
   client: kube::Client,
   cfs_session_name: &str,

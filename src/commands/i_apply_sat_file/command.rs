@@ -8,10 +8,7 @@ use std::{
 use serde_yaml::Value;
 
 use crate::{
-  bos::{
-    session::http_client::v2::types::BosSession,
-    template::http_client::v2::types::BosSessionTemplate,
-  },
+  bos::{BosSession, BosSessionTemplate},
   cfs::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
   commands::{
     apply_hw_cluster_pin,
@@ -20,8 +17,36 @@ use crate::{
   common::kubernetes::{self},
   error::Error,
   hsm::group::utils::update_hsm_group_members,
-  ims::image::http_client::types::Image as ImsImage,
+  ims::Image as ImsImage,
 };
+
+/// Borrowed bundle of connection, auth, and feature-flag inputs shared
+/// across every phase of `apply_sat_file`. Replaces what used to be 17
+/// individually-threaded `exec` arguments propagating through the
+/// `gather`/`validate`/`process_*` helpers; per-phase state (live CSM
+/// snapshots, the parsed SAT file, mutable ref-name maps) is still
+/// passed separately so the context can stay immutable and trivially
+/// shareable across `await` points.
+struct SatApplyContext<'a> {
+  shasta_token: &'a str,
+  shasta_base_url: &'a str,
+  shasta_root_cert: &'a [u8],
+  socks5_proxy: Option<&'a str>,
+  vault_base_url: &'a str,
+  site_name: &'a str,
+  k8s_api_url: &'a str,
+  gitea_base_url: &'a str,
+  gitea_token: &'a str,
+  hsm_group_available_vec: &'a [String],
+  ansible_verbosity: Option<u8>,
+  ansible_passthrough: Option<&'a str>,
+  reboot: bool,
+  watch_logs: bool,
+  timestamps: bool,
+  debug_on_failure: bool,
+  overwrite: bool,
+  dry_run: bool,
+}
 
 /// Apply a SAT (System Admin Toolkit) template file against a Shasta system.
 ///
@@ -65,15 +90,9 @@ use crate::{
 /// live CSM state fails, or any underlying API call (CFS, IMS, BOS, HSM,
 /// Kubernetes) fails.
 ///
-/// # Deprecated
-///
-/// Marked deprecated since 0.86.2 because it streams CFS session logs
-/// directly to stdout, which is unsuitable for library consumers; prefer
-/// composing the lower-level `cfs`/`bos`/`ims` APIs in new code.
-#[deprecated(
-  since = "0.86.2",
-  note = "this function prints cfs session logs to stdout"
-)]
+/// When `watch_logs` is true the CFS-session container logs are
+/// streamed line-by-line through `log::info!`; output is routed by the
+/// caller's `log` backend rather than written directly to stdout.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
@@ -105,17 +124,34 @@ pub async fn exec(
   ),
   Error,
 > {
+  let ctx = SatApplyContext {
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    vault_base_url,
+    site_name,
+    k8s_api_url,
+    gitea_base_url,
+    gitea_token,
+    hsm_group_available_vec,
+    ansible_verbosity: ansible_verbosity_opt,
+    ansible_passthrough: ansible_passthrough_opt,
+    reboot,
+    watch_logs,
+    timestamps,
+    debug_on_failure,
+    overwrite,
+    dry_run,
+  };
+
   // GET DATA
   //
   // Parse the SAT file and fetch the live CSM / k8s state it is validated
   // against.
   let (sat_file, cray_product_catalog, configuration_vec, image_vec, ims_recipe_vec) =
     gather_sat_apply_data(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      k8s_api_url,
+      &ctx,
       shasta_k8s_secrets,
       &sat_template_file_yaml,
     )
@@ -125,12 +161,8 @@ pub async fn exec(
   //
   // Validate the SAT file sections against the live CSM state.
   validate_sat_file_sections(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
+    &ctx,
     &sat_file,
-    hsm_group_available_vec,
     &cray_product_catalog,
     image_vec,
     configuration_vec,
@@ -141,29 +173,13 @@ pub async fn exec(
   // PROCESS SAT FILE
   //
   // Process "hardware" / "clusters" section in SAT file
-  process_hardware_section(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &sat_template_file_yaml,
-    dry_run,
-  )
-  .await?;
+  process_hardware_section(&ctx, &sat_file).await?;
 
   // Process "configurations" section in SAT file
   let cfs_configurations_created = process_configurations_section(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    gitea_base_url,
-    gitea_token,
+    &ctx,
     &cray_product_catalog,
     &sat_template_file_yaml,
-    dry_run,
-    site_name,
-    overwrite,
   )
   .await?;
 
@@ -174,25 +190,24 @@ pub async fn exec(
   // List of image.ref_name already processed
   let mut ref_name_processed_hashmap: HashMap<String, String> = HashMap::new();
 
-  #[allow(deprecated)]
   let images_created: Vec<ImsImage> =
     utils::i_import_images_section_in_sat_file(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      vault_base_url,
-      site_name,
-      k8s_api_url,
+      ctx.shasta_token,
+      ctx.shasta_base_url,
+      ctx.shasta_root_cert,
+      ctx.socks5_proxy,
+      ctx.vault_base_url,
+      ctx.site_name,
+      ctx.k8s_api_url,
       &mut ref_name_processed_hashmap,
       image_struct_vec,
       &cray_product_catalog,
-      ansible_verbosity_opt,
-      ansible_passthrough_opt,
-      debug_on_failure,
-      dry_run,
-      watch_logs,
-      timestamps,
+      ctx.ansible_verbosity,
+      ctx.ansible_passthrough,
+      ctx.debug_on_failure,
+      ctx.dry_run,
+      ctx.watch_logs,
+      ctx.timestamps,
     )
     .await?;
 
@@ -209,15 +224,15 @@ pub async fn exec(
   log::info!("Process session_template section in SAT file");
   let (sessiontemplates_created, bos_sessions_created) =
     utils::process_session_template_section_in_sat_file(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
+      ctx.shasta_token,
+      ctx.shasta_base_url,
+      ctx.shasta_root_cert,
+      ctx.socks5_proxy,
       ref_name_processed_hashmap,
-      hsm_group_available_vec,
+      ctx.hsm_group_available_vec,
       sat_template_file_yaml,
-      reboot,
-      dry_run,
+      ctx.reboot,
+      ctx.dry_run,
     )
     .await?;
 
@@ -232,13 +247,8 @@ pub async fn exec(
 /// Parse the SAT file into a [`SatFile`] and fetch the live state it is
 /// validated against: the `cray-product-catalog` ConfigMap from Kubernetes
 /// and the current CFS configurations, IMS images and IMS recipes from CSM.
-#[allow(clippy::too_many_arguments)]
 async fn gather_sat_apply_data(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  k8s_api_url: &str,
+  ctx: &SatApplyContext<'_>,
   shasta_k8s_secrets: serde_json::Value,
   sat_template_file_yaml: &serde_yaml::Value,
 ) -> Result<
@@ -252,9 +262,12 @@ async fn gather_sat_apply_data(
   Error,
 > {
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
-  let kube_client =
-    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
-      .await?;
+  let kube_client = kubernetes::get_client(
+    ctx.k8s_api_url,
+    shasta_k8s_secrets,
+    ctx.socks5_proxy,
+  )
+  .await?;
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
@@ -264,14 +277,14 @@ async fn gather_sat_apply_data(
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
   let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
+    ctx.shasta_base_url,
+    ctx.shasta_root_cert.to_vec(),
+    ctx.socks5_proxy.map(str::to_owned),
   )?;
   let (configuration_vec, image_vec, ims_recipe_vec) = tokio::try_join!(
-    shasta_client.cfs_configuration_v2_get_all(shasta_token),
-    shasta_client.ims_image_get_all(shasta_token),
-    shasta_client.ims_recipe_get(shasta_token, None),
+    shasta_client.cfs_configuration_v2_get_all(ctx.shasta_token),
+    shasta_client.ims_image_get_all(ctx.shasta_token),
+    shasta_client.ims_recipe_get(ctx.shasta_token, None),
   )?;
 
   let duration = start.elapsed();
@@ -297,14 +310,9 @@ async fn gather_sat_apply_data(
 ///
 /// `image_vec` / `configuration_vec` / `ims_recipe_vec` are the live CSM
 /// snapshots; they are consumed here (forwarded to the images validator).
-#[allow(clippy::too_many_arguments)]
 async fn validate_sat_file_sections(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
+  ctx: &SatApplyContext<'_>,
   sat_file: &SatFile,
-  hsm_group_available_vec: &[String],
   cray_product_catalog: &BTreeMap<String, String>,
   image_vec: Vec<ImsImage>,
   configuration_vec: Vec<CfsConfigurationResponse>,
@@ -327,7 +335,7 @@ async fn validate_sat_file_sections(
   utils::validate_sat_file_images_section(
     image_struct_vec,
     configuration_struct_vec,
-    hsm_group_available_vec,
+    ctx.hsm_group_available_vec,
     cray_product_catalog,
     image_vec,
     configuration_vec,
@@ -336,14 +344,14 @@ async fn validate_sat_file_sections(
 
   // Validate 'session_template' section
   utils::validate_sat_file_session_template_section(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
+    ctx.shasta_token,
+    ctx.shasta_base_url,
+    ctx.shasta_root_cert,
+    ctx.socks5_proxy,
     image_struct_vec,
     configuration_struct_vec,
     bos_session_template_struct_vec,
-    hsm_group_available_vec,
+    ctx.hsm_group_available_vec,
   )
   .await?;
 
@@ -354,115 +362,88 @@ async fn validate_sat_file_sections(
 /// HSM groups (via [`apply_hw_cluster_pin`]) or update group membership from an
 /// explicit `nodespattern`.
 async fn process_hardware_section(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  sat_template_file_yaml: &serde_yaml::Value,
-  dry_run: bool,
+  ctx: &SatApplyContext<'_>,
+  sat_file: &SatFile,
 ) -> Result<(), Error> {
-  let hardware_yaml_value_vec_opt = sat_template_file_yaml
-    .get("hardware")
-    .and_then(Value::as_sequence);
+  let hardware_patterns = sat_file.hardware.as_deref().unwrap_or_default();
+  log::info!("hardware pattern: {:?}", hardware_patterns);
 
-  log::info!("hardware pattern: {:?}", hardware_yaml_value_vec_opt);
+  for hw in hardware_patterns {
+    let target_hsm_group_name = hw.target.as_str();
+    let parent_hsm_group_name = hw.parent.as_str();
 
-  if let Some(hw_component_pattern_vec) = hardware_yaml_value_vec_opt {
-    for hw_component_pattern in hw_component_pattern_vec {
-      let target_hsm_group_name = hw_component_pattern
-        .get("target")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-          Error::Message(
-            "SAT file: hardware pattern missing 'target'".to_string(),
-          )
-        })?;
-      let parent_hsm_group_name = hw_component_pattern
-        .get("parent")
-        .and_then(Value::as_str)
-        .ok_or_else(|| {
-          Error::Message(
-            "SAT file: hardware pattern missing 'parent'".to_string(),
-          )
-        })?;
-
-      if let Some(pattern) =
-        hw_component_pattern.get("pattern").and_then(Value::as_str)
-      {
-        log::info!(
-          "Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'",
+    if let Some(pattern) = hw.pattern.as_deref() {
+      log::info!(
+        "Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'",
+        pattern,
+        target_hsm_group_name,
+        parent_hsm_group_name
+      );
+      // When applying a SAT file, assume the caller does not want to
+      // create new HSM groups or delete empty parent HSM groups (the
+      // last three booleans below). This could be made configurable.
+      if ctx.dry_run {
+        log::info!("Dry run: Create HSM groups based on hardware pattern");
+      } else {
+        apply_hw_cluster_pin::command::exec(
+          ctx.shasta_token,
+          ctx.shasta_base_url,
+          ctx.shasta_root_cert,
+          ctx.socks5_proxy,
+          target_hsm_group_name,
+          parent_hsm_group_name,
           pattern,
-          target_hsm_group_name,
-          parent_hsm_group_name
-        );
-        // When applying a SAT file, I'm assuming the user doesn't want to create new HSM groups or delete empty parent hsm groups
-        // But this could be changed.
-        if dry_run {
-          log::info!("Dry run: Create HSM groups based on hardware pattern");
-        } else {
-          apply_hw_cluster_pin::command::exec(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            socks5_proxy,
-            target_hsm_group_name,
-            parent_hsm_group_name,
-            pattern,
-            true,
-            false,
-            false,
-          )
-          .await?;
-        }
-      } else if let Some(nodes) = hw_component_pattern
-        .get("nodespattern")
-        .and_then(Value::as_str)
-      {
-        let hsm_group_members_vec: Vec<String> =
-          crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            socks5_proxy,
-            &[target_hsm_group_name.to_string()],
-          )
-          .await?;
-        let new_target_hsm_group_members_vec: Vec<String> = nodes
-          .split(',')
-          .filter(|node| !hsm_group_members_vec.contains(&node.to_string()))
-          .map(str::to_string)
-          .collect();
+          true,
+          false,
+          false,
+        )
+        .await?;
+      }
+    } else if let Some(nodes) = hw.nodespattern.as_deref() {
+      let hsm_group_members_vec: Vec<String> =
+        crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
+          ctx.shasta_token,
+          ctx.shasta_base_url,
+          ctx.shasta_root_cert,
+          ctx.socks5_proxy,
+          &[target_hsm_group_name.to_string()],
+        )
+        .await?;
+      let new_target_hsm_group_members_vec: Vec<String> = nodes
+        .split(',')
+        .filter(|node| !hsm_group_members_vec.contains(&node.to_string()))
+        .map(str::to_string)
+        .collect();
 
+      log::info!(
+        "Processing new nodes '{}' for target HSM group '{}'",
+        nodes,
+        target_hsm_group_name,
+      );
+
+      if ctx.dry_run {
         log::info!(
-          "Processing new nodes '{}' for target HSM group '{}'",
-          nodes,
+          "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
           target_hsm_group_name,
+          new_target_hsm_group_members_vec
         );
-
-        if dry_run {
-          log::info!(
-            "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
-            target_hsm_group_name,
-            new_target_hsm_group_members_vec
-          );
-        } else {
-          update_hsm_group_members(
-            shasta_token,
-            shasta_base_url,
-            shasta_root_cert,
-            socks5_proxy,
-            target_hsm_group_name,
-            &hsm_group_members_vec
-              .iter()
-              .map(String::as_str)
-              .collect::<Vec<&str>>(),
-            &new_target_hsm_group_members_vec
-              .iter()
-              .map(String::as_str)
-              .collect::<Vec<&str>>(),
-          )
-          .await?;
-        }
+      } else {
+        update_hsm_group_members(
+          ctx.shasta_token,
+          ctx.shasta_base_url,
+          ctx.shasta_root_cert,
+          ctx.socks5_proxy,
+          target_hsm_group_name,
+          &hsm_group_members_vec
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<&str>>(),
+          &new_target_hsm_group_members_vec
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<&str>>(),
+        )
+        .await?;
       }
     }
   }
@@ -472,19 +453,10 @@ async fn process_hardware_section(
 
 /// Process the `configurations` section of the SAT file, creating a CFS
 /// configuration for each entry and returning the created configurations.
-#[allow(clippy::too_many_arguments)]
 async fn process_configurations_section(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  gitea_base_url: &str,
-  gitea_token: &str,
+  ctx: &SatApplyContext<'_>,
   cray_product_catalog: &BTreeMap<String, String>,
   sat_template_file_yaml: &serde_yaml::Value,
-  dry_run: bool,
-  site_name: &str,
-  overwrite: bool,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
   let configuration_yaml_vec_opt = sat_template_file_yaml
     .get("configurations")
@@ -498,17 +470,17 @@ async fn process_configurations_section(
   {
     let cfs_configuration: CfsConfigurationResponse =
       utils::create_cfs_configuration_from_sat_file(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        gitea_base_url,
-        gitea_token,
+        ctx.shasta_token,
+        ctx.shasta_base_url,
+        ctx.shasta_root_cert,
+        ctx.socks5_proxy,
+        ctx.gitea_base_url,
+        ctx.gitea_token,
         cray_product_catalog,
         configuration_yaml,
-        dry_run,
-        site_name,
-        overwrite,
+        ctx.dry_run,
+        ctx.site_name,
+        ctx.overwrite,
       )
       .await?;
 

@@ -19,7 +19,7 @@ impl ImsTrait for Csm {
       .ims_image_get(shasta_token, image_id_opt)
       .await
       .map(|v| v.into_iter().map(Into::into).collect())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn get_all_images(
@@ -33,7 +33,7 @@ impl ImsTrait for Csm {
       .ims_image_get_all(shasta_token)
       .await
       .map(|v| v.into_iter().map(Into::into).collect())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   fn filter_images(
@@ -58,7 +58,7 @@ impl ImsTrait for Csm {
       .shasta_client()
       .ims_image_patch(shasta_token, image_id, &image.clone().into())
       .await
-      .map_err(|e| Error::Message(e.to_string()));
+      .map_err(Error::from);
 
     Ok(())
   }
@@ -74,7 +74,7 @@ impl ImsTrait for Csm {
       .shasta_client()
       .ims_image_delete(shasta_token, image_id)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 }
 
@@ -109,6 +109,6 @@ impl GetImagesAndDetailsTrait for Csm {
         .map(|(image, x, y, z)| (image.into(), x, y, z))
         .collect()
     })
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

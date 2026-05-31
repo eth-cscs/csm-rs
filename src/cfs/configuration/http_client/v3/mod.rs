@@ -1,7 +1,7 @@
 //! CFS configurations v3 — `ShastaClient` methods for
 //! `/cfs/v3/configurations`.
 
-pub mod types;
+pub(crate) mod types;
 
 use crate::{
   ShastaClient,

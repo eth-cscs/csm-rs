@@ -53,7 +53,7 @@ impl ApplySessionTrait for Csm {
       k8s, */
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }
 
@@ -71,7 +71,7 @@ impl ClusterSessionTrait for Csm {
       .bos_session_v2_post(shasta_token, bos_session.into())
       .await
       .map(|bos_session| bos_session.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 }
 
@@ -94,7 +94,7 @@ impl ClusterTemplateTrait for Csm {
           .map(|template| template.into())
           .collect::<Vec<BosSessionTemplate>>()
       })
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn get_and_filter_templates(
@@ -112,7 +112,7 @@ impl ClusterTemplateTrait for Csm {
       .shasta_client()
       .bos_template_v2_get(shasta_token, bos_sessiontemplate_name_opt)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(Error::from)?;
 
     crate::bos::template::utils::filter(
       &mut bos_sessiontemplate_vec,
@@ -121,7 +121,7 @@ impl ClusterTemplateTrait for Csm {
       hsm_member_vec,
       limit_number_opt,
     )
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     Ok(
       bos_sessiontemplate_vec
@@ -148,7 +148,7 @@ impl ClusterTemplateTrait for Csm {
           .map(|template| template.into())
           .collect::<Vec<BosSessionTemplate>>()
       })
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn put_template(
@@ -169,7 +169,7 @@ impl ClusterTemplateTrait for Csm {
       )
       .await
       .map(|bos_session_template| bos_session_template.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn delete_template(
@@ -184,6 +184,6 @@ impl ClusterTemplateTrait for Csm {
       .shasta_client()
       .bos_template_v2_delete(shasta_token, bos_template_id)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 }

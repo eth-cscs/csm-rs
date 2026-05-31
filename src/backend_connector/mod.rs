@@ -65,9 +65,7 @@ impl Csm {
       root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )
-    .map_err(|e| {
-      manta_backend_dispatcher::error::Error::Message(e.to_string())
-    })?;
+    .map_err(manta_backend_dispatcher::error::Error::from)?;
     Ok(Self {
       base_url: base_url.to_string(),
       root_cert: root_cert.to_vec(),

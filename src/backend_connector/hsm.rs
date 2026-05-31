@@ -11,8 +11,10 @@ use manta_backend_dispatcher::{
   },
   types::{
     Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
+    HWInventory as FrontEndHWInventory,
     HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
-    NodeMetadataArray,
+    HsmActionResponse, NodeMetadataArray,
+    NodeSummary as FrontEndNodeSummary,
     hsm::inventory::{
       ComponentEthernetInterface,
       RedfishEndpointArray as FrontEndRedfishEndpointArray,
@@ -30,16 +32,13 @@ impl HardwareInventory for Csm {
     &self,
     auth_token: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<FrontEndNodeSummary, Error> {
     self
       .shasta_client()
       .hsm_hw_inventory_get(auth_token, xname)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
-      .and_then(|hw_inventory| {
-        serde_json::to_value(hw_inventory)
-          .map_err(|e| Error::Message(e.to_string()))
-      })
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn get_inventory_hardware_query(
@@ -51,24 +50,35 @@ impl HardwareInventory for Csm {
     _parents: Option<bool>,
     _partition: Option<&str>,
     _format: Option<&str>,
-  ) -> Result<Value, Error> {
-    self
+  ) -> Result<FrontEndHWInventory, Error> {
+    // The HTTP client returns the raw JSON `Value` from CSM; deserialize
+    // it into the dispatcher's typed `HWInventory` here. Using
+    // `serde_json::from_value` against the dispatcher type works because
+    // the dispatcher uses bidirectional `#[serde(rename = "X")]` on its
+    // leaf fields and the swagger response matches `HWInventory.1.0.0_HWInventory`.
+    let value = self
       .shasta_client()
       .hsm_hw_inventory_get_query(auth_token, xname)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)?;
+    serde_json::from_value(value).map_err(Error::from)
   }
 
   async fn post_inventory_hardware(
     &self,
     auth_token: &str,
     hw_inventory: FrontEndHWInventoryByLocationList,
-  ) -> Result<Value, Error> {
-    self
+  ) -> Result<HsmActionResponse, Error> {
+    // HTTP client returns the raw `Response_1.0.0` JSON as Value;
+    // deserialize into the typed `HsmActionResponse` here. Field names
+    // (`code`, `message`) already match the swagger so no renames
+    // are needed on the type.
+    let value = self
       .shasta_client()
       .hsm_hw_inventory_post(auth_token, hw_inventory.into())
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)?;
+    serde_json::from_value(value).map_err(Error::from)
   }
 }
 
@@ -83,7 +93,7 @@ impl ComponentTrait for Csm {
       .hsm_component_get_all_nodes(auth_token, nid_only)
       .await
       .map(|c| c.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn get_node_metadata_available(
@@ -93,7 +103,7 @@ impl ComponentTrait for Csm {
     let xname_available_vec: Vec<String> = self
       .get_group_available(auth_token)
       .await
-      .map_err(|e| Error::Message(e.to_string()))?
+      .map_err(Error::from)?
       .iter()
       .flat_map(|group| group.get_members())
       .collect();
@@ -169,7 +179,7 @@ impl ComponentTrait for Csm {
       )
       .await
       .map(|c| c.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn post_nodes(
@@ -183,7 +193,7 @@ impl ComponentTrait for Csm {
       .shasta_client()
       .hsm_component_post(auth_token, component_backend)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn delete_node(
@@ -195,7 +205,7 @@ impl ComponentTrait for Csm {
       .shasta_client()
       .hsm_component_delete_one(auth_token, id)
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   /// Get list of xnames from NIDs
@@ -223,7 +233,7 @@ impl ComponentTrait for Csm {
         .shasta_client()
         .hsm_component_get_all_nodes(shasta_token, Some("true"))
         .await
-        .map_err(|e| Error::Message(e.to_string()))?
+        .map_err(Error::from)?
         .components
         .unwrap_or_default();
 
@@ -314,7 +324,7 @@ impl ComponentTrait for Csm {
           Some("true"),
         )
         .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+        .map_err(Error::from)?;
 
       // Get list of xnames from HSM components
       let xname_vec: Vec<String> = hsm_components
@@ -423,7 +433,7 @@ impl RedfishEndpointTrait for Csm {
       )
       .await
       .map(|arr| arr.into())
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::from)
   }
 
   async fn add_redfish_endpoint(

@@ -7,3 +7,9 @@
 pub mod cfs_configuration;
 pub mod cfs_configuration_request;
 pub mod cfs_configuration_response;
+
+/// Bidirectional `From` impls between the v3 configuration [`types`] and
+/// the dispatcher's mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;

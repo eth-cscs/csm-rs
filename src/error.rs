@@ -21,6 +21,7 @@ use std::{env::VarError, io, num::ParseIntError, str::Utf8Error};
 
 use aws_smithy_types::byte_stream;
 use globset::Error as GlobsetError;
+#[cfg(feature = "manta-dispatcher")]
 use manta_backend_dispatcher::error::Error as MantaError;
 use serde_json::Value;
 use tokio::task::JoinError;
@@ -62,8 +63,18 @@ pub enum Error {
     payload: String, // NOTE: CSM/OCHAMI Apis either returns plain text or a json therefore, we
                      // will just return a String
   },
-  #[error("CSM-RS > CSM: {}", .0.get("detail").and_then(|detail| detail.as_str()).unwrap_or("Unknown error"))]
-  CsmError(Value),
+  /// Structured error payload returned by CSM/HSM endpoints when an
+  /// HTTP request fails. `status` is the HTTP status code, `detail` is
+  /// the human-readable message extracted from the RFC 7807
+  /// `Problem7807` body (`detail` field, falling back to `title`), and
+  /// `body` retains the raw JSON so callers needing extension fields
+  /// can still reach them without string-parsing the Display output.
+  #[error("CSM-RS > CSM: status={status} {detail}")]
+  CsmError {
+    status: u16,
+    detail: String,
+    body: Option<Value>,
+  },
   #[error("CSM-RS > Console: {0}")]
   ConsoleError(String),
   #[error("CSM-RS > K8s: {0}")]
@@ -114,21 +125,60 @@ pub enum Error {
   CfsComponentDesiredConfFieldNotDefined(),
 }
 
-// Convert Error to manta_backend_dispatcher::error::Error
+impl Error {
+  /// Build a [`CsmError`](Error::CsmError) from an HTTP status code and
+  /// the parsed JSON response body. Extracts the RFC 7807 `detail`
+  /// field (falling back to `title`, then empty) and keeps the raw
+  /// payload available via `body`.
+  pub(crate) fn csm_from_response(status: u16, payload: Value) -> Self {
+    let detail = payload
+      .get("detail")
+      .and_then(Value::as_str)
+      .or_else(|| payload.get("title").and_then(Value::as_str))
+      .map(str::to_string)
+      .unwrap_or_default();
+    Error::CsmError {
+      status,
+      detail,
+      body: Some(payload),
+    }
+  }
+}
+
+// Convert Error to manta_backend_dispatcher::error::Error.
+//
+// This match is intentionally exhaustive (no `_` arm) so that adding a
+// new csm-rs Error variant forces an explicit decision about how it
+// surfaces across the dispatcher boundary, rather than silently
+// collapsing to MantaError::Message.
+#[cfg(feature = "manta-dispatcher")]
 impl From<crate::error::Error> for MantaError {
   fn from(val: crate::error::Error) -> Self {
     match val {
+      // Pass-through infrastructure errors with direct dispatcher equivalents.
       Error::IoError(e) => MantaError::IoError(e),
       Error::SerdeJsonError(e) => MantaError::SerdeError(e),
+      Error::SerdeYamlError(e) => MantaError::YamlError(e),
       Error::NetError(e) => MantaError::NetError(e),
       Error::RequestError { response, payload } => {
         MantaError::RequestError { response, payload }
       }
-      Error::CsmError(v) => MantaError::CsmError(v),
-      // Variants with direct dispatcher equivalents
+      Error::CsmError {
+        status,
+        detail,
+        body,
+      } => MantaError::CsmError {
+        status,
+        detail,
+        body,
+      },
+
+      // Direct 1:1 dispatcher variants.
       Error::Message(s) => MantaError::Message(s),
       Error::ConsoleError(s) => MantaError::ConsoleError(s),
-      Error::ConfigurationAlreadyExists(s) => MantaError::ConfigurationAlreadyExistsError(s),
+      Error::ConfigurationAlreadyExists(s) => {
+        MantaError::ConfigurationAlreadyExistsError(s)
+      }
       Error::SessionNotFound(_) => MantaError::SessionNotFound,
       Error::ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed => {
         MantaError::Conflict(
@@ -136,15 +186,56 @@ impl From<crate::error::Error> for MantaError {
             .to_string(),
         )
       }
-      // Not-found variants mapped to NotFound
+
+      // Not-found variants — fold into the generic NotFound carrying a
+      // human-readable subject so dispatcher callers can branch on
+      // NotFound vs. other failure classes.
       Error::ImageNotFound(s) => MantaError::NotFound(format!("Image '{s}'")),
       Error::GroupNotFound(s) => MantaError::NotFound(format!("Group '{s}'")),
-      Error::HsmComponentNotFound(s) => MantaError::NotFound(format!("HSM component '{s}'")),
+      Error::HsmComponentNotFound(s) => {
+        MantaError::NotFound(format!("HSM component '{s}'"))
+      }
       Error::ImsKeyNotFound(s) => MantaError::NotFound(format!("IMS key '{s}'")),
       Error::ConfigurationDerivativesNotFound(s) => {
         MantaError::NotFound(format!("No derivatives for CFS configuration '{s}'"))
       }
-      // K8s variants collapsed to K8sError
+
+      // Missing-field variants — fold into MissingField so dispatcher
+      // callers can distinguish "structural" failures (a required field
+      // wasn't present) from network/IO/not-found.
+      Error::ConfigurationNameNotDefined(s) => {
+        MantaError::MissingField(format!("CFS configuration '{s}' name"))
+      }
+      Error::SessionNameNotDefined(s) => {
+        MantaError::MissingField(format!("session '{s}' name"))
+      }
+      Error::SessionConfigurationNotDefined(s) => {
+        MantaError::MissingField(format!("session '{s}' configuration"))
+      }
+      Error::HsmComponentIdNotDefined(s) => {
+        MantaError::MissingField(format!("HSM component '{s}' ID"))
+      }
+      Error::HsmComponentNidNotDefined(s) => {
+        MantaError::MissingField(format!("HSM component '{s}' NID"))
+      }
+      Error::HsmComponentPowerStateNotDefined(s) => {
+        MantaError::MissingField(format!("HSM component '{s}' power state"))
+      }
+      Error::HsmComponentFieldNotDefined(c, f) => {
+        MantaError::MissingField(format!("HSM component '{c}' field '{f}'"))
+      }
+      Error::CfsComponentFieldNotDefined(s) => {
+        MantaError::MissingField(format!("CFS component field '{s}'"))
+      }
+      Error::CfsComponentNameFieldNotDefined() => {
+        MantaError::MissingField("CFS component 'name'".to_string())
+      }
+      Error::CfsComponentDesiredConfFieldNotDefined() => {
+        MantaError::MissingField("CFS component 'desired_conf'".to_string())
+      }
+
+      // K8s variants — fold into the dispatcher's single K8sError with
+      // a human-readable subject preserved.
       Error::K8sError(s) => MantaError::K8sError(s),
       Error::K8sCredentialMissingError(s) => {
         MantaError::K8sError(format!("field '{s}' missing in k8s credentials"))
@@ -153,8 +244,17 @@ impl From<crate::error::Error> for MantaError {
         MantaError::K8sError(format!("'{s}' value not a string"))
       }
       Error::K8sExecError(e) => MantaError::K8sError(e.to_string()),
-      // Technical/internal errors — preserve message text
-      _ => MantaError::Message(val.to_string()),
+
+      // Infrastructure / third-party errors with no dispatcher
+      // equivalent. Preserve the csm-rs Display output (which carries
+      // the "CSM-RS > …" context prefix) rather than just the inner
+      // error's message.
+      e @ Error::EnvVarError(_) => MantaError::Message(e.to_string()),
+      e @ Error::TokioError(_) => MantaError::Message(e.to_string()),
+      e @ Error::UtfError(_) => MantaError::Message(e.to_string()),
+      e @ Error::GlobError(_) => MantaError::Message(e.to_string()),
+      e @ Error::ParseStrIntError(_) => MantaError::Message(e.to_string()),
+      e @ Error::SmithyDataStreamError(_) => MantaError::Message(e.to_string()),
     }
   }
 }
