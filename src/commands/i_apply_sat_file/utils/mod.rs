@@ -235,8 +235,6 @@ pub mod image;
 /// struct to represent the `configurations` section in SAT file
 pub mod configuration;
 
-/// Legacy SAT `images` section types kept for backward compatibility.
-pub(crate) mod sat_file_image_old;
 
 /// CFS configuration creation helpers driven by a SAT file's
 /// `configurations` section.
@@ -260,6 +258,7 @@ pub(crate) use configurations::{
   create_cfs_configuration_from_sat_file,
   validate_sat_file_configurations_section,
 };
+
 pub(crate) use images::{
   i_import_images_section_in_sat_file, validate_sat_file_images_section,
 };
@@ -268,6 +267,3 @@ pub(crate) use session_templates::{
   validate_sat_file_session_template_section,
 };
 
-/// Helpers for reading the in-cluster `cray-product-catalog`
-/// ConfigMap used during SAT-file apply.
-pub(crate) mod hpe_products;

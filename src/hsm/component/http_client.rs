@@ -3,7 +3,10 @@
 use serde_json::Value;
 
 use crate::{
-  ShastaClient, common::http, error::Error, hsm::component::types::Component,
+  ShastaClient,
+  common::http,
+  error::Error,
+  hsm::{component::types::Component, types::HsmActionResponse},
 };
 
 use super::types::{
@@ -327,60 +330,32 @@ impl ShastaClient {
     &self,
     token: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     let api_url =
       format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
-
     let response = self
       .http()
       .delete(api_url)
       .bearer_auth(token)
       .send()
-      .await?;
-
-    if !response.status().is_success() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
-        }
-        _ => {
-          let status = response.status().as_u16();
-          let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 
   /// `DELETE /hsm/v2/State/Components` — remove all components.
   pub async fn hsm_component_delete(
     &self,
     token: &str,
-  ) -> Result<Value, Error> {
-    let api_url = format!("{}/hsm/v2/State/Componnets", self.base_url());
-
+  ) -> Result<HsmActionResponse, Error> {
+    let api_url = format!("{}/hsm/v2/State/Components", self.base_url());
     let response = self
       .http()
       .delete(api_url)
       .bearer_auth(token)
       .send()
-      .await?;
-
-    if !response.status().is_success() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
-        }
-        _ => {
-          let status = response.status().as_u16();
-          let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 }

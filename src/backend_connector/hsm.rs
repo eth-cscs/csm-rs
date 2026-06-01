@@ -69,16 +69,12 @@ impl HardwareInventory for Csm {
     auth_token: &str,
     hw_inventory: FrontEndHWInventoryByLocationList,
   ) -> Result<HsmActionResponse, Error> {
-    // HTTP client returns the raw `Response_1.0.0` JSON as Value;
-    // deserialize into the typed `HsmActionResponse` here. Field names
-    // (`code`, `message`) already match the swagger so no renames
-    // are needed on the type.
-    let value = self
+    self
       .shasta_client()
       .hsm_hw_inventory_post(auth_token, hw_inventory.into())
       .await
-      .map_err(Error::from)?;
-    serde_json::from_value(value).map_err(Error::from)
+      .map(Into::into)
+      .map_err(Error::from)
   }
 }
 
@@ -201,11 +197,17 @@ impl ComponentTrait for Csm {
     auth_token: &str,
     id: &str,
   ) -> Result<Value, Error> {
-    self
+    // The dispatcher trait still returns `Value` here; the csm-rs HTTP
+    // client now returns a typed `HsmActionResponse` (audit finding
+    // #1 for HSM). Re-serialise back into Value at this boundary so
+    // existing dispatcher consumers stay source-compatible. A future
+    // change to the dispatcher trait can drop this round-trip.
+    let response = self
       .shasta_client()
       .hsm_component_delete_one(auth_token, id)
       .await
-      .map_err(Error::from)
+      .map_err(Error::from)?;
+    serde_json::to_value(response).map_err(Error::from)
   }
 
   /// Get list of xnames from NIDs

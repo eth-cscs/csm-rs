@@ -1,10 +1,11 @@
-use serde_json::Value;
-
 use crate::{
   ShastaClient,
   common::http,
   error::Error,
-  hsm::group::types::{Group, Member, Members},
+  hsm::{
+    group::types::{Group, Member, Members},
+    types::HsmActionResponse,
+  },
 };
 
 impl ShastaClient {
@@ -240,12 +241,10 @@ impl ShastaClient {
     &self,
     token: &str,
     hsm_group_name: &String,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     log::info!("Delete HSM group '{}'", hsm_group_name);
-
     let url_api =
       format!("{}/smd/hsm/v2/groups/{}", self.base_url(), hsm_group_name);
-
     let response = self
       .http()
       .delete(url_api)
@@ -253,8 +252,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-
-    http::handle_json_or_text_response(response).await
+    http::handle_json_response(response).await
   }
 
   /// Add a member (component xname) to an HSM group.
@@ -265,42 +263,22 @@ impl ShastaClient {
     token: &str,
     hsm_group_name: &str,
     member: Member,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     log::info!("Add members {:?} to group '{}'", member, hsm_group_name);
     let api_url = format!(
       "{}/smd/hsm/v2/groups/{}/members",
       self.base_url(),
       hsm_group_name
     );
-
     let response = self
       .http()
       .post(api_url)
       .bearer_auth(token)
       .json(&member)
       .send()
-      .await?;
-
-    if let Err(e) = response.error_for_status_ref() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          let error_payload = response.text().await?;
-          return Err(Error::RequestError {
-            response: e,
-            payload: error_payload,
-          });
-        }
-        _ => {
-          let error_payload = response.text().await?;
-          return Err(Error::Message(error_payload));
-        }
-      }
-    }
-
-    response
-      .json::<Value>()
       .await
-      .map_err(|e| Error::Message(e.to_string()))
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 
   /// Remove a member (component xname) from an HSM group.

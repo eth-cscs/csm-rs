@@ -4,7 +4,6 @@
 //! are dictated by the API.
 #![allow(missing_docs)]
 
-pub mod cfs_configuration;
 pub mod cfs_configuration_request;
 pub mod cfs_configuration_response;
 

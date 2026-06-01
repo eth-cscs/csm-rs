@@ -1,19 +1,20 @@
 //! `ShastaClient` methods for CAPMC power transitions and status.
 
-use serde_json::Value;
-
 use crate::{
   ShastaClient,
   capmc::{
-    types::{NodeStatus, PowerStatus},
+    types::{
+      NodeStatus, PowerStatus, XnamePowerActionResponse, XnameStatusResponse,
+    },
     utils::{wait_nodes_to_power_off, wait_nodes_to_power_on},
   },
+  common::http,
   error::Error,
 };
 
 impl ShastaClient {
   /// Issue a CAPMC power-off request for the given xnames and return
-  /// immediately with the raw response (fire-and-forget).
+  /// immediately with the parsed response (fire-and-forget).
   ///
   /// `POST /capmc/capmc/v1/xname_off`. Use
   /// [`Self::capmc_node_power_off_post_sync`] to also wait until the
@@ -24,24 +25,20 @@ impl ShastaClient {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnamePowerActionResponse, Error> {
     log::info!("Power OFF nodes: {:?}", xname_vec);
 
     let power_off = PowerStatus::new(reason_opt, xname_vec, force, None);
-
     let api_url = format!("{}/capmc/capmc/v1/xname_off", self.base_url());
-
-    Ok(
-      self
-        .http()
-        .post(api_url)
-        .bearer_auth(token)
-        .json(&power_off)
-        .send()
-        .await?
-        .json::<Value>()
-        .await?,
-    )
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(token)
+      .json(&power_off)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 
   /// Power off the given xnames and wait until CAPMC reports each one
@@ -55,7 +52,7 @@ impl ShastaClient {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnameStatusResponse, Error> {
     // Check Nodes are shutdown
     let _ = self.capmc_node_power_status_post(token, &xname_vec).await?;
 
@@ -71,22 +68,18 @@ impl ShastaClient {
     token: &str,
     xname_vec: Vec<String>,
     reason: Option<String>,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnamePowerActionResponse, Error> {
     let power_on = PowerStatus::new(reason, xname_vec, false, None);
-
     let api_url = format!("{}/capmc/capmc/v1/xname_on", self.base_url());
-
-    Ok(
-      self
-        .http()
-        .post(api_url)
-        .bearer_auth(token)
-        .json(&power_on)
-        .send()
-        .await?
-        .json::<Value>()
-        .await?,
-    )
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(token)
+      .json(&power_on)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 
   /// Power on the given xnames and wait until CAPMC reports each one
@@ -96,7 +89,7 @@ impl ShastaClient {
     token: &str,
     xname_vec: Vec<String>,
     reason: Option<String>,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnameStatusResponse, Error> {
     let _ = self.capmc_node_power_status_post(token, &xname_vec).await?;
 
     wait_nodes_to_power_on(self, token, xname_vec, reason).await
@@ -111,22 +104,18 @@ impl ShastaClient {
     xname_vec: Vec<String>,
     reason: Option<String>,
     force: bool,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnamePowerActionResponse, Error> {
     let node_restart = PowerStatus::new(reason, xname_vec, force, None);
-
     let api_url = format!("{}/capmc/capmc/v1/xname_reinit", self.base_url());
-
-    Ok(
-      self
-        .http()
-        .post(api_url)
-        .bearer_auth(token)
-        .json(&node_restart)
-        .send()
-        .await?
-        .json::<Value>()
-        .await?,
-    )
+    let response = self
+      .http()
+      .post(api_url)
+      .bearer_auth(token)
+      .json(&node_restart)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 
   /// Power-cycle the given xnames by powering off then back on
@@ -140,7 +129,7 @@ impl ShastaClient {
     xname_vec: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, Error> {
+  ) -> Result<XnameStatusResponse, Error> {
     log::info!("Power RESET node: {:?}", xname_vec);
 
     let _ = self
@@ -170,9 +159,8 @@ impl ShastaClient {
     xnames: Vec<String>,
     reason_opt: Option<String>,
     force: bool,
-  ) -> Result<Value, Error> {
+  ) -> Result<Vec<XnameStatusResponse>, Error> {
     let mut nodes_reseted = Vec::new();
-
     let mut tasks = tokio::task::JoinSet::new();
 
     for xname in xnames {
@@ -196,7 +184,7 @@ impl ShastaClient {
       nodes_reseted.push(message??);
     }
 
-    Ok(serde_json::to_value(nodes_reseted)?)
+    Ok(nodes_reseted)
   }
 
   /// Query CAPMC for the current Redfish power state of the given
@@ -207,25 +195,21 @@ impl ShastaClient {
     &self,
     token: &str,
     xnames: &Vec<String>,
-  ) -> core::result::Result<Value, Error> {
+  ) -> Result<XnameStatusResponse, Error> {
     log::info!("Checking nodes status: {:?}", xnames);
 
     let node_status_payload =
       NodeStatus::new(None, Some(xnames.clone()), Some("redfish".to_string()));
-
     let url_api =
       format!("{}/capmc/capmc/v1/get_xname_status", self.base_url());
-
-    Ok(
-      self
-        .http()
-        .post(url_api)
-        .bearer_auth(token)
-        .json(&node_status_payload)
-        .send()
-        .await?
-        .json::<Value>()
-        .await?,
-    )
+    let response = self
+      .http()
+      .post(url_api)
+      .bearer_auth(token)
+      .json(&node_status_payload)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 }

@@ -2,7 +2,9 @@
 
 use serde_json::Value;
 
-use crate::{ShastaClient, common::http, error::Error};
+use crate::{
+  ShastaClient, common::http, error::Error, hsm::types::HsmActionResponse,
+};
 
 use super::types::{HWInventoryByLocationList, NodeSummary};
 
@@ -38,6 +40,16 @@ impl ShastaClient {
 
   /// `GET /hsm/v2/Inventory/Hardware/Query/{xname}` — raw HSM hardware
   /// inventory query for one xname.
+  ///
+  /// FIXME: kept as `Value` because csm-rs's
+  /// [`super::types::HWInventory`] uses serialize-only serde renames
+  /// (`#[serde(rename(serialize = "X"))]`), which prevents direct
+  /// deserialization from CSM's PascalCase JSON. The
+  /// `backend_connector` impl deserializes into the dispatcher's
+  /// bidirectionally-renamed `HWInventory` via `serde_json::from_value`.
+  /// Typing this method cleanly requires either fixing the csm-rs
+  /// renames or introducing a `#[serde(rename_all = "PascalCase")]`-
+  /// based view type.
   pub async fn hsm_hw_inventory_get_query(
     &self,
     token: &str,
@@ -52,12 +64,13 @@ impl ShastaClient {
   }
 
   /// `POST /hsm/v2/Inventory/Hardware` — submit a hardware inventory
-  /// payload (typically used by node discovery agents).
+  /// payload (typically used by node discovery agents). Returns the
+  /// HSM acknowledgement carrying a count of new/modified items.
   pub async fn hsm_hw_inventory_post(
     &self,
     token: &str,
     hw_inventory_by_location: HWInventoryByLocationList,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     let api_url = format!("{}/smd/hsm/v2/Inventory/Hardware", self.base_url());
 
     let response = self
@@ -66,25 +79,8 @@ impl ShastaClient {
       .bearer_auth(token)
       .json(&hw_inventory_by_location)
       .send()
-      .await?;
-
-    if let Err(e) = response.error_for_status_ref() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          let error_payload = response.text().await?;
-          return Err(Error::RequestError {
-            response: e,
-            payload: error_payload,
-          });
-        }
-        _ => {
-          let status = response.status().as_u16();
-          let error_payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, error_payload));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+      .await
+      .map_err(Error::NetError)?;
+    http::handle_json_response(response).await
   }
 }

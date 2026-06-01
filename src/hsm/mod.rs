@@ -25,3 +25,11 @@ pub mod group;
 pub mod hw_inventory;
 pub mod memberships;
 pub mod service;
+/// Shared HSM response types (`HsmActionResponse`, `ResourceURI`) used
+/// across the submodules above.
+pub mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// HSM mirrors. Gated behind the `manta-dispatcher` Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;

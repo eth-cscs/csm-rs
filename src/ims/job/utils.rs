@@ -1,7 +1,5 @@
 //! Helpers built on top of `ShastaClient::ims_job_*` methods.
 
-use std::io::{self, Write};
-
 use crate::{ShastaClient, error::Error, ims::job::types::Job};
 
 /// Wait for an IMS job to finish (polls every 2s, max 1800 attempts ~ 1h).
@@ -37,17 +35,13 @@ pub async fn wait_ims_job_to_finish(
     let ims_job_status = ims_job.status.unwrap_or_default();
 
     if (ims_job_status != "error" && ims_job_status != "success") && i < max {
-      log::info!("\x1B[2K"); // Clear current line
-      io::stdout().flush().unwrap_or(());
       log::info!(
-        "\rWaiting IMS job '{}' with job status '{}'. Checking again in 2 secs. Attempt {} of {}.",
+        "Waiting IMS job '{}' with job status '{}'. Checking again in 2 secs. Attempt {} of {}.",
         ims_job_id,
         ims_job_status,
         i,
         max
       );
-      io::stdout().flush().unwrap_or(());
-
       tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
       i += 1;

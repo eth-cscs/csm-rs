@@ -15,3 +15,9 @@
 pub mod http_client;
 pub mod types;
 pub mod utils;
+
+// Domain-root canonical names for the most commonly used CAPMC
+// response types. Callers should prefer these over the deeper
+// `types::*` paths, matching the convention established for BOS / IMS
+// in Phase 4.
+pub use types::{XnameError, XnamePowerActionResponse, XnameStatusResponse};

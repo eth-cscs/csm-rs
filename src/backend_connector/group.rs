@@ -194,11 +194,14 @@ impl GroupTrait for Csm {
     auth_token: &str,
     label: &str,
   ) -> Result<Value, Error> {
-    self
+    // Re-serialise the now-typed `HsmActionResponse` back to Value to
+    // match the dispatcher trait. See `delete_node` for rationale.
+    let response = self
       .shasta_client()
       .hsm_group_delete_group(auth_token, &label.to_string())
       .await
-      .map_err(Error::from)
+      .map_err(Error::from)?;
+    serde_json::to_value(response).map_err(Error::from)
   }
 
   async fn get_hsm_map_and_filter_by_hsm_name_vec(
@@ -227,11 +230,14 @@ impl GroupTrait for Csm {
       id: Some(xname.to_string()),
     };
 
-    self
+    // Re-serialise the typed `HsmActionResponse` to Value (dispatcher
+    // trait still uses Value here).
+    let response = self
       .shasta_client()
       .hsm_group_post_member(auth_token, group_label, member)
       .await
-      .map_err(Error::from)
+      .map_err(Error::from)?;
+    serde_json::to_value(response).map_err(Error::from)
   }
 
   async fn add_members_to_group(

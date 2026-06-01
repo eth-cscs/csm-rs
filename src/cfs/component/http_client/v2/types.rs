@@ -47,23 +47,3 @@ pub struct Component {
   pub tags: Option<HashMap<String, String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PatchComponent {
-  patch: Vec<Component>,
-  filters: Filter,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Filter {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  ids: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  status: Option<String>, // TODO: change to enum
-  #[serde(skip_serializing_if = "Option::is_none")]
-  enabled: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "configurationName")]
-  config_name: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tags: Option<HashMap<String, String>>,
-}

@@ -1,8 +1,11 @@
 //! `ShastaClient` methods for `/smd/hsm/v2/Inventory/RedfishEndpoints`.
 
-use serde_json::Value;
-
-use crate::{ShastaClient, common::http, error::Error};
+use crate::{
+  ShastaClient,
+  common::http,
+  error::Error,
+  hsm::types::{HsmActionResponse, ResourceURI},
+};
 
 use super::types::{RedfishEndpoint, RedfishEndpointArray};
 
@@ -79,14 +82,15 @@ impl ShastaClient {
     http::handle_json_or_request_error(response).await
   }
 
-  /// Create a Redfish endpoint.
+  /// Create a Redfish endpoint. Returns the array of created resource
+  /// URIs (typically one entry per posted endpoint).
   ///
   /// `POST /smd/hsm/v2/Inventory/RedfishEndpoints`.
   pub async fn hsm_redfish_post(
     &self,
     token: &str,
     redfish_endpoint: RedfishEndpoint,
-  ) -> Result<Value, Error> {
+  ) -> Result<Vec<ResourceURI>, Error> {
     let api_url =
       format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", self.base_url());
 
@@ -128,7 +132,7 @@ impl ShastaClient {
   pub async fn hsm_redfish_delete_all(
     &self,
     token: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     let api_url =
       format!("{}/smd/hsm/v2/Inventory/RedfishEndpoints", self.base_url());
 
@@ -148,7 +152,7 @@ impl ShastaClient {
     &self,
     token: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     let api_url = format!(
       "{}/smd/hsm/v2/Inventory/RedfishEndpoints/{}",
       self.base_url(),

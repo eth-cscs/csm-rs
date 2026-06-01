@@ -1,43 +1,5 @@
 use std::fmt;
 
-/// Struct used by get_configuration when only one CFS configuration is fetched. This means we will
-/// CFS confiugration layers will have extra information from the VCS/Gitea1
-pub struct ConfigurationDetails {
-  pub name: String,
-  pub last_updated: String,
-  pub config_layers: Vec<LayerDetails>,
-}
-
-impl ConfigurationDetails {
-  pub fn new(
-    name: &str,
-    last_updated: &str,
-    config_layers: Vec<LayerDetails>,
-  ) -> Self {
-    Self {
-      name: String::from(name),
-      last_updated: String::from(last_updated),
-      config_layers,
-    }
-  }
-}
-
-impl fmt::Display for ConfigurationDetails {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(
-      f,
-      "\nConfig Details:\n - name: {}\n - last updated: {}\nLayers:",
-      self.name, self.last_updated
-    )?;
-
-    for (i, config_layer) in self.config_layers.iter().enumerate() {
-      write!(f, "\n Layer {}:{}", i, config_layer)?;
-    }
-
-    Ok(())
-  }
-}
-
 pub struct LayerDetails {
   pub name: Option<String>,
   pub repo_name: String,

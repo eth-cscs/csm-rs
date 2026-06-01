@@ -48,14 +48,6 @@ pub struct BootSet {
   pub rootfs_provider_passthrough: Option<String>,
 }
 
-// TODO: use strum crate to implement functions to convert to/from String
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum Arch {
-  X86,
-  ARM,
-  Other,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BosSessionTemplate {
   #[serde(skip_serializing_if = "Option::is_none")]
