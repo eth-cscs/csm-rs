@@ -51,17 +51,12 @@ impl HardwareInventory for Csm {
     _partition: Option<&str>,
     _format: Option<&str>,
   ) -> Result<FrontEndHWInventory, Error> {
-    // The HTTP client returns the raw JSON `Value` from CSM; deserialize
-    // it into the dispatcher's typed `HWInventory` here. Using
-    // `serde_json::from_value` against the dispatcher type works because
-    // the dispatcher uses bidirectional `#[serde(rename = "X")]` on its
-    // leaf fields and the swagger response matches `HWInventory.1.0.0_HWInventory`.
-    let value = self
+    self
       .shasta_client()
       .hsm_hw_inventory_get_query(auth_token, xname)
       .await
-      .map_err(Error::from)?;
-    serde_json::from_value(value).map_err(Error::from)
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn post_inventory_hardware(

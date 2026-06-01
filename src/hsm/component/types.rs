@@ -63,23 +63,23 @@ pub struct Component {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentArrayPostQuery {
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "ComponentIDs"))]
+  #[serde(rename = "ComponentIDs")]
   pub component_ids: Option<Vec<String>>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub partition: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub group: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "stateonly"))]
+  #[serde(rename = "stateonly")]
   pub state_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "flagonly"))]
+  #[serde(rename = "flagonly")]
   pub falg_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "roleonly"))]
+  #[serde(rename = "roleonly")]
   pub role_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "nidonly"))]
+  #[serde(rename = "nidonly")]
   pub nid_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
@@ -90,7 +90,7 @@ pub struct ComponentArrayPostQuery {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub enabled: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "softwarestatus"))]
+  #[serde(rename = "softwarestatus")]
   pub software_status: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub role: Option<String>,
@@ -112,68 +112,68 @@ pub struct ComponentArrayPostQuery {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentArrayPostByNidQuery {
-  #[serde(rename(serialize = "NIDRanges"))]
+  #[serde(rename = "NIDRanges")]
   pub nid_ranges: Vec<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub partition: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "stateonly"))]
+  #[serde(rename = "stateonly")]
   pub state_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "flagonly"))]
+  #[serde(rename = "flagonly")]
   pub falg_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "roleonly"))]
+  #[serde(rename = "roleonly")]
   pub role_only: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "nidonly"))]
+  #[serde(rename = "nidonly")]
   pub nid_only: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentArrayPostArray {
-  #[serde(rename(serialize = "Components"))]
+  #[serde(rename = "Components")]
   pub components: Vec<ComponentCreate>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Force"))]
+  #[serde(rename = "Force")]
   pub force: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentCreate {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub(super) id: String,
-  #[serde(rename(serialize = "State"))]
+  #[serde(rename = "State")]
   pub(super) state: String,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Flag"))]
+  #[serde(rename = "Flag")]
   pub(super) flag: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Enabled"))]
+  #[serde(rename = "Enabled")]
   pub(super) enabled: Option<bool>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "SoftwareStatus"))]
+  #[serde(rename = "SoftwareStatus")]
   pub(super) software_status: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Role"))]
+  #[serde(rename = "Role")]
   pub(super) role: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "SubRole"))]
+  #[serde(rename = "SubRole")]
   pub(super) sub_role: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "NID"))]
+  #[serde(rename = "NID")]
   pub(super) nid: Option<usize>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Subtype"))]
+  #[serde(rename = "Subtype")]
   pub(super) subtype: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "NetType"))]
+  #[serde(rename = "NetType")]
   pub(super) net_type: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Arch"))]
+  #[serde(rename = "Arch")]
   pub(super) arch: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Class"))]
+  #[serde(rename = "Class")]
   pub(super) class: Option<String>,
 }
 
@@ -181,6 +181,6 @@ pub struct ComponentCreate {
 pub struct ComponentPut {
   component: ComponentCreate,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "Force"))]
+  #[serde(rename = "Force")]
   force: Option<bool>,
 }

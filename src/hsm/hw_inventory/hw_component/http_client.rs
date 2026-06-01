@@ -6,7 +6,7 @@ use crate::{
   ShastaClient, common::http, error::Error, hsm::types::HsmActionResponse,
 };
 
-use super::types::{HWInventoryByLocationList, NodeSummary};
+use super::types::{HWInventory, HWInventoryByLocationList, NodeSummary};
 
 impl ShastaClient {
   /// `GET /hsm/v2/Inventory/Hardware` — fetch the hardware inventory
@@ -38,23 +38,13 @@ impl ShastaClient {
     }
   }
 
-  /// `GET /hsm/v2/Inventory/Hardware/Query/{xname}` — raw HSM hardware
-  /// inventory query for one xname.
-  ///
-  /// FIXME: kept as `Value` because csm-rs's
-  /// [`super::types::HWInventory`] uses serialize-only serde renames
-  /// (`#[serde(rename(serialize = "X"))]`), which prevents direct
-  /// deserialization from CSM's PascalCase JSON. The
-  /// `backend_connector` impl deserializes into the dispatcher's
-  /// bidirectionally-renamed `HWInventory` via `serde_json::from_value`.
-  /// Typing this method cleanly requires either fixing the csm-rs
-  /// renames or introducing a `#[serde(rename_all = "PascalCase")]`-
-  /// based view type.
+  /// `GET /hsm/v2/Inventory/Hardware/Query/{xname}` — typed HSM
+  /// hardware inventory query for one xname.
   pub async fn hsm_hw_inventory_get_query(
     &self,
     token: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<HWInventory, Error> {
     let api_url = format!(
       "{}/smd/hsm/v2/Inventory/Hardware/Query/{}",
       self.base_url(),

@@ -358,304 +358,304 @@ pub struct ProcessorId {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishProcessorFRUInfo {
-  #[serde(rename(serialize = "InstructionSet"))]
+  #[serde(rename = "InstructionSet")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub instruction_set: Option<String>,
-  #[serde(rename(serialize = "Manufacturer"))]
+  #[serde(rename = "Manufacturer")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub manufacturer: Option<String>,
-  #[serde(rename(serialize = "MaxSpeedMHz"))]
+  #[serde(rename = "MaxSpeedMHz")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub max_speed_mhz: Option<usize>,
-  #[serde(rename(serialize = "Model"))]
+  #[serde(rename = "Model")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub model: Option<String>,
-  #[serde(rename(serialize = "ProcessorArchitecture"))]
+  #[serde(rename = "ProcessorArchitecture")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processor_architecture: Option<String>,
-  #[serde(rename(serialize = "ProcessorId"))]
+  #[serde(rename = "ProcessorId")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processor_id: Option<ProcessorId>,
-  #[serde(rename(serialize = "ProcessorType"))]
+  #[serde(rename = "ProcessorType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processor_type: Option<String>,
-  #[serde(rename(serialize = "TotalCores"))]
+  #[serde(rename = "TotalCores")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub total_cores: Option<usize>,
-  #[serde(rename(serialize = "TotalThreads"))]
+  #[serde(rename = "TotalThreads")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub total_threads: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUProcessor {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
-  #[serde(rename(serialize = "ProcessorFRUInfo"))]
+  #[serde(rename = "ProcessorFRUInfo")]
   pub processor_fru_info: RedfishProcessorFRUInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishMemoryFRUInfo {
-  #[serde(rename(serialize = "BaseModuleType"))]
+  #[serde(rename = "BaseModuleType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub base_module_type: Option<String>,
-  #[serde(rename(serialize = "BusWidthBits"))]
+  #[serde(rename = "BusWidthBits")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub bus_width_bits: Option<usize>,
-  #[serde(rename(serialize = "CapacityMiB"))]
+  #[serde(rename = "CapacityMiB")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub capacity_mib: Option<usize>,
-  #[serde(rename(serialize = "DataWidthBits"))]
+  #[serde(rename = "DataWidthBits")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub data_width_bits: Option<usize>,
-  #[serde(rename(serialize = "ErrorCorrection"))]
+  #[serde(rename = "ErrorCorrection")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub error_correction: Option<String>,
-  #[serde(rename(serialize = "Manufacturer"))]
+  #[serde(rename = "Manufacturer")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub manufacturer: Option<String>,
-  #[serde(rename(serialize = "MemoryType"))]
+  #[serde(rename = "MemoryType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory_type: Option<String>,
-  #[serde(rename(serialize = "MemoryDeviceType"))]
+  #[serde(rename = "MemoryDeviceType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory_device_type: Option<String>,
-  #[serde(rename(serialize = "OperatingSpeedMhz"))]
+  #[serde(rename = "OperatingSpeedMhz")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub operating_speed_mhz: Option<usize>,
-  #[serde(rename(serialize = "PartNumber"))]
+  #[serde(rename = "PartNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub part_number: Option<String>,
-  #[serde(rename(serialize = "RankCount"))]
+  #[serde(rename = "RankCount")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub rank_count: Option<usize>,
-  #[serde(rename(serialize = "SerialNumber"))]
+  #[serde(rename = "SerialNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub serial_number: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUMemory {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
-  #[serde(rename(serialize = "MemoryFRUInfo"))]
+  #[serde(rename = "MemoryFRUInfo")]
   pub memory_fru_info: RedfishMemoryFRUInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUNodeAccel {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
-  #[serde(rename(serialize = "NodeAccelFRUInfo"))]
+  #[serde(rename = "NodeAccelFRUInfo")]
   pub node_accel_fru_info: RedfishProcessorFRUInfo, // NOTE: according to API
                                                     // docs, yes this is using the redfish for "processor"
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HSNNICFRUInfo {
-  #[serde(rename(serialize = "Manufacturer"))]
+  #[serde(rename = "Manufacturer")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub manufacturer: Option<String>,
-  #[serde(rename(serialize = "Model"))]
+  #[serde(rename = "Model")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub model: Option<String>,
-  #[serde(rename(serialize = "PartNumber"))]
+  #[serde(rename = "PartNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub part_number: Option<String>,
-  #[serde(rename(serialize = "SKU"))]
+  #[serde(rename = "SKU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub sku: Option<String>,
-  #[serde(rename(serialize = "SerialNumber"))]
+  #[serde(rename = "SerialNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub serial_number: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUHSNNIC {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
-  #[serde(rename(serialize = "HSNNICFRUInfo"))]
+  #[serde(rename = "HSNNICFRUInfo")]
   pub hsn_nic_fru_info: HSNNICFRUInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventoryByFRU {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishChassisLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "Hostname"))]
+  #[serde(rename = "Hostname")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hostname: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocChassis {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "ChassisLocatinInfo"))]
+  #[serde(rename = "ChassisLocatinInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub chassis_location_info: Option<RedfishChassisLocationInfo>,
-  #[serde(rename(serialize = "ComputeModules"))]
+  #[serde(rename = "ComputeModules")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub compute_modules: Option<HWInvByLocComputeModule>,
-  #[serde(rename(serialize = "RouterModules"))]
+  #[serde(rename = "RouterModules")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub router_modules: Option<HWInvByLocRouterModule>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodeEnclosure {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "NodeEnclosureLocationInfo"))]
+  #[serde(rename = "NodeEnclosureLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_enclosure_location_info: Option<RedfishChassisLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocComputeModule {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "ComputeModuleLocationInfo"))]
+  #[serde(rename = "ComputeModuleLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub compute_module_location_info: Option<RedfishChassisLocationInfo>,
-  #[serde(rename(serialize = "NodeEnclosures"))]
+  #[serde(rename = "NodeEnclosures")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_enclosures: Option<HWInvByLocNodeEnclosure>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocHSNBoard {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "HSNBoardLocationInfo"))]
+  #[serde(rename = "HSNBoardLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hsn_board_location_info: Option<RedfishChassisLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocRouterModule {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "RouterModuleLocationInfo"))]
+  #[serde(rename = "RouterModuleLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub router_module_location_info: Option<RedfishChassisLocationInfo>,
   pub hsn_boards: Option<HWInvByLocHSNBoard>,
@@ -663,183 +663,183 @@ pub struct HWInvByLocRouterModule {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocCabinet {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "CabinetLocationInfo"))]
+  #[serde(rename = "CabinetLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cabinet_location_info: Option<RedfishChassisLocationInfo>,
-  #[serde(rename(serialize = "Chassis"))]
+  #[serde(rename = "Chassis")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub chassis: Option<HWInvByLocChassis>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocMgmtSwitch {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "MgmtSwitchLocationInfo"))]
+  #[serde(rename = "MgmtSwitchLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mgmt_switch_location_info: Option<RedfishChassisLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocMgmtHLSwitch {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "MgmtHLSwitchLocationInfo"))]
+  #[serde(rename = "MgmtHLSwitchLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mgmt_hl_switch_location_info: Option<RedfishChassisLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocCDUMgmtSwitch {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "CDUMgmtSwitchLocationInfo"))]
+  #[serde(rename = "CDUMgmtSwitchLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cdu_mgmt_switch_location_info: Option<RedfishChassisLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProcessorSummary {
-  #[serde(rename(serialize = "Count"))]
+  #[serde(rename = "Count")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub(super) count: Option<u32>,
-  #[serde(rename(serialize = "Model"))]
+  #[serde(rename = "Model")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub(super) model: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemorySummary {
-  #[serde(rename(serialize = "TotalSystemMemoryGiB"))]
+  #[serde(rename = "TotalSystemMemoryGiB")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub total_system_memory_gib: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishSystemLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "Hostname"))]
+  #[serde(rename = "Hostname")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hostname: Option<String>,
-  #[serde(rename(serialize = "ProcessorSummary"))]
+  #[serde(rename = "ProcessorSummary")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processor_summary: Option<ProcessorSummary>,
-  #[serde(rename(serialize = "MemorySummary"))]
+  #[serde(rename = "MemorySummary")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory_summary: Option<MemorySummary>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishProcessorLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "Socket"))]
+  #[serde(rename = "Socket")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub socket: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocProcessor {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUProcessor>,
-  #[serde(rename(serialize = "ProcessorLocationInfo"))]
+  #[serde(rename = "ProcessorLocationInfo")]
   pub processor_location_info: RedfishProcessorLocationInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodeAccel {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUNodeAccel>,
-  #[serde(rename(serialize = "NodeAccelLocationInfo"))]
+  #[serde(rename = "NodeAccelLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accel_location_info: Option<RedfishProcessorLocationInfo>, // NOTE: according to API
                                                                       // docs, yes this is using the redfish for "processor""
@@ -847,148 +847,148 @@ pub struct HWInvByLocNodeAccel {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishDriveLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocDrive {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "DriveLocationInfo"))]
+  #[serde(rename = "DriveLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub drive_location_info: Option<RedfishDriveLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemoryLocation {
-  #[serde(rename(serialize = "Socket"))]
+  #[serde(rename = "Socket")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub socket: Option<u32>,
-  #[serde(rename(serialize = "MemoryController"))]
+  #[serde(rename = "MemoryController")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory_controller: Option<u32>,
-  #[serde(rename(serialize = "Channel"))]
+  #[serde(rename = "Channel")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub channel: Option<u32>,
-  #[serde(rename(serialize = "Slot"))]
+  #[serde(rename = "Slot")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub slot: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishMemoryLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "MemoryLocation"))]
+  #[serde(rename = "MemoryLocation")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory_location: Option<MemoryLocation>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocMemory {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUMemory>,
-  #[serde(rename(serialize = "MemoryLocationInfo"))]
+  #[serde(rename = "MemoryLocationInfo")]
   pub memory_location_info: RedfishMemoryLocationInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishNodeAccelRiserLocationInfo {
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodeAccelRiser {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "NodeAccelRiserLocationInfo"))]
+  #[serde(rename = "NodeAccelRiserLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accel_riser_location_info: Option<RedfishNodeAccelRiserLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HSNNICLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocHSNNIC {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUHSNNIC>,
   /* #[serde(rename = "NodeHsnNicLocationInfo")]
@@ -1006,175 +1006,175 @@ pub struct Hardware {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNode {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInvByFRUNode>,
-  #[serde(rename(serialize = "NodeLocationInfo"))]
+  #[serde(rename = "NodeLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_location_info: Option<RedfishSystemLocationInfo>,
-  #[serde(rename(serialize = "Processors"))]
+  #[serde(rename = "Processors")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processors: Option<Vec<HWInvByLocProcessor>>,
-  #[serde(rename(serialize = "NodeAccels"))]
+  #[serde(rename = "NodeAccels")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accels: Option<Vec<HWInvByLocNodeAccel>>,
-  #[serde(rename(serialize = "Dives"))]
+  #[serde(rename = "Dives")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub drives: Option<Vec<HWInvByLocDrive>>,
-  #[serde(rename(serialize = "Memory"))]
+  #[serde(rename = "Memory")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory: Option<Vec<HWInvByLocMemory>>,
-  #[serde(rename(serialize = "NodeAccelRisers"))]
+  #[serde(rename = "NodeAccelRisers")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accel_risers: Option<Vec<HWInvByLocNodeAccelRiser>>,
-  #[serde(rename(serialize = "NodeHsnNICs"))]
+  #[serde(rename = "NodeHsnNICs")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_hsn_nics: Option<Vec<HWInvByLocHSNNIC>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishPDULocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "UUID"))]
+  #[serde(rename = "UUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub uuid: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishOutletLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocOutlet {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "OutletLocationInfo"))]
+  #[serde(rename = "OutletLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub outlet_location_info: Option<RedfishOutletLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocPDU {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "PDULocationInfo"))]
+  #[serde(rename = "PDULocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub pdu_location_info: Option<RedfishPDULocationInfo>,
-  #[serde(rename(serialize = "CabinetPDUPowerConnectors"))]
+  #[serde(rename = "CabinetPDUPowerConnectors")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cabinet_pdu_power_connectors: Option<Vec<HWInvByLocOutlet>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishCMMRectifierLocationInfo {
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "FirmwareVersion"))]
+  #[serde(rename = "FirmwareVersion")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub firmware_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocCMMRectifier {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "CMMRectifierLocationInfo"))]
+  #[serde(rename = "CMMRectifierLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cmm_rectifier_location_info: Option<RedfishCMMRectifierLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishNodeEnclosurePowerSupplyLocationInfo {
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "FirmwareVersion"))]
+  #[serde(rename = "FirmwareVersion")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub firmware_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodePowerSupply {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "NodeEnclosurePowerSupplyLocationInfo"))]
+  #[serde(rename = "NodeEnclosurePowerSupplyLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_enclosure_power_supply_location_info:
     Option<RedfishNodeEnclosurePowerSupplyLocationInfo>,
@@ -1182,188 +1182,188 @@ pub struct HWInvByLocNodePowerSupply {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishManagerLocationInfo {
-  #[serde(rename(serialize = "Id"))]
+  #[serde(rename = "Id")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-  #[serde(rename(serialize = "Name"))]
+  #[serde(rename = "Name")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
-  #[serde(rename(serialize = "Description"))]
+  #[serde(rename = "Description")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  #[serde(rename(serialize = "DateTime"))]
+  #[serde(rename = "DateTime")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub date_time: Option<String>,
-  #[serde(rename(serialize = "DateTimeLocalOffset"))]
+  #[serde(rename = "DateTimeLocalOffset")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub date_time_local_offset: Option<String>,
-  #[serde(rename(serialize = "FirmwareVersion"))]
+  #[serde(rename = "FirmwareVersion")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub firmware_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocNodeBMC {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "NodeBMCLocationInfo"))]
+  #[serde(rename = "NodeBMCLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_bmc_location_info: Option<RedfishManagerLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByLocRouterBMC {
-  #[serde(rename(serialize = "ID"))]
+  #[serde(rename = "ID")]
   pub id: String,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "Ordinal"))]
+  #[serde(rename = "Ordinal")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ordinal: Option<u32>,
-  #[serde(rename(serialize = "Status"))]
+  #[serde(rename = "Status")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub status: Option<String>,
-  #[serde(rename(serialize = "PopulatedFRU"))]
+  #[serde(rename = "PopulatedFRU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub populated_fru: Option<HWInventoryByFRU>,
-  #[serde(rename(serialize = "RouterBMCLocationInfo"))]
+  #[serde(rename = "RouterBMCLocationInfo")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub router_bmc_location_info: Option<RedfishManagerLocationInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventory {
-  #[serde(rename(serialize = "XName"))]
+  #[serde(rename = "XName")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub xname: Option<String>,
-  #[serde(rename(serialize = "Format"))]
+  #[serde(rename = "Format")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub format: Option<String>,
-  #[serde(rename(serialize = "Cabinets"))]
+  #[serde(rename = "Cabinets")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cabinets: Option<Vec<HWInvByLocCabinet>>,
-  #[serde(rename(serialize = "Chassis"))]
+  #[serde(rename = "Chassis")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub chassis: Option<Vec<HWInvByLocChassis>>,
-  #[serde(rename(serialize = "ComputeModules"))]
+  #[serde(rename = "ComputeModules")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub compute_modules: Option<Vec<HWInvByLocComputeModule>>,
-  #[serde(rename(serialize = "RouterModules"))]
+  #[serde(rename = "RouterModules")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub router_modules: Option<Vec<HWInvByLocRouterModule>>,
-  #[serde(rename(serialize = "NodeEnclosures"))]
+  #[serde(rename = "NodeEnclosures")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_enclosures: Option<Vec<HWInvByLocNodeEnclosure>>,
-  #[serde(rename(serialize = "HSNBoards"))]
+  #[serde(rename = "HSNBoards")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hsn_boards: Option<Vec<HWInvByLocHSNBoard>>,
-  #[serde(rename(serialize = "MgmtSwitches"))]
+  #[serde(rename = "MgmtSwitches")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mgmt_switches: Option<Vec<HWInvByLocMgmtSwitch>>,
-  #[serde(rename(serialize = "MgmtHLSwitches"))]
+  #[serde(rename = "MgmtHLSwitches")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mgmt_hl_switches: Option<Vec<HWInvByLocMgmtHLSwitch>>,
-  #[serde(rename(serialize = "CDUMgmtSwitches"))]
+  #[serde(rename = "CDUMgmtSwitches")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cdu_mgmt_switches: Option<Vec<HWInvByLocCDUMgmtSwitch>>,
-  #[serde(rename(serialize = "Nodes"))]
+  #[serde(rename = "Nodes")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub nodes: Option<Vec<HWInvByLocNode>>,
-  #[serde(rename(serialize = "Processors"))]
+  #[serde(rename = "Processors")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub processors: Option<Vec<HWInvByLocProcessor>>,
-  #[serde(rename(serialize = "NodeAccels"))]
+  #[serde(rename = "NodeAccels")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accels: Option<Vec<HWInvByLocNodeAccel>>,
-  #[serde(rename(serialize = "Drives"))]
+  #[serde(rename = "Drives")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub drives: Option<Vec<HWInvByLocDrive>>,
-  #[serde(rename(serialize = "Memory"))]
+  #[serde(rename = "Memory")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub memory: Option<Vec<HWInvByLocMemory>>,
-  #[serde(rename(serialize = "CabinetPDUs"))]
+  #[serde(rename = "CabinetPDUs")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cabinet_pdus: Option<Vec<HWInvByLocPDU>>,
-  #[serde(rename(serialize = "CabinetPDUPowerConnectors"))]
+  #[serde(rename = "CabinetPDUPowerConnectors")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cabinet_pdu_power_connectors: Option<Vec<HWInvByLocOutlet>>,
-  #[serde(rename(serialize = "CMMRectifiers"))]
+  #[serde(rename = "CMMRectifiers")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub cmm_rectifiers: Option<Vec<HWInvByLocCMMRectifier>>,
-  #[serde(rename(serialize = "NodeAccelRisers"))]
+  #[serde(rename = "NodeAccelRisers")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_accel_risers: Option<Vec<HWInvByLocNodeAccelRiser>>,
-  #[serde(rename(serialize = "NodeHsnNICs"))]
+  #[serde(rename = "NodeHsnNICs")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_hsn_nics: Option<Vec<HWInvByLocHSNNIC>>,
-  #[serde(rename(serialize = "NodeEnclosurePowerSupplies"))]
+  #[serde(rename = "NodeEnclosurePowerSupplies")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_enclosure_power_supplies: Option<Vec<HWInvByLocNodePowerSupply>>,
-  #[serde(rename(serialize = "NodeBMC"))]
+  #[serde(rename = "NodeBMC")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub node_bmc: Option<Vec<HWInvByLocNodeBMC>>,
-  #[serde(rename(serialize = "RouterBMC"))]
+  #[serde(rename = "RouterBMC")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub router_bmc: Option<Vec<HWInvByLocRouterBMC>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInvByFRUNode {
-  #[serde(rename(serialize = "FRUID"))]
+  #[serde(rename = "FRUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_id: Option<String>,
-  #[serde(rename(serialize = "Type"))]
+  #[serde(rename = "Type")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-  #[serde(rename(serialize = "FRUSubType"))]
+  #[serde(rename = "FRUSubType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub fru_sub_type: Option<String>,
-  #[serde(rename(serialize = "HWInventoryByFRUType"))]
+  #[serde(rename = "HWInventoryByFRUType")]
   pub hw_inventory_by_fru_type: String,
-  #[serde(rename(serialize = "NodeFRUInfo"))]
+  #[serde(rename = "NodeFRUInfo")]
   pub node_fru_info: RedfishSystemFRUInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedfishSystemFRUInfo {
-  #[serde(rename(serialize = "AssetTag"))]
+  #[serde(rename = "AssetTag")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub asset_tag: Option<String>,
-  #[serde(rename(serialize = "BiosVersion"))]
+  #[serde(rename = "BiosVersion")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub bios_version: Option<String>,
-  #[serde(rename(serialize = "Model"))]
+  #[serde(rename = "Model")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub model: Option<String>,
-  #[serde(rename(serialize = "Manufacturer"))]
+  #[serde(rename = "Manufacturer")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub manufacturer: Option<String>,
-  #[serde(rename(serialize = "PartNumber"))]
+  #[serde(rename = "PartNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub part_number: Option<String>,
-  #[serde(rename(serialize = "SerialNumber"))]
+  #[serde(rename = "SerialNumber")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub serial_number: Option<String>,
-  #[serde(rename(serialize = "SKU"))]
+  #[serde(rename = "SKU")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub sku: Option<String>,
-  #[serde(rename(serialize = "SystemType"))]
+  #[serde(rename = "SystemType")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub system_type: Option<String>,
-  #[serde(rename(serialize = "UUID"))]
+  #[serde(rename = "UUID")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub uuid: Option<String>,
 }

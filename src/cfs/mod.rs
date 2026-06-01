@@ -23,3 +23,20 @@ pub mod health;
 pub mod session;
 #[cfg(test)]
 pub mod tests;
+
+// Domain-root canonical names. CFS exposes both v2 (legacy) and v3
+// (current) endpoints on `ShastaClient`; these re-exports pin **v3** as
+// the canonical wire-format for external consumers. v2 types remain
+// reachable to internal callers via the deep `*::http_client::v2::types`
+// paths but are `pub(crate)`-only since Phase 5.2.
+//
+// v2 and v3 are structurally distinct (different field renames,
+// different optional fields, an additional pagination `Next` / `logs`
+// in v3, etc.) — picking a canonical here is a load-bearing decision,
+// not cosmetic.
+pub use component::http_client::v3::types::Component;
+pub use configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest;
+pub use configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse;
+pub use session::http_client::v3::types::{
+  CfsSessionGetResponse, CfsSessionPostRequest,
+};

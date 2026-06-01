@@ -513,7 +513,7 @@ pub async fn get_node_hw_component_count(
   hsm_member: &str,
   user_defined_hw_profile_vec: Vec<String>,
 ) -> Result<(String, Vec<String>, Vec<u64>), Error> {
-  let node_hw_inventory_value = crate::ShastaClient::new(
+  let hw_inventory = crate::ShastaClient::new(
     shasta_base_url,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
@@ -521,6 +521,13 @@ pub async fn get_node_hw_component_count(
   .hsm_hw_inventory_get_query(&shasta_token, hsm_member)
   .await?;
 
+  // The downstream `get_node_hw_properties_from_value` and its three
+  // `get_list_*_from_hw_inventory_value` helpers walk JSON paths
+  // against a `serde_json::Value`. Now that the HTTP client returns
+  // typed `HWInventory`, re-serialise here so those helpers keep
+  // working unchanged. Future work could refactor the helpers to take
+  // `&HWInventory` directly.
+  let node_hw_inventory_value = serde_json::to_value(&hw_inventory)?;
   let node_hw_profile = get_node_hw_properties_from_value(
     &node_hw_inventory_value,
     user_defined_hw_profile_vec.clone(),

@@ -14,7 +14,7 @@ pub struct Group {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub members: Option<Members>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "exclusiveGroup"))]
+  #[serde(rename = "exclusiveGroup")]
   pub exclusive_group: Option<String>,
 }
 
