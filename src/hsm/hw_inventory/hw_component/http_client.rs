@@ -30,7 +30,7 @@ impl ShastaClient {
     .await?;
 
     match payload.pointer("/Nodes/0") {
-      Some(node_value) => Ok(NodeSummary::from_csm_value(node_value.clone())),
+      Some(node_value) => NodeSummary::try_from_csm_value(node_value),
       None => Err(Error::Message(format!(
         "ERROR - json section '/Node' missing in json response API for node '{}'",
         xname

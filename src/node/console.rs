@@ -37,7 +37,12 @@ pub async fn get_container_attachment_to_conman(
 
   let pods_objects = pods_fabric.list(&params).await?;
 
-  let console_operator_pod = &pods_objects.items[0];
+  let console_operator_pod = pods_objects.items.first().ok_or_else(|| {
+    Error::K8sError(
+      "No 'cray-console-operator' pod found in namespace 'services'"
+        .to_string(),
+    )
+  })?;
   let console_operator_pod_name =
     console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
       Error::K8sError("Pod related to console has no name".to_string())
@@ -55,13 +60,31 @@ pub async fn get_container_attachment_to_conman(
     )
     .await?;
 
-  let mut stdout_stream = ReaderStream::new(attached.stdout().unwrap());
-  let next_stdout = stdout_stream.next().await.unwrap()?;
+  let stdout = attached.stdout().ok_or_else(|| {
+    Error::K8sError(
+      "attached console-operator process has no stdout".to_string(),
+    )
+  })?;
+  let mut stdout_stream = ReaderStream::new(stdout);
+  let Some(next_stdout_frame) = stdout_stream.next().await else {
+    return Err(Error::K8sError(
+      "console-operator stdout stream ended without yielding any frame"
+        .to_string(),
+    ));
+  };
+  let next_stdout = next_stdout_frame?;
   let stdout_str = std::str::from_utf8(&next_stdout)?;
   let output_json: Value = serde_json::from_str(stdout_str)?;
 
-  let console_pod_name =
-    output_json.get("podname").and_then(Value::as_str).unwrap();
+  let console_pod_name = output_json
+    .get("podname")
+    .and_then(Value::as_str)
+    .ok_or_else(|| {
+      Error::ConsoleError(format!(
+        "console-operator response missing string field 'podname' (got: {})",
+        output_json
+      ))
+    })?;
 
   let command = vec!["conman", "-j", xname]; // Enter the container and open conman to access node's console
   // let command = vec!["bash"]; // Enter the container and open bash to start an interactive

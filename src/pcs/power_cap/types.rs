@@ -42,11 +42,11 @@ pub struct PowerCapLimit {
   #[serde(rename = "currentValue")]
   pub current_value: Option<usize>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "mamximumValue")]
+  #[serde(rename = "maximumValue")]
   pub maximum_value: Option<usize>,
   #[serde(skip_serializing_if = "Option::is_none")]
   #[serde(rename = "minimumValue")]
-  pub mnimum_value: Option<usize>,
+  pub minimum_value: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

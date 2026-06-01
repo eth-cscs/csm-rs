@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 
 use manta_backend_dispatcher::{
-  error::Error, interfaces::hsm::group::GroupTrait,
-  types::Group as FrontEndGroup,
+  error::Error,
+  interfaces::hsm::group::GroupTrait,
+  types::{Group as FrontEndGroup, HsmActionResponse},
 };
-use serde_json::Value;
 
 use super::Csm;
 use crate::hsm::{self, group::types::Member};
@@ -193,15 +193,13 @@ impl GroupTrait for Csm {
     &self,
     auth_token: &str,
     label: &str,
-  ) -> Result<Value, Error> {
-    // Re-serialise the now-typed `HsmActionResponse` back to Value to
-    // match the dispatcher trait. See `delete_node` for rationale.
-    let response = self
+  ) -> Result<HsmActionResponse, Error> {
+    self
       .shasta_client()
-      .hsm_group_delete_group(auth_token, &label.to_string())
+      .hsm_group_delete_group(auth_token, label)
       .await
-      .map_err(Error::from)?;
-    serde_json::to_value(response).map_err(Error::from)
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn get_hsm_map_and_filter_by_hsm_name_vec(
@@ -225,19 +223,17 @@ impl GroupTrait for Csm {
     auth_token: &str,
     group_label: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
+  ) -> Result<HsmActionResponse, Error> {
     let member = Member {
       id: Some(xname.to_string()),
     };
 
-    // Re-serialise the typed `HsmActionResponse` to Value (dispatcher
-    // trait still uses Value here).
-    let response = self
+    self
       .shasta_client()
       .hsm_group_post_member(auth_token, group_label, member)
       .await
-      .map_err(Error::from)?;
-    serde_json::to_value(response).map_err(Error::from)
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn add_members_to_group(

@@ -28,3 +28,4 @@ pub mod s3_client;
 // `image::http_client::types::*` paths so the internal layout can
 // evolve without rippling through every command.
 pub use image::http_client::types::{Image, Link, PatchImage};
+pub use public_keys::PublicKey;

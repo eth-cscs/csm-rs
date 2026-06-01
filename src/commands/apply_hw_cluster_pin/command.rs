@@ -355,10 +355,7 @@ pub async fn exec(
           parent_hsm_group_name
         );
         match shasta_client
-          .hsm_group_delete_group(
-            shasta_token,
-            &parent_hsm_group_name.to_string(),
-          )
+          .hsm_group_delete_group(shasta_token, parent_hsm_group_name)
           .await
         {
           Ok(_) => log::info!("HSM group removed successfully."),

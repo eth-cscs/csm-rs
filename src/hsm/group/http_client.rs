@@ -240,7 +240,7 @@ impl ShastaClient {
   pub async fn hsm_group_delete_group(
     &self,
     token: &str,
-    hsm_group_name: &String,
+    hsm_group_name: &str,
   ) -> Result<HsmActionResponse, Error> {
     log::info!("Delete HSM group '{}'", hsm_group_name);
     let url_api =

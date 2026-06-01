@@ -175,7 +175,7 @@ async fn ims_public_keys_v3_get_filters_by_username() {
     .await
     .expect("should succeed");
   assert_eq!(keys.len(), 1);
-  assert_eq!(keys[0]["name"], "alice");
+  assert_eq!(keys[0].name, "alice");
 }
 
 #[tokio::test]
@@ -184,7 +184,7 @@ async fn ims_public_keys_v3_get_single_returns_some_on_exactly_one_match() {
   Mock::given(method("GET"))
     .and(path("/ims/v3/public-keys"))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([
-      {"id": "k1", "name": "alice"}
+      {"id": "k1", "name": "alice", "public_key": "ssh-rsa AAA..."}
     ])))
     .mount(&server)
     .await;

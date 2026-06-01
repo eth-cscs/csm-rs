@@ -398,7 +398,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
+  let root_public_ssh_key = crate::ShastaClient::new(
     shasta_base_url,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
@@ -407,14 +407,11 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   .await?
   .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
-  let root_public_ssh_key: &str = root_public_ssh_key_value
-    .get("id")
-    .and_then(serde_json::Value::as_str)
-    .ok_or_else(|| {
-      Error::Message(
-        "IMS public-key response is missing or has non-string 'id'".to_string(),
-      )
-    })?;
+  let root_public_ssh_key_id = root_public_ssh_key.id.ok_or_else(|| {
+    Error::Message(
+      "IMS public-key response missing server-generated 'id'".to_string(),
+    )
+  })?;
 
   // let ims_job = ims::job::types::JobPostRequest {
   let ims_job = ims::job::types::Job {
@@ -424,7 +421,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
     initrd_file_name: Some("initrd".to_string()),
     kernel_parameters_file_name: Some("kernel-parameters".to_string()),
     artifact_id: recipe_id.to_string(),
-    public_key_id: root_public_ssh_key.to_string(),
+    public_key_id: root_public_ssh_key_id,
     ssh_containers: None, // Should this be None ???
     enable_debug: Some(false),
     build_env_size: Some(15),
@@ -509,7 +506,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key_value: serde_json::Value = crate::ShastaClient::new(
+  let root_public_ssh_key = crate::ShastaClient::new(
     shasta_base_url,
     shasta_root_cert.to_vec(),
     socks5_proxy.map(str::to_owned),
@@ -518,14 +515,11 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   .await?
   .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
-  let root_public_ssh_key = root_public_ssh_key_value
-    .get("id")
-    .and_then(serde_json::Value::as_str)
-    .ok_or_else(|| {
-      Error::Message(
-        "IMS public-key response is missing or has non-string 'id'".to_string(),
-      )
-    })?;
+  let root_public_ssh_key_id = root_public_ssh_key.id.ok_or_else(|| {
+    Error::Message(
+      "IMS public-key response missing server-generated 'id'".to_string(),
+    )
+  })?;
 
   let ims_job = ims::job::types::Job {
     job_type: "create".to_string(),
@@ -534,7 +528,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     initrd_file_name: Some("initrd".to_string()),
     kernel_parameters_file_name: Some("kernel-parameters".to_string()),
     artifact_id: recipe_id.to_string(),
-    public_key_id: root_public_ssh_key.to_string(),
+    public_key_id: root_public_ssh_key_id,
     ssh_containers: None, // Should this be None ???
     enable_debug: Some(false),
     build_env_size: Some(15),

@@ -191,18 +191,13 @@ impl ComponentTrait for Csm {
     &self,
     auth_token: &str,
     id: &str,
-  ) -> Result<Value, Error> {
-    // The dispatcher trait still returns `Value` here; the csm-rs HTTP
-    // client now returns a typed `HsmActionResponse` (audit finding
-    // #1 for HSM). Re-serialise back into Value at this boundary so
-    // existing dispatcher consumers stay source-compatible. A future
-    // change to the dispatcher trait can drop this round-trip.
-    let response = self
+  ) -> Result<HsmActionResponse, Error> {
+    self
       .shasta_client()
       .hsm_component_delete_one(auth_token, id)
       .await
-      .map_err(Error::from)?;
-    serde_json::to_value(response).map_err(Error::from)
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   /// Get list of xnames from NIDs

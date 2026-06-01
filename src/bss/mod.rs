@@ -20,3 +20,8 @@ pub mod utils;
 /// BSS mirror types. Gated behind the `manta-dispatcher` Cargo feature.
 #[cfg(feature = "manta-dispatcher")]
 mod dispatcher_conv;
+
+// Canonical names: callers should prefer these over the deeper
+// `types::*` paths so the internal layout can evolve without rippling
+// through every command.
+pub use types::BootParameters;

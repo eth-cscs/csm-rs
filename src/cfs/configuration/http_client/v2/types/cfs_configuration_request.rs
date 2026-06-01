@@ -38,9 +38,16 @@ pub struct SpecialParameter {
   pub(super) ims_required_dkms: Option<bool>,
 }
 
+/// CFS v2 configuration request body.
+///
+/// The configuration name is **not** part of this body: CFS v2 uses
+/// `PUT /cfs/v2/configurations/{name}` and takes only `{ "layers": ... }`
+/// in the body. Callsites that need a name pass it as a separate
+/// `configuration_name: &str` parameter (see `cfs_configuration_v2_put`,
+/// `put_configuration`, and the SAT parser, which returns
+/// `(String, CfsConfigurationRequest)`).
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CfsConfigurationRequest {
-  pub name: String,
   pub layers: Vec<Layer>,
 }
 
@@ -75,7 +82,6 @@ impl Default for CfsConfigurationRequest {
 impl CfsConfigurationRequest {
   pub fn new() -> Self {
     Self {
-      name: String::default(),
       layers: Vec::default(),
     }
   }
@@ -107,8 +113,6 @@ impl CfsConfigurationRequest {
 
     let cfs_configuration_name =
       yaml_str(configuration_yaml, "name")?.to_string();
-
-    cfs_configuration.name = cfs_configuration_name.clone();
 
     for layer_yaml in yaml_seq(configuration_yaml, "layers")? {
       // log::info!("\n\n### Layer:\n{:#?}\n", layer_json);
@@ -323,8 +327,6 @@ impl CfsConfigurationRequest {
     let mut cfs_configuration = Self::new();
 
     let cfs_configuration_name = &configuration_yaml.name;
-
-    cfs_configuration.name = cfs_configuration_name.clone();
 
     for layer_yaml in &configuration_yaml.layers {
       let playbook = &layer_yaml.playbook;

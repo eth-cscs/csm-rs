@@ -82,8 +82,6 @@ impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
     front_end_cfs_configuration_request: FrontEndCfsConfigurationRequest,
   ) -> Self {
     Self {
-      name: "".to_string(), // FIXME: add 'name' field to the frontend request and change
-      // this code to `name: front_end_cfs_configuration_response.name,`
       layers: front_end_cfs_configuration_request
         .layers
         .unwrap_or_default()

@@ -8,6 +8,23 @@ use std::str::FromStr;
 use std::string::ToString;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
+use crate::error::Error;
+
+/// Extract a required string field from an HSM inventory JSON object.
+/// Returns a descriptive [`Error::Message`] if the key is missing or the
+/// value isn't a string, instead of panicking like the previous `.unwrap()`.
+fn required_str(v: &Value, key: &str) -> Result<String, Error> {
+  v.get(key)
+    .and_then(Value::as_str)
+    .map(str::to_string)
+    .ok_or_else(|| {
+      Error::Message(format!(
+        "HSM hardware inventory: required field '{}' is missing or not a string",
+        key
+      ))
+    })
+}
+
 /// Generate bidirectional `From` impls for two structs with identical field
 /// names where each field has the same type on both sides (primitives,
 /// `Option<String>`, etc). Fields are moved unchanged.
@@ -139,75 +156,49 @@ pub struct NodeSummary {
 }
 
 impl NodeSummary {
-  pub fn from_csm_value(hw_artifact_value: Value) -> Self {
-    let processors = hw_artifact_value
-      .get("Processors")
-      .and_then(Value::as_array)
-      .map(|proc_vec| {
-        proc_vec
-          .iter()
-          .map(|processor_value| {
-            ArtifactSummary::from_processor_value(processor_value.clone())
-          })
-          .collect()
-      })
-      .unwrap_or_default();
+  pub fn try_from_csm_value(
+    hw_artifact_value: &Value,
+  ) -> Result<Self, Error> {
+    let processors = parse_artifact_array(
+      hw_artifact_value,
+      "Processors",
+      ArtifactSummary::try_from_processor_value,
+    )?;
+    let memory = parse_artifact_array(
+      hw_artifact_value,
+      "Memory",
+      ArtifactSummary::try_from_memory_value,
+    )?;
+    let node_accels = parse_artifact_array(
+      hw_artifact_value,
+      "NodeAccels",
+      ArtifactSummary::try_from_nodeaccel_value,
+    )?;
+    let node_hsn_nics = parse_artifact_array(
+      hw_artifact_value,
+      "NodeHsnNics",
+      ArtifactSummary::try_from_nodehsnnics_value,
+    )?;
 
-    let memory = hw_artifact_value
-      .get("Memory")
-      .and_then(Value::as_array)
-      .map(|mem_vec| {
-        mem_vec
-          .iter()
-          .map(|memory_value| {
-            ArtifactSummary::from_memory_value(memory_value.clone())
-          })
-          .collect()
-      })
-      .unwrap_or_default();
-
-    let node_accels = hw_artifact_value
-      .get("NodeAccels")
-      .and_then(Value::as_array)
-      .map(|nodeaccel_vec| {
-        nodeaccel_vec
-          .iter()
-          .map(|nodeaccel_value| {
-            ArtifactSummary::from_nodeaccel_value(nodeaccel_value.clone())
-          })
-          .collect()
-      })
-      .unwrap_or_default();
-
-    let node_hsn_nics = hw_artifact_value
-      .get("NodeHsnNics")
-      .and_then(Value::as_array)
-      .map(|hw_artifact_vec| {
-        hw_artifact_vec
-          .iter()
-          .map(|nodehsnnic_value| {
-            ArtifactSummary::from_nodehsnnics_value(nodehsnnic_value.clone())
-          })
-          .collect()
-      })
-      .unwrap_or_default();
-
-    Self {
-      xname: hw_artifact_value
-        .get("ID")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
-      r#type: hw_artifact_value
-        .get("Type")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
+    Ok(Self {
+      xname: required_str(hw_artifact_value, "ID")?,
+      r#type: required_str(hw_artifact_value, "Type")?,
       processors,
       memory,
       node_accels,
       node_hsn_nics,
-    }
+    })
+  }
+}
+
+fn parse_artifact_array(
+  parent: &Value,
+  key: &str,
+  parse_one: fn(&Value) -> Result<ArtifactSummary, Error>,
+) -> Result<Vec<ArtifactSummary>, Error> {
+  match parent.get(key).and_then(Value::as_array) {
+    Some(arr) => arr.iter().map(parse_one).collect(),
+    None => Ok(Vec::new()),
   }
 }
 
@@ -219,80 +210,63 @@ pub struct ArtifactSummary {
 }
 
 impl ArtifactSummary {
-  fn from_processor_value(processor_value: Value) -> Self {
-    Self {
-      xname: processor_value
-        .get("ID")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
-      r#type: ArtifactType::from_str(
-        processor_value.get("Type").and_then(Value::as_str).unwrap(),
-      )
-      .unwrap(),
+  fn try_from_processor_value(
+    processor_value: &Value,
+  ) -> Result<Self, Error> {
+    Ok(Self {
+      xname: required_str(processor_value, "ID")?,
+      r#type: parse_artifact_type(processor_value)?,
       info: processor_value
         .pointer("/PopulatedFRU/ProcessorFRUInfo/Model")
         .and_then(Value::as_str)
         .map(str::to_string),
-    }
+    })
   }
 
-  fn from_memory_value(memory_value: Value) -> Self {
-    Self {
-      xname: memory_value
-        .get("ID")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
-      r#type: ArtifactType::from_str(
-        memory_value.get("Type").and_then(Value::as_str).unwrap(),
-      )
-      .unwrap(),
+  fn try_from_memory_value(memory_value: &Value) -> Result<Self, Error> {
+    Ok(Self {
+      xname: required_str(memory_value, "ID")?,
+      r#type: parse_artifact_type(memory_value)?,
       info: memory_value
         .pointer("/PopulatedFRU/MemoryFRUInfo/CapacityMiB")
         .and_then(Value::as_number)
         .map(|v| v.to_string() + " MiB"),
-    }
+    })
   }
 
-  fn from_nodehsnnics_value(nodehsnnic_value: Value) -> Self {
-    Self {
-      xname: nodehsnnic_value
-        .get("ID")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
-      r#type: ArtifactType::from_str(
-        nodehsnnic_value
-          .get("Type")
-          .and_then(Value::as_str)
-          .unwrap(),
-      )
-      .unwrap(),
+  fn try_from_nodehsnnics_value(
+    nodehsnnic_value: &Value,
+  ) -> Result<Self, Error> {
+    Ok(Self {
+      xname: required_str(nodehsnnic_value, "ID")?,
+      r#type: parse_artifact_type(nodehsnnic_value)?,
       info: nodehsnnic_value
         .pointer("/NodeHsnNicLocationInfo/Description")
         .and_then(Value::as_str)
         .map(str::to_string),
-    }
+    })
   }
 
-  fn from_nodeaccel_value(nodeaccel_value: Value) -> Self {
-    Self {
-      xname: nodeaccel_value
-        .get("ID")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(),
-      r#type: ArtifactType::from_str(
-        nodeaccel_value.get("Type").and_then(Value::as_str).unwrap(),
-      )
-      .unwrap(),
+  fn try_from_nodeaccel_value(nodeaccel_value: &Value) -> Result<Self, Error> {
+    Ok(Self {
+      xname: required_str(nodeaccel_value, "ID")?,
+      r#type: parse_artifact_type(nodeaccel_value)?,
       info: nodeaccel_value
         .pointer("/PopulatedFRU/NodeAccelFRUInfo/Model")
         .and_then(Value::as_str)
         .map(str::to_string),
-    }
+    })
   }
+}
+
+fn parse_artifact_type(v: &Value) -> Result<ArtifactType, Error> {
+  let type_str = required_str(v, "Type")?;
+  ArtifactType::from_str(&type_str).map_err(|e| {
+    Error::Message(format!(
+      "HSM hardware inventory: unknown ArtifactType '{}': {:?}",
+      type_str, e
+    ))
+  })
 }
 
 ///////////////////////////////////////////////////////////////////////////////

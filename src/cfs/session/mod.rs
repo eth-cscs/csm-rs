@@ -36,12 +36,13 @@ pub async fn get_one(
   .cfs_session_v2_get(shasta_token, None, None, None, Some(session_name), None)
   .await?;
 
-  if cfs_session_vec.len() == 1 {
-    Ok(cfs_session_vec.first().unwrap().clone()) // FIX: remove this clone?
-  } else {
-    Err(Error::SessionNotFound(session_name.to_string()))
+  let mut iter = cfs_session_vec.into_iter();
+  match (iter.next(), iter.next()) {
+    (Some(session), None) => Ok(session),
+    _ => Err(Error::SessionNotFound(session_name.to_string())),
   }
 }
+
 /// Fetch CFS sessions. Ref: <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>.
 ///
 /// Returns list of CFS sessions ordered by start time. Filters by either
