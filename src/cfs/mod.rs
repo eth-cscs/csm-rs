@@ -24,19 +24,35 @@ pub mod session;
 #[cfg(test)]
 pub mod tests;
 
-// Domain-root canonical names. CFS exposes both v2 (legacy) and v3
-// (current) endpoints on `ShastaClient`; these re-exports pin **v3** as
-// the canonical wire-format for external consumers. v2 types remain
-// reachable to internal callers via the deep `*::http_client::v2::types`
-// paths but are `pub(crate)`-only since Phase 5.2.
+// CFS exposes both v2 (legacy) and v3 (current) endpoints on
+// `ShastaClient`. v2 and v3 are structurally distinct on the wire
+// (different field renames, different optional fields, pagination
+// `Next`/`logs` only in v3), so they are not interchangeable. Each
+// `ShastaClient::cfs_*_v2_*` method takes/returns v2 types; each
+// `cfs_*_v3_*` method takes/returns v3 types — pick the submodule
+// (`cfs::v2::*` or `cfs::v3::*`) that matches the methods you call.
 //
-// v2 and v3 are structurally distinct (different field renames,
-// different optional fields, an additional pagination `Next` / `logs`
-// in v3, etc.) — picking a canonical here is a load-bearing decision,
-// not cosmetic.
-pub use component::http_client::v3::types::Component;
-pub use configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest;
-pub use configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse;
-pub use session::http_client::v3::types::{
-  CfsSessionGetResponse, CfsSessionPostRequest,
-};
+// The deep `*::http_client::v{2,3}::types::*` paths stay `pub(crate)`
+// from Phase 5.2 so external callers reach the types only through
+// these two submodules.
+
+/// Legacy CFS v2 endpoint types — still supported on older CSM
+/// installs where v3 is unavailable.
+pub mod v2 {
+  pub use super::component::http_client::v2::types::Component;
+  pub use super::configuration::http_client::v2::types::cfs_configuration_request::CfsConfigurationRequest;
+  pub use super::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse;
+  pub use super::session::http_client::v2::types::{
+    CfsSessionGetResponse, CfsSessionPostRequest,
+  };
+}
+
+/// Current CFS v3 endpoint types.
+pub mod v3 {
+  pub use super::component::http_client::v3::types::Component;
+  pub use super::configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest;
+  pub use super::configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse;
+  pub use super::session::http_client::v3::types::{
+    CfsSessionGetResponse, CfsSessionPostRequest,
+  };
+}
