@@ -3,7 +3,6 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use regex::Regex;
-use serde_json::Value;
 use tokio::sync::Semaphore;
 
 use crate::{bss, cfs, error::Error, hsm};
@@ -190,6 +189,7 @@ pub async fn get_node_details(
   let node_hsm_info = node_hsm_info_rslt?;
   let node_boot_params_vec = node_boot_params_vec_rslt?;
   let cfs_session_vec = cfs_session_vec_rslt?;
+  let components_status = components_status_rslt?;
 
   // ------------------------------------------------------------------------
   // Get and collect HSM members
@@ -203,8 +203,6 @@ pub async fn get_node_details(
     let shasta_base_url_string = shasta_base_url.to_string();
     let shasta_root_cert_vec = shasta_root_cert.to_vec();
     let socks5_proxy_opt = socks5_proxy.map(str::to_owned);
-
-    let components_status = components_status_rslt.as_ref().unwrap();
 
     // find component details
     let component_details_opt = components_status
@@ -295,6 +293,25 @@ pub async fn get_node_details(
       "Not found".to_string()
     };
 
+    // CFS component fields are all optional on the wire (a node may
+    // have no assigned configuration, no recorded state, etc.). Fall
+    // back to the "Not found" sentinel used elsewhere in this function
+    // rather than panicking on None.
+    let desired_configuration_str = desired_configuration
+      .clone()
+      .unwrap_or_else(|| "Not found".to_string());
+    let configuration_status_str = configuration_status
+      .clone()
+      .unwrap_or_else(|| "Not found".to_string());
+    let enabled_str = enabled
+      .as_ref()
+      .map(bool::to_string)
+      .unwrap_or_else(|| "Not found".to_string());
+    let error_count_str = error_count
+      .as_ref()
+      .map(u64::to_string)
+      .unwrap_or_else(|| "Not found".to_string());
+
     node_details_map
       .entry(xname.clone())
       .and_modify(|node_details: &mut NodeDetails| {
@@ -302,13 +319,10 @@ pub async fn get_node_details(
         node_details.nid = node_nid.clone();
         node_details.hsm = "".to_string();
         node_details.power_status = node_power_status.clone();
-        node_details.desired_configuration =
-          desired_configuration.clone().unwrap();
-        node_details.configuration_status =
-          configuration_status.clone().unwrap();
-        node_details.enabled = enabled.as_ref().map(bool::to_string).unwrap();
-        node_details.error_count =
-          error_count.as_ref().map(u64::to_string).unwrap();
+        node_details.desired_configuration = desired_configuration_str.clone();
+        node_details.configuration_status = configuration_status_str.clone();
+        node_details.enabled = enabled_str.clone();
+        node_details.error_count = error_count_str.clone();
         node_details.boot_image_id = image_id_in_kernel_params.clone();
         node_details.boot_configuration = cfs_configuration_boot.clone();
         node_details.kernel_params = kernel_params.clone();
@@ -318,10 +332,10 @@ pub async fn get_node_details(
         nid: node_nid,
         hsm: "".to_string(),
         power_status: node_power_status,
-        desired_configuration: desired_configuration.clone().unwrap(),
-        configuration_status: configuration_status.clone().unwrap(),
-        enabled: enabled.as_ref().map(bool::to_string).unwrap(),
-        error_count: error_count.as_ref().map(u64::to_string).unwrap(),
+        desired_configuration: desired_configuration_str,
+        configuration_status: configuration_status_str,
+        enabled: enabled_str,
+        error_count: error_count_str,
         boot_image_id: image_id_in_kernel_params,
         boot_configuration: cfs_configuration_boot,
         kernel_params,
@@ -374,50 +388,6 @@ pub async fn get_node_details(
   Ok(node_details_map.into_values().collect())
 }
 
-/// Render a list of node JSON values into a single comma-separated
-/// line of xnames.
-pub fn nodes_to_string_format_one_line(nodes: Option<&Vec<Value>>) -> String {
-  if let Some(nodes_content) = nodes {
-    nodes_to_string_format_discrete_columns(nodes, nodes_content.len() + 1)
-  } else {
-    "".to_string()
-  }
-}
-
-/// Render a list of node JSON values into `num_columns` evenly-sized
-/// columns of xnames, joined by newlines.
-pub fn nodes_to_string_format_discrete_columns(
-  nodes: Option<&Vec<Value>>,
-  num_columns: usize,
-) -> String {
-  let mut members: String;
-
-  match nodes {
-    Some(nodes) if !nodes.is_empty() => {
-      members = nodes
-        .first()
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap(); // take first element
-
-      for (i, _) in nodes.iter().enumerate().skip(1) {
-        // iterate for the rest of the list
-        if i % num_columns == 0 {
-          // breaking the cell content into multiple lines (only 2 xnames per line)
-
-          members.push_str(",\n");
-        } else {
-          members.push(',');
-        }
-
-        members.push_str(nodes.get(i).and_then(Value::as_str).unwrap());
-      }
-    }
-    _ => members = "".to_string(),
-  }
-
-  members
-}
 
 #[cfg(test)]
 mod tests {
