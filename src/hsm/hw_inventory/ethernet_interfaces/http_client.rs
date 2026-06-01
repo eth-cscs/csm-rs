@@ -37,7 +37,6 @@ impl ShastaClient {
         }
         _ => {
           let error_payload = response.text().await?;
-          dbg!(&error_payload);
           return Err(Error::Message(error_payload));
         }
       }

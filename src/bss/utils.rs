@@ -1,7 +1,5 @@
 //! Helpers built on top of [`crate::ShastaClient`]`::bss_*` methods.
 
-use std::collections::HashMap;
-
 use super::types::BootParameters;
 
 /// Extract the IMS image ID from a boot-images S3 path.
@@ -14,36 +12,16 @@ pub fn get_image_id_from_s3_path(s3_path: &str) -> Option<&str> {
   s3_path.split("/").nth(3)
 }
 
-/// Parse a whitespace-separated kernel command line into a
-/// `HashMap<key, value>`. Flags without `=` are stored with an empty
-/// value.
-pub fn convert_kernel_params_to_map(
-  kernel_params: &str,
-) -> HashMap<String, String> {
-  kernel_params
-    .split_whitespace()
-    .map(|kernel_param| {
-      let (key_str, value_str) =
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""));
-
-      let key = key_str.to_string();
-      let value = value_str.to_string();
-
-      (key, value)
-    })
-    .collect()
-}
-
 /// Find the [`BootParameters`] entry whose `hosts` list contains the
 /// requested node, returning a clone or `None`.
 pub fn find_boot_params_related_to_node(
   node_boot_params_list: &[BootParameters],
-  node: &String,
+  node: &str,
 ) -> Option<BootParameters> {
   node_boot_params_list
     .iter()
     .find(|node_boot_param| {
-      node_boot_param.hosts.iter().any(|host| host.eq(node))
+      node_boot_param.hosts.iter().any(|host| host == node)
     })
     .cloned()
 }
@@ -51,54 +29,6 @@ pub fn find_boot_params_related_to_node(
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  // ---------- convert_kernel_params_to_map ----------
-
-  #[test]
-  fn convert_kernel_params_empty_input_returns_empty_map() {
-    assert!(convert_kernel_params_to_map("").is_empty());
-  }
-
-  #[test]
-  fn convert_kernel_params_whitespace_only_returns_empty_map() {
-    assert!(convert_kernel_params_to_map("   \t\n  ").is_empty());
-  }
-
-  #[test]
-  fn convert_kernel_params_single_kv_pair() {
-    let map = convert_kernel_params_to_map("foo=bar");
-    assert_eq!(map.get("foo"), Some(&"bar".to_string()));
-    assert_eq!(map.len(), 1);
-  }
-
-  #[test]
-  fn convert_kernel_params_multiple_kv_pairs() {
-    let map = convert_kernel_params_to_map("a=1 b=2 c=3");
-    assert_eq!(map.get("a"), Some(&"1".to_string()));
-    assert_eq!(map.get("b"), Some(&"2".to_string()));
-    assert_eq!(map.get("c"), Some(&"3".to_string()));
-    assert_eq!(map.len(), 3);
-  }
-
-  #[test]
-  fn convert_kernel_params_value_with_equals_splits_only_at_first() {
-    // `split_once('=')` splits at the FIRST '=' — the rest stays in value
-    let map = convert_kernel_params_to_map("path=s3://bucket/key=etag");
-    assert_eq!(map.get("path"), Some(&"s3://bucket/key=etag".to_string()));
-  }
-
-  #[test]
-  fn convert_kernel_params_bare_flag_maps_to_empty_value() {
-    let map = convert_kernel_params_to_map("quiet console=tty0");
-    assert_eq!(map.get("quiet"), Some(&"".to_string()));
-    assert_eq!(map.get("console"), Some(&"tty0".to_string()));
-  }
-
-  #[test]
-  fn convert_kernel_params_collapses_runs_of_whitespace() {
-    let map = convert_kernel_params_to_map("a=1   b=2\tc=3");
-    assert_eq!(map.len(), 3);
-  }
 
   // ---------- get_image_id_from_s3_path ----------
   //

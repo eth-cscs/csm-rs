@@ -173,15 +173,27 @@ pub fn filter(
         .contains(&cfs_configuration.name)
   });
 
-  // Filter CFS configurations based on user input (date range or configuration name)
+  // Filter CFS configurations based on user input (date range or configuration name).
+  // CFS configurations whose `last_updated` is missing or malformed can't be
+  // confirmed in-range, so they're filtered out of the date-range view.
   if let (Some(since), Some(until)) = (since_opt, until_opt) {
     cfs_configuration_vec.retain(|cfs_configuration| {
-      let date =
-        chrono::DateTime::parse_from_rfc3339(&cfs_configuration.last_updated)
-          .unwrap()
-          .naive_utc();
-
-      since <= date && date < until
+      match chrono::DateTime::parse_from_rfc3339(
+        &cfs_configuration.last_updated,
+      ) {
+        Ok(date) => {
+          let date = date.naive_utc();
+          since <= date && date < until
+        }
+        Err(e) => {
+          log::warn!(
+            "Skipping CFS configuration with unparseable last_updated '{}': {}",
+            cfs_configuration.last_updated,
+            e
+          );
+          false
+        }
+      }
     });
   }
 
@@ -463,13 +475,13 @@ pub async fn get_configuration_layer_details(
       ref_value_vec = repo_ref_vec
         .iter()
         .filter(|repo_ref| {
-          let ref_sha: String = repo_ref
+          repo_ref
             .pointer("/object/sha")
             .and_then(Value::as_str)
             .map(str::to_string)
-            .unwrap();
-
-          annotated_tag_commit_sha.contains(&ref_sha)
+            .is_some_and(|ref_sha| {
+              annotated_tag_commit_sha.contains(&ref_sha)
+            })
         })
         .collect();
     }

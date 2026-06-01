@@ -469,7 +469,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
   recipe_name: &str,
-  image_name: &String,
+  image_name: &str,
   dry_run: bool,
 ) -> Result<String, Error> {
   // Base image needs to be created from a IMS job using an IMS recipe

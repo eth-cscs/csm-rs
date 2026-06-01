@@ -468,7 +468,7 @@ pub fn filter_by_hsm_group_name_and_convert_to_map(
           .members
           .clone()
           .and_then(|members| members.ids)
-          .unwrap(),
+          .unwrap_or_default(),
       );
     }
   }
@@ -490,9 +490,12 @@ pub fn filter_by_hsm_group_members_and_convert_to_map(
       .iter()
       .any(|member| member_vec.contains(&member.as_str()))
     {
-      hsm_group_map
-        .entry(hsm_group.label)
-        .or_insert(hsm_group.members.and_then(|members| members.ids).unwrap());
+      hsm_group_map.entry(hsm_group.label).or_insert(
+        hsm_group
+          .members
+          .and_then(|members| members.ids)
+          .unwrap_or_default(),
+      );
     }
   }
 
@@ -582,11 +585,17 @@ pub fn group_members_by_hsm_group_from_hsm_groups_value(
 ) -> HashMap<String, Vec<String>> {
   let mut member_hsm_map: HashMap<String, Vec<String>> = HashMap::new();
   for hsm_group_value in hsm_groups {
-    let hsm_group_name = hsm_group_value
+    let Some(hsm_group_name) = hsm_group_value
       .get("label")
       .and_then(Value::as_str)
       .map(str::to_string)
-      .unwrap();
+    else {
+      log::warn!(
+        "Skipping HSM group with missing or non-string 'label': {}",
+        hsm_group_value
+      );
+      continue;
+    };
     for member in get_member_vec_from_hsm_group_value(hsm_group_value) {
       member_hsm_map
         .entry(member)

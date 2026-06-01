@@ -797,7 +797,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
   image_yaml: &image::Image,
   _ref_name_image_id_hashmap: &HashMap<String, String>,
   cray_product_catalog: &BTreeMap<String, String>,
-  image_name: &String,
+  image_name: &str,
   dry_run: bool,
 ) -> Result<String, Error> {
   // Get/process base image

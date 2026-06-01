@@ -19,7 +19,7 @@ use crate::{
 /// Attach to the `cray-console-node` pod that owns the given xname's
 /// serial console (via conman) and return the open process handle.
 pub async fn get_container_attachment_to_conman(
-  xname: &String,
+  xname: &str,
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
   socks5_proxy: Option<&str>,

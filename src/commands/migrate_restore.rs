@@ -238,8 +238,8 @@ async fn create_bos_sessiontemplate(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  bos_file: &String,
-  ims_image_id: &String,
+  bos_file: &str,
+  ims_image_id: &str,
   overwrite: bool,
 ) -> Result<(), Error> {
   let file_content = File::open(bos_file)?;
@@ -346,7 +346,7 @@ async fn create_cfs_config(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  cfs_file: &String,
+  cfs_file: &str,
   overwrite: bool,
 ) -> Result<(), Error> {
   let file_content = File::open(cfs_file)?;
@@ -433,8 +433,8 @@ async fn ims_update_image_add_manifest(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  ims_image_name: &String,
-  ims_image_id: &String,
+  ims_image_name: &str,
+  ims_image_id: &str,
 ) {
   match get_fuzzy(
     shasta_token,
@@ -442,7 +442,7 @@ async fn ims_update_image_add_manifest(
     shasta_root_cert,
     socks5_proxy,
     &["".to_string()], // hsm_group_name
-    Some(ims_image_name.clone().as_str()),
+    Some(ims_image_name),
     None,
   )
   .await
@@ -462,8 +462,8 @@ async fn ims_update_image_add_manifest(
   };
 
   let _ims_record = ims::image::http_client::types::Image {
-    name: ims_image_name.clone().to_string(),
-    id: Some(ims_image_id.clone().to_string()),
+    name: ims_image_name.to_string(),
+    id: Some(ims_image_id.to_string()),
     created: None,
     arch: None,
     link: Some(ims::image::http_client::types::Link {
@@ -521,7 +521,7 @@ async fn s3_upload_image_artifacts(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  ims_image_id: &String,
+  ims_image_id: &str,
   ims_image_manifest: &mut ImageManifest,
   vec_image_files: &Vec<String>,
 ) -> Result<(), Error> {
@@ -865,7 +865,7 @@ async fn ims_register_image(
 
 /// Gets the image name off an IMS yaml file
 pub fn get_image_name_from_ims_file(
-  ims_file: &String,
+  ims_file: &str,
 ) -> Result<String, Error> {
   // load into memory
   let ims_data = fs::read_to_string(PathBuf::from(&ims_file))?;
@@ -896,7 +896,7 @@ pub async fn create_hsm_group_from_file(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  hsm_file: &String,
+  hsm_file: &str,
   overwrite: bool,
 ) -> Result<(), Error> {
   // Parse HSM group file
