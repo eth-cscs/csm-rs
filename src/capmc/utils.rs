@@ -25,9 +25,17 @@ pub async fn wait_nodes_to_power_on(
   let max = 60;
   let delay_secs = 3;
   while i <= max && !node_off_vec.is_empty() {
-    let _ = client
+    if let Err(e) = client
       .capmc_node_power_on_post(token, xname_vec.clone(), reason.clone())
-      .await;
+      .await
+    {
+      log::warn!(
+        "CAPMC power-on attempt {} of {} returned an error (continuing to poll status): {}",
+        i + 1,
+        max,
+        e
+      );
+    }
 
     tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
 
