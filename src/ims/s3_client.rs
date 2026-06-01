@@ -66,8 +66,9 @@ pub async fn s3_auth(
 
   let sts_value = resp.json::<serde_json::Value>().await?;
 
-  log::debug!("-- STS Token retrieved --");
-  log::debug!("Debug - STS token:\n{:#?}", sts_value);
+  // NOTE: never log `sts_value` — it carries AccessKeyId, SecretAccessKey
+  // and SessionToken. The "retrieved" marker is intentionally payload-free.
+  log::debug!("STS token retrieved");
 
   Ok(sts_value)
 }

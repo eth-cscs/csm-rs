@@ -10,11 +10,19 @@
 //! public API. Existing `pub async fn x(shasta_token, shasta_base_url, ...)`
 //! free functions delegate here, but their signatures stay the same.
 
+use std::time::Duration;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use crate::error::Error;
+
+/// TCP connect deadline for `reqwest::Client`s built by csm-rs. A
+/// long-running Manta server inheriting reqwest's default (no
+/// connect_timeout) would stall indefinitely on a hung upstream.
+pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
+  Duration::from_secs(45 * 60);
 
 /// Build a `reqwest::Client` configured with the CSM root certificate and an
 /// optional SOCKS5 proxy. This is the per-request setup that used to be
@@ -24,6 +32,7 @@ pub(crate) fn build_client(
   socks5_proxy: Option<&str>,
 ) -> Result<reqwest::Client, Error> {
   let builder = reqwest::Client::builder()
+    .connect_timeout(HTTP_CONNECT_TIMEOUT)
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
   let client = match socks5_proxy {

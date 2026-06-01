@@ -14,14 +14,7 @@ pub async fn validate_api_token(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  // Build client
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
 
@@ -50,14 +43,7 @@ pub async fn get_token_from_shasta_endpoint(
   params.insert("username", username);
   params.insert("password", password);
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  // Build client
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+  let client = crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = format!(
     "{}/realms/shasta/protocol/openid-connect/token",

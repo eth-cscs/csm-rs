@@ -537,10 +537,7 @@ async fn s3_upload_image_artifacts(
   )
   .await
   {
-    Ok(sts_value) => {
-      log::debug!("STS token:\n{:#?}", sts_value);
-      sts_value
-    }
+    Ok(sts_value) => sts_value,
     Err(error) => panic!(
       "Unable to authenticate with s3 when uploading images. Error: {}",
       error

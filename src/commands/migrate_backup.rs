@@ -224,10 +224,7 @@ pub async fn exec(
             )
             .await
             {
-              Ok(sts_value) => {
-                log::debug!("Debug - STS token:\n{:#?}", sts_value);
-                sts_value
-              }
+              Ok(sts_value) => sts_value,
 
               Err(error) => panic!("{}", error.to_string()),
             };

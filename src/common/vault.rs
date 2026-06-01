@@ -18,7 +18,8 @@ pub mod http_client {
   ) -> Result<String, Error> {
     let role = "manta";
 
-    let client_builder = reqwest::Client::builder();
+    let client_builder = reqwest::Client::builder()
+      .connect_timeout(crate::common::http::HTTP_CONNECT_TIMEOUT);
 
     // Build client
     let client = match socks5_proxy {
@@ -68,7 +69,8 @@ pub mod http_client {
     secret_path: &str,
     socks5_proxy: Option<&str>,
   ) -> Result<Value, Error> {
-    let client_builder = reqwest::Client::builder();
+    let client_builder = reqwest::Client::builder()
+      .connect_timeout(crate::common::http::HTTP_CONNECT_TIMEOUT);
 
     // Build client
     let client = match socks5_proxy {
