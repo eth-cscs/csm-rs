@@ -4,7 +4,7 @@ mod common;
 use common::{TEST_TOKEN, make_client};
 
 use serde_json::json;
-use wiremock::matchers::{bearer_token, method, path};
+use wiremock::matchers::{bearer_token, body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ---------- cfs/component v2 ----------
@@ -226,4 +226,33 @@ async fn cfs_health_check_hits_healthz() {
   let client = make_client(&server.uri());
   let result = client.cfs_health_check(TEST_TOKEN).await.unwrap();
   assert_eq!(result["status"], "ok");
+}
+
+// ---------- cfs/configuration v2: put body shape ----------
+
+#[tokio::test]
+async fn cfs_configuration_v2_put_sends_layers_body_to_singular_endpoint() {
+  use csm_rs::cfs::v2::CfsConfigurationRequest;
+  let server = MockServer::start().await;
+  Mock::given(method("PUT"))
+    .and(path("/cfs/v2/configurations/cfg-1"))
+    .and(bearer_token(TEST_TOKEN))
+    // CFS v2 PUT body is `{ "layers": ... }` only -- the name is the
+    // URL parameter, not a body field.
+    .and(body_json(json!({"layers": []})))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "name": "cfg-1",
+      "lastUpdated": "2025-01-01T00:00:00Z",
+      "layers": [],
+    })))
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let request = CfsConfigurationRequest::new();
+  let response = client
+    .cfs_configuration_v2_put(TEST_TOKEN, &request, "cfg-1")
+    .await
+    .expect("ok");
+  assert_eq!(response.name, "cfg-1");
 }

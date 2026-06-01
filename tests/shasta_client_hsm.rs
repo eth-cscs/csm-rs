@@ -4,7 +4,7 @@ mod common;
 use common::{TEST_TOKEN, make_client};
 
 use serde_json::json;
-use wiremock::matchers::{bearer_token, method, path};
+use wiremock::matchers::{bearer_token, body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ---------- hsm/group ----------
@@ -224,4 +224,35 @@ async fn hsm_roles_get_hits_service_values_role() {
   let client = make_client(&server.uri());
   let roles = client.hsm_roles_get(TEST_TOKEN).await.unwrap();
   assert_eq!(roles, vec!["Compute", "Service", "Storage"]);
+}
+
+// ---------- hsm/group: post_member body shape ----------
+
+#[tokio::test]
+async fn hsm_group_post_member_sends_id_body_to_members_endpoint() {
+  use csm_rs::hsm::group::types::Member;
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path("/smd/hsm/v2/groups/zinal/members"))
+    .and(bearer_token(TEST_TOKEN))
+    .and(body_json(json!({"id": "x1000c0s0b0n0"})))
+    .respond_with(
+      ResponseTemplate::new(200)
+        .set_body_json(json!({"code": "0", "message": "ok"})),
+    )
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let ack = client
+    .hsm_group_post_member(
+      TEST_TOKEN,
+      "zinal",
+      Member {
+        id: Some("x1000c0s0b0n0".to_string()),
+      },
+    )
+    .await
+    .expect("ok");
+  assert_eq!(ack.message, "ok");
 }

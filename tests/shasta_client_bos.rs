@@ -4,7 +4,7 @@ mod common;
 use common::{TEST_TOKEN, make_client};
 
 use serde_json::json;
-use wiremock::matchers::{bearer_token, method, path};
+use wiremock::matchers::{bearer_token, body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ---------- bos/session/v2 ----------
@@ -139,6 +139,39 @@ async fn bos_template_v2_delete_succeeds_on_204() {
     .bos_template_v2_delete(TEST_TOKEN, "tmpl-1")
     .await
     .expect("ok");
+}
+
+// ---------- bos/template/v2: put body shape ----------
+
+#[tokio::test]
+async fn bos_template_v2_put_sends_json_body_to_singular_endpoint() {
+  use csm_rs::bos::BosSessionTemplate;
+  let server = MockServer::start().await;
+  Mock::given(method("PUT"))
+    .and(path("/bos/v2/sessiontemplates/tmpl-1"))
+    .and(bearer_token(TEST_TOKEN))
+    .and(body_json(json!({"name": "tmpl-1"})))
+    .respond_with(
+      ResponseTemplate::new(200).set_body_json(json!({"name": "tmpl-1"})),
+    )
+    .mount(&server)
+    .await;
+
+  let client = make_client(&server.uri());
+  let template = BosSessionTemplate {
+    name: Some("tmpl-1".to_string()),
+    tenant: None,
+    description: None,
+    enable_cfs: None,
+    cfs: None,
+    boot_sets: None,
+    links: None,
+  };
+  let created = client
+    .bos_template_v2_put(TEST_TOKEN, &template, "tmpl-1")
+    .await
+    .expect("ok");
+  assert_eq!(created.name.as_deref(), Some("tmpl-1"));
 }
 
 // ---------- bos/health_check ----------
