@@ -17,8 +17,6 @@ impl ApplySessionTrait for Csm {
     gitea_token: &str,
     gitea_base_url: &str,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     // k8s_api_url: &str,
     cfs_conf_sess_name: Option<&str>,
     playbook_yaml_file_name_opt: Option<&str>,
@@ -36,8 +34,8 @@ impl ApplySessionTrait for Csm {
       gitea_token,
       gitea_base_url,
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       // k8s_api_url,
       cfs_conf_sess_name,
@@ -61,11 +59,8 @@ impl ClusterSessionTrait for Csm {
   async fn post_template_session(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos_session: manta_backend_dispatcher::types::bos::session::BosSession,
   ) -> Result<BosSession, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .bos_session_v2_post(shasta_token, bos_session.into())
@@ -79,11 +74,8 @@ impl ClusterTemplateTrait for Csm {
   async fn get_template(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos_session_template_id_opt: Option<&str>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .bos_template_v2_get(shasta_token, bos_session_template_id_opt)
@@ -100,14 +92,11 @@ impl ClusterTemplateTrait for Csm {
   async fn get_and_filter_templates(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     hsm_group_name_vec: &[String],
     hsm_member_vec: &[String],
     bos_sessiontemplate_name_opt: Option<&str>,
     limit_number_opt: Option<&u8>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     let mut bos_sessiontemplate_vec = self
       .shasta_client()
       .bos_template_v2_get(shasta_token, bos_sessiontemplate_name_opt)
@@ -134,10 +123,7 @@ impl ClusterTemplateTrait for Csm {
   async fn get_all_templates(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .bos_template_v2_get_all(shasta_token)
@@ -154,12 +140,9 @@ impl ClusterTemplateTrait for Csm {
   async fn put_template(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos_template: &BosSessionTemplate,
     bos_template_name: &str,
   ) -> Result<BosSessionTemplate, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .bos_template_v2_put(
@@ -175,11 +158,8 @@ impl ClusterTemplateTrait for Csm {
   async fn delete_template(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos_template_id: &str,
   ) -> Result<(), Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .bos_template_v2_delete(shasta_token, bos_template_id)

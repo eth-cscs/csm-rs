@@ -16,8 +16,6 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
   async fn get_data_to_delete(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     hsm_name_available_vec: &[String],
     configuration_name_pattern_opt: Option<&str>,
     since_opt: Option<NaiveDateTime>,
@@ -35,8 +33,8 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
   > {
     crate::commands::delete_configurations_and_data_related::get_data_to_delete(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       hsm_name_available_vec,
       configuration_name_pattern_opt,
@@ -69,8 +67,6 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
   async fn delete(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     cfs_configuration_name_vec: &[String],
     image_id_vec: &[String],
     cfs_session_name_vec: &[String],
@@ -78,8 +74,8 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
   ) -> Result<(), Error> {
     crate::commands::delete_configurations_and_data_related::delete(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       cfs_configuration_name_vec,
       image_id_vec,

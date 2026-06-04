@@ -25,8 +25,6 @@ impl ImsTrait for Csm {
   async fn get_all_images(
     &self,
     shasta_token: &str,
-    _shasta_base_url: &str,
-    _shasta_root_cert: &[u8],
   ) -> Result<Vec<FrontEndImage>, Error> {
     self
       .shasta_client()
@@ -66,8 +64,6 @@ impl ImsTrait for Csm {
   async fn delete_image(
     &self,
     shasta_token: &str,
-    _shasta_base_url: &str,
-    _shasta_root_cert: &[u8],
     image_id: &str,
   ) -> Result<(), Error> {
     self
@@ -87,16 +83,14 @@ impl GetImagesAndDetailsTrait for Csm {
   async fn get_images_and_details(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     hsm_group_name_vec: &[String],
     id_opt: Option<&str>,
     limit_number: Option<&u8>,
   ) -> Result<Vec<(FrontEndImage, String, String, bool)>, Error> {
     crate::commands::get_images_and_details::get_images_and_details(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       hsm_group_name_vec,
       id_opt,

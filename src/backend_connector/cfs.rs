@@ -38,11 +38,8 @@ impl CfsTrait for Csm {
   async fn post_session(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .cfs_session_v3_post(shasta_token, &session.clone().into())
@@ -55,8 +52,6 @@ impl CfsTrait for Csm {
   async fn get_sessions(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     session_name_opt: Option<&String>,
     limit_opt: Option<u8>,
     after_id_opt: Option<String>,
@@ -67,7 +62,6 @@ impl CfsTrait for Csm {
     is_succeded_opt: Option<bool>,
     tags_opt: Option<String>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    let _ = (shasta_base_url, shasta_root_cert);
     // Get local/backend CFS sessions
     let local_cfs_session_vec = self
       .shasta_client()
@@ -100,8 +94,6 @@ impl CfsTrait for Csm {
   async fn get_and_filter_sessions(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     hsm_group_name_vec: Vec<String>,
     xname_vec: Vec<&str>,
     min_age_opt: Option<&String>,
@@ -122,8 +114,8 @@ impl CfsTrait for Csm {
     let mut hsm_group_available_vec =
       crate::hsm::group::utils::get_group_available(
         shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
+        &self.base_url,
+        &self.root_cert,
         self.socks5_proxy.as_deref(),
       )
       .await
@@ -198,8 +190,8 @@ impl CfsTrait for Csm {
 
     let mut cfs_session_vec = crate::cfs::session::get_and_sort(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       min_age_opt,
       max_age_opt,
@@ -297,8 +289,6 @@ impl CfsTrait for Csm {
   async fn delete_and_cancel_session(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     group_available_vec: &[manta_backend_dispatcher::types::Group],
     cfs_session: &manta_backend_dispatcher::types::cfs::session::CfsSessionGetResponse,
     cfs_component_vec: &[manta_backend_dispatcher::types::cfs::component::Component],
@@ -329,8 +319,8 @@ impl CfsTrait for Csm {
 
     crate::commands::delete_and_cancel_session::command::exec(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       group_available_vec,
       &cfs_session,
@@ -346,7 +336,6 @@ impl CfsTrait for Csm {
     &self,
     gitea_token: &str,
     gitea_base_url: &str,
-    shasta_root_cert: &[u8],
     repo_name_vec: &[&str],
     local_git_commit_vec: &[&str],
     playbook_file_name_opt: Option<&str>,
@@ -354,7 +343,7 @@ impl CfsTrait for Csm {
     Ok(crate::cfs::configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest::create_from_repos(
             gitea_token,
             gitea_base_url,
-            shasta_root_cert,
+            &self.root_cert,
             self.socks5_proxy.as_deref(),
             repo_name_vec,
             local_git_commit_vec,
@@ -365,11 +354,8 @@ impl CfsTrait for Csm {
   async fn get_configuration(
     &self,
     auth_token: &str,
-    base_url: &str,
-    root_cert: &[u8],
     configuration_name_opt: Option<&String>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    let _ = (base_url, root_cert);
     let cfs_configuration_vec = self
       .shasta_client()
       .cfs_configuration_v3_get(
@@ -386,8 +372,6 @@ impl CfsTrait for Csm {
   async fn get_and_filter_configuration(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     configuration_name: Option<&str>,
     configuration_name_pattern: Option<&str>,
     hsm_group_name_vec: &[String],
@@ -397,8 +381,8 @@ impl CfsTrait for Csm {
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     crate::cfs::configuration::utils::get_and_filter(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       configuration_name,
       configuration_name_pattern,
@@ -414,14 +398,13 @@ impl CfsTrait for Csm {
 
   async fn get_configuration_layer_details(
     &self,
-    shasta_root_cert: &[u8],
     gitea_base_url: &str,
     gitea_token: &str,
     layer: Layer,
     site_name: &str,
   ) -> Result<LayerDetails, Error> {
     crate::cfs::configuration::utils::get_configuration_layer_details(
-      shasta_root_cert,
+      &self.root_cert,
       gitea_base_url,
       gitea_token,
       layer.into(),
@@ -437,16 +420,14 @@ impl CfsTrait for Csm {
   async fn put_configuration(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
     overwrite: bool,
   ) -> Result<CfsConfigurationResponse, Error> {
     crate::cfs::configuration::utils::create_new_configuration(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       &configuration.clone().into(),
       configuration_name,
@@ -539,16 +520,14 @@ impl CfsTrait for Csm {
   async fn update_runtime_configuration(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     xnames: &[String],
     desired_configuration: &str,
     enabled: bool,
   ) -> Result<(), Error> {
     crate::cfs::component::utils::update_component_list_desired_configuration(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       xnames,
       desired_configuration,
@@ -562,8 +541,6 @@ impl CfsTrait for Csm {
   async fn get_derivatives(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     configuration_name: &str,
   ) -> Result<
     (
@@ -575,8 +552,8 @@ impl CfsTrait for Csm {
   > {
     crate::cfs::configuration::utils::get_derivatives(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       configuration_name,
     )
@@ -606,8 +583,6 @@ impl CfsTrait for Csm {
   async fn get_cfs_components(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     configuration_name: Option<&str>,
     components_ids: Option<&str>,
     status: Option<&str>,
@@ -615,7 +590,6 @@ impl CfsTrait for Csm {
     Vec<manta_backend_dispatcher::types::cfs::component::Component>,
     Error,
   > {
-    let _ = (shasta_base_url, shasta_root_cert);
     self
       .shasta_client()
       .cfs_component_v3_get_query(

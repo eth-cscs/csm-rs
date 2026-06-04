@@ -51,9 +51,6 @@ impl SatTrait for Csm {
   > {
     let ApplySatFileParams {
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
@@ -82,6 +79,7 @@ impl SatTrait for Csm {
         ))
       })?;
 
+    let socks5_proxy = self.socks5_proxy.as_deref();
     let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
       vault_base_url,
       shasta_token,
@@ -94,8 +92,8 @@ impl SatTrait for Csm {
     let (configurations, images, session_templates, sessions) =
       crate::commands::i_apply_sat_file::command::exec(
         shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
+        &self.base_url,
+        &self.root_cert,
         socks5_proxy,
         vault_base_url,
         site_name,
@@ -131,9 +129,6 @@ impl SatTrait for Csm {
   ) -> Result<CfsConfigurationResponse, Error> {
     let ApplyConfigurationParams {
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
@@ -143,6 +138,7 @@ impl SatTrait for Csm {
       dry_run,
       overwrite,
     } = params;
+    let socks5_proxy = self.socks5_proxy.as_deref();
 
     // Transcode the structured Value (carried as JSON end-to-end) into
     // the serde_yaml::Value the per-entry creator expects. Lossless for
@@ -176,8 +172,8 @@ impl SatTrait for Csm {
 
     let cfs_configuration = utils::create_cfs_configuration_from_sat_file(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       socks5_proxy,
       gitea_base_url,
       gitea_token,
@@ -199,9 +195,6 @@ impl SatTrait for Csm {
   ) -> Result<Image, Error> {
     let ApplyImageParams {
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       vault_base_url,
       site_name,
       k8s_api_url,
@@ -215,6 +208,7 @@ impl SatTrait for Csm {
       timestamps,
       dry_run,
     } = params;
+    let socks5_proxy = self.socks5_proxy.as_deref();
 
     // Transcode JSON -> YAML -> typed SAT image shape.
     let image_yaml: serde_yaml::Value =
@@ -250,8 +244,8 @@ impl SatTrait for Csm {
 
     let image = utils::images::i_create_image_from_sat_file_serde_yaml(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       socks5_proxy,
       vault_base_url,
       site_name,
@@ -278,15 +272,13 @@ impl SatTrait for Csm {
   ) -> Result<(BosSessionTemplate, Option<BosSession>), Error> {
     let ApplySessionTemplateParams {
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       session_template,
       ref_lookup,
       hsm_group_available_vec,
       reboot,
       dry_run,
     } = params;
+    let socks5_proxy = self.socks5_proxy.as_deref();
 
     // The existing per-section function reads the entry out of
     // `sat_file_yaml["session_templates"][...]`. Wrap our single entry
@@ -309,8 +301,8 @@ impl SatTrait for Csm {
     let (mut templates, mut sessions) =
       utils::process_session_template_section_in_sat_file(
         shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
+        &self.base_url,
+        &self.root_cert,
         socks5_proxy,
         ref_lookup,
         hsm_group_available_vec,
@@ -337,8 +329,6 @@ impl ApplyHwClusterPin for Csm {
   async fn apply_hw_cluster_pin(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     target_hsm_group_name: &str,
     parent_hsm_group_name: &str,
     pattern: &str,
@@ -348,8 +338,8 @@ impl ApplyHwClusterPin for Csm {
   ) -> Result<(), Error> {
     crate::commands::apply_hw_cluster_pin::command::exec(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       target_hsm_group_name,
       parent_hsm_group_name,
