@@ -104,6 +104,14 @@ pub fn get_image_name_or_ref_name_to_process_struct(
 /// base recipe / image and run the associated CFS session. When
 /// `watch_logs` is true the CFS session's container logs are streamed
 /// line-by-line through `log::info!`.
+///
+/// Returns only the produced `Image`s. The
+/// [`i_create_image_from_sat_file_serde_yaml`] per-image helper now
+/// returns a `(Image, CfsSessionGetResponse)` tuple; this bulk path
+/// destructures and discards the session because the whole-SAT-file
+/// flow does not emit per-image provenance metadata. The single-image
+/// flow ([`crate::backend_connector::sat::Csm`]'s `apply_image`) is
+/// where metadata stamping is wired up.
 #[allow(clippy::too_many_arguments)]
 pub async fn i_import_images_section_in_sat_file(
   shasta_token: &str,
@@ -191,6 +199,18 @@ pub async fn i_import_images_section_in_sat_file(
 /// (recipe or existing image), create the IMS image, kick off a CFS
 /// session, and (optionally) stream its container logs through
 /// `log::info!` (no direct stdout writes).
+///
+/// Returns both the produced IMS `Image` and the finished
+/// `CfsSessionGetResponse` that built it. Returning the session lets
+/// callers (e.g. manta-server's service layer) read provenance facts
+/// — base image id, target HSM groups, configuration name — without
+/// having to re-fetch the session by id.
+///
+/// In `dry_run` mode no CFS session is created; the function returns
+/// a fake `Image` with a synthetic `DRYRUN_<uuid>` id and a stub
+/// `CfsSessionGetResponse` whose fields are `None`. Callers must gate
+/// any consumption of the session on `dry_run` being false — the stub
+/// is not meant to be read.
 #[allow(clippy::too_many_arguments)]
 pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,

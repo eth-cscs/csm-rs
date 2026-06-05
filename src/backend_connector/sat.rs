@@ -11,6 +11,12 @@
 //! `BosSessionTemplate` / `BosSession` types into the corresponding
 //! `manta_backend_dispatcher::types::*` types via the existing `From`
 //! impls so the returned tuple satisfies the trait.
+//!
+//! `apply_image` follows the same pattern but its return shape is the
+//! `(Image, CfsSessionGetResponse)` tuple the trait now requires: csm-rs
+//! converts both halves to the dispatcher mirrors via existing `From`
+//! impls. The session is carried back so manta-server can stamp
+//! provenance metadata onto the image without re-fetching it by id.
 
 use manta_backend_dispatcher::{
   error::Error,
