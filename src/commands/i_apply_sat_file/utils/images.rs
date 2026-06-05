@@ -146,7 +146,7 @@ pub async fn i_import_images_section_in_sat_file(
     Vec::new();
 
   while let Some(image_yaml) = &next_image_to_process_opt {
-    let image = i_create_image_from_sat_file_serde_yaml(
+    let (image, _cfs_session) = i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -210,7 +210,13 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   dry_run: bool,
   watch_logs: bool,
   timestamps: bool,
-) -> Result<ims::image::http_client::types::Image, Error> {
+) -> Result<
+  (
+    ims::image::http_client::types::Image,
+    cfs::session::http_client::v2::types::CfsSessionGetResponse,
+  ),
+  Error,
+> {
   // Get CFS session from SAT file image yaml
   let cfs_session = get_session_from_image_yaml(
     shasta_token,
@@ -275,7 +281,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     .next()
     .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
 
-    Ok(image)
+    Ok((image, cfs_session))
   } else {
     log::info!(
       "Dry run mode: Create CFS session:\n{}",
@@ -290,11 +296,24 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       image_id
     );
 
-    Ok(ims::image::http_client::types::Image {
-      id: Some(image_id),
-      name: image_name.clone(),
-      ..Default::default()
-    })
+    // Dry-run returns a stub CfsSessionGetResponse next to the fake
+    // image. The caller skips the metadata-write step on `dry_run`,
+    // so the session contents are never consulted.
+    Ok((
+      ims::image::http_client::types::Image {
+        id: Some(image_id),
+        name: image_name.clone(),
+        ..Default::default()
+      },
+      cfs::session::http_client::v2::types::CfsSessionGetResponse {
+        name: format!("DRYRUN-{}", image_name),
+        configuration: None,
+        ansible: None,
+        target: None,
+        status: None,
+        tags: None,
+      },
+    ))
   }
 }
 

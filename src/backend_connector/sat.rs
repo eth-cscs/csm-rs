@@ -23,7 +23,10 @@ use manta_backend_dispatcher::{
   },
   types::{
     bos::{session::BosSession, session_template::BosSessionTemplate},
-    cfs::cfs_configuration_response::CfsConfigurationResponse,
+    cfs::{
+      cfs_configuration_response::CfsConfigurationResponse,
+      session::CfsSessionGetResponse,
+    },
     ims::Image,
   },
 };
@@ -192,7 +195,7 @@ impl SatTrait for Csm {
   async fn apply_image(
     &self,
     params: ApplyImageParams<'_>,
-  ) -> Result<Image, Error> {
+  ) -> Result<(Image, CfsSessionGetResponse), Error> {
     let ApplyImageParams {
       shasta_token,
       vault_base_url,
@@ -242,28 +245,29 @@ impl SatTrait for Csm {
         .await
         .map_err(Error::from)?;
 
-    let image = utils::images::i_create_image_from_sat_file_serde_yaml(
-      shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      socks5_proxy,
-      vault_base_url,
-      site_name,
-      k8s_api_url,
-      &image_struct,
-      &cray_product_catalog,
-      ansible_verbosity,
-      ansible_passthrough,
-      &ref_lookup,
-      debug_on_failure,
-      dry_run,
-      watch_logs,
-      timestamps,
-    )
-    .await
-    .map_err(Error::from)?;
+    let (image, cfs_session) =
+      utils::images::i_create_image_from_sat_file_serde_yaml(
+        shasta_token,
+        &self.base_url,
+        &self.root_cert,
+        socks5_proxy,
+        vault_base_url,
+        site_name,
+        k8s_api_url,
+        &image_struct,
+        &cray_product_catalog,
+        ansible_verbosity,
+        ansible_passthrough,
+        &ref_lookup,
+        debug_on_failure,
+        dry_run,
+        watch_logs,
+        timestamps,
+      )
+      .await
+      .map_err(Error::from)?;
 
-    Ok(image.into())
+    Ok((image.into(), cfs_session.into()))
   }
 
   async fn apply_session_template(
