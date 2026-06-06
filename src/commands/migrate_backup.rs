@@ -226,7 +226,7 @@ pub async fn exec(
             {
               Ok(sts_value) => sts_value,
 
-              Err(error) => panic!("{}", error.to_string()),
+              Err(error) => return Err(Error::Message(error.to_string())),
             };
             for file in files2download {
               let dest = String::from(destination) + "/" + &image_id;
@@ -260,10 +260,12 @@ pub async fn exec(
                 Ok(_result) => {
                   download_counter += 1;
                 }
-                Err(error) => panic!(
-                  "Unable to download file {} from s3. Error returned: {}",
-                  &src, error
-                ),
+                Err(error) => {
+                  return Err(Error::Message(format!(
+                    "unable to download file {} from s3. Error returned: {}",
+                    &src, error
+                  )));
+                }
               };
             } // for file in files2download
             log::info!("\nDone, the following image bundle was generated:");
@@ -282,10 +284,10 @@ pub async fn exec(
             }
           }
           Err(e) => {
-            panic!(
-              "Image related to BOS session template {} - NOT FOUND. Error: {}",
+            return Err(Error::Message(format!(
+              "image related to BOS session template {} not found: {}",
               image_id_related_to_bos_sessiontemplate, e
-            );
+            )));
           }
         };
       }

@@ -138,7 +138,7 @@ pub async fn exec(
   }
 
   log::info!("Calculating image artifact checksum...");
-  calculate_image_checksums(&mut ims_image_manifest, &vec_backup_image_files);
+  calculate_image_checksums(&mut ims_image_manifest, &vec_backup_image_files)?;
 
   // Do we have another image with this name?
   log::info!("\n\nRegistering image with IMS...");
@@ -184,7 +184,7 @@ pub async fn exec(
     &ims_image_name,
     &ims_image_id,
   )
-  .await;
+  .await?;
 
   log::info!("\nCreating HSM group...");
   create_hsm_group_from_file(
@@ -288,10 +288,12 @@ async fn create_bos_sessiontemplate(
           "Ok BOS session template {}, deleted.",
           &bos_sessiontemplate_name
         ),
-        Result::Err(err1) => panic!(
-          "Error, unable to delete BOS session template. Cannot continue. Error: {}",
-          err1
-        ),
+        Result::Err(err1) => {
+          return Err(Error::Message(format!(
+            "unable to delete BOS session template: {}",
+            err1
+          )));
+        }
       };
     }
   }
@@ -330,10 +332,12 @@ async fn create_bos_sessiontemplate(
       "Ok, BOS session template {} created successfully.",
       &bos_sessiontemplate_name
     ),
-    Err(e1) => panic!(
-      "Error, unable to create BOS sesiontemplate. Error returned by CSM API: {}",
-      e1
-    ),
+    Err(e1) => {
+      return Err(Error::Message(format!(
+        "unable to create BOS session template: {}",
+        e1
+      )));
+    }
   }
 
   Ok(())
@@ -385,10 +389,12 @@ async fn create_cfs_config(
       Ok(_) => {
         log::debug!("Ok CFS configuration {}, deleted.", cfs_config_name)
       }
-      Result::Err(error) => panic!(
-        "Error, unable to delete configuration. Cannot continue. Error: {}",
-        error
-      ),
+      Result::Err(error) => {
+        return Err(Error::Message(format!(
+          "unable to delete CFS configuration {}: {}",
+          cfs_config_name, error
+        )));
+      }
     };
   }
 
@@ -417,10 +423,12 @@ async fn create_cfs_config(
         &cfs_config_name
       );
     }
-    Err(e1) => panic!(
-      "Error, unable to create CFS configuration. Error returned by CSM API: {}",
-      e1
-    ),
+    Err(e1) => {
+      return Err(Error::Message(format!(
+        "unable to create CFS configuration: {}",
+        e1
+      )));
+    }
   }
 
   Ok(())
@@ -435,7 +443,7 @@ async fn ims_update_image_add_manifest(
   socks5_proxy: Option<&str>,
   ims_image_name: &str,
   ims_image_id: &str,
-) {
+) -> Result<(), Error> {
   match get_fuzzy(
     shasta_token,
     shasta_base_url,
@@ -447,18 +455,20 @@ async fn ims_update_image_add_manifest(
   )
   .await
   {
-    Ok(_vector) => {
-      if _vector.is_empty() {
-        panic!(
-          "Error: there are no images stored with id {} in IMS. Unable to update the image manifest",
+    Ok(vector) => {
+      if vector.is_empty() {
+        return Err(Error::Message(format!(
+          "no images stored with id {} in IMS, unable to update the image manifest",
           &ims_image_id
-        );
+        )));
       }
     }
-    Err(error) => panic!(
-      "Error: Unable to determine if there are other images in IMS with the name {}. Error code: {}",
-      &ims_image_name, &error
-    ),
+    Err(error) => {
+      return Err(Error::Message(format!(
+        "unable to determine if there are other images in IMS with the name {}: {}",
+        &ims_image_name, &error
+      )));
+    }
   };
 
   let _ims_record = ims::image::http_client::types::Image {
@@ -506,11 +516,15 @@ async fn ims_update_image_add_manifest(
 
   match patch_result {
     Ok(()) => log::debug!("Image updated"),
-    Err(e) => panic!(
-      "Error, unable to modify the record of the image. Err msg: {}",
-      e
-    ),
+    Err(e) => {
+      return Err(Error::Message(format!(
+        "unable to modify the record of the image: {}",
+        e
+      )));
+    }
   };
+
+  Ok(())
 }
 
 /// Uploads to s3 under boot-images/ims_image_id all the files that
@@ -538,10 +552,12 @@ async fn s3_upload_image_artifacts(
   .await
   {
     Ok(sts_value) => sts_value,
-    Err(error) => panic!(
-      "Unable to authenticate with s3 when uploading images. Error: {}",
-      error
-    ),
+    Err(error) => {
+      return Err(Error::Message(format!(
+        "unable to authenticate with s3 when uploading images: {}",
+        error
+      )));
+    }
   };
 
   for file in vec_image_files {
@@ -585,7 +601,12 @@ async fn s3_upload_image_artifacts(
           log::debug!("Artifact uploaded successfully.");
           result
         }
-        Err(error) => panic!("Unable to upload file to s3. Error {}", error),
+        Err(error) => {
+          return Err(Error::Message(format!(
+            "unable to upload file to s3: {}",
+            error
+          )));
+        }
       }
     } else {
       match ims::s3_client::s3_upload_object(
@@ -601,7 +622,12 @@ async fn s3_upload_image_artifacts(
           log::info!("Ok");
           result
         }
-        Err(error) => panic!("Unable to upload file to s3. Error {}", error),
+        Err(error) => {
+          return Err(Error::Message(format!(
+            "unable to upload file to s3: {}",
+            error
+          )));
+        }
       }
     };
 
@@ -698,24 +724,32 @@ async fn s3_upload_image_artifacts(
     Ok(_result) => {
       log::info!("OK");
     }
-    Err(error) => panic!("Unable to upload file to s3. Error {}", error),
+    Err(error) => {
+      return Err(Error::Message(format!(
+        "unable to upload file to s3: {}",
+        error
+      )));
+    }
   };
 
   Ok(())
 }
 
-/// Return the md5sum of a file. The file is expected to exist and be
-/// readable — `exec` verifies this earlier; reaching this fn with a missing
-/// or unreadable file is a programmer error.
-fn file_md5sum(filename: PathBuf) -> Digest {
+/// Return the md5sum of a file. Returns `Err` if the file cannot be
+/// opened, its metadata cannot be read, or an I/O error occurs while
+/// reading.
+fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
   log::debug!("File {:?}...", &filename);
 
-  let f = File::open(&filename)
-    .unwrap_or_else(|e| panic!("file_md5sum: open {:?}: {}", filename, e));
+  let f = File::open(&filename).map_err(|e| {
+    Error::Message(format!("file_md5sum: open {:?}: {}", filename, e))
+  })?;
   // Find the length of the file
   let len = f
     .metadata()
-    .unwrap_or_else(|e| panic!("file_md5sum: metadata {:?}: {}", filename, e))
+    .map_err(|e| {
+      Error::Message(format!("file_md5sum: metadata {:?}: {}", filename, e))
+    })?
     .len();
   // Decide on a reasonable buffer size (100MB in this case, fastest will depend on hardware)
   let buf_len = len.min(100_000_000) as usize;
@@ -729,9 +763,9 @@ fn file_md5sum(filename: PathBuf) -> Digest {
 
   loop {
     // Get a chunk of the file
-    let part = buf
-      .fill_buf()
-      .unwrap_or_else(|e| panic!("file_md5sum: read {:?}: {}", filename, e));
+    let part = buf.fill_buf().map_err(|e| {
+      Error::Message(format!("file_md5sum: read {:?}: {}", filename, e))
+    })?;
     // If that chunk was empty, the reader has reached EOF
     if part.is_empty() {
       break;
@@ -746,14 +780,14 @@ fn file_md5sum(filename: PathBuf) -> Digest {
   let digest = context.compute();
   bar.finish();
 
-  digest
+  Ok(digest)
 }
 /// Calculates the md5sum of all the files in the `vec_backup_image_files` vector and updates
 ///  the image manifest at `ims_image_manifest`
 fn calculate_image_checksums(
   image_manifest: &mut ImageManifest,
   vec_backup_image_files: &Vec<String>,
-) {
+) -> Result<(), Error> {
   for file in vec_backup_image_files {
     let file_size = match fs::metadata(file) {
       Ok(_file_metadata) => {
@@ -772,7 +806,7 @@ fn calculate_image_checksums(
     let artifact;
     let mut fp = PathBuf::new();
     fp.push(file);
-    let digest = file_md5sum(fp);
+    let digest = file_md5sum(fp)?;
 
     if file.contains("kernel") {
       artifact = Artifact {
@@ -807,6 +841,7 @@ fn calculate_image_checksums(
     }
     image_manifest.artifacts.push(artifact);
   }
+  Ok(())
 }
 
 /// Registers in IMS a new image and returns the new id to pass to s3
@@ -951,19 +986,19 @@ pub async fn create_hsm_group_from_file(
                   }
                   Err(e) => {
                     log::error!("Error message {}", e);
-                    panic!(
-                      "Second error creating a new HSM group. Bailing out. Error returned: '{}'",
+                    return Err(Error::Message(format!(
+                      "second error creating a new HSM group: {}",
                       e
-                    )
+                    )));
                   }
                 }
               }
               Err(e) => {
                 log::error!("Error message {}", e);
-                panic!(
-                  "Error deleting the HSM group {}. Error returned: '{}'",
+                return Err(Error::Message(format!(
+                  "error deleting the HSM group {}: {}",
                   &group.label, e
-                )
+                )));
               }
             }
           } else {
