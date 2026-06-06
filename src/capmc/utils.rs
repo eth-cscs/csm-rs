@@ -1,65 +1,52 @@
 //! Helpers built on top of the CAPMC `ShastaClient` methods.
 
-use core::time;
+use std::time::Duration;
 
 use crate::{
-  ShastaClient, capmc::types::XnameStatusResponse, error::Error,
+  ShastaClient,
+  capmc::types::XnameStatusResponse,
+  common::poll::{PollBackoff, poll_until_with_backoff},
+  error::Error,
 };
 
-/// Issue repeated CAPMC power-on requests, polling status every 3
-/// seconds until every xname reports as "on" or the 60-attempt cap is
-/// reached.
+const POWER_TRANSITION_BACKOFF: PollBackoff = PollBackoff {
+  initial_delay: Duration::from_secs(3),
+  max_delay: Duration::from_secs(10),
+  max_attempts: 40,
+};
+
+/// Issue repeated CAPMC power-on requests, polling status with
+/// exponential backoff until every xname reports as "on" or the
+/// attempt cap is reached.
 pub async fn wait_nodes_to_power_on(
   client: &ShastaClient,
   token: &str,
   xname_vec: Vec<String>,
   reason: Option<String>,
 ) -> Result<XnameStatusResponse, Error> {
-  let mut status = client
-    .capmc_node_power_status_post(token, &xname_vec)
-    .await?;
-  let mut node_off_vec: Vec<String> =
-    status.off.clone().unwrap_or_default();
-
-  let mut i = 0;
-  let max = 60;
-  let delay_secs = 3;
-  while i <= max && !node_off_vec.is_empty() {
-    if let Err(e) = client
-      .capmc_node_power_on_post(token, xname_vec.clone(), reason.clone())
-      .await
-    {
-      log::warn!(
-        "CAPMC power-on attempt {} of {} returned an error (continuing to poll status): {}",
-        i + 1,
-        max,
-        e
-      );
-    }
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    status = client
-      .capmc_node_power_status_post(token, &xname_vec)
-      .await?;
-    node_off_vec = status.off.clone().unwrap_or_default();
-
-    log::debug!(
-      "Waiting nodes to power on. Trying again in {} seconds. Attempt {} of {}.",
-      delay_secs,
-      i + 1,
-      max
-    );
-
-    i += 1;
-  }
-
-  Ok(status)
+  poll_until_with_backoff(
+    POWER_TRANSITION_BACKOFF,
+    || async {
+      if let Err(e) = client
+        .capmc_node_power_on_post(token, xname_vec.clone(), reason.clone())
+        .await
+      {
+        log::warn!(
+          "CAPMC power-on returned an error (continuing to poll status): {e}"
+        );
+      }
+      client
+        .capmc_node_power_status_post(token, &xname_vec)
+        .await
+    },
+    |status| status.off.as_ref().is_none_or(|off| off.is_empty()),
+  )
+  .await
 }
 
 /// Issue repeated CAPMC power-off requests (graceful unless `force`),
-/// polling status until every xname reports "off" or the 60-attempt
-/// cap is reached.
+/// polling status with exponential backoff until every xname reports
+/// "off" or the attempt cap is reached.
 pub async fn wait_nodes_to_power_off(
   client: &ShastaClient,
   token: &str,
@@ -67,39 +54,25 @@ pub async fn wait_nodes_to_power_off(
   reason_opt: Option<String>,
   force: bool,
 ) -> Result<XnameStatusResponse, Error> {
-  let mut node_off_vec: Vec<String> = Vec::new();
-  let mut status = XnameStatusResponse::default();
-
-  let mut i = 0;
-  let max = 60;
-  let delay_secs = 3;
-  while i <= max && xname_vec.iter().any(|xname| !node_off_vec.contains(xname))
-  {
-    let _ = client
-      .capmc_node_power_off_post(
-        token,
-        xname_vec.clone(),
-        reason_opt.clone(),
-        force,
-      )
-      .await?;
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    status = client
-      .capmc_node_power_status_post(token, &xname_vec)
-      .await?;
-    node_off_vec = status.off.clone().unwrap_or_default();
-
-    log::debug!(
-      "Waiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
-      delay_secs,
-      i + 1,
-      max
-    );
-
-    i += 1;
-  }
-
-  Ok(status)
+  poll_until_with_backoff(
+    POWER_TRANSITION_BACKOFF,
+    || async {
+      let _ = client
+        .capmc_node_power_off_post(
+          token,
+          xname_vec.clone(),
+          reason_opt.clone(),
+          force,
+        )
+        .await?;
+      client
+        .capmc_node_power_status_post(token, &xname_vec)
+        .await
+    },
+    |status| {
+      let off = status.off.clone().unwrap_or_default();
+      xname_vec.iter().all(|xname| off.contains(xname))
+    },
+  )
+  .await
 }

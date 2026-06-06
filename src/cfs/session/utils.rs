@@ -274,9 +274,10 @@ pub fn images_id_from_cfs_session(
   image_id_vec.into_iter()
 }
 
-/// Wait a CFS session to finish
-// FIXME: This function prints CFS session logs to stdout which is not a good idea because the
-// client may run outside this machine
+/// Wait for a CFS session to finish. Polls with exponential backoff
+/// (2 s → 30 s, max 200 attempts ≈ 100 min wall-clock cap, matching
+/// the prior constant-delay budget) until the session's
+/// `status.session.status` reaches `"complete"`.
 pub async fn wait_cfs_session_to_finish(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -284,68 +285,59 @@ pub async fn wait_cfs_session_to_finish(
   socks5_proxy: Option<&str>,
   cfs_session_id: &str,
 ) -> Result<(), Error> {
-  let mut i = 0;
-  let max = 3000; // Max ammount of attempts to check if CFS session has ended
-  loop {
-    let cfs_session_vec = cfs::session::get_and_sort(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      None,
-      None,
-      None,
-      Some(&cfs_session_id.to_string()),
-      None,
-    )
-    .await?;
+  let backoff = crate::common::poll::PollBackoff {
+    initial_delay: std::time::Duration::from_secs(2),
+    max_delay: std::time::Duration::from_secs(30),
+    max_attempts: 200,
+  };
 
-    let cfs_session = if cfs_session_vec.is_empty() {
-      return Err(Error::Message(format!(
-        "ERROR - CFS session '{}' missing. Exit",
-        cfs_session_id
-      )));
-    } else {
-      cfs_session_vec
+  let status = crate::common::poll::poll_until_with_backoff(
+    backoff,
+    || async {
+      let cfs_session_vec = cfs::session::get_and_sort(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        socks5_proxy,
+        None,
+        None,
+        None,
+        Some(&cfs_session_id.to_string()),
+        None,
+      )
+      .await?;
+
+      let session = cfs_session_vec
         .first()
-        .ok_or_else(|| Error::SessionNotFound(cfs_session_id.to_string()))?
-    };
+        .ok_or_else(|| Error::SessionNotFound(cfs_session_id.to_string()))?;
 
-    log::debug!("CFS session details:\n{:#?}", cfs_session);
+      log::debug!("CFS session details:\n{:#?}", session);
 
-    let cfs_session_status = cfs_session
-      .status
-      .as_ref()
-      .and_then(|status| status.session.as_ref())
-      .and_then(|session| session.status.as_deref())
-      .ok_or_else(|| {
-        Error::Message(format!(
-          "ERROR - CFS session '{}' has no status. Exit",
-          cfs_session_id
-        ))
-      })?;
+      let session_status = session
+        .status
+        .as_ref()
+        .and_then(|status| status.session.as_ref())
+        .and_then(|session| session.status.as_deref())
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "CFS session '{}' has no status",
+            cfs_session_id
+          ))
+        })?
+        .to_string();
 
-    if cfs_session_status != "complete" && i < max {
-      log::debug!(
-        "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
-        cfs_session_id,
-        cfs_session_status,
-        i,
-        max
-      );
+      Ok(session_status)
+    },
+    |s| s == "complete",
+  )
+  .await?;
 
-      tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-      i += 1;
-    } else {
-      log::debug!(
-        "CFS session '{}' finished with status '{}'",
-        cfs_session_id,
-        cfs_session_status
-      );
-      break Ok(());
-    }
-  }
+  log::debug!(
+    "CFS session '{}' finished with status '{}'",
+    cfs_session_id,
+    status
+  );
+  Ok(())
 }
 
 /// Expand a CFS session's target (xnames + HSM groups) into a flat

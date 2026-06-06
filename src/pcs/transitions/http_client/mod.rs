@@ -98,38 +98,38 @@ impl ShastaClient {
       .await
   }
 
-  /// Polls a transition until it reaches `completed` status or 300 attempts
-  /// (15 minutes at the 3-second poll interval).
+  /// Polls a transition until it reaches `completed` status, with
+  /// exponential backoff (3 s → 30 s, capped at 40 attempts ≈ 18 min
+  /// wall-clock).
   pub async fn pcs_transitions_wait_to_complete(
     &self,
     token: &str,
     transition_id: &str,
   ) -> Result<TransitionResponse, Error> {
-    let mut transition: TransitionResponse =
-      self.pcs_transitions_get_by_id(token, transition_id).await?;
+    let backoff = crate::common::poll::PollBackoff {
+      initial_delay: time::Duration::from_secs(3),
+      max_delay: time::Duration::from_secs(30),
+      max_attempts: 40,
+    };
 
-    let max_attempt = 300;
-    let mut i = 1;
-
-    while i <= max_attempt && transition.transition_status != "completed" {
-      transition = self.pcs_transitions_get_by_id(token, transition_id).await?;
-
-      log::warn!(
-        "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}. Attempt {} of {}",
-        transition.operation,
-        transition.transition_status,
-        transition.task_counts.failed,
-        transition.task_counts.in_progress,
-        transition.task_counts.succeeded,
-        transition.task_counts.total,
-        i,
-        max_attempt
-      );
-
-      tokio::time::sleep(time::Duration::from_secs(3)).await;
-      i += 1;
-    }
-
-    Ok(transition)
+    crate::common::poll::poll_until_with_backoff(
+      backoff,
+      || async {
+        let transition =
+          self.pcs_transitions_get_by_id(token, transition_id).await?;
+        log::debug!(
+          "Power '{}' summary - status: {}, failed: {}, in-progress: {}, succeeded: {}, total: {}",
+          transition.operation,
+          transition.transition_status,
+          transition.task_counts.failed,
+          transition.task_counts.in_progress,
+          transition.task_counts.succeeded,
+          transition.task_counts.total,
+        );
+        Ok(transition)
+      },
+      |t| t.transition_status == "completed",
+    )
+    .await
   }
 }
