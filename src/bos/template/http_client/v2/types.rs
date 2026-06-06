@@ -88,8 +88,8 @@ impl BosSessionTemplate {
       .as_ref()
       .map(|boot_sets| {
         boot_sets
-          .iter()
-          .flat_map(|(_, boot_param)| {
+          .values()
+          .flat_map(|boot_param| {
             boot_param.node_groups.clone().unwrap_or_default()
           })
           .collect()
@@ -103,8 +103,8 @@ impl BosSessionTemplate {
       .as_ref()
       .map(|boot_set| {
         boot_set
-          .iter()
-          .flat_map(|(_, boot_param)| {
+          .values()
+          .flat_map(|boot_param| {
             boot_param.node_list.clone().unwrap_or_default()
           })
           .collect()

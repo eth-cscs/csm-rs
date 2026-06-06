@@ -7,6 +7,7 @@
 //!   templates) used by the workflow.
 
 pub mod command;
+/// Integration tests for the SAT-file apply workflow.
 #[cfg(test)]
 pub mod tests;
 pub mod utils;

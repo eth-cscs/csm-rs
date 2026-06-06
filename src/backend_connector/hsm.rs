@@ -93,8 +93,7 @@ impl ComponentTrait for Csm {
   ) -> Result<Vec<Component>, Error> {
     let xname_available_vec: Vec<String> = self
       .get_group_available(auth_token)
-      .await
-      .map_err(Error::from)?
+      .await?
       .iter()
       .flat_map(|group| group.get_members())
       .collect();

@@ -57,7 +57,7 @@ impl ConsoleTrait for Csm {
 
     let mut attached: AttachedProcess =
       console::get_container_attachment_to_conman(
-        &xname.to_string(),
+        xname,
         &k8s.api_url,
         shasta_k8s_secrets,
         self.socks5_proxy.as_deref(),

@@ -11,6 +11,7 @@
 //! - [`utils`] — convenience helpers built on top of the raw client.
 
 pub mod http_client;
+/// Integration-style tests for the BSS namespace.
 #[cfg(test)]
 pub mod tests;
 pub mod types;

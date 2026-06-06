@@ -1374,13 +1374,17 @@ pub struct NodeLocationInfo {
 // struct no longer carries a `hw_inventory_by_location_type` field of
 // its own. The tag value must match the Rust variant name (e.g.
 // `HWInvByLocCabinet`).
+// The two largest variants (`HWInvByLocCabinet`, `HWInvByLocChassis`)
+// are boxed so the enum doesn't pay the size cost of the rarely-used
+// big variants on every value. Serde `Box<T>` deserializes the same as
+// `T`, so this is wire-compatible. See `clippy::large_enum_variant`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "HWInventoryByLocationType")]
 pub enum HWInventoryByLocation {
   HWInvByLocCDUMgmtSwitch(HWInvByLocCDUMgmtSwitch),
   HWInvByLocCMMRectifier(HWInvByLocCMMRectifier),
-  HWInvByLocCabinet(HWInvByLocCabinet),
-  HWInvByLocChassis(HWInvByLocChassis),
+  HWInvByLocCabinet(Box<HWInvByLocCabinet>),
+  HWInvByLocChassis(Box<HWInvByLocChassis>),
   HWInvByLocComputeModule(HWInvByLocComputeModule),
   HWInvByLocDrive(HWInvByLocDrive),
   HWInvByLocHSNBoard(HWInvByLocHSNBoard),

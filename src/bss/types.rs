@@ -302,7 +302,7 @@ impl BootParameters {
       }
     }
 
-    self.params = format_kernel_params(params.into_iter());
+    self.params = format_kernel_params(params);
 
     change
   }
@@ -347,7 +347,7 @@ impl BootParameters {
     }
 
     // Create new kernel params as a string
-    self.params = format_kernel_params(params.into_iter());
+    self.params = format_kernel_params(params);
 
     changed
   }
@@ -383,7 +383,7 @@ impl BootParameters {
       }
     }
 
-    self.params = format_kernel_params(params.into_iter());
+    self.params = format_kernel_params(params);
 
     changed
   }
@@ -407,7 +407,7 @@ impl BootParameters {
       changed |= params.remove(key).is_some();
     }
 
-    self.params = format_kernel_params(params.into_iter());
+    self.params = format_kernel_params(params);
 
     changed
   }

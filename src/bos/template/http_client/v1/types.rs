@@ -93,10 +93,8 @@ impl BosSessionTemplate {
       .clone()
       .boot_sets
       .unwrap_or_default()
-      .iter()
-      .flat_map(|(_, boot_param)| {
-        boot_param.node_groups.clone().unwrap_or(Vec::new())
-      })
+      .into_values()
+      .flat_map(|boot_param| boot_param.node_groups.unwrap_or_default())
       .collect()
   }
 
@@ -105,10 +103,8 @@ impl BosSessionTemplate {
       .clone()
       .boot_sets
       .unwrap_or_default()
-      .iter()
-      .flat_map(|(_, boot_param)| {
-        boot_param.node_list.clone().unwrap_or(Vec::new())
-      })
+      .into_values()
+      .flat_map(|boot_param| boot_param.node_list.unwrap_or_default())
       .collect()
   }
 

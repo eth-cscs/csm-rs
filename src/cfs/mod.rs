@@ -25,6 +25,7 @@ pub mod component;
 pub mod configuration;
 pub mod health;
 pub mod session;
+/// Integration-style tests for the CFS namespace.
 #[cfg(test)]
 pub mod tests;
 

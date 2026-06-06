@@ -691,10 +691,10 @@ impl From<FrontEndHWInventoryByLocation> for HWInventoryByLocation {
         HWInventoryByLocation::HWInvByLocCMMRectifier(v.into())
       }
       FrontEndHWInventoryByLocation::HWInvByLocCabinet(v) => {
-        HWInventoryByLocation::HWInvByLocCabinet(v.into())
+        HWInventoryByLocation::HWInvByLocCabinet(Box::new(HWInvByLocCabinet::from(v)))
       }
       FrontEndHWInventoryByLocation::HWInvByLocChassis(v) => {
-        HWInventoryByLocation::HWInvByLocChassis(v.into())
+        HWInventoryByLocation::HWInvByLocChassis(Box::new(HWInvByLocChassis::from(v)))
       }
       FrontEndHWInventoryByLocation::HWInvByLocComputeModule(v) => {
         HWInventoryByLocation::HWInvByLocComputeModule(v.into())
@@ -764,10 +764,10 @@ impl From<HWInventoryByLocation> for FrontEndHWInventoryByLocation {
         FrontEndHWInventoryByLocation::HWInvByLocCMMRectifier(v.into())
       }
       HWInventoryByLocation::HWInvByLocCabinet(v) => {
-        FrontEndHWInventoryByLocation::HWInvByLocCabinet(v.into())
+        FrontEndHWInventoryByLocation::HWInvByLocCabinet((*v).into())
       }
       HWInventoryByLocation::HWInvByLocChassis(v) => {
-        FrontEndHWInventoryByLocation::HWInvByLocChassis(v.into())
+        FrontEndHWInventoryByLocation::HWInvByLocChassis((*v).into())
       }
       HWInventoryByLocation::HWInvByLocComputeModule(v) => {
         FrontEndHWInventoryByLocation::HWInvByLocComputeModule(v.into())

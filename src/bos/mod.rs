@@ -18,6 +18,7 @@
 pub mod health_check;
 pub mod session;
 pub mod template;
+/// Integration-style tests for the BOS namespace.
 #[cfg(test)]
 pub mod tests;
 

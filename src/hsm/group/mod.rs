@@ -14,6 +14,7 @@
 pub mod hacks;
 /// `ShastaClient` methods for `/hsm/v2/groups`.
 pub mod http_client;
+/// Integration-style tests for the HSM group namespace.
 #[cfg(test)]
 pub mod tests;
 pub mod types;

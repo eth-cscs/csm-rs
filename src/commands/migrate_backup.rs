@@ -280,7 +280,7 @@ pub async fn exec(
             log::info!("\tHSM file: {}", &hsm_file_path.to_string_lossy());
             log::info!("\tIMS file: {}", &ims_file_path.to_string_lossy());
             let ims_image_name = migrate_restore::get_image_name_from_ims_file(
-              &ims_file_path.clone().to_string_lossy().to_string(),
+              &ims_file_path.to_string_lossy(),
             )?;
             log::info!("\tImage name: {}", ims_image_name);
             for file in files2download {

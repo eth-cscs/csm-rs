@@ -509,7 +509,7 @@ async fn ims_update_image_add_manifest(
   ) {
     Ok(client) => {
       client
-        .ims_image_patch(shasta_token, &ims_image_id.to_string(), &rec)
+        .ims_image_patch(shasta_token, ims_image_id, &rec)
         .await
     }
     Err(e) => Err(e),
@@ -643,7 +643,7 @@ async fn s3_upload_image_artifacts(
           artifact.link.path = "s3://".to_string()
             + bucket_name
             + "/"
-            + &object_path.to_string()
+            + object_path
             + "/kernel";
           break;
         }
@@ -658,7 +658,7 @@ async fn s3_upload_image_artifacts(
           artifact.link.path = "s3://".to_string()
             + bucket_name
             + "/"
-            + &object_path.to_string()
+            + object_path
             + "/rootfs";
           break;
         }
@@ -673,7 +673,7 @@ async fn s3_upload_image_artifacts(
           artifact.link.path = "s3://".to_string()
             + bucket_name
             + "/"
-            + &object_path.to_string()
+            + object_path
             + "/initrd";
           break;
         }
