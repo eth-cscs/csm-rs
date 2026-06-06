@@ -21,22 +21,13 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
   let claims_u8 = URL_SAFE_NO_PAD
     .decode(base64_claims)
     .or_else(|_| STANDARD.decode(base64_claims))
-    .map_err(|e| {
-      Error::Message(format!(
-        "ERROR - could not get claims in JWT token. Reason:\n{}",
-        e
-      ))
-    })?;
+    .map_err(|_| Error::JwtShape("could not base64-decode JWT claims"))?;
 
-  let claims_str = std::str::from_utf8(&claims_u8).map_err(|_| {
-    Error::Message("could not convert JWT claims to string".to_string())
-  })?;
+  let claims_str = std::str::from_utf8(&claims_u8)
+    .map_err(|_| Error::JwtShape("JWT claims are not valid UTF-8"))?;
 
-  serde_json::from_str::<Value>(claims_str).map_err(|_| {
-    Error::Message(
-      "ERROR - could not convert JWT claims to a JSON object".to_string(),
-    )
-  })
+  serde_json::from_str::<Value>(claims_str)
+    .map_err(|_| Error::JwtShape("JWT claims are not valid JSON"))
 }
 
 /// Extract the `name` claim from a Keycloak JWT (typically the user's
@@ -50,8 +41,8 @@ pub fn get_name(token: &str) -> Result<String, Error> {
 
   match jwt_name {
     Some(name) => Ok(name.to_string()),
-    None => Err(Error::Message(
-      "ERROR - claim 'name' not found in JWT auth token".to_string(),
+    None => Err(Error::JwtShape(
+      "claim 'name' not found in JWT auth token",
     )),
   }
 }
@@ -68,8 +59,8 @@ pub fn get_preferred_username(token: &str) -> Result<String, Error> {
 
   match jwt_preferred_username {
     Some(name) => Ok(name.to_string()),
-    None => Err(Error::Message(
-      "ERROR - claim 'name' not found in JWT auth token".to_string(),
+    None => Err(Error::JwtShape(
+      "claim 'preferred_username' not found in JWT auth token",
     )),
   }
 }

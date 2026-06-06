@@ -210,6 +210,11 @@ pub enum Error {
     status: u16,
     payload: String,
   },
+  /// JWT decoding or claim-shape failure: base64 decode failed, the
+  /// payload isn't UTF-8 / valid JSON, or an expected claim is
+  /// missing or has the wrong type.
+  #[error("CSM-RS > JWT: {0}")]
+  JwtShape(&'static str),
 }
 
 impl Error {
@@ -423,6 +428,7 @@ impl From<crate::error::Error> for MantaError {
         detail: format!("{method} {url} -> {payload}"),
         body: None,
       },
+      Error::JwtShape(s) => MantaError::Message(format!("JWT: {s}")),
     }
   }
 }
