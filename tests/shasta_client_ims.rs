@@ -65,7 +65,7 @@ async fn ims_image_get_404_returns_image_not_found_error() {
     .await
     .expect_err("should error");
   assert!(
-    matches!(err, csm_rs::error::Error::ImageNotFound(ref id) if id == "missing"),
+    matches!(err, csm_rs::Error::ImageNotFound(ref id) if id == "missing"),
     "expected ImageNotFound, got: {:?}",
     err
   );

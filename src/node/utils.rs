@@ -1,4 +1,9 @@
 //! Helpers built on top of the lower-level node-related APIs.
+//!
+//! Some validators here are exercised only by their own unit tests for
+//! now; allow `dead_code` so the helpers stay available without breaking
+//! non-test builds.
+#![allow(dead_code)]
 
 use std::{collections::HashMap, sync::Arc, time::Instant};
 

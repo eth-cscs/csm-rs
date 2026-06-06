@@ -14,6 +14,10 @@ keywords = ["hpc", "shasta", "csm", "cray", "hpe"]
 categories = ["api-bindings", "asynchronous"]
 publish = true
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]

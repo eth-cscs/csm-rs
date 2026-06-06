@@ -121,7 +121,7 @@ async fn bos_template_v2_delete_propagates_non_2xx_errors() {
     .bos_template_v2_delete(TEST_TOKEN, "tmpl-1")
     .await
     .expect_err("500 should propagate");
-  assert!(matches!(err, csm_rs::error::Error::NetError(_)));
+  assert!(matches!(err, csm_rs::Error::NetError(_)));
 }
 
 #[tokio::test]

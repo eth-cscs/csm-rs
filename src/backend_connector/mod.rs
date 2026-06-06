@@ -65,6 +65,7 @@ impl Csm {
   ///
   /// Returns an error if [`crate::ShastaClient::new`] fails — typically
   /// because the proxy URL is malformed.
+  #[must_use = "constructing a Csm without using it is a no-op"]
   pub fn new(
     base_url: &str,
     root_cert: &[u8],

@@ -17,6 +17,7 @@ pub struct Location {
 }
 
 #[derive(Display, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Operation {
   #[serde(rename = "On")]
   On,

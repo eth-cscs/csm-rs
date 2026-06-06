@@ -28,6 +28,7 @@ pub struct BosSession {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[non_exhaustive]
 pub enum Operation {
   #[serde(rename = "boot")]
   Boot,
@@ -72,6 +73,7 @@ pub struct Status {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[non_exhaustive]
 pub enum StatusLabel {
   #[serde(rename = "pending")]
   Pending,

@@ -12,7 +12,7 @@
 //! many tokens:
 //!
 //! ```no_run
-//! # async fn example() -> Result<(), csm_rs::error::Error> {
+//! # async fn example() -> Result<(), csm_rs::Error> {
 //! let client = csm_rs::ShastaClient::new(
 //!     "https://api.shasta.example.com",
 //!     std::fs::read("/etc/shasta/ca.crt").unwrap(),
@@ -81,16 +81,27 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![warn(missing_docs)]
 
+/// Backend-dispatcher integration layer. Implements the trait families
+/// from the `manta-backend-dispatcher` crate so csm-rs can be plugged
+/// into Manta (or any compatible dispatcher consumer) as a CSM backend.
+///
+/// Requires the `manta-dispatcher` Cargo feature (enabled by default).
+/// Direct CSM clients should reach for [`ShastaClient`] instead — this
+/// module exists specifically to satisfy the dispatcher contract.
 #[cfg(feature = "manta-dispatcher")]
 pub mod backend_connector;
 pub mod bos;
 pub mod bss;
 pub mod capmc;
 pub mod cfs;
-pub mod client;
+// `client` and `error` are not `pub mod` — the canonical paths are
+// `csm_rs::ShastaClient` and `csm_rs::Error` (re-exports below). The
+// modules stay private so a future internal reshuffle doesn't break
+// downstream `csm_rs::{client, error}::*` paths.
+mod client;
 pub mod commands;
 pub(crate) mod common;
-pub mod error;
+mod error;
 pub mod hsm;
 pub mod ims;
 pub mod node;
@@ -105,8 +116,17 @@ pub use error::Error;
 // internal so a future version bump is a single edit in the namespace.
 pub use bos::{BosSession, BosSessionTemplate};
 pub use bss::BootParameters;
-pub use capmc::{XnameError, XnamePowerActionResponse, XnameStatusResponse};
-pub use ims::{Image, Link, PatchImage, PublicKey};
+// IMS types are prefixed at the lib root to avoid collisions with
+// likely-overlapping downstream names (`Link`, `PublicKey`, `PatchImage`).
+// `Image` keeps its un-prefixed name as the central IMS type. The deep
+// `csm_rs::ims::*` paths still resolve un-prefixed.
+pub use ims::{
+  Image, Link as ImsLink, PatchImage as ImsPatchImage,
+  PublicKey as ImsPublicKey,
+};
+// CAPMC types stay namespaced under `csm_rs::capmc::*` — they were
+// previously lifted to the lib root but CAPMC is not a daily-driver
+// namespace, so the un-prefixed lift was an overcorrection.
 // CFS exposes both v2 and v3 endpoints with structurally different
 // wire types, so the canonical surface is the `cfs::v2` and `cfs::v3`
 // submodules rather than a single crate-root alias.

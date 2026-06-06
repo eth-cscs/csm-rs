@@ -3,3 +3,6 @@
 pub mod command;
 #[cfg(test)]
 mod tests;
+
+#[doc(inline)]
+pub use command::exec;

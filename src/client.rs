@@ -30,7 +30,7 @@ use crate::error::Error;
 /// # Example
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), csm_rs::error::Error> {
+/// # async fn example() -> Result<(), csm_rs::Error> {
 /// let client = csm_rs::ShastaClient::new(
 ///     "https://api.shasta.example.com",
 ///     std::fs::read("/etc/shasta/ca.crt").unwrap(),
@@ -62,6 +62,7 @@ impl ShastaClient {
   /// `reqwest::Client::build` fails. Malformed PEM input is silently
   /// tolerated by `reqwest::Certificate::from_pem` (it just produces an
   /// empty trust chain), so this constructor does not surface PEM errors.
+  #[must_use = "constructing a ShastaClient without using it is a no-op"]
   pub fn new(
     base_url: impl Into<String>,
     root_cert: impl Into<Vec<u8>>,

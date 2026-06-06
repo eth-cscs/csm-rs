@@ -42,6 +42,13 @@ jobs:
       - name: Test (all features)
         run: cargo test --all-features
 
+      - name: Test (minimal embedder shape — manta-dispatcher only)
+        # Smoke-tests the minimum-viable feature set that downstream
+        # embedders (Manta-style) use: just the dispatcher trait
+        # surface, no kube console, no S3, no admin commands. Regressing
+        # this is invisible to the other test steps.
+        run: cargo test --no-default-features --features manta-dispatcher
+
       - name: Docs
         # Doc strictness comes from `#![deny(rustdoc::broken_intra_doc_links)]`
         # in `src/lib.rs`; this step just runs rustdoc to surface it.

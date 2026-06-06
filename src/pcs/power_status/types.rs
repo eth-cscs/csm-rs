@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::pcs::transitions::types::Operation;
 
 #[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum PowerState {
   #[serde(rename = "on")]
   On,
@@ -17,6 +18,7 @@ pub enum PowerState {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ManagementState {
   #[serde(rename = "unavailable")]
   Unavailable,
