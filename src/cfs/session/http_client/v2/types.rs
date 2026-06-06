@@ -130,7 +130,7 @@ pub struct Ansible {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub limit: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub verbosity: Option<u64>,
+  pub verbosity: Option<u8>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub passthrough: Option<String>,
 }
@@ -249,5 +249,46 @@ impl CfsSessionPostRequest {
     }
 
     cfs_session
+  }
+
+  /// Returns all target.groups[].members[]. Most probably will return duplicated values.
+  /// eg:
+  /// {
+  ///  "name": "gallina-mc-compute-test-manuel-0.0",
+  ///  "configurationName": "tmp-gallina-mc-compute-cfg-test-manuel-0.0",
+  ///  "ansibleVerbosity": 2,
+  ///  "target": {
+  ///    "definition": "image",
+  ///    "groups": [
+  ///      {
+  ///        "name": "Compute",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      },
+  ///      {
+  ///        "name": "prealps",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      },
+  ///      {
+  ///        "name": "gallina",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      }
+  ///    ]
+  ///  }
+  ///}
+  pub fn get_base_image_ids(&self) -> Vec<String> {
+    self
+      .target
+      .groups
+      .as_ref()
+      .unwrap_or(&Vec::new())
+      .iter()
+      .flat_map(|group| group.members.clone())
+      .collect()
   }
 }

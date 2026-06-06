@@ -36,7 +36,7 @@ pub struct Ansible {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub limit: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub verbosity: Option<u64>,
+  pub verbosity: Option<u8>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub passthrough: Option<String>,
 }
