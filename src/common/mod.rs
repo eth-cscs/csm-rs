@@ -16,14 +16,11 @@
 //!   the supported way to obtain CSM cluster credentials off-cluster.
 //! - [`gitea`] — small client for the embedded CSM Gitea instance used
 //!   by CFS configuration layers.
-//! - [`cluster_ops`] — generic cluster-scoped helpers used by the
-//!   commands layer.
 //!
 //! `http` and `yaml` exist as crate-internal utilities and are not
 //! part of the public surface.
 
 pub mod authentication;
-pub mod cluster_ops;
 pub mod gitea;
 pub(crate) mod http;
 pub mod jwt_ops;

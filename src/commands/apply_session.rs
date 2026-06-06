@@ -72,15 +72,16 @@ pub async fn exec(
   // * Process/validate hsm group value (and ansible limit)
   if let Some(hsm_group_value) = hsm_group_value_opt {
     // Get all hsm groups details related to hsm_group input
-    hsm_group_list = crate::common::cluster_ops::get_details(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      hsm_group_value,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    hsm_group_list =
+      crate::hsm::group::utils::get_members_for_groups_matching(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        socks5_proxy,
+        hsm_group_value,
+      )
+      .await
+      .map_err(|e| Error::Message(e.to_string()))?;
 
     // Take all nodes for all hsm_groups found and put them in a Vec
     hsm_groups_node_list = hsm_group_list

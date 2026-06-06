@@ -603,6 +603,52 @@ pub fn group_members_by_hsm_group_from_hsm_groups_value(
   member_hsm_map
 }
 
+/// Per-group member xnames for every HSM group whose label contains
+/// `hsm_group_name_substring` (substring match).
+///
+/// Each entry in the returned vector corresponds to one matched group
+/// and carries that group's member xnames; the outer length is the
+/// number of groups matched (not the number of unique members).
+#[derive(Debug)]
+pub struct GroupMembers {
+  /// xnames belonging to the matched HSM group.
+  pub members: Vec<String>,
+}
+
+/// List the member xnames of every HSM group whose label contains
+/// `hsm_group_name_substring` (substring match).
+///
+/// Lifted from the former `crate::common::cluster_ops::get_details`;
+/// the operation is purely an HSM-group lookup + member expansion, so
+/// it belongs in this namespace.
+pub async fn get_members_for_groups_matching(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  hsm_group_name_substring: &str,
+) -> Result<Vec<GroupMembers>, Error> {
+  let hsm_group_value_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .hsm_group_get_hsm_group_vec(
+    shasta_token,
+    Some(&hsm_group_name_substring.to_string()),
+  )
+  .await?;
+
+  Ok(
+    hsm_group_value_vec
+      .into_iter()
+      .map(|hsm_group| GroupMembers {
+        members: get_member_vec_from_hsm_group(&hsm_group),
+      })
+      .collect(),
+  )
+}
+
 /// Fetch a single HSM group by label and return its member xnames.
 pub async fn get_member_vec_from_hsm_group_name(
   shasta_token: &str,
