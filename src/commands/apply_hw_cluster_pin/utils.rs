@@ -257,17 +257,17 @@ pub fn calculate_target_hsm_pin(
   let mut iter = 0;
 
   while work_to_do {
-    log::info!("----- ITERATION {} -----", iter);
+    log::debug!("----- ITERATION {} -----", iter);
 
-    log::info!(
+    log::debug!(
       "HSM group hw component counters: {:?}",
       combination_target_parent_hsm_hw_component_summary_hashmap
     );
-    log::info!(
+    log::debug!(
       "Final hw component counters the user wants: {:?}",
       user_defined_hsm_hw_components_count_hashmap
     );
-    log::info!(
+    log::debug!(
       "Best candidate is '{}' with score {} and hw component counters {:?}",
       best_candidate.0,
       best_candidate.1,
@@ -374,9 +374,9 @@ pub fn calculate_target_hsm_pin(
     iter += 1;
   }
 
-  log::info!("----- FINAL RESULT -----");
+  log::debug!("----- FINAL RESULT -----");
 
-  log::info!("No candidates found");
+  log::debug!("No candidates found");
 
   Ok(nodes_migrated_from_combination_target_parent_hsm)
 }
@@ -421,7 +421,7 @@ pub fn calculate_hw_component_scarcity_scores(
     );
   }
 
-  log::info!(
+  log::debug!(
     "Hw component scarcity scores: {:?}",
     hw_component_scarcity_score_hashmap
   );
@@ -646,7 +646,7 @@ pub async fn get_hsm_node_hw_component_counter(
 
     let permit = Arc::clone(&sem).acquire_owned().await;
 
-    // log::info!("user_defined_hw_profile_vec_aux: {:?}", user_defined_hw_profile_vec_aux);
+    // log::debug!("user_defined_hw_profile_vec_aux: {:?}", user_defined_hw_profile_vec_aux);
     tasks.spawn(async move {
       let _permit = permit; // Wait semaphore to allow new tasks https://github.com/tokio-rs/tokio/discussions/2648#discussioncomment-34885
 
@@ -694,7 +694,7 @@ pub async fn get_hsm_node_hw_component_counter(
   }
 
   let duration = start.elapsed();
-  log::info!("Time elapsed to calculate hw components is: {:?}", duration);
+  log::debug!("Time elapsed to calculate hw components is: {:?}", duration);
 
   Ok(target_hsm_node_hw_component_count_vec)
 }

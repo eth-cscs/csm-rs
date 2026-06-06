@@ -18,7 +18,7 @@ pub async fn validate_api_token(
 
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
 
-  log::info!("Validate CSM token against {}", api_url);
+  log::debug!("Validate CSM token against {}", api_url);
 
   let resp_rslt = client.get(api_url).bearer_auth(shasta_token).send().await;
 

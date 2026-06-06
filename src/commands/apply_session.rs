@@ -124,7 +124,7 @@ pub async fn exec(
   xname_list.sort();
   xname_list.dedup();
 
-  log::info!("Replacing '_' with '-' in repo name.");
+  log::debug!("Replacing '_' with '-' in repo name.");
   let cfs_configuration_name = str::replace(cfs_configuration_name, "_", "-");
 
   // * Check nodes are ready to run, create CFS configuration and CFS session
@@ -250,7 +250,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     .collect();
 
   for xname in xnames {
-    log::info!("Checking status of component {}", xname);
+    log::debug!("Checking status of component {}", xname);
 
     let component_status = crate::ShastaClient::new(
       shasta_base_url,
@@ -279,16 +279,16 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         ))
       })?;
 
-    log::info!(
+    log::debug!(
       "HSM component state for component {}: {}",
       xname,
       hsm_component_status_state
     );
-    log::info!(
+    log::debug!(
       "Is component enabled for batched CFS: {:?}",
       component_status.enabled
     );
-    log::info!("Error count: {:?}", component_status.error_count);
+    log::debug!("Error count: {:?}", component_status.error_count);
 
     if hsm_component_status_state.eq("On")
       || hsm_component_status_state.eq("Standby")

@@ -20,7 +20,7 @@ pub async fn test_connectivity_to_backend(
 
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
 
-  log::info!("Validate CSM token against {}", api_url);
+  log::debug!("Validate CSM token against {}", api_url);
 
   client
     .get(api_url)

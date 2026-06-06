@@ -48,7 +48,7 @@ pub async fn create_cfs_configuration_from_sat_file(
     .await?;
 
   if dry_run {
-    log::info!(
+    log::debug!(
       "Dry run mode: Create CFS configuration:\n{}",
       serde_json::to_string_pretty(&cfs_configuration)?
     );

@@ -40,16 +40,16 @@ pub async fn validate_sat_file_session_template_section(
   hsm_group_available_vec: &[String],
 ) -> Result<(), Error> {
   // Validate 'session_template' section in SAT file
-  log::info!("Validate 'session_template' section in SAT file");
+  log::debug!("Validate 'session_template' section in SAT file");
   for session_template_yaml in session_template_yaml_vec {
     // Validate session_template
-    log::info!(
+    log::debug!(
       "Validate 'session_template' '{}'",
       session_template_yaml.name
     );
 
     // Validate user has access to HSM groups in 'session_template' section
-    log::info!(
+    log::debug!(
       "Validate 'session_template' '{}' HSM groups",
       session_template_yaml.name
     );
@@ -82,7 +82,7 @@ pub async fn validate_sat_file_session_template_section(
     }
 
     // Validate boot image (session_template.image)
-    log::info!(
+    log::debug!(
       "Validate 'session_template' '{}' boot image",
       session_template_yaml.name
     );
@@ -93,7 +93,7 @@ pub async fn validate_sat_file_session_template_section(
     {
       // Validate image_ref (session_template.image.image_ref). Search in SAT file for any
       // image with images[].ref_name
-      log::info!("Searching ref_name '{}' in SAT file", ref_name_to_find,);
+      log::debug!("Searching ref_name '{}' in SAT file", ref_name_to_find,);
 
       let image_ref_name_found = image_yaml_vec
         .iter()
@@ -113,7 +113,7 @@ pub async fn validate_sat_file_session_template_section(
           name: image_name_substr_to_find,
         } => {
           // Validate image name (session_template.image.ims.name). Search in SAT file and CSM
-          log::info!(
+          log::debug!(
             "Searching image name '{}' related to session template '{}' in SAT file",
             image_name_substr_to_find,
             session_template_yaml.name
@@ -128,7 +128,7 @@ pub async fn validate_sat_file_session_template_section(
               "Image name '{}' not found in SAT file, looking in CSM",
               image_name_substr_to_find
             );
-            log::info!(
+            log::debug!(
               "Searching image name '{}' related to session template '{}' in CSM",
               image_name_substr_to_find,
               session_template_yaml.name
@@ -156,7 +156,7 @@ pub async fn validate_sat_file_session_template_section(
         }
         sessiontemplate::ImsDetails::Id { id: image_id } => {
           // Validate image id (session_template.image.ims.id) in CSM
-          log::info!(
+          log::debug!(
             "Searching image id '{}' related to session template '{}' in CSM",
             image_id,
             session_template_yaml.name
@@ -183,7 +183,7 @@ pub async fn validate_sat_file_session_template_section(
       &session_template_yaml.image
     {
       // Validate image name (session_template.image.image). Search in SAT file for any
-      log::info!("Searching image name '{}' in SAT file", image_name,);
+      log::debug!("Searching image name '{}' in SAT file", image_name,);
 
       let image_ref_name_found = image_yaml_vec
         .iter()
@@ -198,12 +198,12 @@ pub async fn validate_sat_file_session_template_section(
     }
 
     // Validate configuration
-    log::info!(
+    log::debug!(
       "Validate 'session_template' '{}' configuration",
       session_template_yaml.name
     );
 
-    log::info!(
+    log::debug!(
       "Searching configuration name '{}' related to session template '{}' in CSM in SAT file",
       session_template_yaml.configuration,
       session_template_yaml.name
@@ -219,7 +219,7 @@ pub async fn validate_sat_file_session_template_section(
     if !configuration_found {
       // CFS configuration in session_template not found in SAT file, searching in CSM
       log::warn!("Configuration not found in SAT file, looking in CSM");
-      log::info!(
+      log::debug!(
         "Searching configuration name '{}' related to session_template '{}' in CSM",
         session_template_yaml.configuration,
         session_template_yaml.name
@@ -338,7 +338,7 @@ pub async fn process_session_template_section_in_sat_file(
               }
             });
 
-          log::info!(
+          log::debug!(
             "Dry run mode: Generate mock Image\n{}",
             serde_json::to_string_pretty(&dry_run_mock_image)?
           );
@@ -362,20 +362,20 @@ pub async fn process_session_template_section_in_sat_file(
         ));
       };
 
-    log::info!("Image with name '{}' found", image_details.name);
+    log::debug!("Image with name '{}' found", image_details.name);
 
     // Get CFS configuration to configure the nodes
     let bos_session_template_configuration_name =
       yaml_str(bos_sessiontemplate_yaml, "configuration")?.to_string();
 
     // Check CFS configuration exists in CSM
-    log::info!(
+    log::debug!(
       "Looking for CFS configuration with name: {}",
       bos_session_template_configuration_name
     );
 
     if dry_run {
-      log::info!(
+      log::debug!(
         "Dry run mode: CFS configuration '{}' found in CSM.",
         bos_session_template_configuration_name
       );
@@ -565,7 +565,7 @@ pub async fn process_session_template_section_in_sat_file(
     };
 
     if dry_run {
-      log::info!(
+      log::debug!(
         "Dry run mode: Create BOS sessiontemplate:\n{}",
         serde_json::to_string_pretty(&create_bos_session_template_payload)?
       );
@@ -573,7 +573,7 @@ pub async fn process_session_template_section_in_sat_file(
       // Generate a mock name for the BOS session template
       let dry_run_bos_sessiontemplate_name =
         format!("DRYRUN_{}", Uuid::new_v4());
-      log::info!(
+      log::debug!(
         "Dry Run Mode: BOS sessiontemplate name '{}' created",
         dry_run_bos_sessiontemplate_name
       );
@@ -593,7 +593,7 @@ pub async fn process_session_template_section_in_sat_file(
       )
       .await?;
 
-      log::info!(
+      log::debug!(
         "BOS sessiontemplate name '{}' created",
         bos_sessiontemplate_name
       );
@@ -611,11 +611,11 @@ pub async fn process_session_template_section_in_sat_file(
   // up... hence we will split the reboot into 2 operations shutdown and start
 
   if reboot {
-    log::info!("Rebooting");
+    log::debug!("Rebooting");
 
     for bos_st in &bos_st_created_vec {
       let bos_st_name = bos_st.name.clone().unwrap_or_default();
-      log::info!(
+      log::debug!(
         "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
         bos_st_name
       );
@@ -634,7 +634,7 @@ pub async fn process_session_template_section_in_sat_file(
       };
 
       if dry_run {
-        log::info!(
+        log::debug!(
           "Dry run mode: Create BOS session:\n{}",
           serde_json::to_string_pretty(&bos_session)?
         );
@@ -655,7 +655,7 @@ pub async fn process_session_template_section_in_sat_file(
   let user = common::jwt_ops::get_name(shasta_token)?;
   let username = common::jwt_ops::get_preferred_username(shasta_token)?;
 
-  log::info!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
+  log::debug!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
 
   Ok((bos_st_created_vec, bos_sessions_created))
 }
@@ -806,7 +806,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
     &image_yaml.base_or_ims
   {
     // ----------- BASE IMAGE - BACKWARD COMPATIBILITY WITH PREVIOUS SAT FILE
-    log::info!(
+    log::debug!(
       "SAT file - 'image.ims' job ('images' section in SAT file is outdated - switching to backward compatibility)"
     );
 
@@ -817,7 +817,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       sat_file_image_base_value_yaml.get("image_ref")
     { */
     if let image::Base::ImageRef { image_ref } = base {
-      log::info!("SAT file - 'image.base.image_ref' job");
+      log::debug!("SAT file - 'image.base.image_ref' job");
 
       image_ref.clone()
     /* } else if let Some(sat_file_image_base_ims_value_yaml) =
@@ -825,9 +825,9 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
     { */
     } else if let image::Base::Ims { ims } = base {
       if let image::ImageBaseIms::NameType { name, r#type } = ims {
-        log::info!("SAT file - 'image.base.ims' job");
+        log::debug!("SAT file - 'image.base.ims' job");
         if r#type == "recipe" {
-          log::info!("SAT file - 'image.base.ims' job of type 'recipe'");
+          log::debug!("SAT file - 'image.base.ims' job of type 'recipe'");
 
           process_sat_file_image_ims_type_recipe(
             shasta_token,
@@ -849,7 +849,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
         #[allow(clippy::collapsible_match)]
         if let image::ImageBaseIms::IdType { id, r#type } = ims {
           if r#type == "image" {
-            log::info!("SAT file - 'image.base.ims' job of type 'image'");
+            log::debug!("SAT file - 'image.base.ims' job of type 'image'");
 
             id.to_string()
           } else {
@@ -875,7 +875,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       sat_file_image_base_value_yaml.get("product")
     { */
     } else if let image::Base::Product { product } = base {
-      log::info!("SAT file - 'image.base.product' job");
+      log::debug!("SAT file - 'image.base.product' job");
       // Base image created from a cray product
       let product_name = &product.name;
 
@@ -909,7 +909,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       } else {
         // There is no 'image.product.filter' value defined in SAT file. Check Cray
         // product catalog only has 1 image. Othewise fail
-        log::info!(
+        log::debug!(
           "No 'image.product.filter' defined in SAT file. Checking Cray product catalog only/must have 1 image"
         );
         product_image_map
@@ -932,7 +932,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
         // images[].base.product.id is the id of the IMS recipe used to
         // build the new base image)
 
-        log::info!("SAT file - 'image.base.product' job based on IMS recipes");
+        log::debug!("SAT file - 'image.base.product' job based on IMS recipes");
 
         let product_recipe_id = image_id.clone();
 
@@ -952,9 +952,9 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
         // Base image already created and its id is available in the Cray
         // product catalog
 
-        log::info!("SAT file - 'image.base.product' job based on IMS images");
+        log::debug!("SAT file - 'image.base.product' job based on IMS images");
 
-        log::info!("Getting base image id from Cray product catalog");
+        log::debug!("Getting base image id from Cray product catalog");
 
         image_id
       } else {

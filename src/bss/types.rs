@@ -232,7 +232,7 @@ impl BootParameters {
         if *key == *new_key {
           log::debug!("key '{}' found", key);
           if value != new_value {
-            log::info!("changing key {} from {} to {}", key, value, new_value);
+            log::debug!("changing key {} from {} to {}", key, value, new_value);
 
             *value = new_value;
             change = true
@@ -248,7 +248,7 @@ impl BootParameters {
         "No value change in kernel params. Checking is either new params have been added or removed"
       );
       if new_params.len() != params.len() {
-        log::info!("num kernel parameters have changed");
+        log::debug!("num kernel parameters have changed");
         change = true;
       }
     }
@@ -275,7 +275,7 @@ impl BootParameters {
         if *key == *new_key {
           log::debug!("key '{}' found", key);
           if value != new_value {
-            log::info!("changing key {} from {} to {}", key, value, new_value);
+            log::debug!("changing key {} from {} to {}", key, value, new_value);
 
             *value = new_value;
             change = true
@@ -291,7 +291,7 @@ impl BootParameters {
         "No value change in kernel params. Checking is either new params have been added or removed"
       );
       if new_params.len() != params.len() {
-        log::info!("num kernel parameters have changed");
+        log::debug!("num kernel parameters have changed");
         change = true;
       }
     }
@@ -321,7 +321,7 @@ impl BootParameters {
       if *current_key == new_key {
         log::debug!("key '{}' found", new_key);
         if *current_value != new_value {
-          log::info!(
+          log::debug!(
             "changing key {} from {} to {}",
             new_key,
             current_value,
@@ -362,12 +362,12 @@ impl BootParameters {
       // NOTE: do not use --> `params.entry(key).or_insert(new_value);` otherwise, I don't know
       // how do we know if the key already exists or not
       if params.contains_key(key) {
-        log::info!(
+        log::debug!(
           "key '{}' already exists, the new kernel parameter won't be added since it already exists",
           key
         );
       } else {
-        log::info!(
+        log::debug!(
           "key '{}' not found, adding new kernel param with value '{}'",
           key,
           new_value

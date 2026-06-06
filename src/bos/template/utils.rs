@@ -15,7 +15,7 @@ pub fn filter(
   // cfs_configuration_name_opt: Option<&str>,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<BosSessionTemplate>, Error> {
-  log::info!("Filter BOS sessiontemplates");
+  log::debug!("Filter BOS sessiontemplates");
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)?.compile_matcher();

@@ -183,7 +183,7 @@ pub async fn exec(
   let target_hsm_hw_component_summary_hashmap: HashMap<String, usize> =
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
-  log::info!(
+  log::debug!(
     "HSM group '{}' hw component summary: {:?}",
     target_hsm_group_name,
     target_hsm_hw_component_summary_hashmap

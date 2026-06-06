@@ -216,13 +216,13 @@ pub async fn remove_hsm_members(
   // *********************************************************************************************************
   // UPDATE HSM GROUP MEMBERS IN CSM
   if dryrun {
-    log::info!(
+    log::debug!(
       "Remove following nodes from HSM group {}:\n{:?}",
       target_hsm_group_name,
       new_target_hsm_members
     );
 
-    log::info!("dry-run enabled, changes not persisted.");
+    log::debug!("dry-run enabled, changes not persisted.");
   } else {
     let shasta_client = crate::ShastaClient::new(
       shasta_base_url,
@@ -532,7 +532,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
   socks5_proxy: Option<&str>,
   hsm_name_vec: &[String],
 ) -> Result<Vec<String>, Error> {
-  log::info!("Get xnames from HSM groups");
+  log::debug!("Get xnames from HSM groups");
   log::debug!("Get xnames from HSM groups: {:?}", hsm_name_vec);
 
   let hsm_group_vec = crate::ShastaClient::new(

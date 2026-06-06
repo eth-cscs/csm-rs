@@ -89,8 +89,8 @@ pub fn filter(
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
-  log::info!("Filter CFS sessions by groups");
-  log::info!(
+  log::debug!("Filter CFS sessions by groups");
+  log::debug!(
     "HSM groups to filter from: {:?}",
     hsm_group_name_available_vec
   );
@@ -152,7 +152,7 @@ pub fn filter_by_cofiguration(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   cfs_configuration_name: &str,
 ) {
-  log::info!(
+  log::debug!(
     "Filter CFS sessions by configuration name '{}'",
     cfs_configuration_name
   );
@@ -326,7 +326,7 @@ pub async fn wait_cfs_session_to_finish(
       })?;
 
     if cfs_session_status != "complete" && i < max {
-      log::info!(
+      log::debug!(
         "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
         cfs_session_id,
         cfs_session_status,
@@ -338,7 +338,7 @@ pub async fn wait_cfs_session_to_finish(
 
       i += 1;
     } else {
-      log::info!(
+      log::debug!(
         "CFS session '{}' finished with status '{}'",
         cfs_session_id,
         cfs_session_status

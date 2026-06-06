@@ -382,7 +382,7 @@ pub async fn get_node_details(
   }
 
   let duration = start.elapsed();
-  log::info!("Time elapsed to get node details is: {:?}", duration);
+  log::debug!("Time elapsed to get node details is: {:?}", duration);
   // ------------------------------------------------------------------------
 
   Ok(node_details_map.into_values().collect())

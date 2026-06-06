@@ -44,7 +44,7 @@ pub async fn wait_nodes_to_power_on(
       .await?;
     node_off_vec = status.off.clone().unwrap_or_default();
 
-    log::info!(
+    log::debug!(
       "Waiting nodes to power on. Trying again in {} seconds. Attempt {} of {}.",
       delay_secs,
       i + 1,
@@ -91,7 +91,7 @@ pub async fn wait_nodes_to_power_off(
       .await?;
     node_off_vec = status.off.clone().unwrap_or_default();
 
-    log::info!(
+    log::debug!(
       "Waiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
       delay_secs,
       i + 1,

@@ -138,6 +138,65 @@ Releases are cut with [`cargo-release`](https://github.com/crate-ci/cargo-releas
 cargo release patch --execute
 ```
 
+## Security advisories
+
+`cargo audit` currently reports three advisories against
+`rustls-webpki 0.101.7`, all pulled in transitively through the AWS
+SDK chain:
+
+- [RUSTSEC-2026-0098](https://rustsec.org/advisories/RUSTSEC-2026-0098)
+  — name constraints for URI names were incorrectly accepted.
+- [RUSTSEC-2026-0099](https://rustsec.org/advisories/RUSTSEC-2026-0099)
+  — name constraints accepted for certificates asserting a wildcard
+  name.
+- [RUSTSEC-2026-0104](https://rustsec.org/advisories/RUSTSEC-2026-0104)
+  — reachable panic in certificate revocation list parsing.
+
+Dependency chain:
+
+```
+csm-rs
+  └─ aws-smithy-runtime
+       └─ aws-smithy-http-client 1.1.12
+            └─ hyper-rustls 0.24.2
+                 └─ rustls 0.21.12
+                      └─ rustls-webpki 0.101.7   ← vulnerable
+```
+
+No direct fix is available: the AWS Rust SDK's smithy HTTP client
+still pins `hyper-rustls 0.24.2`. The fixed `rustls-webpki` releases
+(`0.103.12` / `0.103.13`) require the whole stack to migrate to
+`hyper 1.x`; `aws-smithy-http-client 1.1.13` (latest at time of
+writing) has not done so. A new
+[`aws-smithy-http-client-reqwest 0.1.0`](https://crates.io/crates/aws-smithy-http-client-reqwest)
+crate exists and is the most likely migration target — once it
+stabilises, `src/ims/s3_client.rs` can switch to it and the
+`hyper 0.14`/`hyper-socks2`/`tower 0.4` pins (see comment in
+`Cargo.toml`) can go with it.
+
+### Severity assessment for csm-rs
+
+These advisories are reachable only through TLS validation performed
+by the IMS S3 client (`src/ims/s3_client.rs`). In the standard
+Manta-style deployment, the S3 endpoint is on the CSM-internal
+network with a CSM-provisioned certificate chain, so the
+attacker-controlled-cert preconditions are weak. Downstream users
+should still make their own call.
+
+### Workaround
+
+Build without the `ims-s3` feature, which removes the AWS SDK
+entirely:
+
+```toml
+[dependencies]
+csm-rs = { version = "1.0.0-beta", default-features = false, features = ["manta-dispatcher", "k8s-console"] }
+```
+
+The advisories are allowlisted in `.cargo/audit.toml` with a comment
+linking back here, so CI `cargo audit` runs stay actionable. Delete
+the three IDs from that file once the AWS chain ships a fix.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

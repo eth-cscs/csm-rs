@@ -266,7 +266,7 @@ pub mod http_client {
       gitea_base_url, repo_name, commitid
     );
 
-    log::info!("url to get commit details: {}", api_url);
+    log::debug!("url to get commit details: {}", api_url);
 
     let response = client
       .get(api_url)

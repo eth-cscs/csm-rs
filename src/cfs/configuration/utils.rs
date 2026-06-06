@@ -36,7 +36,7 @@ pub async fn create_new_configuration(
   overwrite: bool,
 ) -> Result<CfsConfigurationResponse, Error> {
   // Check if CFS configuration already exists
-  log::info!("Check CFS configuration '{}' exists", configuration_name);
+  log::debug!("Check CFS configuration '{}' exists", configuration_name);
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
@@ -52,7 +52,7 @@ pub async fn create_new_configuration(
   // Check if CFS configuration already exists and throw an error is that is the case
   if !cfs_configuration_vec.is_empty() {
     if overwrite {
-      log::info!(
+      log::debug!(
         "CFS configuration '{}' already exists but 'overwrite' has been enabled",
         configuration_name
       );
@@ -67,7 +67,7 @@ pub async fn create_new_configuration(
     }
   }
 
-  log::info!(
+  log::debug!(
     "CFS configuration '{}' does not exists, creating new CFS configuration",
     configuration_name
   );
@@ -101,7 +101,7 @@ pub fn filter(
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-  log::info!("Filter CFS configurations");
+  log::debug!("Filter CFS configurations");
 
   // Filter BOS sessiontemplates based on HSM groups
   let _ = bos::template::utils::filter(

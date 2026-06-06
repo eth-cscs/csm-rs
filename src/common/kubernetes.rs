@@ -167,7 +167,7 @@ pub async fn get_client(
 /// containers of the pod backing `cfs_session_name` in order, retrying
 /// the pod-lookup up to three times.
 ///
-/// Emits each line through `log::info!`, so output is routed by the
+/// Emits each line through `log::debug!`, so output is routed by the
 /// caller's `log` backend (no direct stdout writes). Callers wanting
 /// to consume the lines themselves should compose
 /// [`get_cfs_session_init_container_git_clone_logs_stream`],
@@ -198,7 +198,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    log::info!(
+    log::debug!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -230,7 +230,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    log::info!(
+    log::debug!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -260,7 +260,7 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    log::info!(
+    log::debug!(
       "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt,
@@ -293,7 +293,7 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    log::info!(
+    log::debug!(
       "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt,
@@ -373,7 +373,7 @@ pub(crate) async fn i_print_init_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    log::info!("{}", line);
+    log::debug!("{}", line);
   }
 
   Ok(())
@@ -420,7 +420,7 @@ pub(crate) async fn i_print_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    log::info!("{}", line);
+    log::debug!("{}", line);
   }
 
   Ok(())
@@ -593,7 +593,7 @@ pub(crate) async fn get_pod_and_wait_items(
 
   // Waiting for pod to start
   while cfs_session_pods.items.is_empty() && i <= max {
-    log::info!(
+    log::debug!(
       "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
       cfs_session_name,
       delay_secs,
@@ -672,7 +672,7 @@ pub(crate) async fn get_init_container_and_wait_to_ready(
       init_container.name,
       init_container_status(cfs_session_pod, &init_container.name)
     );
-    log::info!(
+    log::debug!(
       "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       init_container.name,
       i + 1,
@@ -707,7 +707,7 @@ pub(crate) async fn get_init_container_logs_stream(
     ))
   })?;
 
-  log::info!(
+  log::debug!(
     "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
     init_container_name,
     namespace,
@@ -731,7 +731,7 @@ pub(crate) async fn get_init_container_logs_stream(
     init_container_exit_code(cfs_session_pod, &init_container.name)
       .unwrap_or(-1);
 
-  log::info!(
+  log::debug!(
     "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
     init_container_name,
     namespace,
@@ -780,7 +780,7 @@ pub(crate) async fn get_container_logs_stream(
     ))
   })?;
 
-  log::info!(
+  log::debug!(
     "Fetching logs from container '{}' in namespace/pod '{}/{}'",
     container_name,
     namespace,
@@ -816,7 +816,7 @@ pub(crate) async fn get_container_logs_stream(
       container.name,
       container_status(&cfs_session_pod, &container.name)
     );
-    log::info!(
+    log::debug!(
       "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       container.name,
       i + 1,

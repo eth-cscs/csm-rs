@@ -108,7 +108,7 @@ pub fn get_image_name_or_ref_name_to_process_struct(
 /// Build every entry in the SAT file's `images` section: import the
 /// base recipe / image and run the associated CFS session. When
 /// `watch_logs` is true the CFS session's container logs are streamed
-/// line-by-line through `log::info!`.
+/// line-by-line through `log::debug!`.
 ///
 /// Returns only the produced `Image`s. The
 /// [`i_create_image_from_sat_file_serde_yaml`] per-image helper now
@@ -154,7 +154,7 @@ pub async fn i_import_images_section_in_sat_file(
     );
 
   // Process images
-  log::info!("Processing image '{:?}'", next_image_to_process_opt);
+  log::debug!("Processing image '{:?}'", next_image_to_process_opt);
   let mut images_created: Vec<ims::image::http_client::types::Image> =
     Vec::new();
 
@@ -212,7 +212,7 @@ const META_CONFIG: &str = "manta.image_session.configuration";
 
 /// Build one image entry from a SAT file YAML node: resolve the base
 /// (recipe or existing image), create the IMS image, kick off a CFS
-/// session, stream its container logs through `log::info!` if
+/// session, stream its container logs through `log::debug!` if
 /// `watch_logs` is on, then call [`stamp_image_session_metadata`] to
 /// fill in `manta.image_session.*` and PATCH the image back so the
 /// metadata survives the request.
@@ -297,7 +297,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     }
 
     let image_id = cfs_session.first_result_id().unwrap_or_default();
-    log::info!("Image '{}' ({}) created", image_name, image_id);
+    log::debug!("Image '{}' ({}) created", image_name, image_id);
 
     let client = crate::ShastaClient::new(
       shasta_base_url,
@@ -334,7 +334,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     Ok(image)
   } else {
     // Create mock CFS session result from image section in SAT file
-    log::info!(
+    log::debug!(
       "Dry run mode: Create CFS session:\n{}",
       serde_json::to_string_pretty(&cfs_session)?
     );
@@ -398,7 +398,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       }),
     };
 
-    log::info!(
+    log::debug!(
       "Dry run mode: CFS session created:\n{}",
       serde_json::to_string_pretty(&mock_cfs_session)?
     );
@@ -414,7 +414,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     // patch image
     stamp_image_session_metadata(&mut image, &mock_cfs_session);
 
-    log::info!(
+    log::debug!(
       "Dry run mode: Image created:\n{}",
       serde_json::to_string_pretty(&image)?
     );
@@ -505,7 +505,7 @@ async fn get_session_from_image_yaml(
   // Get CFS image name from SAT file
   let image_name = image_yaml.name.clone();
 
-  log::info!(
+  log::debug!(
     "Creating CFS session related to build image '{}'",
     image_name
   );
@@ -556,7 +556,7 @@ async fn get_session_from_image_yaml(
   .await?;
 
   // Create a CFS session
-  log::info!("Creating CFS session");
+  log::debug!("Creating CFS session");
 
   // Create CFS session
   let session_name = image_name.clone();
@@ -627,7 +627,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   };
 
   let ims_job = if dry_run {
-    log::info!(
+    log::debug!(
       "Dry run mode: Create IMS job:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
@@ -677,7 +677,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     .iter()
     .find(|recipe| recipe.name == recipe_name);
 
-  log::info!("IMS recipe details:\n{:#?}", recipe_detail_opt);
+  log::debug!("IMS recipe details:\n{:#?}", recipe_detail_opt);
 
   // Check recipe with requested name exists
   let recipe_detail = recipe_detail_opt.ok_or_else(|| {
@@ -690,7 +690,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     Error::Message(format!("IMS recipe '{}' has no 'id' field", recipe_name))
   })?;
 
-  log::info!("IMS recipe id found '{}'", recipe_id);
+  log::debug!("IMS recipe id found '{}'", recipe_id);
 
   let root_ims_key_name = "mgmt root key";
 
@@ -734,7 +734,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   };
 
   let ims_job = if dry_run {
-    log::info!(
+    log::debug!(
       "Dry run mode: Create IMS job:\n{}",
       serde_json::to_string_pretty(&ims_job)?
     );
@@ -749,7 +749,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     .await?
   };
 
-  log::info!("IMS job response:\n{:#?}", ims_job);
+  log::debug!("IMS job response:\n{:#?}", ims_job);
 
   ims_job.resultant_image_id.ok_or_else(|| {
     Error::Message(format!(
@@ -903,15 +903,15 @@ pub fn validate_sat_file_images_section(
     // Validate image
     let image_name = &image_yaml.name;
 
-    log::info!("Validate 'image' '{}'", image_name);
+    log::debug!("Validate 'image' '{}'", image_name);
 
     if let image::BaseOrIms::Ims { ims } = &image_yaml.base_or_ims {
       if let image::ImageIms::IdIsRecipe { id, is_recipe: _ } = ims {
         // Validate base image
-        log::info!("Validate 'image' '{}' base image '{}'", image_name, id);
+        log::debug!("Validate 'image' '{}' base image '{}'", image_name, id);
 
         // Old format
-        log::info!(
+        log::debug!(
           "Searching image.ims.id (old format - backward compatibility) '{}' in CSM",
           id,
         );
@@ -933,7 +933,7 @@ pub fn validate_sat_file_images_section(
       if let image::Base::ImageRef { image_ref } = base {
         // New format
         // Validate base image
-        log::info!(
+        log::debug!(
           "Validate 'image' '{}' base image '{}'",
           image_name,
           image_ref
@@ -957,8 +957,8 @@ pub fn validate_sat_file_images_section(
       } else if let image::Base::Product { product } = base {
         // Check if the 'Cray/HPE product' in CSM exists
 
-        log::info!("Image '{}' base.base.product", image_name);
-        log::info!("SAT file - 'image.base.product' job");
+        log::debug!("Image '{}' base.base.product", image_name);
+        log::debug!("SAT file - 'image.base.product' job");
 
         // Base image created from a cray product
 
@@ -1028,7 +1028,7 @@ pub fn validate_sat_file_images_section(
         } else {
           // There is no 'image.product.filter' value defined in SAT file. Check Cray
           // product catalog only has 1 image. Othewise fail
-          log::info!(
+          log::debug!(
             "No 'image.product.filter' defined in SAT file. Checking Cray product catalog only/must have 1 image"
           );
           image_map
@@ -1040,14 +1040,14 @@ pub fn validate_sat_file_images_section(
       } else if let image::Base::Ims { ims } = base {
         // Check if the image exists
 
-        log::info!("Image '{}' base.base.ims", image_name);
+        log::debug!("Image '{}' base.base.ims", image_name);
         if let image::ImageBaseIms::NameType { name, r#type } = ims {
           // if let Some(image_base_ims_name_yaml) = ims.get("name") {
           let image_base_ims_name_to_find = name;
 
           // Search image in SAT file
 
-          log::info!(
+          log::debug!(
             "Searching base image '{}' related to image '{}' in SAT file",
             image_base_ims_name_to_find,
             image_name
@@ -1068,7 +1068,7 @@ pub fn validate_sat_file_images_section(
               // Base IMS type is a recipe
               // Search in CSM (IMS Recipe)
 
-              log::info!(
+              log::debug!(
                 "Searching base image recipe '{}' related to image '{}' in CSM",
                 image_base_ims_name_to_find,
                 image_name
@@ -1088,7 +1088,7 @@ pub fn validate_sat_file_images_section(
               // Base IMS type is an image
               // Search in CSM (IMS Image)
 
-              log::info!(
+              log::debug!(
                 "Searching base image '{}' related to image '{}' in CSM",
                 image_base_ims_name_to_find,
                 image_name
@@ -1128,12 +1128,12 @@ pub fn validate_sat_file_images_section(
     }
 
     // Validate CFS configuration exists (image.configuration)
-    log::info!("Validate 'image' '{}' configuration", image_name);
+    log::debug!("Validate 'image' '{}' configuration", image_name);
 
     if let Some(configuration_yaml) = image_yaml.configuration.as_ref() {
       let configuration_name_to_find = configuration_yaml;
 
-      log::info!(
+      log::debug!(
         "Searching configuration name '{}' related to image '{}' in SAT file",
         configuration_name_to_find,
         image_name
@@ -1151,7 +1151,7 @@ pub fn validate_sat_file_images_section(
           configuration_name_to_find
         );
 
-        log::info!(
+        log::debug!(
           "Searching configuration name '{}' related to image '{}' in CSM",
           configuration_name_to_find,
           image_yaml.name
@@ -1170,7 +1170,7 @@ pub fn validate_sat_file_images_section(
       }
 
       // Validate user has access to HSM groups in 'image' section
-      log::info!("Validate 'image' '{}' HSM groups", image_name);
+      log::debug!("Validate 'image' '{}' HSM groups", image_name);
 
       //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
       //wide operations instead of using roles

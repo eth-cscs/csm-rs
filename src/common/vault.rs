@@ -111,7 +111,7 @@ pub mod http_client {
     site_name: &str,
     socks5_proxy: Option<&str>,
   ) -> Result<Value, Error> {
-    log::info!("Fetching k8s secrets from vault");
+    log::debug!("Fetching k8s secrets from vault");
     let vault_token =
       auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy)
         .await?;
