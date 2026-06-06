@@ -1,10 +1,7 @@
 //! Restore a system from the bundle produced by [`crate::commands::migrate_backup`].
 
 use crate::bos::BosSessionTemplate;
-use crate::cfs::configuration::http_client::v3::types::{
-  cfs_configuration_request::CfsConfigurationRequest,
-  cfs_configuration_response::CfsConfigurationResponse,
-};
+use crate::cfs::v3::{CfsConfigurationRequest, CfsConfigurationResponse};
 use crate::hsm::group::types::Group;
 use crate::ims;
 use crate::ims::image::utils::{get_by_name, get_fuzzy};

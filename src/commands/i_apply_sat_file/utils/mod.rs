@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use crate::{
-  bos::template::http_client::v2::types::{BootSet, BosSessionTemplate, Cfs},
+  bos::{BootSet, BosSessionTemplate, Cfs},
   commands::i_apply_sat_file::utils::sessiontemplate::Arch,
   error::Error,
 };

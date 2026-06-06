@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-  cfs::configuration::http_client::v2::types::cfs_configuration_response::{
+  cfs::v2::{
     CfsConfigurationResponse, Layer,
   },
   commands::i_apply_sat_file::utils::{

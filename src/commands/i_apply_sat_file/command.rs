@@ -9,7 +9,7 @@ use serde_yaml::Value;
 
 use crate::{
   bos::{BosSession, BosSessionTemplate},
-  cfs::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
+  cfs::v2::CfsConfigurationResponse,
   commands::{
     apply_hw_cluster_pin,
     i_apply_sat_file::utils::{self, SatFile},

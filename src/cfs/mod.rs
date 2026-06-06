@@ -41,9 +41,12 @@ pub mod tests;
 pub mod v2 {
   pub use super::component::http_client::v2::types::{Component, State};
   pub use super::configuration::http_client::v2::types::cfs_configuration_request::CfsConfigurationRequest;
-  pub use super::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse;
+  pub use super::configuration::http_client::v2::types::cfs_configuration_response::{
+    CfsConfigurationResponse, Layer,
+  };
   pub use super::session::http_client::v2::types::{
-    CfsSessionGetResponse, CfsSessionPostRequest,
+    Ansible, Artifact, CfsSessionGetResponse, CfsSessionPostRequest,
+    Configuration, Group, Session, Status, Target,
   };
 }
 

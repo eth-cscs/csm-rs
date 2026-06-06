@@ -7,12 +7,10 @@ use uuid::Uuid;
 use crate::{
   cfs::{
     self,
-    configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
-    session::http_client::v2::types::{
-      Ansible, Artifact, CfsSessionPostRequest, Configuration, Group, Session,
-      Status, Target,
+    v2::{
+      Ansible, Artifact, CfsConfigurationResponse, CfsSessionGetResponse,
+      CfsSessionPostRequest, Configuration, Group, Session, Status, Target,
     },
-    v2::CfsSessionGetResponse,
   },
   error::Error,
   hsm,
@@ -435,7 +433,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
 /// signal to the caller that there is nothing new to PATCH.
 fn stamp_image_session_metadata(
   image: &mut ims::image::http_client::types::Image,
-  cfs_session: &cfs::session::http_client::v2::types::CfsSessionGetResponse,
+  cfs_session: &cfs::v2::CfsSessionGetResponse,
 ) -> bool {
   let image_id_for_log = image.id.as_deref().unwrap_or("<no id>").to_string();
 

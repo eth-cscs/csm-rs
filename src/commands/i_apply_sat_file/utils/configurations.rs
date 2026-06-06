@@ -3,10 +3,7 @@ use std::collections::BTreeMap;
 use crate::{
   cfs::{
     self,
-    configuration::http_client::v2::types::{
-      cfs_configuration_request::CfsConfigurationRequest,
-      cfs_configuration_response::CfsConfigurationResponse,
-    },
+    v2::{CfsConfigurationRequest, CfsConfigurationResponse},
   },
   error::Error,
 };

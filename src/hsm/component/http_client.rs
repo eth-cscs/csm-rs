@@ -165,6 +165,12 @@ impl ShastaClient {
   }
 
   /// `GET /hsm/v2/State/Components/{xname}` — fetch a single component.
+  ///
+  /// Surfaces a 401 as [`Error::RequestError`] (token-distinguishable)
+  /// and other non-2xx statuses as the structured [`Error::CsmError`]
+  /// with method + URL + RFC 7807 detail — same shape as
+  /// `hsm_redfish_*` and the other `handle_json_or_request_error`
+  /// users.
   pub async fn hsm_component_get_one(
     &self,
     token: &str,
@@ -174,27 +180,7 @@ impl ShastaClient {
       format!("{}/hsm/v2/State/Components/{}", self.base_url(), xname);
 
     let response = self.http().get(api_url).bearer_auth(token).send().await?;
-
-    if !response.status().is_success() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
-        }
-        _ => {
-          let status = response.status().as_u16();
-          let url = response.url().to_string();
-          let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(
-            "GET",
-            &url,
-            status,
-            payload,
-          ));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+    http::handle_json_or_request_error(response, "GET").await
   }
 
   /// `POST /hsm/v2/State/Components` — create components in bulk.

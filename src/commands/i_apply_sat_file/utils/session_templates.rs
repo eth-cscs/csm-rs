@@ -4,10 +4,7 @@ use serde_yaml::Value;
 use uuid::Uuid;
 
 use crate::{
-  bos::{
-    session::http_client::v2::types::{BosSession, Operation},
-    template::http_client::v2::types::{BootSet, BosSessionTemplate, Cfs},
-  },
+  bos::{BootSet, BosSession, BosSessionTemplate, Cfs, Operation},
   common::{self, yaml::yaml_str},
   error::Error,
   hsm,
