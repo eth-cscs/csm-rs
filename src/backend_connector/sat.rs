@@ -12,11 +12,12 @@
 //! `manta_backend_dispatcher::types::*` types via the existing `From`
 //! impls so the returned tuple satisfies the trait.
 //!
-//! `apply_image` follows the same pattern but its return shape is the
-//! `(Image, CfsSessionGetResponse)` tuple the trait now requires: csm-rs
-//! converts both halves to the dispatcher mirrors via existing `From`
-//! impls. The session is carried back so manta-server can stamp
-//! provenance metadata onto the image without re-fetching it by id.
+//! `apply_image` is similar but returns just the produced `Image` —
+//! the `manta.image_session.*` provenance metadata stamp + PATCH is
+//! done inside
+//! [`crate::commands::i_apply_sat_file::utils::images::i_create_image_from_sat_file_serde_yaml`]
+//! before the image is returned, so callers never see the underlying
+//! CFS session.
 
 use manta_backend_dispatcher::{
   error::Error,
@@ -29,10 +30,7 @@ use manta_backend_dispatcher::{
   },
   types::{
     bos::{session::BosSession, session_template::BosSessionTemplate},
-    cfs::{
-      cfs_configuration_response::CfsConfigurationResponse,
-      session::CfsSessionGetResponse,
-    },
+    cfs::cfs_configuration_response::CfsConfigurationResponse,
     ims::Image,
   },
 };
@@ -201,7 +199,7 @@ impl SatTrait for Csm {
   async fn apply_image(
     &self,
     params: ApplyImageParams<'_>,
-  ) -> Result<(Image, CfsSessionGetResponse), Error> {
+  ) -> Result<Image, Error> {
     let ApplyImageParams {
       shasta_token,
       vault_base_url,
@@ -251,29 +249,28 @@ impl SatTrait for Csm {
         .await
         .map_err(Error::from)?;
 
-    let (image, cfs_session) =
-      utils::images::i_create_image_from_sat_file_serde_yaml(
-        shasta_token,
-        &self.base_url,
-        &self.root_cert,
-        socks5_proxy,
-        vault_base_url,
-        site_name,
-        k8s_api_url,
-        &image_struct,
-        &cray_product_catalog,
-        ansible_verbosity,
-        ansible_passthrough,
-        &ref_lookup,
-        debug_on_failure,
-        dry_run,
-        watch_logs,
-        timestamps,
-      )
-      .await
-      .map_err(Error::from)?;
+    let image = utils::images::i_create_image_from_sat_file_serde_yaml(
+      shasta_token,
+      &self.base_url,
+      &self.root_cert,
+      socks5_proxy,
+      vault_base_url,
+      site_name,
+      k8s_api_url,
+      &image_struct,
+      &cray_product_catalog,
+      ansible_verbosity,
+      ansible_passthrough,
+      &ref_lookup,
+      debug_on_failure,
+      dry_run,
+      watch_logs,
+      timestamps,
+    )
+    .await
+    .map_err(Error::from)?;
 
-    Ok((image.into(), cfs_session.into()))
+    Ok(image.into())
   }
 
   async fn apply_session_template(

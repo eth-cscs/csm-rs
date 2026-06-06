@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use chrono::Local;
 use serde_json::Map;
 use uuid::Uuid;
 
@@ -7,7 +8,11 @@ use crate::{
   cfs::{
     self,
     configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
-    session::http_client::v2::types::CfsSessionPostRequest,
+    session::http_client::v2::types::{
+      Ansible, Artifact, CfsSessionPostRequest, Configuration, Group, Session,
+      Status, Target,
+    },
+    v2::CfsSessionGetResponse,
   },
   error::Error,
   hsm,
@@ -154,7 +159,7 @@ pub async fn i_import_images_section_in_sat_file(
     Vec::new();
 
   while let Some(image_yaml) = &next_image_to_process_opt {
-    let (image, _cfs_session) = i_create_image_from_sat_file_serde_yaml(
+    let image = i_create_image_from_sat_file_serde_yaml(
       shasta_token,
       shasta_base_url,
       shasta_root_cert,
@@ -195,22 +200,32 @@ pub async fn i_import_images_section_in_sat_file(
   Ok(images_created)
 }
 
+/// Provenance metadata key namespace stamped onto each IMS image
+/// after a successful CFS session. Three keys document, on the image
+/// itself, the CFS facts that produced it — source/base image id
+/// (`META_BASE`), target HSM groups as JSON-encoded array
+/// (`META_GROUPS`), and the CFS configuration name (`META_CONFIG`).
+/// Manta-side commands read these keys directly off `Image.metadata`.
+const META_BASE: &str = "manta.image_session.base";
+const META_GROUPS: &str = "manta.image_session.groups";
+const META_CONFIG: &str = "manta.image_session.configuration";
+
 /// Build one image entry from a SAT file YAML node: resolve the base
 /// (recipe or existing image), create the IMS image, kick off a CFS
-/// session, and (optionally) stream its container logs through
-/// `log::info!` (no direct stdout writes).
+/// session, stream its container logs through `log::info!` if
+/// `watch_logs` is on, then call [`stamp_image_session_metadata`] to
+/// fill in `manta.image_session.*` and PATCH the image back so the
+/// metadata survives the request.
 ///
-/// Returns both the produced IMS `Image` and the finished
-/// `CfsSessionGetResponse` that built it. Returning the session lets
-/// callers (e.g. manta-server's service layer) read provenance facts
-/// — base image id, target HSM groups, configuration name — without
-/// having to re-fetch the session by id.
+/// The stamp + PATCH step is best-effort: a stamp that fails (missing
+/// fields on the CFS session) and a PATCH that fails (network / IMS
+/// error) are both logged at `warn` and otherwise swallowed. The image
+/// itself was built successfully and a missing
+/// `manta.image_session.*` annotation can be backfilled.
 ///
-/// In `dry_run` mode no CFS session is created; the function returns
-/// a fake `Image` with a synthetic `DRYRUN_<uuid>` id and a stub
-/// `CfsSessionGetResponse` whose fields are `None`. Callers must gate
-/// any consumption of the session on `dry_run` being false — the stub
-/// is not meant to be read.
+/// In `dry_run` mode no CFS session is created and no PATCH is
+/// attempted; the function returns a fake `Image` with a synthetic
+/// `DRYRUN_<uuid>` id.
 #[allow(clippy::too_many_arguments)]
 pub async fn i_create_image_from_sat_file_serde_yaml(
   shasta_token: &str,
@@ -230,13 +245,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   dry_run: bool,
   watch_logs: bool,
   timestamps: bool,
-) -> Result<
-  (
-    ims::image::http_client::types::Image,
-    cfs::session::http_client::v2::types::CfsSessionGetResponse,
-  ),
-  Error,
-> {
+) -> Result<ims::image::http_client::types::Image, Error> {
   // Get CFS session from SAT file image yaml
   let cfs_session = get_session_from_image_yaml(
     shasta_token,
@@ -290,51 +299,192 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     let image_id = cfs_session.first_result_id().unwrap_or_default();
     log::info!("Image '{}' ({}) created", image_name, image_id);
 
-    let image = crate::ShastaClient::new(
+    let client = crate::ShastaClient::new(
       shasta_base_url,
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
-    )?
-    .ims_image_get(shasta_token, Some(image_id))
-    .await?
-    .into_iter()
-    .next()
-    .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
+    )?;
+    let mut image = client
+      .ims_image_get(shasta_token, Some(image_id))
+      .await?
+      .into_iter()
+      .next()
+      .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
 
-    Ok((image, cfs_session))
+    if stamp_image_session_metadata(&mut image, &cfs_session) {
+      dbg!(&image);
+      let patch = ims::image::http_client::types::PatchImage {
+        metadata: image.metadata.clone(),
+        ..Default::default()
+      };
+
+      let image_id_for_patch = image.id.clone().unwrap_or_default();
+      if let Err(e) = client
+        .ims_image_patch(shasta_token, &image_id_for_patch, &patch)
+        .await
+      {
+        log::warn!(
+          "image_session metadata PATCH failed for image \
+           {image_id_for_patch}: {e}; image built but provenance not \
+           persisted",
+        );
+      }
+    }
+
+    Ok(image)
   } else {
+    // Create mock CFS session result from image section in SAT file
     log::info!(
       "Dry run mode: Create CFS session:\n{}",
       serde_json::to_string_pretty(&cfs_session)?
     );
 
-    let image_id = format!("DRYRUN_{}", Uuid::new_v4());
+    let cfs_session_target_group = Group {
+      name: "DRYTUN-group_name".to_string(),
+      members: vec!["DRYRUN-group_member".to_string()],
+    };
+    let cfs_session_target = Target {
+      definition: Some("image".to_string()),
+      groups: Some(vec![cfs_session_target_group]),
+    };
+    let configuration = Configuration {
+      name: Some(cfs_session.configuration_name.clone()),
+      limit: cfs_session.configuration_limit.clone(),
+    };
+    let ansible = Ansible {
+      config: cfs_session.ansible_config.clone(),
+      limit: cfs_session.ansible_limit.clone(),
+      verbosity: cfs_session.ansible_verbosity,
+      passthrough: cfs_session.ansible_passthrough.clone(),
+    };
+    let mut base_image_id_vec: Vec<String> = cfs_session.get_base_image_ids();
+    base_image_id_vec.sort();
+    base_image_id_vec.dedup();
+
+    let base_image_id = match base_image_id_vec.as_slice() {
+      [] => {
+        return Err(Error::Message(
+          "CFS session must create at least one image".to_string(),
+        ));
+      }
+      [_, _, ..] => return Err(Error::Message(
+        "CFS session generated from SAT file cannot build more than one image"
+          .to_string(),
+      )),
+      [a] => a,
+    };
+
+    let artifact = Artifact {
+      image_id: Some(base_image_id.to_string()),
+      result_id: Some(format!("DRYRUN-{}", Uuid::new_v4())),
+      r#type: None,
+    };
+
+    let mock_cfs_session = CfsSessionGetResponse {
+      name: cfs_session.name,
+      target: Some(cfs_session_target),
+      tags: None,
+      configuration: Some(configuration),
+      ansible: Some(ansible),
+      status: Some(Status {
+        artifacts: Some(vec![artifact]),
+        session: Some(Session {
+          job: Some(format!("DRYRUN-{}", Uuid::new_v4())),
+          completion_time: Some(Local::now().to_rfc3339()),
+          start_time: Some(Local::now().to_rfc3339()),
+          status: Some("complete".to_string()),
+          succeeded: Some("true".to_string()),
+        }),
+      }),
+    };
 
     log::info!(
-      "Dry run mode: Image '{}' ({}) created",
-      image_name,
-      image_id
+      "Dry run mode: CFS session created:\n{}",
+      serde_json::to_string_pretty(&mock_cfs_session)?
     );
 
-    // Dry-run returns a stub CfsSessionGetResponse next to the fake
-    // image. The caller skips the metadata-write step on `dry_run`,
-    // so the session contents are never consulted.
-    Ok((
-      ims::image::http_client::types::Image {
-        id: Some(image_id),
-        name: image_name.clone(),
-        ..Default::default()
-      },
-      cfs::session::http_client::v2::types::CfsSessionGetResponse {
-        name: format!("DRYRUN-{}", image_name),
-        configuration: None,
-        ansible: None,
-        target: None,
-        status: None,
-        tags: None,
-      },
-    ))
+    let image_id: &str = mock_cfs_session.results_id().next().unwrap();
+
+    // create new image
+    let mut image = ims::image::http_client::types::Image {
+      id: Some(image_id.to_string()),
+      name: image_name.clone(),
+      ..Default::default()
+    };
+    // patch image
+    stamp_image_session_metadata(&mut image, &mock_cfs_session);
+
+    log::info!(
+      "Dry run mode: Image created:\n{}",
+      serde_json::to_string_pretty(&image)?
+    );
+
+    Ok(image)
   }
+}
+
+/// Stamp `manta.image_session.{base,groups,configuration}` onto
+/// `image.metadata` from the finished CFS session.
+///
+/// Pure in-memory mutation; the caller is responsible for PATCHing
+/// `image` back to IMS so the metadata survives the request.
+///
+/// Returns `true` when all three keys were written, `false` when any
+/// required field on the session was missing or unserialisable (a
+/// `warn` line names the missing field). The `false` path is the
+/// signal to the caller that there is nothing new to PATCH.
+fn stamp_image_session_metadata(
+  image: &mut ims::image::http_client::types::Image,
+  cfs_session: &cfs::session::http_client::v2::types::CfsSessionGetResponse,
+) -> bool {
+  let image_id_for_log = image.id.as_deref().unwrap_or("<no id>").to_string();
+
+  // csm-rs's CfsSessionGetResponse stores the base image id as the
+  // first member of the first target group (see
+  // `CfsSessionPostRequest::new` for the construction side). The CFS
+  // v2 wire format also exposes it via `target.image_map[*].source_id`
+  // but csm-rs's internal Target type doesn't deserialize that field.
+  let Some(base) = cfs_session
+    .target
+    .as_ref()
+    .and_then(|t| t.groups.as_ref())
+    .and_then(|g| g.first())
+    .and_then(|g| g.members.first())
+    .cloned()
+  else {
+    log::warn!(
+      "CFS session for image {image_id_for_log} has no \
+       target.groups[0].members[0]; skipping image_session metadata stamp",
+    );
+    return false;
+  };
+
+  let Some(configuration) = cfs_session.configuration_name() else {
+    log::warn!(
+      "CFS session for image {image_id_for_log} has no \
+       configuration.name; skipping image_session metadata stamp",
+    );
+    return false;
+  };
+  let configuration = configuration.to_string();
+
+  let groups = cfs_session.get_target_hsm().unwrap_or_default();
+  let groups_json = match serde_json::to_string(&groups) {
+    Ok(s) => s,
+    Err(e) => {
+      log::warn!(
+        "could not JSON-encode HSM groups {groups:?} for image \
+         {image_id_for_log}: {e}; skipping image_session metadata stamp",
+      );
+      return false;
+    }
+  };
+
+  let metadata = image.metadata.get_or_insert_with(HashMap::new);
+  metadata.insert(META_BASE.into(), base);
+  metadata.insert(META_GROUPS.into(), groups_json);
+  metadata.insert(META_CONFIG.into(), configuration);
+  true
 }
 
 #[allow(clippy::too_many_arguments)]
