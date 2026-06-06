@@ -24,8 +24,14 @@ pub mod console; // ConsoleTrait
 pub mod group; // GroupTrait
 pub mod hsm; // HardwareInventory, ComponentTrait, ComponentEthernetInterfaceTrait, RedfishEndpointTrait
 pub mod ims; // ImsTrait, GetImagesAndDetailsTrait
+// `MigrateRestoreTrait`/`MigrateBackupTrait` and `SatTrait` are
+// implemented in terms of the CLI-shaped admin workflows under
+// `commands::{migrate_*, i_apply_sat_file}`, so they are gated behind
+// the same `commands-admin` feature.
+#[cfg(feature = "commands-admin")]
 pub mod migrate; // MigrateRestoreTrait, MigrateBackupTrait
 pub mod pcs; // PCSTrait
+#[cfg(feature = "commands-admin")]
 pub mod sat; // SatTrait, ApplyHwClusterPin
 
 /// Connection metadata for one Shasta installation, used by the

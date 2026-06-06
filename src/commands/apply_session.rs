@@ -2,9 +2,7 @@
 
 use crate::{
   cfs::{
-    self,
-    configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest,
-    session::http_client::v2::types::CfsSessionPostRequest,
+    self, v2::CfsSessionPostRequest, v3::CfsConfigurationRequest,
   },
   error::Error,
   node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,

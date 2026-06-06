@@ -39,7 +39,7 @@ pub mod tests;
 /// Legacy CFS v2 endpoint types — still supported on older CSM
 /// installs where v3 is unavailable.
 pub mod v2 {
-  pub use super::component::http_client::v2::types::Component;
+  pub use super::component::http_client::v2::types::{Component, State};
   pub use super::configuration::http_client::v2::types::cfs_configuration_request::CfsConfigurationRequest;
   pub use super::configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse;
   pub use super::session::http_client::v2::types::{
@@ -53,6 +53,7 @@ pub mod v3 {
   pub use super::configuration::http_client::v3::types::cfs_configuration_request::CfsConfigurationRequest;
   pub use super::configuration::http_client::v3::types::cfs_configuration_response::CfsConfigurationResponse;
   pub use super::session::http_client::v3::types::{
-    CfsSessionGetResponse, CfsSessionPostRequest,
+    CfsSessionGetResponse, CfsSessionPostRequest, Configuration, Session,
+    Status, Target,
   };
 }

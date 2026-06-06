@@ -3,8 +3,9 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
+#[cfg(feature = "commands-admin")]
+use crate::commands::i_apply_sat_file::utils::configuration;
 use crate::{
-  commands::i_apply_sat_file::utils::configuration,
   common::{
     gitea,
     yaml::{as_yaml_str, yaml_seq, yaml_str},
@@ -315,6 +316,7 @@ impl CfsConfigurationRequest {
     Ok((cfs_configuration_name, cfs_configuration))
   }
 
+  #[cfg(feature = "commands-admin")]
   pub async fn from_sat_file_struct_serde_yaml(
     shasta_root_cert: &[u8],
     gitea_base_url: &str,

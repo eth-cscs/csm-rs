@@ -5,11 +5,8 @@ use serde_json::Value;
 use crate::{
   bss::types::BootParameters,
   cfs::{
-    component::http_client::v2::types::Component,
-    session::{
-      http_client::v2::types::CfsSessionGetResponse,
-      utils::get_list_xnames_related_to_session,
-    },
+    session::utils::get_list_xnames_related_to_session,
+    v2::{CfsSessionGetResponse, Component},
   },
   error::Error,
   hsm::group::types::Group,

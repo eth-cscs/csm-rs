@@ -10,8 +10,7 @@ use crate::{
   bss::types::BootParameters,
   cfs::{
     self,
-    configuration::http_client::v2::types::cfs_configuration_response::CfsConfigurationResponse,
-    session::http_client::v2::types::CfsSessionGetResponse,
+    v2::{CfsConfigurationResponse, CfsSessionGetResponse},
   },
   common,
   error::Error,

@@ -25,6 +25,13 @@ default = ["manta-dispatcher"]
 # `default-features = false` to skip pulling the dispatcher dep and its
 # transitive deps.
 manta-dispatcher = ["dep:manta-backend-dispatcher"]
+# Opt-in admin-CLI orchestration workflows: `i_apply_sat_file`,
+# `migrate_backup`, `migrate_restore`. These are higher-level than the
+# rest of `commands/` — they parse YAML, touch the filesystem, and drive
+# reboot timing / progress bars — so they belong in an admin binary
+# rather than the default library surface. Users who only want
+# composable CSM primitives should leave this off.
+commands-admin = []
 
 [dependencies]
 manta-backend-dispatcher = { version = "1.0.0-beta.6", optional = true }

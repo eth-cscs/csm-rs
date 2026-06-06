@@ -1,8 +1,6 @@
 use crate::cfs::{
-  component::http_client::v2::types::{Component, State},
-  session::http_client::v3::types::{
-    CfsSessionGetResponse, Configuration, Session, Status, Target,
-  },
+  v2::{Component, State},
+  v3::{CfsSessionGetResponse, Configuration, Session, Status, Target},
 };
 
 /// Test is_cfs_configuration_a_desired_configuration returns TRUE when a CFS configuration
