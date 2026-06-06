@@ -459,6 +459,20 @@ impl CfsTrait for Csm {
     ))
   }
 
+  /// Stream the concatenated stdout of a CFS session's `git-clone`
+  /// init container, then its `inventory` container, then its
+  /// `ansible` container.
+  ///
+  /// # Cancellation
+  ///
+  /// The returned `Pin<Box<dyn AsyncBufRead + Send>>` is a `Chain`
+  /// of three hyper response-body adapters from `kube_client`. Each
+  /// segment is a thin wrapper around the response body — there's no
+  /// spawned watcher task to leak. Dropping the returned future mid-
+  /// stream drops the current segment's hyper `Response`, which
+  /// closes the connection to the Kubernetes API server. The API
+  /// server stops streaming. The downstream segments are never
+  /// attached because they're lazily constructed inside the chain.
   #[cfg(feature = "k8s-console")]
   async fn get_session_logs_stream(
     &self,

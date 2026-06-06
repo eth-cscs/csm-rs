@@ -385,6 +385,15 @@ pub(crate) async fn i_print_init_container_logs(
 /// along with the container exit code captured at attach time. Pairs
 /// with the other `get_cfs_session_*_logs_stream` helpers so callers
 /// can consume CFS-session output without involving stdout.
+///
+/// # Cancellation
+///
+/// The returned reader is a thin wrapper around the hyper response
+/// body that `kube_client::Client::request_stream` produces. There is
+/// no background watcher task — dropping the reader drops the hyper
+/// `Response`, which closes the connection to the Kubernetes API
+/// server. The API server then stops shipping log lines. No watcher
+/// leak.
 pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
