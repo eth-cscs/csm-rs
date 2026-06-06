@@ -27,7 +27,7 @@ impl ShastaClient {
     token: &str,
     configuration_name_opt: Option<&str>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    log::info!(
+    log::debug!(
       "Get CFS configuration '{}'",
       configuration_name_opt.unwrap_or("all available")
     );
@@ -79,7 +79,7 @@ impl ShastaClient {
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
   ) -> Result<CfsConfigurationResponse, Error> {
-    log::info!("Create CFS configuration '{}'", configuration_name);
+    log::debug!("Create CFS configuration '{}'", configuration_name);
     log::debug!("Create CFS configuration request:\n{:#?}", configuration);
 
     let api_url = format!(
@@ -109,7 +109,7 @@ impl ShastaClient {
     token: &str,
     configuration_id: &str,
   ) -> Result<(), Error> {
-    log::info!("Delete CFS configuration {:?}", configuration_id);
+    log::debug!("Delete CFS configuration {:?}", configuration_id);
 
     let api_url = format!(
       "{}/cfs/v2/configurations/{}",

@@ -26,7 +26,7 @@ impl ShastaClient {
     reason_opt: Option<String>,
     force: bool,
   ) -> Result<XnamePowerActionResponse, Error> {
-    log::info!("Power OFF nodes: {:?}", xname_vec);
+    log::debug!("Power OFF nodes: {:?}", xname_vec);
 
     let power_off = PowerStatus::new(reason_opt, xname_vec, force, None);
     let api_url = format!("{}/capmc/capmc/v1/xname_off", self.base_url());
@@ -130,7 +130,7 @@ impl ShastaClient {
     reason_opt: Option<String>,
     force: bool,
   ) -> Result<XnameStatusResponse, Error> {
-    log::info!("Power RESET node: {:?}", xname_vec);
+    log::debug!("Power RESET node: {:?}", xname_vec);
 
     let _ = self
       .capmc_node_power_off_post_sync(
@@ -196,7 +196,7 @@ impl ShastaClient {
     token: &str,
     xnames: &Vec<String>,
   ) -> Result<XnameStatusResponse, Error> {
-    log::info!("Checking nodes status: {:?}", xnames);
+    log::debug!("Checking nodes status: {:?}", xnames);
 
     let node_status_payload =
       NodeStatus::new(None, Some(xnames.clone()), Some("redfish".to_string()));

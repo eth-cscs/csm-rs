@@ -5,7 +5,7 @@ use crate::{
     self, v2::CfsSessionPostRequest, v3::CfsConfigurationRequest,
   },
   error::Error,
-  node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,
+  node::utils::validate_xnames_format_and_membership_against_single_hsm,
 };
 
 use serde_json::Value;
@@ -95,7 +95,7 @@ pub async fn exec(
       xname_list = hsm_groups_node_list;
       // Check user has provided valid XNAMES
       if let Ok(false) =
-        validate_xnames_format_and_membership_agaisnt_single_hsm(
+        validate_xnames_format_and_membership_against_single_hsm(
           shasta_token,
           shasta_base_url,
           shasta_root_cert,

@@ -707,7 +707,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
 
       Ok((image_id, true))
     } else {
-      Err(Error::Message("ERROR: neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()))
+      Err(Error::Message("neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()))
     }
   } else if let Some(bos_session_template_image_image_ref) =
     bos_sessiontemplate_image.get("image_ref")
@@ -742,7 +742,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
 
     Ok((image_name.to_string(), false))
   } else {
-    Err(Error::Message("ERROR: neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()))
+    Err(Error::Message("neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()))
   }
 }
 

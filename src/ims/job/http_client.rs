@@ -80,7 +80,7 @@ impl ShastaClient {
     token: &str,
     ims_job: &Job,
   ) -> Result<Job, Error> {
-    log::info!("Create IMS job");
+    log::debug!("Create IMS job");
     log::debug!(
       "Create IMS job request payload:\n{}",
       serde_json::to_string_pretty(&ims_job)?

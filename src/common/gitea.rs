@@ -1,5 +1,11 @@
 //! Small client for the embedded CSM Gitea instance used by CFS configuration layers.
 
+/// In-cluster API gateway host. Repo URLs that point at the embedded
+/// CSM Gitea use this host when reached from inside the cluster; the
+/// SAT-file parser rewrites external `vcs.cmn.<site>.cscs.ch` URLs to
+/// it so subsequent Gitea calls hit the in-cluster service.
+pub(crate) const INTERNAL_API_HOST: &str = "api-gw-service-nmn.local";
+
 /// HTTP helpers for the embedded CSM Gitea instance.
 pub mod http_client {
 

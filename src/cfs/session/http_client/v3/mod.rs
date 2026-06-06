@@ -108,7 +108,7 @@ impl ShastaClient {
     token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
-    log::info!("Deleting CFS session id: {}", session_name);
+    log::debug!("Deleting CFS session id: {}", session_name);
 
     let api_url =
       format!("{}/cfs/v3/sessions/{}", self.base_url(), session_name);

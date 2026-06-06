@@ -240,7 +240,7 @@ pub fn calculate_target_hsm_pin(
       parent_hsm_node_hw_component_count_vec,
     )
     .ok_or_else(|| {
-      Error::Message("ERROR - No best candidate found.".to_string())
+      Error::Message("no best candidate found.".to_string())
       /* log::warn!("ERROR - No best candidate found.");
       std::process::exit(1); */
     })?;
@@ -362,7 +362,7 @@ pub fn calculate_target_hsm_pin(
         parent_hsm_node_hw_component_count_vec,
       )
       .ok_or_else(|| {
-        Error::Message("ERROR - No best candidate found.".to_string())
+        Error::Message("no best candidate found.".to_string())
       })?;
 
     // Check if we need to keep iterating

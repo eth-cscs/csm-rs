@@ -220,7 +220,7 @@ pub async fn s3_download_object(
     })?;
 
   let bar_size = object.content_length().ok_or_else(|| {
-    Error::Message("ERROR - could not get S3 object size.".to_string())
+    Error::Message("could not get S3 object size.".to_string())
   })?;
 
   let bar = ProgressBar::new(bar_size as u64);
@@ -285,7 +285,7 @@ pub async fn s3_upload_object(
     })?;
 
   put_s3_object.e_tag.ok_or_else(|| {
-    Error::Message("ERROR - could not get ETag from upload.".to_string())
+    Error::Message("could not get ETag from upload.".to_string())
   })
 }
 
@@ -368,7 +368,7 @@ pub async fn s3_multipart_upload_object(
     })?;
 
   let upload_id = multipart_upload_res.upload_id().ok_or_else(|| {
-    Error::Message("ERROR - Could not get upload ID.".to_string())
+    Error::Message("could not get upload ID.".to_string())
   })?;
 
   // Get details of the upload, this is needed because multipart uploads
@@ -481,6 +481,6 @@ pub async fn s3_multipart_upload_object(
   bar.finish();
 
   complete_multipart_upload_res.e_tag.ok_or_else(|| {
-    Error::Message("ERROR - could not get ETag from upload.".to_string())
+    Error::Message("could not get ETag from upload.".to_string())
   })
 }

@@ -107,7 +107,7 @@ pub fn validate_xname_format(xname: &str) -> bool {
 /// If hsm_group_name_opt provided, then checks all xnames belongs to that hsm_group
 // TODO: idually, we should create a struct with the data available to the user, then operate with
 // it in memory, that way we avoid multiple calls to Shasta APIs
-pub async fn validate_xnames_format_and_membership_agaisnt_single_hsm(
+pub async fn validate_xnames_format_and_membership_against_single_hsm(
   shasta_token: &str,
   shasta_base_url: &str,
   shasta_root_cert: &[u8],

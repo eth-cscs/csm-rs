@@ -29,7 +29,7 @@ impl ShastaClient {
     token: &str,
     configuration_name_opt: Option<&str>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-    log::info!("Get CFS configuration {:?}", configuration_name_opt);
+    log::debug!("Get CFS configuration {:?}", configuration_name_opt);
 
     let api_url = if let Some(name) = configuration_name_opt {
       format!("{}/cfs/v3/configurations/{}", self.base_url(), name)
@@ -73,7 +73,7 @@ impl ShastaClient {
     configuration_name: &str,
   ) -> Result<CfsConfigurationResponse, Error> {
     // Check if CFS configuration already exists
-    log::info!("Check CFS configuration '{}' exists", configuration_name);
+    log::debug!("Check CFS configuration '{}' exists", configuration_name);
 
     let cfs_configuration_rslt = self
       .cfs_configuration_v3_get(token, Some(configuration_name))
@@ -88,12 +88,12 @@ impl ShastaClient {
       )));
     }
 
-    log::info!(
+    log::debug!(
       "CFS configuration '{}' does not exists, creating new CFS configuration",
       configuration_name
     );
 
-    log::info!("Create CFS configuration '{}'", configuration_name);
+    log::debug!("Create CFS configuration '{}'", configuration_name);
     log::debug!("Create CFS configuration request:\n{:#?}", configuration);
 
     let api_url = format!(
@@ -129,7 +129,7 @@ impl ShastaClient {
     token: &str,
     configuration_id: &str,
   ) -> Result<(), Error> {
-    log::info!("Delete CFS configuration '{}'", configuration_id);
+    log::debug!("Delete CFS configuration '{}'", configuration_id);
 
     let api_url = format!(
       "{}/cfs/v3/configurations/{}",

@@ -23,6 +23,12 @@ use crate::error::Error;
 use http::Uri;
 use secrecy::SecretBox;
 
+/// Name of the `services`-namespace ConfigMap that CSM exposes the
+/// product catalog through. CFS layers and SAT workflows read it to
+/// resolve product versions to git URLs and commit ids.
+#[cfg(feature = "commands-admin")]
+pub(crate) const CRAY_PRODUCT_CATALOG_CONFIGMAP: &str = "cray-product-catalog";
+
 /// Build a `kube::Client` from a CSM-side Vault secret bundle.
 ///
 /// `shasta_k8s_secrets` is the JSON object returned by

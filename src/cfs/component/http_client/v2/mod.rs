@@ -25,7 +25,7 @@ impl ShastaClient {
     components_ids: Option<&str>,
     status: Option<&str>,
   ) -> Result<Vec<Component>, Error> {
-    log::info!("Get CFS components");
+    log::debug!("Get CFS components");
     let api_url = format!("{}/cfs/v2/components", self.base_url());
 
     let response = self
@@ -98,7 +98,7 @@ impl ShastaClient {
     })
     .await?;
 
-    log::info!(
+    log::debug!(
       "Time elapsed to get CFS components is: {:?}",
       start.elapsed()
     );
@@ -130,7 +130,7 @@ impl ShastaClient {
     .await?;
 
     let duration = start.elapsed();
-    log::info!("Time elapsed to get CFS components is: {:?}", duration);
+    log::debug!("Time elapsed to get CFS components is: {:?}", duration);
 
     Ok(component_vec)
   }

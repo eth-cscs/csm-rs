@@ -19,7 +19,7 @@ impl ShastaClient {
     token: &str,
     bos_session: BosSession,
   ) -> Result<BosSession, Error> {
-    log::info!(
+    log::debug!(
       "Create BOS session '{}'",
       bos_session.name.as_deref().unwrap_or("unknown")
     );
@@ -29,7 +29,7 @@ impl ShastaClient {
     let created: BosSession =
       http::post_json(self.http(), &api_url, token, &bos_session).await?;
 
-    log::info!(
+    log::debug!(
       "BOS session '{}' created successfully",
       created.name.as_deref().unwrap_or("unknown")
     );
@@ -43,7 +43,7 @@ impl ShastaClient {
     token: &str,
     id_opt: Option<&str>,
   ) -> Result<Vec<BosSession>, Error> {
-    log::info!("Get BOS sessions '{}'", id_opt.unwrap_or("all available"));
+    log::debug!("Get BOS sessions '{}'", id_opt.unwrap_or("all available"));
 
     let api_url = if let Some(id) = id_opt {
       format!("{}/bos/v2/sessions/{}", self.base_url(), id)

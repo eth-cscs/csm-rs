@@ -165,7 +165,7 @@ impl ShastaClient {
     token: &str,
     group: Group,
   ) -> Result<String, Error> {
-    log::info!("Add/Create HSM group");
+    log::debug!("Add/Create HSM group");
     log::debug!("Add HSM group payload:\n{:#?}", group);
 
     let api_url = format!("{}/smd/hsm/v2/groups", self.base_url());
@@ -229,7 +229,7 @@ impl ShastaClient {
 
     let add_group_rslt = self.hsm_group_post(token, group.clone()).await;
 
-    log::info!("Group created: {:?}", add_group_rslt);
+    log::debug!("Group created: {:?}", add_group_rslt);
 
     Ok(group)
   }
@@ -242,7 +242,7 @@ impl ShastaClient {
     token: &str,
     hsm_group_name: &str,
   ) -> Result<HsmActionResponse, Error> {
-    log::info!("Delete HSM group '{}'", hsm_group_name);
+    log::debug!("Delete HSM group '{}'", hsm_group_name);
     let url_api =
       format!("{}/smd/hsm/v2/groups/{}", self.base_url(), hsm_group_name);
     let response = self
@@ -264,7 +264,7 @@ impl ShastaClient {
     hsm_group_name: &str,
     member: Member,
   ) -> Result<HsmActionResponse, Error> {
-    log::info!("Add members {:?} to group '{}'", member, hsm_group_name);
+    log::debug!("Add members {:?} to group '{}'", member, hsm_group_name);
     let api_url = format!(
       "{}/smd/hsm/v2/groups/{}/members",
       self.base_url(),
@@ -290,7 +290,7 @@ impl ShastaClient {
     hsm_group_name: &str,
     member_id: &str,
   ) -> Result<(), Error> {
-    log::info!("Delete member {}/{}", hsm_group_name, member_id);
+    log::debug!("Delete member {}/{}", hsm_group_name, member_id);
 
     let api_url = format!(
       "{}/smd/hsm/v2/groups/{}/members/{}",

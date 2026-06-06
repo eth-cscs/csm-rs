@@ -113,7 +113,7 @@ impl ShastaClient {
     })
     .await?;
 
-    log::info!(
+    log::debug!(
       "Time elapsed to get CFS components is: {:?}",
       start.elapsed()
     );

@@ -271,7 +271,11 @@ async fn gather_sat_apply_data(
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
-    kubernetes::try_get_configmap(kube_client, "cray-product-catalog").await?;
+    kubernetes::try_get_configmap(
+      kube_client,
+      crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+    )
+    .await?;
 
   // Get data from CSM
   let start = Instant::now();

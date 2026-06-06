@@ -134,7 +134,7 @@ pub async fn i_post_sync(
 
   let cfs_session_name: String = cfs_session.name;
 
-  // FIXME: refactor becase this code is duplicated in command `manta apply sat-file` and also in
+  // FIXME: refactor because this code is duplicated in command `manta apply sat-file` and also in
   // `manta logs`
   if watch_logs {
     log::info!("Fetching logs form CFS session {} ...", session.name);
@@ -153,8 +153,8 @@ pub async fn i_post_sync(
     i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
 
-  // User does not want the CFS logs but we still need to wayt the CFS session to
-  // finis. Wait till the CFS session finishes
+  // User does not want the CFS logs but we still need to wait for the CFS session to
+  // finish. Wait till the CFS session finishes
   utils::wait_cfs_session_to_finish(
     shasta_token,
     shasta_base_url,

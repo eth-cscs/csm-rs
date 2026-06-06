@@ -59,7 +59,7 @@ impl ShastaClient {
     operation: &str,
     xname_vec: &[String],
   ) -> Result<TransitionStartOutput, Error> {
-    log::info!("Create PCS transition '{}' on {:?}", operation, xname_vec);
+    log::debug!("Create PCS transition '{}' on {:?}", operation, xname_vec);
 
     let location_vec: Vec<Location> = xname_vec
       .iter()
@@ -91,7 +91,7 @@ impl ShastaClient {
       .pcs_transitions_post(token, operation, xname_vec)
       .await?;
 
-    log::info!("PCS transition ID: {}", started.transition_id);
+    log::debug!("PCS transition ID: {}", started.transition_id);
 
     self
       .pcs_transitions_wait_to_complete(token, &started.transition_id)

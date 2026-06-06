@@ -22,7 +22,7 @@ impl ShastaClient {
     token: &str,
     image_id_opt: Option<&str>,
   ) -> Result<Vec<Image>, Error> {
-    log::info!(
+    log::debug!(
       "Get IMS images '{}'",
       image_id_opt.unwrap_or("all available")
     );

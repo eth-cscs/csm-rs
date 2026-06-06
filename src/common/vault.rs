@@ -54,7 +54,7 @@ pub mod http_client {
           .and_then(Value::as_str)
           .map(String::from)
           .ok_or_else(|| {
-            Error::Message("ERROR - JWT auth token not valid".to_string())
+            Error::Message("JWT auth token not valid".to_string())
           })
       }
       Err(e) => Err(Error::NetError(e)),

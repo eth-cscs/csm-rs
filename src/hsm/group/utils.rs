@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::{
   error::Error,
   hsm::{self, group::types::Group},
-  node::utils::validate_xnames_format_and_membership_agaisnt_single_hsm,
+  node::utils::validate_xnames_format_and_membership_against_single_hsm,
 };
 
 use super::types::Member;
@@ -21,8 +21,6 @@ pub async fn get_group_available(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<Vec<Group>, Error> {
-  const ADMIN_ROLE_NAME: &str = "pa_admin";
-
   let mut group_vec = crate::ShastaClient::new(
     shasta_base_url,
     shasta_root_cert.to_vec(),
@@ -36,7 +34,7 @@ pub async fn get_group_available(
   let realm_access_role_vec =
     crate::common::jwt_ops::get_roles(shasta_auth_token)?;
 
-  if !realm_access_role_vec.contains(&ADMIN_ROLE_NAME.to_string()) {
+  if !realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
     let available_groups_name = get_group_name_available(
       shasta_auth_token,
       shasta_base_url,
@@ -71,13 +69,11 @@ pub async fn get_group_name_available(
 ) -> Result<Vec<String>, Error> {
   log::debug!("Get HSM names available from JWT or all");
 
-  const ADMIN_ROLE_NAME: &str = "pa_admin";
-
   // Get HSM groups/Keycloak roles the user has access to from JWT token
   let realm_access_role_vec =
     crate::common::jwt_ops::get_roles(shasta_auth_token)?;
 
-  if !realm_access_role_vec.contains(&ADMIN_ROLE_NAME.to_string()) {
+  if !realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
     log::debug!("User is not admin, getting HSM groups available from JWT");
 
     let realm_access_role_vec = hsm::group::hacks::filter_keycloak_roles(
@@ -184,7 +180,7 @@ pub async fn remove_hsm_members(
   dryrun: bool,
 ) -> Result<Vec<String>, Error> {
   // Check nodes are valid xnames and they belong to parent HSM group
-  if let Ok(false) = validate_xnames_format_and_membership_agaisnt_single_hsm(
+  if let Ok(false) = validate_xnames_format_and_membership_against_single_hsm(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -256,7 +252,7 @@ pub async fn migrate_hsm_members(
   dryrun: bool,
 ) -> Result<(Vec<String>, Vec<String>), Error> {
   // Check nodes are valid xnames and they belong to parent HSM group
-  if let Ok(false) = validate_xnames_format_and_membership_agaisnt_single_hsm(
+  if let Ok(false) = validate_xnames_format_and_membership_against_single_hsm(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,

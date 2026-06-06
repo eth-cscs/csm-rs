@@ -114,7 +114,7 @@ impl CfsConfigurationRequest {
       yaml_str(configuration_yaml, "name")?.to_string();
 
     for layer_yaml in yaml_seq(configuration_yaml, "layers")? {
-      // log::info!("\n\n### Layer:\n{:#?}\n", layer_json);
+      // log::debug!("\n\n### Layer:\n{:#?}\n", layer_json);
 
       if let Some(git_yaml) = layer_yaml.get("git") {
         // Git layer
@@ -141,7 +141,7 @@ impl CfsConfigurationRequest {
           // Git tag
           let git_tag = as_yaml_str(git_tag_value)?;
 
-          log::info!("git tag: {}", git_tag);
+          log::debug!("git tag: {}", git_tag);
 
           let tag_details_rslt = gitea::http_client::get_tag_details(
             &repo_url,
@@ -163,13 +163,13 @@ impl CfsConfigurationRequest {
             )));
           };
 
-          // Assumming user sets an existing tag name. It could be an annotated tag
+          // Assuming user sets an existing tag name. It could be an annotated tag
           // (different object than the commit id with its own sha value) or a
           // lightweight tag (pointer to commit id, therefore the tag will have the
           // same sha as the commit id it points to), either way CFS session will
           // do a `git checkout` to the sha we found here, if an annotated tag, then,
           // git is clever enough to take us to the final commit id, if it is a
-          // lighweight tag, then there is no problem because the sha is the same
+          // lightweight tag, then there is no problem because the sha is the same
           // as the commit id
           // NOTE: the `id` field is the tag's sha, note we are not taking the commit id
           // the tag points to and we should not use sha because otherwise we won't be
@@ -259,7 +259,7 @@ impl CfsConfigurationRequest {
         // internal URLs for the external one
         let repo_url = yaml_str(&product_details, "clone_url")?.replace(
           format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
-          "api-gw-service-nmn.local",
+          crate::common::gitea::INTERNAL_API_HOST,
         );
 
         let commit_id_opt = if let Some(branch_value) = product_branch_value_opt
@@ -307,7 +307,7 @@ impl CfsConfigurationRequest {
         );
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message("ERROR - configurations section in SAT file error - CFS configuration layer error".to_string()));
+        return Err(Error::Message("configurations section in SAT file error - CFS configuration layer error".to_string()));
       }
     }
 

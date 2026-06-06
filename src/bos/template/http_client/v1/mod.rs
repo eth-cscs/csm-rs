@@ -15,7 +15,7 @@ impl ShastaClient {
     token: &str,
     bos_session_template_id_opt: Option<&String>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    log::info!(
+    log::debug!(
       "Get BOS sessiontemplates '{}'",
       bos_session_template_id_opt.unwrap_or(&"all available".to_string())
     );
@@ -42,7 +42,7 @@ impl ShastaClient {
     token: &str,
     bos_template: &BosSessionTemplate,
   ) -> Result<String, Error> {
-    log::info!("Create BOS sessiontemplate '{}'", bos_template.name);
+    log::debug!("Create BOS sessiontemplate '{}'", bos_template.name);
     log::debug!(
       "Create BOS sessiontemplate request payload:\n{}",
       serde_json::to_string_pretty(bos_template)

@@ -9,7 +9,7 @@ use serde_json::Value;
 
 /* // FIXME: replace Error to my own one
 #[deprecated(
-    note = "Please, avoid using this function, if you need to get the list of HSM groups available to the user, then use `mesa::common::jwt_ops::get_hsm_name_available` because this function has the hack removing system wide hsm group names like alps, aplsm, alpse, etc. If you want the preffereed username, then use `mesa::common::jwt_ops::`mesa::common::jwt_ops::get_preferred_username"
+    note = "Please, avoid using this function, if you need to get the list of HSM groups available to the user, then use `mesa::common::jwt_ops::get_hsm_name_available` because this function has the hack removing system wide hsm group names like alps, aplsm, alpse, etc. If you want the preferred username, then use `mesa::common::jwt_ops::get_preferred_username`"
 )] */
 fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
   let base64_claims = token
@@ -33,7 +33,7 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
     })?;
 
   let claims_str = std::str::from_utf8(&claims_u8).map_err(|_| {
-    Error::Message("ERROR - could not convert JWT claims to string".to_string())
+    Error::Message("could not convert JWT claims to string".to_string())
   })?;
 
   serde_json::from_str::<Value>(claims_str).map_err(|_| {
@@ -99,7 +99,8 @@ pub fn get_roles(token: &str) -> Result<Vec<String>, Error> {
 pub fn is_user_admin(shasta_token: &str) -> bool {
   let roles_rslt = get_roles(shasta_token);
 
-  roles_rslt.is_ok_and(|roles| roles.contains(&"pa_admin".to_string()))
+  roles_rslt
+    .is_ok_and(|roles| roles.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()))
 }
 
 #[cfg(test)]

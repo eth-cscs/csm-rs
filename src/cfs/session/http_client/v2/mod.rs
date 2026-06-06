@@ -31,7 +31,7 @@ impl ShastaClient {
     session_name_opt: Option<&String>,
     is_succeded_opt: Option<bool>,
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-    log::info!(
+    log::debug!(
       "Get CFS sessions '{}'",
       session_name_opt.unwrap_or(&"all available".to_string())
     );
@@ -102,7 +102,7 @@ impl ShastaClient {
     token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
-    log::info!("Deleting CFS session id: {}", session_name);
+    log::debug!("Deleting CFS session id: {}", session_name);
 
     let api_url =
       format!("{}/cfs/v2/sessions/{}", self.base_url(), session_name);

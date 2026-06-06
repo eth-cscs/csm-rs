@@ -173,7 +173,10 @@ impl SatTrait for Csm {
         .await
         .map_err(Error::from)?;
     let cray_product_catalog =
-      kubernetes::try_get_configmap(kube_client, "cray-product-catalog")
+      kubernetes::try_get_configmap(
+        kube_client,
+        crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+      )
         .await
         .map_err(Error::from)?;
 
@@ -245,7 +248,10 @@ impl SatTrait for Csm {
         .await
         .map_err(Error::from)?;
     let cray_product_catalog =
-      kubernetes::try_get_configmap(kube_client, "cray-product-catalog")
+      kubernetes::try_get_configmap(
+        kube_client,
+        crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+      )
         .await
         .map_err(Error::from)?;
 

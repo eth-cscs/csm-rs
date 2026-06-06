@@ -35,7 +35,7 @@ impl ShastaClient {
     token: &str,
     xname_vec: Vec<&str>,
   ) -> Result<PowerCapTaskInfo, Error> {
-    log::info!("Create PCS power snapshot for nodes:\n{:?}", xname_vec);
+    log::debug!("Create PCS power snapshot for nodes:\n{:?}", xname_vec);
     log::debug!("Create PCS power snapshot for nodes:\n{:?}", xname_vec);
 
     let url =
@@ -53,7 +53,7 @@ impl ShastaClient {
     token: &str,
     power_cap: Vec<PowerCapComponent>,
   ) -> Result<PowerCapTaskInfo, Error> {
-    log::info!("Create PCS power cap:\n{:#?}", power_cap);
+    log::debug!("Create PCS power cap:\n{:#?}", power_cap);
     log::debug!("Create PCS power cap:\n{:#?}", power_cap);
 
     let url =

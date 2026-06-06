@@ -14,7 +14,7 @@ impl ShastaClient {
     token: &str,
     xnames: &[String],
   ) -> Result<Vec<BootParameters>, Error> {
-    log::info!("Get BSS bootparameters");
+    log::debug!("Get BSS bootparameters");
 
     let url_api = format!("{}/bss/boot/v1/bootparameters", self.base_url());
 
@@ -59,7 +59,7 @@ impl ShastaClient {
     })
     .await?;
 
-    log::info!(
+    log::debug!(
       "Time elapsed to get BSS bootparameters is: {:?}",
       start.elapsed()
     );
