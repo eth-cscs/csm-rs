@@ -20,6 +20,10 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
 /// Default bearer token used by all wiremock tests.
 pub const TEST_TOKEN: &str = "test-token";
 
+// Some integration-test crates don't call this (e.g. the dispatcher
+// smoke tests in `tests/backend_connector.rs` construct a `Csm`
+// directly), so the `dead_code` lint trips per crate. Allow it here.
+#[allow(dead_code)]
 pub fn make_client(base_url: &str) -> ShastaClient {
   ShastaClient::new(base_url, TEST_PEM.as_bytes().to_vec(), None)
     .expect("ShastaClient::new should succeed with valid PEM")
