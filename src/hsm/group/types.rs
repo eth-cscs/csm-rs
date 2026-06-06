@@ -45,9 +45,16 @@ impl Group {
     }
   }
 
-  /// Get HSM group members
+  /// Get HSM group members.
+  ///
+  /// Returns owned `Vec<String>` rather than `&[String]` because most
+  /// callers immediately collect/filter/clone the IDs anyway and
+  /// switching to a borrow would ripple through ~10 sites. A
+  /// borrow-returning variant can be added later if it becomes a hot
+  /// path; mutations should go through `Group::members.ids` directly,
+  /// not through `get_members()` (see the bug fix in
+  /// `crate::hsm::group::utils::add_member` for the prior pitfall).
   pub fn get_members(&self) -> Vec<String> {
-    // FIXME: try to improve this logic by introducing "smart pointers" or "lifetimes"
     self
       .members
       .as_ref()
@@ -55,9 +62,10 @@ impl Group {
       .unwrap_or_default()
   }
 
-  /// Get HSM group members
+  /// Get HSM group members, distinguishing "no members" (`Some(empty)`)
+  /// from "missing field" (`None`). See [`Group::get_members`] for the
+  /// rationale on returning owned `Vec` here.
   pub fn get_members_opt(&self) -> Option<Vec<String>> {
-    // FIXME: try to improve this logic by introducing "smart pointers" or "lifetimes"
     self
       .members
       .as_ref()

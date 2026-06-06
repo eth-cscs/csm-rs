@@ -661,9 +661,9 @@ pub async fn get_hsm_node_hw_component_counter(
   #[allow(clippy::unnecessary_to_owned)]
   // `hsm_member` is moved into the `async move` block below
   for hsm_member in hsm_group_member_vec.iter().cloned() {
-    let shasta_token_string = shasta_token.to_string(); // TODO: make it static
-    let shasta_base_url_string = shasta_base_url.to_string(); // TODO: make it static
-    let shasta_root_cert_vec = shasta_root_cert.to_vec(); // TODO: make it static
+    let shasta_token_string = shasta_token.to_string();
+    let shasta_base_url_string = shasta_base_url.to_string();
+    let shasta_root_cert_vec = shasta_root_cert.to_vec();
     let user_defined_hw_component_vec =
       user_defined_hw_component_vec.to_owned();
     let socks5_proxy_opt = socks5_proxy_opt.clone();

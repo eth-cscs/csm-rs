@@ -51,10 +51,8 @@ pub async fn get_group_available(
 
     group_vec.retain(|group| available_groups_name.contains(&group.label));
 
-    // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
-    // the roles to check if a user has access to individual compute nodes
-    //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
+    // Remove site-wide HSM groups (alps, prealps, …) — see
+    // `hsm::group::hacks` module docs for why.
     let realm_access_role_filtered_vec =
       hsm::group::hacks::filter_system_hsm_groups(group_vec.clone());
 
@@ -96,10 +94,8 @@ pub async fn get_group_name_available(
         .as_slice(),
     );
 
-    // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
-    // the roles to check if a user has access to individual compute nodes
-    //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
+    // Remove site-wide HSM groups (alps, prealps, …) — see
+    // `hsm::group::hacks` module docs for why.
     let mut realm_access_role_filtered_vec =
       hsm::group::hacks::filter_system_hsm_group_names(
         realm_access_role_vec.clone(),
@@ -121,10 +117,8 @@ pub async fn get_group_name_available(
     .map(|hsm_value| hsm_value.label.clone())
     .collect::<Vec<String>>();
 
-    // Remove site wide HSM groups like 'alps', 'prealps', 'alpsm', etc because they pollute
-    // the roles to check if a user has access to individual compute nodes
-    //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
+    // Remove site-wide HSM groups (alps, prealps, …) — see
+    // `hsm::group::hacks` module docs for why.
     let mut all_hsm_groups_filtered =
       hsm::group::hacks::filter_system_hsm_group_names(all_hsm_groups.clone());
 
@@ -174,16 +168,19 @@ pub async fn add_member(
       .hsm_group_post_member(auth_token, group_label, member)
       .await?;
 
-    // Generate list of updated group members
-    group.get_members().push(new_member);
+    // Push the new id into the in-memory members list. The earlier
+    // shape (`group.get_members().push(new_member)`) was a bug —
+    // `Group::get_members(&self) -> Vec<String>` returns by value, so
+    // the push went to a throwaway. Mutate `members.ids` directly so
+    // the post-call snapshot actually reflects the new member.
+    let members = group
+      .members
+      .get_or_insert_with(crate::hsm::group::types::Members::default);
+    members.ids.get_or_insert_with(Vec::new).push(new_member);
 
     Ok(group.get_members())
   } else {
-    // HSM group not found, throw an error
-    Err(Error::Message(format!(
-      "No HSM group '{}' found",
-      group_label
-    )))
+    Err(Error::GroupNotFound(group_label.to_string()))
   }
 }
 

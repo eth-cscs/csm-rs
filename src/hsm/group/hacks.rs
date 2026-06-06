@@ -1,4 +1,12 @@
-//! Workarounds for CSM HSM behaviour that does not fit cleanly into the rest of the surface.
+//! Workarounds for CSM HSM behaviour that does not fit cleanly into
+//! the rest of the surface.
+//!
+//! Many helpers here filter out "system-wide" HSM group labels
+//! (`alps`, `prealps`, …) from access-control derivations. Long-term
+//! the fix is operational, not in this code: CSM admins should stop
+//! using HSM groups for system-wide scoping and use Keycloak roles
+//! instead. Until that happens these filters keep the per-user
+//! visible-groups list honest.
 
 use crate::{common, error::Error, hsm};
 
@@ -40,10 +48,9 @@ pub static SUBROLES: [&str; 8] = [
   "UserDefined",
 ];
 
-/// Removes 'system wide' HSM groups from the provided HSM group vector
+/// Removes 'system wide' HSM groups from the provided HSM group vector.
+/// See the module-level note on why this filter exists.
 pub fn filter_system_hsm_groups(hsm_group_vec: Vec<Group>) -> Vec<Group> {
-  //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
-  //wide operations instead of using roles
   hsm_group_vec
     .iter()
     .filter(|hsm_group| {
@@ -64,13 +71,11 @@ pub fn filter_keycloak_roles(keycloak_roles: &[&str]) -> Vec<String> {
     .collect()
 }
 
-/// Removes 'system wide' group names
+/// Removes 'system wide' group names. See the module-level note on
+/// why this filter exists.
 pub fn filter_system_hsm_group_names(
   hsm_group_name_vec: Vec<String>,
 ) -> Vec<String> {
-  //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
-  //wide operations instead of using roles
-
   hsm_group_name_vec
     .into_iter()
     .filter(|hsm_group_name| {
@@ -140,8 +145,6 @@ pub fn validate_groups(
           .collect::<Vec<&str>>(),
       );
     // Remove "site wide" (eg: alps, realps, alpsm, alpsb, etc.) from CFS session groups
-    //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
     let groups_in_user_auth_token =
       filter_system_hsm_group_names(site_wide_and_cluster_groups_in_auth_token);
 
@@ -149,8 +152,6 @@ pub fn validate_groups(
     let groups_without_roles_subroles =
       hsm::group::hacks::filter_roles_and_subroles(cfs_group_names);
     // Remove 'system wide' groups from CFS session groups
-    //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
-    //wide operations instead of using roles
     let groups_without_system_wide =
       hsm::group::hacks::filter_system_hsm_group_names(
         groups_without_roles_subroles.to_vec(),

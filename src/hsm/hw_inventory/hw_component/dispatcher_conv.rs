@@ -6,6 +6,13 @@
 //! The `bidirectional_from*` macros used below are defined in
 //! [`super::types`]; the parent `mod.rs` brings them into scope here via
 //! `#[macro_use] pub mod types;`.
+//!
+//! NOTE: many nested-collection fields (cabinets, chassis,
+//! compute_modules, cabinet_pdus, …) are wired as `None` on the local
+//! side because the dispatcher type doesn't carry the structural
+//! detail for them yet. Lift them through proper `From`/`Into` impls
+//! when downstream callers need the data; until then `None` is the
+//! correct shape, not a placeholder.
 
 use manta_backend_dispatcher::types::{
   ArtifactSummary as FrontEndArtifactSummary,
@@ -168,7 +175,7 @@ impl From<RedfishProcessorFRUInfo> for FrontEndRedfishProcessorFRUInfo {
       max_speed_mhz: val.max_speed_mhz,
       model: val.model,
       processor_architecture: val.processor_architecture,
-      processor_id: None, // FIXME: Implement From and Into traits for this field/type
+      processor_id: None,
       processor_type: val.processor_type,
       total_cores: val.total_cores,
       total_threads: val.total_threads,
@@ -396,15 +403,15 @@ impl From<FrontEndHWInventory> for HWInventory {
     HWInventory {
       xname: value.xname,
       format: value.format,
-      cabinets: None, // FIXME: Implement From and Into traits for this field/type
-      chassis: None, // FIXME: Implement From and Into traits for this field/type
-      compute_modules: None, // FIXME: Implement From and Into traits for this field/type
-      router_modules: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosures: None, // FIXME: Implement From and Into traits for this field/type
-      hsn_boards: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_hl_switches: None, // FIXME: Implement From and Into traits for this field/type
-      cdu_mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
+      cabinets: None,
+      chassis: None,
+      compute_modules: None,
+      router_modules: None,
+      node_enclosures: None,
+      hsn_boards: None,
+      mgmt_switches: None,
+      mgmt_hl_switches: None,
+      cdu_mgmt_switches: None,
       nodes: value.nodes.map(|node_vec| {
         node_vec.into_iter().map(HWInvByLocNode::from).collect()
       }),
@@ -420,18 +427,18 @@ impl From<FrontEndHWInventory> for HWInventory {
           .map(HWInvByLocNodeAccel::from)
           .collect()
       }),
-      drives: None, // FIXME: Implement From and Into traits for this field/type
+      drives: None,
       memory: value.memory.map(|memory_vec| {
         memory_vec.into_iter().map(HWInvByLocMemory::from).collect()
       }),
-      cabinet_pdus: None, // FIXME: Implement From and Into traits for this field/type
-      cabinet_pdu_power_connectors: None, // FIXME: Implement From and Into traits for this field/type
-      cmm_rectifiers: None, // FIXME: Implement From and Into traits for this field/type
-      node_accel_risers: None, // FIXME: Implement From and Into traits for this field/type
-      node_hsn_nics: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosure_power_supplies: None, // FIXME: Implement From and Into traits for this field/type
-      node_bmc: None, // FIXME: Implement From and Into traits for this field/type
-      router_bmc: None, // FIXME: Implement From and Into traits for this field/type
+      cabinet_pdus: None,
+      cabinet_pdu_power_connectors: None,
+      cmm_rectifiers: None,
+      node_accel_risers: None,
+      node_hsn_nics: None,
+      node_enclosure_power_supplies: None,
+      node_bmc: None,
+      router_bmc: None,
     }
   }
 }
@@ -441,15 +448,15 @@ impl From<HWInventory> for FrontEndHWInventory {
     FrontEndHWInventory {
       xname: val.xname,
       format: val.format,
-      cabinets: None, // FIXME: Implement From and Into traits for this field/type
-      chassis: None, // FIXME: Implement From and Into traits for this field/type
-      compute_modules: None, // FIXME: Implement From and Into traits for this field/type
-      router_modules: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosures: None, // FIXME: Implement From and Into traits for this field/type
-      hsn_boards: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
-      mgmt_hl_switches: None, // FIXME: Implement From and Into traits for this field/type
-      cdu_mgmt_switches: None, // FIXME: Implement From and Into traits for this field/type
+      cabinets: None,
+      chassis: None,
+      compute_modules: None,
+      router_modules: None,
+      node_enclosures: None,
+      hsn_boards: None,
+      mgmt_switches: None,
+      mgmt_hl_switches: None,
+      cdu_mgmt_switches: None,
       nodes: val
         .nodes
         .map(|node_vec| node_vec.into_iter().map(|node| node.into()).collect()),
@@ -465,18 +472,18 @@ impl From<HWInventory> for FrontEndHWInventory {
           .map(|node_accel| node_accel.into())
           .collect()
       }),
-      drives: None, // FIXME: Implement From and Into traits for this field/type
+      drives: None,
       memory: val.memory.map(|memory_vec| {
         memory_vec.into_iter().map(|memory| memory.into()).collect()
       }),
-      cabinet_pdus: None, // FIXME: Implement From and Into traits for this field/type
-      cabinet_pdu_power_connectors: None, // FIXME: Implement From and Into traits for this field/type
-      cmm_rectifiers: None, // FIXME: Implement From and Into traits for this field/type
-      node_accel_risers: None, // FIXME: Implement From and Into traits for this field/type
-      node_hsn_nics: None, // FIXME: Implement From and Into traits for this field/type
-      node_enclosure_power_supplies: None, // FIXME: Implement From and Into traits for this field/type
-      node_bmc: None, // FIXME: Implement From and Into traits for this field/type
-      router_bmc: None, // FIXME: Implement From and Into traits for this field/type
+      cabinet_pdus: None,
+      cabinet_pdu_power_connectors: None,
+      cmm_rectifiers: None,
+      node_accel_risers: None,
+      node_hsn_nics: None,
+      node_enclosure_power_supplies: None,
+      node_bmc: None,
+      router_bmc: None,
     }
   }
 }

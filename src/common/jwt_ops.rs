@@ -7,10 +7,6 @@ use base64::{
 };
 use serde_json::Value;
 
-/* // FIXME: replace Error to my own one
-#[deprecated(
-    note = "Please, avoid using this function, if you need to get the list of HSM groups available to the user, then use `mesa::common::jwt_ops::get_hsm_name_available` because this function has the hack removing system wide hsm group names like alps, aplsm, alpse, etc. If you want the preferred username, then use `mesa::common::jwt_ops::get_preferred_username`"
-)] */
 fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
   let base64_claims = token
     .split(' ')

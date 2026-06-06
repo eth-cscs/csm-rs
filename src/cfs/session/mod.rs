@@ -158,8 +158,10 @@ pub async fn i_post_sync(
 
   let cfs_session_name: String = cfs_session.name;
 
-  // FIXME: refactor because this code is duplicated in command `manta apply sat-file` and also in
-  // `manta logs`
+  // NOTE: the watch-logs block below mirrors the downstream
+  // `manta apply sat-file` and `manta logs` flows; if you change the
+  // shape here check that those still match (they live in the manta
+  // CLI repo, not in csm-rs).
   if watch_logs {
     log::info!("Fetching logs form CFS session {} ...", session.name);
     let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(

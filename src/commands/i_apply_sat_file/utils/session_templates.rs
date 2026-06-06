@@ -469,8 +469,8 @@ pub async fn process_session_template_section_in_sat_file(
             .collect()
         });
 
-      //FIXME: Get rid of this by making sure CSM admins don't create HSM groups for system
-      //wide operations instead of using roles
+      // Strip site-wide group names — see `hsm::group::hacks` module
+      // docs for why.
       let node_groups_opt = node_groups_opt.map(|node_groups| {
         hsm::group::hacks::filter_system_hsm_group_names(node_groups)
       });

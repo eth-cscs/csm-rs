@@ -65,13 +65,14 @@ impl GroupTrait for Csm {
     Ok(group)
   }
 
-  // FIXME: rename function to 'get_hsm_group_members'
+  // NOTE: name comes from `GroupTrait` upstream — keep until the
+  // dispatcher renames it to something less stuttery (e.g.
+  // `get_hsm_group_members`).
   async fn get_member_vec_from_group_name_vec(
     &self,
     auth_token: &str,
     hsm_group_name_vec: &[String],
   ) -> Result<Vec<String>, Error> {
-    // FIXME: try to merge functions get_member_vec_from_hsm_name_vec_2 and get_member_vec_from_hsm_name_vec
     hsm::group::utils::get_member_vec_from_hsm_name_vec(
       auth_token,
       &self.base_url,

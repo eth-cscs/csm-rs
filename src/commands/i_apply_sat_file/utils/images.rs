@@ -1170,8 +1170,8 @@ pub fn validate_sat_file_images_section(
       // Validate user has access to HSM groups in 'image' section
       log::debug!("Validate 'image' '{}' HSM groups", image_name);
 
-      //TODO: Get rid of this by making sure CSM admins don't create HSM groups for system
-      //wide operations instead of using roles
+      // Strip site-wide group names — see `hsm::group::hacks` module
+      // docs for why.
       let configuration_group_names_vec =
         hsm::group::hacks::filter_system_hsm_group_names(
           image_yaml
