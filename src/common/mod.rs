@@ -28,7 +28,9 @@ pub mod gitea;
 pub(crate) mod http;
 pub mod jwt_ops;
 /// In-cluster Kubernetes client helpers (used to read ConfigMaps such
-/// as `cray-product-catalog`).
+/// as `cray-product-catalog`). Requires the `k8s-console` Cargo
+/// feature.
+#[cfg(feature = "k8s-console")]
 pub mod kubernetes;
 pub mod vault;
 pub(crate) mod yaml;

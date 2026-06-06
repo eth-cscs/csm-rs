@@ -11,6 +11,10 @@
 //! - [`types`] — shared node-shaped data structures.
 //! - [`utils`] — helper functions composed from the lower-level APIs.
 
+/// Open and interact with a node's serial console via the CSM
+/// `cray-console-operator` / `cray-console-node` services. Requires
+/// the `k8s-console` Cargo feature (Kubernetes client).
+#[cfg(feature = "k8s-console")]
 pub mod console;
 pub mod types;
 pub mod utils;

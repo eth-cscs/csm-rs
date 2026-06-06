@@ -11,13 +11,12 @@ pub mod utils;
 
 use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
-use crate::common::kubernetes::i_print_cfs_session_logs;
+use crate::error::Error;
 
-use crate::{
-  common::{
-    kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
-  },
-  error::Error,
+#[cfg(feature = "k8s-console")]
+use crate::common::{
+  kubernetes::{self, i_print_cfs_session_logs},
+  vault::http_client::fetch_shasta_k8s_secrets_from_vault,
 };
 
 /// Fetch a single CFS session by name (errors if none or many match).
@@ -104,6 +103,11 @@ pub async fn post(
 /// Creates a CFS session and waits for it to finish. When `watch_logs`
 /// is true the session's container logs are streamed line-by-line
 /// through `log::info!` (no direct stdout writes).
+///
+/// Requires the `k8s-console` Cargo feature because the watch-logs
+/// path attaches to the in-cluster CFS session pod via the Kubernetes
+/// client.
+#[cfg(feature = "k8s-console")]
 #[allow(clippy::too_many_arguments)]
 pub async fn i_post_sync(
   shasta_token: &str,

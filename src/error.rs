@@ -19,6 +19,7 @@
 
 use std::{env::VarError, io, num::ParseIntError, str::Utf8Error};
 
+#[cfg(feature = "ims-s3")]
 use aws_smithy_types::byte_stream;
 use globset::Error as GlobsetError;
 #[cfg(feature = "manta-dispatcher")]
@@ -55,6 +56,7 @@ pub enum Error {
   GlobError(#[from] GlobsetError),
   #[error("CSM-RS > Parse int error: {0}")]
   ParseStrIntError(#[from] ParseIntError),
+  #[cfg(feature = "ims-s3")]
   #[error("CSM-RS > URL parse error: {0}")]
   SmithyDataStreamError(#[from] byte_stream::error::Error),
   #[error("http request:\nresponse: {response}\npayload: {payload}")]
@@ -83,6 +85,7 @@ pub enum Error {
   K8sCredentialMissingError(String),
   #[error("CSM-RS > K8s: '{0}' value not a string")]
   K8sCredentialNotStringError(String),
+  #[cfg(feature = "k8s-console")]
   #[error("CSM-RS > K8s: {0}")]
   K8sExecError(#[from] kube::Error),
   #[error("CSM-RS > CFS Session")]
@@ -243,6 +246,7 @@ impl From<crate::error::Error> for MantaError {
       Error::K8sCredentialNotStringError(s) => {
         MantaError::K8sError(format!("'{s}' value not a string"))
       }
+      #[cfg(feature = "k8s-console")]
       Error::K8sExecError(e) => MantaError::K8sError(e.to_string()),
 
       // Infrastructure / third-party errors with no dispatcher
@@ -254,6 +258,7 @@ impl From<crate::error::Error> for MantaError {
       e @ Error::UtfError(_) => MantaError::Message(e.to_string()),
       e @ Error::GlobError(_) => MantaError::Message(e.to_string()),
       e @ Error::ParseStrIntError(_) => MantaError::Message(e.to_string()),
+      #[cfg(feature = "ims-s3")]
       e @ Error::SmithyDataStreamError(_) => MantaError::Message(e.to_string()),
     }
   }

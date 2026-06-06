@@ -22,8 +22,10 @@ use manta_backend_dispatcher::{
 };
 
 use super::Csm;
+use crate::common::jwt_ops;
+#[cfg(feature = "k8s-console")]
 use crate::common::{
-  jwt_ops, kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
+  kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
 };
 
 impl CfsTrait for Csm {
@@ -438,6 +440,22 @@ impl CfsTrait for Csm {
     .map_err(Error::from)
   }
 
+  #[cfg(not(feature = "k8s-console"))]
+  async fn get_session_logs_stream(
+    &self,
+    _shasta_token: &str,
+    _site_name: &str,
+    _cfs_session_name: &str,
+    _timestamps: bool,
+    _k8s: &K8sDetails,
+  ) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, Error> {
+    Err(Error::Message(
+      "get_session_logs_stream requires the 'k8s-console' Cargo feature"
+        .to_string(),
+    ))
+  }
+
+  #[cfg(feature = "k8s-console")]
   async fn get_session_logs_stream(
     &self,
     shasta_token: &str,

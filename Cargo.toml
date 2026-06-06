@@ -17,7 +17,7 @@ publish = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["manta-dispatcher"]
+default = ["manta-dispatcher", "k8s-console", "ims-s3"]
 # Enables the `backend_connector` adapter, the `From<csm_rs::Error> for
 # manta_backend_dispatcher::Error` impl, and the PCS/HSM type
 # conversions to/from the dispatcher. Users who only want csm-rs as a
@@ -29,9 +29,23 @@ manta-dispatcher = ["dep:manta-backend-dispatcher"]
 # `migrate_backup`, `migrate_restore`. These are higher-level than the
 # rest of `commands/` — they parse YAML, touch the filesystem, and drive
 # reboot timing / progress bars — so they belong in an admin binary
-# rather than the default library surface. Users who only want
-# composable CSM primitives should leave this off.
-commands-admin = []
+# rather than the default library surface. They transitively need
+# Kubernetes (console attach) and S3 (IMS image transport).
+commands-admin = ["k8s-console", "ims-s3"]
+# Kubernetes-backed node console attach (`node::console`,
+# `common::kubernetes`, dispatcher `ConsoleTrait`). Pulls in `kube`,
+# `k8s-openapi`, `tokio-util`. Default-on for backwards compatibility;
+# disable if you only need HTTP CSM access.
+k8s-console = ["dep:kube", "dep:k8s-openapi", "dep:tokio-util"]
+# IMS S3 image transport (`ims::s3_client`, the SOCKS5/hyper-0.14 glue
+# the AWS SDK still requires). Pulls in `aws-sdk-s3`, `aws-config`,
+# `aws-smithy-*`, `hyper`, `hyper-util`, `hyper-socks2`, `tower`,
+# `indicatif`. Default-on for backwards compatibility.
+ims-s3 = [
+    "dep:aws-sdk-s3", "dep:aws-config", "dep:aws-smithy-runtime",
+    "dep:aws-smithy-types", "dep:hyper", "dep:hyper-util",
+    "dep:hyper-socks2", "dep:tower", "dep:indicatif",
+]
 
 [dependencies]
 manta-backend-dispatcher = { version = "1.0.0-beta.6", optional = true }
@@ -41,7 +55,7 @@ manta-backend-dispatcher = { version = "1.0.0-beta.6", optional = true }
 
 strum = { version = "0.27.1", default-features = false }
 strum_macros = "0.27.1"
-chrono = { version = "0.4.41", default-features = false }
+chrono = { version = "0.4.41", default-features = false, features = ["clock"] }
 anyhow = { version = "1.0.44", default-features = false }
 reqwest = { version = "0.12.15", default-features = false, features = ["blocking", "json", "rustls-tls", "socks"] }
 http = "1.3.1"
@@ -50,14 +64,14 @@ serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 log = "0.4.27"
 tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "sync", "time", "io-util"] }
-tokio-util = "0.7.4" # used by manta_console to create a read stream from container stdout
+tokio-util = { version = "0.7.4", optional = true } # k8s-console: read stream from container stdout
 tokio-stream = { version = "0.1.11", default-features = false }
-kube = { version = "2.0.1", features = ["ws", "socks5", "runtime"] }
-k8s-openapi = { version = "0.26.0", features = ["v1_33"] }
+kube = { version = "2.0.1", features = ["ws", "socks5", "runtime"], optional = true }
+k8s-openapi = { version = "0.26.0", features = ["v1_33"], optional = true }
 md5 = { version = "0.7.0", default-features = false }
 uuid = { version = "1.16.0", features = ["fast-rng", "v4"] }
 # git2 = { version = "0.18.1", default-features = false, features = ["vendored-openssl"] }
-indicatif = { version = "0.18", default-features = false }
+indicatif = { version = "0.18", default-features = false, optional = true }
 # Needed by `ims::s3_client::setup_client`: the AWS SDK (aws-sdk-s3,
 # aws-sdk-sts) still uses hyper 0.14 transitively via aws-smithy-http-client,
 # and we glue SOCKS5 into the S3 transport using hyper_socks2::SocksConnector
@@ -65,19 +79,19 @@ indicatif = { version = "0.18", default-features = false }
 # Drop these when aws-smithy-http-client upgrades to hyper 1.x (it will then
 # also satisfy hyper-rustls 0.27+). kube-rs is unrelated -- kube 2.0.1 is
 # already on hyper 1.x.
-hyper-socks2 = { version = "0.8.0", default-features = false }
-hyper = { version = "0.14" }
-hyper-util = "0.1.16"
-tower = { version = "0.4.13", default-features = false }
-futures = { version = "0.3.31", default-features = false }
+hyper-socks2 = { version = "0.8.0", default-features = false, optional = true }
+hyper = { version = "0.14", optional = true }
+hyper-util = { version = "0.1.16", optional = true }
+tower = { version = "0.4.13", default-features = false, optional = true }
+futures = { version = "0.3.31", default-features = false, features = ["std"] }
 futures-channel = "0.3.31"
 regex = "1.6.0"
 secrecy = { version = "0.10.0", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
-aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false }
-aws-config = { version = "1.1.2", default-features = false, features = ["behavior-version-latest"] }
-aws-smithy-runtime = { version = "1.0.1" }
-aws-smithy-types = { version = "1.1.2", features = ["rt-tokio"] }
+aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false, optional = true }
+aws-config = { version = "1.1.2", default-features = false, features = ["behavior-version-latest"], optional = true }
+aws-smithy-runtime = { version = "1.0.1", optional = true }
+aws-smithy-types = { version = "1.1.2", features = ["rt-tokio"], optional = true }
 globset = { version = "0.4.14", default-features = false }
 humansize = "2.0.0"
 substring = "1.4.5"

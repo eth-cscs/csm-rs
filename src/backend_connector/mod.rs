@@ -20,6 +20,10 @@ pub mod bos; // ApplySessionTrait, ClusterSessionTrait, ClusterTemplateTrait
 pub mod bss; // BootParametersTrait
 pub mod cfs; // CfsTrait
 pub mod cleanup; // DeleteConfigurationsAndDataRelatedTrait
+// `ConsoleTrait` attaches to the in-cluster `cray-console-node` pod
+// via `kube`, so it requires the same `k8s-console` feature as the
+// underlying console helpers.
+#[cfg(feature = "k8s-console")]
 pub mod console; // ConsoleTrait
 pub mod group; // GroupTrait
 pub mod hsm; // HardwareInventory, ComponentTrait, ComponentEthernetInterfaceTrait, RedfishEndpointTrait
