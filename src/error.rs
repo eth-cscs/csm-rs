@@ -161,6 +161,12 @@ pub enum Error {
   /// user to fix their SAT file".
   #[error("CSM-RS > SAT file: {0}")]
   SatFile(String),
+  /// Error encountered by the migrate-backup / migrate-restore
+  /// workflows under the `commands-admin` feature: BOS template
+  /// shape, IMS bundle parsing, local file I/O, missing CLI
+  /// argument, etc. The string carries the operation context.
+  #[error("CSM-RS > Migrate: {0}")]
+  MigrateOp(String),
 }
 
 impl Error {
@@ -322,6 +328,7 @@ impl From<crate::error::Error> for MantaError {
         MantaError::NotFound(format!("Cray product catalog: {s}"))
       }
       Error::SatFile(s) => MantaError::Message(format!("SAT file: {s}")),
+      Error::MigrateOp(s) => MantaError::Message(format!("Migrate: {s}")),
     }
   }
 }

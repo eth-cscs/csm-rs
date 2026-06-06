@@ -74,7 +74,7 @@ pub async fn exec(
 ) -> Result<(), Error> {
   fn require<'a>(opt: Option<&'a str>, name: &str) -> Result<&'a str, Error> {
     opt.ok_or_else(|| {
-      Error::Message(format!("Error, --{} argument is required.", name))
+      Error::MigrateOp(format!("Error, --{} argument is required.", name))
     })
   }
 
@@ -91,7 +91,7 @@ pub async fn exec(
     ("hsm", hsm_file),
   ] {
     if !PathBuf::from(path).exists() {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "Error, {} file {} does not exist or cannot be open.",
         label, path
       )));
@@ -127,7 +127,7 @@ pub async fn exec(
 
   for file in &vec_backup_image_files {
     if !PathBuf::from(&file).exists() {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "Error, file {} does not exist or cannot be open.",
         &file
       )));
@@ -152,7 +152,7 @@ pub async fn exec(
   let ims_image_id: String = match ims_image_id_rslt {
     Ok(value) => value,
     Err(e) => {
-      return Err(Error::Message(format!("{}", e)));
+      return Err(Error::MigrateOp(format!("{}", e)));
     }
   };
 
@@ -245,7 +245,7 @@ async fn create_bos_sessiontemplate(
     serde_json::from_reader(BufReader::new(file_content))?;
 
   let bos_sessiontemplate_name = bos_json.name.ok_or_else(|| {
-    Error::Message(
+    Error::MigrateOp(
       "BOS sessiontemplate file is missing the 'name' field".to_string(),
     )
   })?;
@@ -262,7 +262,7 @@ async fn create_bos_sessiontemplate(
     .bos_template_v2_get(shasta_token, Some(&bos_sessiontemplate_name))
     .await
     .map_err(|error| {
-      Error::Message(format!(
+      Error::MigrateOp(format!(
         "Unable to query CSM to get list of BOS sessiontemplates: {}",
         error
       ))
@@ -272,9 +272,8 @@ async fn create_bos_sessiontemplate(
 
   if !vector.is_empty() {
     if !overwrite {
-      return Err(Error::Message(
-        "BOS sessiontemplate already exists and --overwrite was not set"
-          .to_string(),
+      return Err(Error::MigrateOp(
+        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
       ));
     } else {
       match shasta_client
@@ -286,7 +285,7 @@ async fn create_bos_sessiontemplate(
           &bos_sessiontemplate_name
         ),
         Result::Err(err1) => {
-          return Err(Error::Message(format!(
+          return Err(Error::MigrateOp(format!(
             "unable to delete BOS session template: {}",
             err1
           )));
@@ -308,7 +307,7 @@ async fn create_bos_sessiontemplate(
     .as_mut()
     .and_then(|boot_sets| boot_sets.get_mut("compute"))
     .ok_or_else(|| {
-      Error::Message(
+      Error::MigrateOp(
         "BOS sessiontemplate has no 'compute' boot_set to update".to_string(),
       )
     })?
@@ -330,7 +329,7 @@ async fn create_bos_sessiontemplate(
       &bos_sessiontemplate_name
     ),
     Err(e1) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to create BOS session template: {}",
         e1
       )));
@@ -368,14 +367,13 @@ async fn create_cfs_config(
     .cfs_configuration_v3_get(shasta_token, Some(&cfs_config_name))
     .await
     .map_err(|error| {
-      Error::Message(format!("Unable to fetch CFS configuration: {}", error))
+      Error::MigrateOp(format!("Unable to fetch CFS configuration: {}", error))
     })?;
 
   if !cfs_config_vec.is_empty() {
     if !overwrite {
-      return Err(Error::Message(
-        "CFS configuration already exists and --overwrite was not set"
-          .to_string(),
+      return Err(Error::MigrateOp(
+        "CFS configuration already exists and --overwrite was not set".to_string(),
       ));
     }
 
@@ -387,7 +385,7 @@ async fn create_cfs_config(
         log::debug!("Ok CFS configuration {}, deleted.", cfs_config_name)
       }
       Result::Err(error) => {
-        return Err(Error::Message(format!(
+        return Err(Error::MigrateOp(format!(
           "unable to delete CFS configuration {}: {}",
           cfs_config_name, error
         )));
@@ -421,7 +419,7 @@ async fn create_cfs_config(
       );
     }
     Err(e1) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to create CFS configuration: {}",
         e1
       )));
@@ -454,14 +452,14 @@ async fn ims_update_image_add_manifest(
   {
     Ok(vector) => {
       if vector.is_empty() {
-        return Err(Error::Message(format!(
+        return Err(Error::MigrateOp(format!(
           "no images stored with id {} in IMS, unable to update the image manifest",
           &ims_image_id
         )));
       }
     }
     Err(error) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to determine if there are other images in IMS with the name {}: {}",
         &ims_image_name, &error
       )));
@@ -514,7 +512,7 @@ async fn ims_update_image_add_manifest(
   match patch_result {
     Ok(()) => log::debug!("Image updated"),
     Err(e) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to modify the record of the image: {}",
         e
       )));
@@ -550,7 +548,7 @@ async fn s3_upload_image_artifacts(
   {
     Ok(sts_value) => sts_value,
     Err(error) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to authenticate with s3 when uploading images: {}",
         error
       )));
@@ -559,7 +557,7 @@ async fn s3_upload_image_artifacts(
 
   for file in vec_image_files {
     let filename = Path::new(file).file_name().ok_or_else(|| {
-      Error::Message(format!("Path '{}' has no file name component", file))
+      Error::MigrateOp(format!("Path '{}' has no file name component", file))
     })?;
     let file_size = match fs::metadata(file) {
       Ok(_file_metadata) => {
@@ -599,7 +597,7 @@ async fn s3_upload_image_artifacts(
           result
         }
         Err(error) => {
-          return Err(Error::Message(format!(
+          return Err(Error::MigrateOp(format!(
             "unable to upload file to s3: {}",
             error
           )));
@@ -620,7 +618,7 @@ async fn s3_upload_image_artifacts(
           result
         }
         Err(error) => {
-          return Err(Error::Message(format!(
+          return Err(Error::MigrateOp(format!(
             "unable to upload file to s3: {}",
             error
           )));
@@ -682,7 +680,7 @@ async fn s3_upload_image_artifacts(
   let new_manifest_file_name = String::from("new-manifest.json");
 
   let first_image_file = vec_image_files.first().ok_or_else(|| {
-    Error::Message(
+    Error::MigrateOp(
       "vec_image_files is empty; no manifest can be written".to_string(),
     )
   })?;
@@ -690,7 +688,7 @@ async fn s3_upload_image_artifacts(
     .parent()
     .map(|path| path.join(&new_manifest_file_name))
     .ok_or_else(|| {
-      Error::Message(format!(
+      Error::MigrateOp(format!(
         "Path '{}' has no parent directory",
         first_image_file
       ))
@@ -722,7 +720,7 @@ async fn s3_upload_image_artifacts(
       log::info!("OK");
     }
     Err(error) => {
-      return Err(Error::Message(format!(
+      return Err(Error::MigrateOp(format!(
         "unable to upload file to s3: {}",
         error
       )));
@@ -739,13 +737,13 @@ fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
   log::debug!("File {:?}...", &filename);
 
   let f = File::open(&filename).map_err(|e| {
-    Error::Message(format!("file_md5sum: open {:?}: {}", filename, e))
+    Error::MigrateOp(format!("file_md5sum: open {:?}: {}", filename, e))
   })?;
   // Find the length of the file
   let len = f
     .metadata()
     .map_err(|e| {
-      Error::Message(format!("file_md5sum: metadata {:?}: {}", filename, e))
+      Error::MigrateOp(format!("file_md5sum: metadata {:?}: {}", filename, e))
     })?
     .len();
   // Decide on a reasonable buffer size (100MB in this case, fastest will depend on hardware)
@@ -761,7 +759,7 @@ fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
   loop {
     // Get a chunk of the file
     let part = buf.fill_buf().map_err(|e| {
-      Error::Message(format!("file_md5sum: read {:?}: {}", filename, e))
+      Error::MigrateOp(format!("file_md5sum: read {:?}: {}", filename, e))
     })?;
     // If that chunk was empty, the reader has reached EOF
     if part.is_empty() {
@@ -906,7 +904,7 @@ pub fn get_image_name_from_ims_file(
     .and_then(Value::as_str)
     .map(|ims_name| ims_name.replace('"', ""))
     .ok_or_else(|| {
-      Error::Message(format!("IMS file '{}' is missing /0/name", ims_file))
+      Error::MigrateOp(format!("IMS file '{}' is missing /0/name", ims_file))
     })
 }
 
@@ -983,7 +981,7 @@ pub async fn create_hsm_group_from_file(
                   }
                   Err(e) => {
                     log::error!("Error message {}", e);
-                    return Err(Error::Message(format!(
+                    return Err(Error::MigrateOp(format!(
                       "second error creating a new HSM group: {}",
                       e
                     )));
@@ -992,22 +990,20 @@ pub async fn create_hsm_group_from_file(
               }
               Err(e) => {
                 log::error!("Error message {}", e);
-                return Err(Error::Message(format!(
+                return Err(Error::MigrateOp(format!(
                   "error deleting the HSM group {}: {}",
                   &group.label, e
                 )));
               }
             }
           } else {
-            return Err(Error::Message(
-              "Not deleting the group, cannot continue the operation."
-                .to_string(),
+            return Err(Error::MigrateOp(
+              "Not deleting the group, cannot continue the operation.".to_string(),
             ));
           }
         } else if error.to_string().to_lowercase().contains("400") {
-          return Err(Error::Message(
-            "Unable to create the group, the API returned code 400. This usually means the HSM file is malformed, or has incorrect xnames for this site in it."
-              .to_string(),
+          return Err(Error::MigrateOp(
+            "Unable to create the group, the API returned code 400. This usually means the HSM file is malformed, or has incorrect xnames for this site in it.".to_string(),
           ));
         }
       }

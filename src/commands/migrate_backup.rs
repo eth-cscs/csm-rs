@@ -32,10 +32,10 @@ pub async fn exec(
   posthook: Option<&String>, */
 ) -> Result<(), Error> {
   let bos = bos.ok_or_else(|| {
-    Error::Message("Error, --bos argument is required.".to_string())
+    Error::MigrateOp("Error, --bos argument is required.".to_string())
   })?;
   let destination = destination.ok_or_else(|| {
-    Error::Message("Error, --destination argument is required.".to_string())
+    Error::MigrateOp("Error, --destination argument is required.".to_string())
   })?;
 
   let dest_path = Path::new(destination);
@@ -44,7 +44,7 @@ pub async fn exec(
   let files2download_count = files2download.len() + 4; // manifest.json, initrd, kernel, rootfs, bos, cfs, hsm, ims
   log::debug!("Create directory '{}'", destination);
   std::fs::create_dir_all(dest_path).map_err(|e| {
-    Error::Message(format!(
+    Error::MigrateOp(format!(
       "Unable to create directory {}: {}",
       dest_path.to_string_lossy(),
       e
@@ -71,7 +71,7 @@ pub async fn exec(
   let mut download_counter = 1;
 
   if bos_templates.is_empty() {
-    return Err(Error::Message("No BOS template found!".to_string()));
+    return Err(Error::MigrateOp("No BOS template found!".to_string()));
   } else {
     // BOS ------------------------------------------------------------------------------------
     let bos_file = File::create(&bos_file_path)?;
@@ -108,7 +108,7 @@ pub async fn exec(
       .and_then(|node_groups| node_groups.first())
       .map(|node_group| node_group.replace('\"', ""))
       .ok_or_else(|| {
-        Error::Message(format!(
+        Error::MigrateOp(format!(
           "BOS template '{}': no 'compute' boot_set or no node_groups",
           bos
         ))
@@ -131,7 +131,7 @@ pub async fn exec(
       .and_then(|first_bos_template| first_bos_template.cfs.as_ref())
       .and_then(|cfs_value| cfs_value.configuration.as_ref())
       .ok_or_else(|| {
-        Error::Message(format!(
+        Error::MigrateOp(format!(
           "BOS template '{}': no CFS configuration referenced",
           bos
         ))
@@ -169,7 +169,7 @@ pub async fn exec(
       .first()
       .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
       .ok_or_else(|| {
-        Error::Message(format!("BOS template '{}': no boot_sets defined", bos))
+        Error::MigrateOp(format!("BOS template '{}': no boot_sets defined", bos))
       })?;
     for boot_sets_value in boot_sets.values() {
       if let Some(path) = &boot_sets_value.path {
@@ -226,7 +226,7 @@ pub async fn exec(
             {
               Ok(sts_value) => sts_value,
 
-              Err(error) => return Err(Error::Message(error.to_string())),
+              Err(error) => return Err(Error::MigrateOp(error.to_string())),
             };
             for file in files2download {
               let dest = String::from(destination) + "/" + &image_id;
@@ -261,7 +261,7 @@ pub async fn exec(
                   download_counter += 1;
                 }
                 Err(error) => {
-                  return Err(Error::Message(format!(
+                  return Err(Error::MigrateOp(format!(
                     "unable to download file {} from s3. Error returned: {}",
                     &src, error
                   )));
@@ -284,7 +284,7 @@ pub async fn exec(
             }
           }
           Err(e) => {
-            return Err(Error::Message(format!(
+            return Err(Error::MigrateOp(format!(
               "image related to BOS session template {} not found: {}",
               image_id_related_to_bos_sessiontemplate, e
             )));
