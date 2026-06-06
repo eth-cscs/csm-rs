@@ -17,5 +17,5 @@
 /// the `k8s-console` Cargo feature (Kubernetes client).
 #[cfg(feature = "k8s-console")]
 pub mod console;
-pub(crate) mod types;
-pub(crate) mod utils;
+pub mod types;
+pub mod utils;

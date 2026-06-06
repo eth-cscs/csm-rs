@@ -123,7 +123,7 @@ pub mod cfs;
 mod client;
 pub mod commands;
 pub(crate) mod common;
-mod error;
+pub mod error;
 pub mod hsm;
 pub mod ims;
 pub mod node;
