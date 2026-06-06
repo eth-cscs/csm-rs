@@ -76,9 +76,8 @@ impl ImsTrait for Csm {
 
 /// Backend-dispatcher impl of `GetImagesAndDetailsTrait` for [`Csm`].
 ///
-/// Delegates to
-/// [`crate::commands::get_images_and_details::get_images_and_details`];
-/// see that function for the matching strategy.
+/// Delegates to [`crate::ims::image::utils::get_with_details`]; see
+/// that function for the matching strategy.
 impl GetImagesAndDetailsTrait for Csm {
   async fn get_images_and_details(
     &self,
@@ -87,7 +86,7 @@ impl GetImagesAndDetailsTrait for Csm {
     id_opt: Option<&str>,
     limit_number: Option<&u8>,
   ) -> Result<Vec<(FrontEndImage, String, String, bool)>, Error> {
-    crate::commands::get_images_and_details::get_images_and_details(
+    crate::ims::image::utils::get_with_details(
       self.shasta_client(),
       shasta_token,
       hsm_group_name_vec,

@@ -31,7 +31,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     ),
     Error,
   > {
-    crate::commands::delete_configurations_and_data_related::get_data_to_delete(
+    crate::cfs::cleanup::get_data_to_delete(
       self.shasta_client(),
       shasta_token,
       hsm_name_available_vec,
@@ -70,7 +70,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     cfs_session_name_vec: &[String],
     bos_sessiontemplate_name_vec: &[String],
   ) -> Result<(), Error> {
-    crate::commands::delete_configurations_and_data_related::delete(
+    crate::cfs::cleanup::delete(
       self.shasta_client(),
       shasta_token,
       cfs_configuration_name_vec,

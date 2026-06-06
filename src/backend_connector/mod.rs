@@ -11,6 +11,20 @@
 //! (base URL, root cert, optional SOCKS5 proxy) those impls need;
 //! per-request bearer tokens are passed in by the dispatcher.
 //!
+//! As a rule, dispatcher trait impls call into the domain namespaces
+//! (`crate::cfs`, `crate::ims`, `crate::hsm`, ...) rather than into
+//! `crate::commands`. The remaining `crate::commands::*` reaches are:
+//!
+//! - [`bos::ApplySessionTrait`] → [`crate::commands::apply_session`] —
+//!   the workflow needs a Gitea token + `playbook_yaml_file_name_opt`,
+//!   so it is intrinsically command-shaped.
+//! - [`sat`] (gated) → [`crate::commands::i_apply_sat_file`] /
+//!   [`crate::commands::apply_hw_cluster_pin`] — admin workflows; both
+//!   sides ride the same `commands-admin` Cargo feature.
+//! - [`migrate`] (gated) → [`crate::commands::migrate_backup`] /
+//!   [`migrate_restore`] — admin workflows; deferred for a follow-up
+//!   refactor to take `&ShastaClient` and lift the logic out.
+//!
 //! Consumers that talk to CSM directly should reach for
 //! [`crate::ShastaClient`] instead — this module exists specifically to
 //! satisfy the dispatcher contract.

@@ -323,7 +323,7 @@ impl CfsTrait for Csm {
         .map(|bp| bp.clone().into())
         .collect();
 
-    crate::commands::delete_and_cancel_session::command::exec(
+    crate::cfs::cleanup_session::exec(
       self.shasta_client(),
       shasta_token,
       group_available_vec,

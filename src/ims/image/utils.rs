@@ -135,13 +135,51 @@ pub fn filter(image_vec: &mut [Image]) {
   });
 }
 
+/// Fetch IMS images plus the CFS configurations, BOS session
+/// templates, and boot-status they relate to, filtered by HSM group.
+///
+/// Returns a list of tuples
+/// `(Image, cfs_configuration_name, targets, is_boot_image)` where
+/// `targets` is either a list of HSM group names or xnames, and
+/// `is_boot_image` indicates whether the image is currently used to
+/// boot a node.
+///
+/// Filtering is performed against multiple sources to avoid missing
+/// images: CFS sessions, BOS session templates, BSS boot parameters,
+/// and a name-substring fallback. The CSM lookup is done once and the
+/// `&ShastaClient`'s connection pool is reused for every
+/// downstream call.
+pub async fn get_with_details(
+  client: &crate::ShastaClient,
+  shasta_token: &str,
+  hsm_group_name_vec: &[String],
+  id_opt: Option<&str>,
+  limit_number: Option<&u8>,
+) -> Result<Vec<(Image, String, String, bool)>, Error> {
+  let mut image_vec: Vec<Image> =
+    client.ims_image_get(shasta_token, id_opt).await?;
+
+  get_image_cfs_config_name_hsm_group_name(
+    shasta_token,
+    client.base_url(),
+    client.root_cert(),
+    client.socks5_proxy(),
+    &mut image_vec,
+    hsm_group_name_vec,
+    limit_number,
+  )
+  .await
+  .map_err(|e| {
+    Error::Message(format!("ERROR - Failed to get image details: {}", e))
+  })
+}
+
 /// Resolve each IMS image to its CFS configuration, the HSM groups (or
 /// xnames) it targets, and whether it is currently a boot image.
 ///
 /// Returns a list of `(Image, cfs_configuration_name, targets,
-/// is_boot_image)`. See
-/// [`crate::commands::get_images_and_details::get_images_and_details`]
-/// for the full description of the matching strategy.
+/// is_boot_image)`. See [`get_with_details`] for the high-level
+/// description of the matching strategy.
 pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
