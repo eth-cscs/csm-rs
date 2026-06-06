@@ -15,6 +15,7 @@ use common::{TEST_PEM, TEST_TOKEN};
 
 use csm_rs::backend_connector::Csm;
 use manta_backend_dispatcher::interfaces::{
+  authentication::AuthenticationTrait,
   bss::BootParametersTrait,
   cfs::CfsTrait,
   hsm::{
@@ -547,4 +548,165 @@ async fn cfs_get_configuration_hits_v3_configurations() {
     .expect("ok");
   assert_eq!(configs.len(), 1);
   assert_eq!(configs[0].name, "cfg-1");
+}
+
+#[tokio::test]
+async fn cfs_get_sessions_hits_v3_sessions() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/cfs/v3/sessions"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "sessions": [
+        {"name": "sess-1", "debug_on_failure": false}
+      ],
+      "next": null
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  let sessions = csm
+    .get_sessions(TEST_TOKEN, None, None, None, None, None, None, None, None, None)
+    .await
+    .expect("ok");
+  assert_eq!(sessions.len(), 1);
+  assert_eq!(sessions[0].name, "sess-1");
+}
+
+#[tokio::test]
+async fn cfs_post_session_posts_to_v3_sessions() {
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path("/cfs/v3/sessions"))
+    .and(bearer_token(TEST_TOKEN))
+    .and(body_partial_json(json!({"name": "new-session"})))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "name": "new-session",
+      "debug_on_failure": false
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  let req = manta_backend_dispatcher::types::cfs::session::CfsSessionPostRequest {
+    name: "new-session".to_string(),
+    debug_on_failure: false,
+    ..Default::default()
+  };
+  let created = csm.post_session(TEST_TOKEN, &req).await.expect("ok");
+  assert_eq!(created.name, "new-session");
+}
+
+// ---------- ApplySessionTrait ----------
+
+// (no smoke test — the trait's `i_apply_session` is a thick orchestration
+// that calls multiple endpoints and is exercised through the SAT-file
+// admin workflow tests under `commands-admin`.)
+
+// ---------- AuthenticationTrait ----------
+
+#[tokio::test]
+async fn auth_validate_api_token_hits_cfs_healthz() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/cfs/healthz"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  csm.validate_api_token(TEST_TOKEN).await.expect("ok");
+}
+
+#[tokio::test]
+async fn auth_validate_api_token_returns_err_on_401() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/cfs/healthz"))
+    .respond_with(ResponseTemplate::new(401))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  csm.validate_api_token(TEST_TOKEN)
+    .await
+    .expect_err("401 should map to Err");
+}
+
+// ---------- HardwareInventory::get_inventory_hardware ----------
+
+#[tokio::test]
+async fn hw_inventory_get_hits_hardware_endpoint() {
+  let server = MockServer::start().await;
+  Mock::given(method("GET"))
+    .and(path("/smd/hsm/v2/Inventory/Hardware"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "Nodes": [{
+        "ID": "x1000c0s0b0n0",
+        "Type": "Node",
+        "Processors": [],
+        "Memory": [],
+        "NodeAccels": [],
+        "NodeHsnNics": []
+      }]
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  let summary = csm
+    .get_inventory_hardware(TEST_TOKEN, "x1000c0s0b0n0")
+    .await
+    .expect("ok");
+  assert_eq!(summary.xname, "x1000c0s0b0n0");
+}
+
+// ---------- ComponentTrait::post_nodes ----------
+
+#[tokio::test]
+async fn component_post_nodes_posts_to_state_components() {
+  // NOTE: `hsm_component_post` uses `/hsm/v2/State/Components` (no
+  // `/smd/` prefix), unlike `hsm_component_get_all_nodes` which uses
+  // `/smd/hsm/v2/State/Components`. The inconsistency is preserved
+  // for backwards compatibility with the CSM API URL the codebase
+  // has shipped against.
+  let server = MockServer::start().await;
+  Mock::given(method("POST"))
+    .and(path("/hsm/v2/State/Components"))
+    .and(bearer_token(TEST_TOKEN))
+    .and(body_partial_json(json!({
+      "Components": [{"ID": "x1000c0s0b0n0"}]
+    })))
+    .respond_with(ResponseTemplate::new(204))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  let arr = manta_backend_dispatcher::types::ComponentArrayPostArray {
+    components: vec![manta_backend_dispatcher::types::ComponentCreate {
+      id: "x1000c0s0b0n0".to_string(),
+      state: "Ready".to_string(),
+      flag: None,
+      enabled: None,
+      software_status: None,
+      role: None,
+      sub_role: None,
+      nid: None,
+      subtype: None,
+      net_type: None,
+      arch: None,
+      class: None,
+    }],
+    force: Some(false),
+  };
+  csm.post_nodes(TEST_TOKEN, arr).await.expect("ok");
 }
