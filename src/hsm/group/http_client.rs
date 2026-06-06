@@ -72,9 +72,13 @@ impl ShastaClient {
             payload: error_payload,
           });
         }
-        _ => {
-          let error_payload = response.text().await?;
-          return Err(Error::Message(error_payload));
+        status => {
+          let status = status.as_u16();
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::csm_text_from_response(
+            "GET", &url, status, payload,
+          ));
         }
       }
     }
@@ -134,9 +138,13 @@ impl ShastaClient {
             payload: error_payload,
           });
         }
-        _ => {
-          let error_payload = response.text().await?;
-          return Err(Error::Message(error_payload));
+        status => {
+          let status = status.as_u16();
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::csm_text_from_response(
+            "GET", &url, status, payload,
+          ));
         }
       }
     }
@@ -231,9 +239,13 @@ impl ShastaClient {
             payload: error_payload,
           });
         }
-        _ => {
-          let error_payload = response.json().await?;
-          return Err(Error::Message(error_payload));
+        status => {
+          let status = status.as_u16();
+          let url = response.url().to_string();
+          let payload: serde_json::Value = response.json().await?;
+          return Err(Error::csm_from_response(
+            "POST", &url, status, payload,
+          ));
         }
       }
     }
@@ -376,8 +388,10 @@ impl ShastaClient {
     if response.status().is_success() {
       Ok(())
     } else {
+      let status = response.status().as_u16();
+      let url = response.url().to_string();
       let payload = response.text().await.map_err(Error::NetError)?;
-      Err(Error::Message(payload))
+      Err(Error::csm_text_from_response("DELETE", &url, status, payload))
     }
   }
 }

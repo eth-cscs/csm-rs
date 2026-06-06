@@ -238,7 +238,20 @@ impl ShastaClient {
     if !response.status().is_success() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
+          // Mirrors the hsm::group::http_client 401 contract: carry the
+          // url + payload through `Error::RequestError` so callers can
+          // distinguish bad/expired tokens from CSM-side failures.
+          let response_err = response
+            .error_for_status_ref()
+            .err()
+            .expect("non-2xx branch implies error_for_status_ref errs");
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::RequestError {
+            response: response_err,
+            url,
+            payload,
+          });
         }
         _ => {
           let status = response.status().as_u16();
@@ -283,7 +296,20 @@ impl ShastaClient {
     if !response.status().is_success() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
+          // Mirrors the hsm::group::http_client 401 contract: carry the
+          // url + payload through `Error::RequestError` so callers can
+          // distinguish bad/expired tokens from CSM-side failures.
+          let response_err = response
+            .error_for_status_ref()
+            .err()
+            .expect("non-2xx branch implies error_for_status_ref errs");
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::RequestError {
+            response: response_err,
+            url,
+            payload,
+          });
         }
         _ => {
           let status = response.status().as_u16();
@@ -329,7 +355,20 @@ impl ShastaClient {
     if !response.status().is_success() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
+          // Mirrors the hsm::group::http_client 401 contract: carry the
+          // url + payload through `Error::RequestError` so callers can
+          // distinguish bad/expired tokens from CSM-side failures.
+          let response_err = response
+            .error_for_status_ref()
+            .err()
+            .expect("non-2xx branch implies error_for_status_ref errs");
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::RequestError {
+            response: response_err,
+            url,
+            payload,
+          });
         }
         _ => {
           let status = response.status().as_u16();
@@ -375,7 +414,20 @@ impl ShastaClient {
     if !response.status().is_success() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
-          return Err(Error::Message(response.text().await?));
+          // Mirrors the hsm::group::http_client 401 contract: carry the
+          // url + payload through `Error::RequestError` so callers can
+          // distinguish bad/expired tokens from CSM-side failures.
+          let response_err = response
+            .error_for_status_ref()
+            .err()
+            .expect("non-2xx branch implies error_for_status_ref errs");
+          let url = response.url().to_string();
+          let payload = response.text().await?;
+          return Err(Error::RequestError {
+            response: response_err,
+            url,
+            payload,
+          });
         }
         _ => {
           let status = response.status().as_u16();

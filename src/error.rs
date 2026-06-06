@@ -197,6 +197,19 @@ pub enum Error {
   /// violation.
   #[error("CSM-RS > Apply session: {0}")]
   ApplySession(String),
+  /// Non-JSON CSM error payload (some CSM endpoints return plain text
+  /// on non-2xx). Mirror of [`Error::CsmError`] for endpoints whose
+  /// failure bodies don't follow RFC 7807; carries the same
+  /// `{method, url, status}` context plus the raw text.
+  #[error(
+    "CSM-RS > CSM (text): {method} {url} -> status={status} {payload}"
+  )]
+  CsmText {
+    method: String,
+    url: String,
+    status: u16,
+    payload: String,
+  },
 }
 
 impl Error {
@@ -223,6 +236,23 @@ impl Error {
       status,
       detail,
       body: Some(payload),
+    }
+  }
+
+  /// Build a [`CsmText`](Error::CsmText) from request context and a
+  /// non-success, non-JSON response payload. Used where CSM returns
+  /// plain text on error (some HSM endpoints).
+  pub(crate) fn csm_text_from_response(
+    method: &str,
+    url: &str,
+    status: u16,
+    payload: String,
+  ) -> Self {
+    Error::CsmText {
+      method: method.to_string(),
+      url: url.to_string(),
+      status,
+      payload,
     }
   }
 }
@@ -380,6 +410,19 @@ impl From<crate::error::Error> for MantaError {
       Error::ApplySession(s) => {
         MantaError::Message(format!("Apply session: {s}"))
       }
+      Error::CsmText {
+        method,
+        url,
+        status,
+        payload,
+      } => MantaError::CsmError {
+        status,
+        // Fold method+url+payload into the dispatcher's `detail`
+        // since MantaError::CsmError carries `{status, detail, body}`.
+        // `body` stays None — there's no JSON to surface.
+        detail: format!("{method} {url} -> {payload}"),
+        body: None,
+      },
     }
   }
 }
