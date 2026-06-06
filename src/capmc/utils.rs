@@ -18,6 +18,12 @@ const POWER_TRANSITION_BACKOFF: PollBackoff = PollBackoff {
 /// Issue repeated CAPMC power-on requests, polling status with
 /// exponential backoff until every xname reports as "on" or the
 /// attempt cap is reached.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_nodes_to_power_on(
   client: &ShastaClient,
   token: &str,
@@ -47,6 +53,12 @@ pub async fn wait_nodes_to_power_on(
 /// Issue repeated CAPMC power-off requests (graceful unless `force`),
 /// polling status with exponential backoff until every xname reports
 /// "off" or the attempt cap is reached.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_nodes_to_power_off(
   client: &ShastaClient,
   token: &str,

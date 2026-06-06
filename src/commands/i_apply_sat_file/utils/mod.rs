@@ -59,6 +59,12 @@ pub struct SatFile {
 
 impl SatFile {
   /// Filter either images or session_templates section according to user request
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub fn filter(
     &mut self,
     image_only: bool,

@@ -80,6 +80,12 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
 /// the caller has access to, optional xname allow-list, session type,
 /// row limit, and a flag controlling whether "generic" (non-targeted)
 /// sessions are retained.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
@@ -219,6 +225,12 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
 /// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
 /// sessions. Only returns values from CFS sessions with an artifact.result_id value
 /// (meaning CFS sessions completed and successful of type image)
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
   cfs_session_vec: &[CfsSessionGetResponse],
 ) -> Result<Vec<(String, String, Vec<String>)>, Error> {
@@ -278,6 +290,12 @@ pub fn images_id_from_cfs_session(
 /// (2 s → 30 s, max 200 attempts ≈ 100 min wall-clock cap, matching
 /// the prior constant-delay budget) until the session's
 /// `status.session.status` reaches `"complete"`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_cfs_session_to_finish(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -342,6 +360,12 @@ pub async fn wait_cfs_session_to_finish(
 
 /// Expand a CFS session's target (xnames + HSM groups) into a flat
 /// xname list, restricted to groups the caller can see.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_list_xnames_related_to_session(
   group_available_vec: Vec<Group>,
   cfs_session: CfsSessionGetResponse,

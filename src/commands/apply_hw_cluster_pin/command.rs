@@ -30,6 +30,12 @@ use crate::{
 ///   exist.
 /// - `delete_empty_parent_hsm_group` — delete the parent if it ends up
 ///   with zero members.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   client: &crate::ShastaClient,

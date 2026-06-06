@@ -56,6 +56,12 @@ fn default_version() -> String {
 ///
 /// The four `overwrite_*` flags replace existing CSM resources with
 /// the same name instead of failing.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   shasta_token: &str,
@@ -891,6 +897,12 @@ async fn ims_register_image(
 }
 
 /// Gets the image name off an IMS yaml file
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn get_image_name_from_ims_file(
   ims_file: &str,
 ) -> Result<String, Error> {
@@ -917,6 +929,11 @@ pub fn get_image_name_from_ims_file(
 /// Failures inside this function are treated as fatal — the migrate
 /// flow cannot continue if HSM group creation is partial.
 // Anything in this function is critical, so the asserts will kill further processing
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn create_hsm_group_from_file(
   // backend: &StaticBackendDispatcher,
   shasta_token: &str,

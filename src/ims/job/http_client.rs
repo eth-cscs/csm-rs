@@ -12,6 +12,12 @@ use super::{
 impl ShastaClient {
   /// Creates an IMS job of type 'customize'. Used to create
   /// 'ephemeral-environments'.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_job_post_customize(
     &self,
     token: &str,
@@ -52,6 +58,12 @@ impl ShastaClient {
   }
 
   /// Creates an IMS job. Returns immediately after the create call.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_job_post(
     &self,
     token: &str,
@@ -75,6 +87,12 @@ impl ShastaClient {
   }
 
   /// Like `ims_job_post`, but waits for the job to finish before returning.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_job_post_sync(
     &self,
     token: &str,
@@ -114,6 +132,12 @@ impl ShastaClient {
 
   /// `GET /ims/v3/jobs` (or `/ims/v3/jobs/{id}` if `job_id_opt` is
   /// supplied) — list IMS jobs or fetch one by ID.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_job_get(
     &self,
     token: &str,

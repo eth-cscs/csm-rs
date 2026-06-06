@@ -22,6 +22,12 @@ impl ShastaClient {
   ///
   /// See <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>
   /// for the underlying REST contract.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v2_get(
     &self,
     token: &str,
@@ -71,6 +77,12 @@ impl ShastaClient {
   ///
   /// Convenience wrapper for `cfs_session_v2_get` with all filters
   /// unset.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v2_get_all(
     &self,
     token: &str,
@@ -83,6 +95,12 @@ impl ShastaClient {
   /// Create a new CFS session.
   ///
   /// `POST /cfs/v2/sessions`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v2_post(
     &self,
     token: &str,
@@ -97,6 +115,12 @@ impl ShastaClient {
   /// Delete a CFS session by name.
   ///
   /// `DELETE /cfs/v2/sessions/{session_name}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v2_delete(
     &self,
     token: &str,

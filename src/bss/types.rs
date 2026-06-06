@@ -97,6 +97,12 @@ impl BootParameters {
   /// Returns a boolean that indicates if kernel parameters have change:
   /// - kernel parameter value changed
   ///  - number of kernel parameters have changed
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub fn update_boot_image(
     &mut self,
     new_image_id: &str,

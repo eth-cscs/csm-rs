@@ -156,6 +156,11 @@ pub struct NodeSummary {
 }
 
 impl NodeSummary {
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub fn try_from_csm_value(
     hw_artifact_value: &Value,
   ) -> Result<Self, Error> {

@@ -17,6 +17,12 @@ impl ShastaClient {
   /// List every power transition currently known to PCS.
   ///
   /// `GET /power-control/v1/transitions`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_transitions_get(
     &self,
     token: &str,
@@ -30,6 +36,12 @@ impl ShastaClient {
   /// Fetch a single power transition by its `id`.
   ///
   /// `GET /power-control/v1/transitions/{id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_transitions_get_by_id(
     &self,
     token: &str,
@@ -81,6 +93,12 @@ impl ShastaClient {
 
   /// Like [`Self::pcs_transitions_post`] but waits for the transition to
   /// finish before returning.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_transitions_post_block(
     &self,
     token: &str,
@@ -101,6 +119,12 @@ impl ShastaClient {
   /// Polls a transition until it reaches `completed` status, with
   /// exponential backoff (3 s → 30 s, capped at 40 attempts ≈ 18 min
   /// wall-clock).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_transitions_wait_to_complete(
     &self,
     token: &str,

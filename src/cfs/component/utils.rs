@@ -41,6 +41,12 @@ pub async fn update_component_desired_configuration(
 
 /// PATCH the desired configuration and enabled flag on a list of CFS
 /// components in one batch.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn update_component_list_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,

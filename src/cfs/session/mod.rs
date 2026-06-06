@@ -20,6 +20,12 @@ use crate::common::{
 };
 
 /// Fetch a single CFS session by name (errors if none or many match).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_one(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -46,6 +52,12 @@ pub async fn get_one(
 ///
 /// Returns list of CFS sessions ordered by start time. Filters by either
 /// HSM group name or HSM group members or both.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_and_sort(
   shasta_token: &str,
@@ -81,6 +93,12 @@ pub async fn get_and_sort(
 
 /// Convenience: build a transient `ShastaClient`, POST the CFS session
 /// request, and return the created session.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn post(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -107,6 +125,12 @@ pub async fn post(
 /// Requires the `k8s-console` Cargo feature because the watch-logs
 /// path attaches to the in-cluster CFS session pod via the Kubernetes
 /// client.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[cfg(feature = "k8s-console")]
 #[allow(clippy::too_many_arguments)]
 pub async fn i_post_sync(

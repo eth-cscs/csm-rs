@@ -23,6 +23,12 @@ impl ShastaClient {
   ///
   /// `GET /cfs/v3/options`. Returns the raw JSON object of CFS
   /// service-level options.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_get_options(
     &self,
     token: &str,
@@ -43,6 +49,12 @@ impl ShastaClient {
   /// Fetch CFS components, optionally filtered by id list and status.
   ///
   /// `GET /cfs/v3/components`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_get(
     &self,
     token: &str,
@@ -68,6 +80,12 @@ impl ShastaClient {
   /// Fetch one CFS component by id.
   ///
   /// `GET /cfs/v3/components/{component_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_get_single_by_id(
     &self,
     token: &str,
@@ -92,6 +110,12 @@ impl ShastaClient {
   ///
   /// Works around the CSM-side limit on a single GET; order of the
   /// returned components is not preserved.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_get_parallel(
     &self,
     token: &str,
@@ -125,6 +149,12 @@ impl ShastaClient {
   ///
   /// `GET /cfs/v3/components` with `config_name`, `ids`, `status`,
   /// and a large `limit`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_get_query(
     &self,
     token: &str,
@@ -159,6 +189,12 @@ impl ShastaClient {
   ///
   /// `PATCH /cfs/v3/components/{component.id}`. Returns
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_patch_component(
     &self,
     token: &str,
@@ -186,6 +222,12 @@ impl ShastaClient {
   /// Bulk-patch many CFS components in a single request.
   ///
   /// `PATCH /cfs/v3/components` with the full list as JSON body.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_patch_component_list(
     &self,
     token: &str,
@@ -214,6 +256,12 @@ impl ShastaClient {
   ///
   /// `PUT /cfs/v3/components/{component.id}`. Returns
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_put_component(
     &self,
     token: &str,
@@ -230,6 +278,12 @@ impl ShastaClient {
 
   /// Replace many CFS component records sequentially. Stops at the
   /// first error.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_put_component_list(
     &self,
     token: &str,
@@ -248,6 +302,12 @@ impl ShastaClient {
   /// Delete a CFS component by id.
   ///
   /// `DELETE /cfs/v3/components/{component_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v3_delete_single_component(
     &self,
     token: &str,

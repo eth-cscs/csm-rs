@@ -6,6 +6,12 @@ impl ShastaClient {
   /// List all power-cap tasks known to PCS.
   ///
   /// `GET /power-control/v1/power-cap`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_power_cap_get(
     &self,
     token: &str,
@@ -17,6 +23,12 @@ impl ShastaClient {
   /// Fetch a single power-cap task by its `task_id`.
   ///
   /// `GET /power-control/v1/power-cap/{task_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_power_cap_get_task_id(
     &self,
     token: &str,
@@ -30,6 +42,12 @@ impl ShastaClient {
   /// Capture a power-cap snapshot for the given component xnames.
   ///
   /// `PUT /power-control/v1/power-cap/snapshot` with `{"xnames": [...]}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_power_cap_post_snapshot(
     &self,
     token: &str,
@@ -48,6 +66,12 @@ impl ShastaClient {
   ///
   /// `PUT /power-control/v1/power-cap/snapshot` with the supplied
   /// per-component cap definitions.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_power_cap_patch(
     &self,
     token: &str,

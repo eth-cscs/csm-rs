@@ -9,6 +9,12 @@ use super::types::BootParameters;
 
 impl ShastaClient {
   /// Get node boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/get/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_get(
     &self,
     token: &str,
@@ -34,6 +40,12 @@ impl ShastaClient {
 
   /// `GET /bss/boot/v1/bootparameters` — fetch boot parameters for
   /// every node BSS knows about.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_get_all(
     &self,
     token: &str,
@@ -43,6 +55,12 @@ impl ShastaClient {
 
   /// `GET /bss/boot/v1/bootparameters` for many xnames, parallelised
   /// in chunks of 30 with up to 10 concurrent batches.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_get_multiple(
     &self,
     token: &str,
@@ -67,6 +85,12 @@ impl ShastaClient {
   }
 
   /// Change nodes boot params. Ref: <https://apidocs.svc.cscs.ch/iaas/bss/tag/bootparameters/paths/~1bootparameters/put/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_put(
     &self,
     token: &str,
@@ -96,6 +120,12 @@ impl ShastaClient {
   }
 
   /// POST a single set of BootParameters. Used to create new entries.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_post(
     &self,
     token: &str,
@@ -121,6 +151,12 @@ impl ShastaClient {
 
   /// `PATCH /bss/boot/v1/bootparameters` — partial update of an
   /// existing entry.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bss_bootparameters_patch(
     &self,
     token: &str,

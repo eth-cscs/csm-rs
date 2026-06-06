@@ -34,6 +34,12 @@ use crate::{
 /// Returns a tuple of
 /// `(sessions, image_refs, image_ids, boot_image_ids,
 /// session_template_refs, configurations)`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_data_to_delete(
   client: &crate::ShastaClient,
@@ -371,6 +377,12 @@ pub async fn get_data_to_delete(
 /// a CFS configuration. This method is safe. It checks if CFS configuration to delete is assigned
 /// to a CFS component as a 'desired configuration' and also checks if image related to CFS
 /// configuration is used as a boot image of any node in the system.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn delete(
   client: &crate::ShastaClient,

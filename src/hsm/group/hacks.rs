@@ -94,6 +94,12 @@ pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
 /// Check user has access to all groups in CFS session
 /// This function validates groups in CFS session against user auth token
 /// Returns the list of groups in the CFS session the user does not have access to
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn validate_groups_auth_token(
   cfs_group_names: &[&str],
   shasta_token: &str,

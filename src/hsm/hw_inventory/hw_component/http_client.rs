@@ -11,6 +11,12 @@ use super::types::{HWInventory, HWInventoryByLocationList, NodeSummary};
 impl ShastaClient {
   /// `GET /hsm/v2/Inventory/Hardware` — fetch the hardware inventory
   /// for a single node, summarised as a [`NodeSummary`].
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_hw_inventory_get(
     &self,
     token: &str,
@@ -39,6 +45,12 @@ impl ShastaClient {
 
   /// `GET /hsm/v2/Inventory/Hardware/Query/{xname}` — typed HSM
   /// hardware inventory query for one xname.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_hw_inventory_get_query(
     &self,
     token: &str,
@@ -55,6 +67,12 @@ impl ShastaClient {
   /// `POST /hsm/v2/Inventory/Hardware` — submit a hardware inventory
   /// payload (typically used by node discovery agents). Returns the
   /// HSM acknowledgement carrying a count of new/modified items.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_hw_inventory_post(
     &self,
     token: &str,

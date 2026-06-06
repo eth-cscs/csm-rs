@@ -14,6 +14,12 @@ impl ShastaClient {
   ///
   /// Useful when the caller needs access to status codes or headers
   /// before deciding how to deserialise the body.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_get_raw(
     &self,
     token: &str,
@@ -40,6 +46,12 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/groups/{label}`. Distinguishes unauthorized
   /// responses as [`Error::RequestError`] so callers can react to token
   /// problems differently from other HTTP errors.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_get_one(
     &self,
     token: &str,
@@ -76,6 +88,12 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/groups?group=…&tag=…`. Each value in
   /// `label_vec_opt` and `tag_vec_opt` becomes an additional repeated
   /// query parameter.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_get(
     &self,
     token: &str,
@@ -129,6 +147,12 @@ impl ShastaClient {
   /// List every HSM group on the system.
   ///
   /// Convenience wrapper for `hsm_group_get(None, None)`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_get_all(
     &self,
     token: &str,
@@ -140,6 +164,12 @@ impl ShastaClient {
   /// (substring match).
   ///
   /// Returns an empty `Vec` if `hsm_group_name_opt` is `None`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_get_hsm_group_vec(
     &self,
     token: &str,
@@ -164,6 +194,12 @@ impl ShastaClient {
   ///
   /// `POST /smd/hsm/v2/groups`. Returns the response body as text
   /// because CSM's success payload here is a plain string id, not JSON.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_post(
     &self,
     token: &str,
@@ -210,6 +246,12 @@ impl ShastaClient {
   ///
   /// Returns the constructed [`Group`] regardless of the response body
   /// shape; success of the underlying POST is logged.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_create_new_group(
     &self,
     token: &str,
@@ -243,6 +285,12 @@ impl ShastaClient {
   /// Delete an HSM group by label.
   ///
   /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_delete_group(
     &self,
     token: &str,
@@ -264,6 +312,12 @@ impl ShastaClient {
   /// Add a member (component xname) to an HSM group.
   ///
   /// `POST /smd/hsm/v2/groups/{hsm_group_name}/members`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_post_member(
     &self,
     token: &str,
@@ -290,6 +344,12 @@ impl ShastaClient {
   /// Remove a member (component xname) from an HSM group.
   ///
   /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}/members/{member_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_group_delete_member(
     &self,
     token: &str,

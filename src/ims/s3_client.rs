@@ -51,6 +51,12 @@ fn parse_sts_credentials(
 pub const BAR_FORMAT: &str = "[{elapsed_precise}] {bar:40.cyan/blue} ({bytes_per_sec}) {bytes:>7}/{total_bytes:7} {msg} [ETA {eta}]";
 /// Fetch an AWS STS token for the CSM-backing S3 store and return the
 /// raw STS JSON response.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn s3_auth(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -142,6 +148,12 @@ async fn setup_client(
 /// Gets the size of a given object in S3
 /// path of the object: s3://bucket/key
 /// returns i64 or error
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn s3_get_object_size(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -275,6 +287,12 @@ pub async fn s3_download_object(
 /// - `file_path` — local file to upload.
 ///
 /// For large files prefer [`s3_multipart_upload_object`].
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn s3_upload_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -313,6 +331,12 @@ pub async fn s3_upload_object(
 ///   `s3_auth()`.
 /// - `object_path` — path within `bucket` to delete.
 /// - `bucket` — source bucket.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn s3_remove_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,
@@ -352,6 +376,12 @@ pub async fn s3_remove_object(
 /// - `object_path` — path within `bucket` to upload to.
 /// - `bucket` — destination bucket.
 /// - `file_path` — local file to upload.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn s3_multipart_upload_object(
   sts_value: &Value,
   socks5_proxy: Option<&str>,

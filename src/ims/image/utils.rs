@@ -12,6 +12,12 @@ use crate::{
 ///
 /// Used to find images created by a CFS session that manta deliberately
 /// leaves un-renamed (so the CFS session retains its original image ID).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_fuzzy(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -49,6 +55,12 @@ pub async fn get_fuzzy(
 
 /// Return images whose name *exactly equals* `image_name`, restricted
 /// to the caller's available HSM groups.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -85,6 +97,12 @@ pub async fn get_by_name(
 /// Get Image using exact name match among the images available to the user based on the HSM groups
 /// the user has access to. If no image is found with the exact name match, then, an error will be
 /// returned.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn try_get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -149,6 +167,12 @@ pub fn filter(image_vec: &mut [Image]) {
 /// and a name-substring fallback. The CSM lookup is done once and the
 /// `&ShastaClient`'s connection pool is reused for every
 /// downstream call.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_with_details(
   client: &crate::ShastaClient,
   shasta_token: &str,
@@ -180,6 +204,12 @@ pub async fn get_with_details(
 /// Returns a list of `(Image, cfs_configuration_name, targets,
 /// is_boot_image)`. See [`get_with_details`] for the high-level
 /// description of the matching strategy.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -348,6 +378,12 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 ///  but we are extending the rules that defines if a user has access to an image because CSCS
 ///  staff deletes CFS sessions and BOS sessiontemplates so we may miss images related to the user
 ///  if we don't extend the rules)
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_image_available_vec(
   shasta_token: &str,
   shasta_base_url: &str,

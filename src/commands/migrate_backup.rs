@@ -21,6 +21,12 @@ use std::path::Path;
 /// - `bos` — name of the BOS session template to back up. Required.
 /// - `destination` — directory to write the archive into; created if
 ///   missing. Required.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn exec(
   shasta_token: &str,
   shasta_base_url: &str,

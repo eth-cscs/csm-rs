@@ -19,6 +19,12 @@ impl ShastaClient {
   /// `POST /capmc/capmc/v1/xname_off`. Use
   /// [`Self::capmc_node_power_off_post_sync`] to also wait until the
   /// nodes report as `off`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_off_post(
     &self,
     token: &str,
@@ -46,6 +52,12 @@ impl ShastaClient {
   ///
   /// This wrapper around [`Self::capmc_node_power_off_post`] polls
   /// `xname_status` until every target is down before returning.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_off_post_sync(
     &self,
     token: &str,
@@ -63,6 +75,12 @@ impl ShastaClient {
   /// immediately (fire-and-forget).
   ///
   /// `POST /capmc/capmc/v1/xname_on`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_on_post(
     &self,
     token: &str,
@@ -84,6 +102,12 @@ impl ShastaClient {
 
   /// Power on the given xnames and wait until CAPMC reports each one
   /// as `on`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_on_post_sync(
     &self,
     token: &str,
@@ -98,6 +122,12 @@ impl ShastaClient {
   /// Issue a CAPMC reinit (power-cycle) request and return immediately.
   ///
   /// `POST /capmc/capmc/v1/xname_reinit`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_reset_post(
     &self,
     token: &str,
@@ -123,6 +153,12 @@ impl ShastaClient {
   ///
   /// Implemented as `power_off_post_sync` followed by
   /// `power_on_post_sync` for the same set of xnames.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_reset_post_sync(
     &self,
     token: &str,
@@ -153,6 +189,12 @@ impl ShastaClient {
   /// Returns once every node is back on. Use this rather than
   /// [`Self::capmc_node_power_reset_post_sync`] when the target list is
   /// large and waiting for them serially would be too slow.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_reset_post_sync_vec(
     &self,
     token: &str,
@@ -191,6 +233,12 @@ impl ShastaClient {
   /// xnames.
   ///
   /// `POST /capmc/capmc/v1/get_xname_status` with source `redfish`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn capmc_node_power_status_post(
     &self,
     token: &str,

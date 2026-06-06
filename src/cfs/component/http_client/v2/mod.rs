@@ -19,6 +19,12 @@ impl ShastaClient {
   /// `components_ids` list and/or a `status`.
   ///
   /// `GET /cfs/v2/components`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get(
     &self,
     token: &str,
@@ -43,6 +49,12 @@ impl ShastaClient {
   /// List every CFS component.
   ///
   /// Convenience wrapper for `cfs_component_v2_get(None, None)`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get_all(
     &self,
     token: &str,
@@ -53,6 +65,12 @@ impl ShastaClient {
   /// Fetch one component by id.
   ///
   /// `GET /cfs/v2/components/{component_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get_single_component(
     &self,
     token: &str,
@@ -79,6 +97,12 @@ impl ShastaClient {
   /// Works around the CSM-side limit on how many ids a single
   /// `cfs_component_v2_get` request will accept. Order of returned
   /// components is not preserved.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get_multiple(
     &self,
     token: &str,
@@ -108,6 +132,12 @@ impl ShastaClient {
   /// Same batching strategy as [`Self::cfs_component_v2_get_multiple`],
   /// but each batch goes through [`Self::cfs_component_v2_get_query`]
   /// so callers can also filter by configuration name / status.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get_parallel(
     &self,
     token: &str,
@@ -140,6 +170,12 @@ impl ShastaClient {
   ///
   /// `GET /cfs/v2/components` with `config_name`, `ids`, and `status`
   /// query parameters.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_get_query(
     &self,
     token: &str,
@@ -172,6 +208,12 @@ impl ShastaClient {
   ///
   /// `PUT /cfs/v2/components/{component.id}`. Returns
   /// [`Error::CfsComponentFieldNotDefined`] if `component.id` is `None`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_put_component(
     &self,
     token: &str,
@@ -188,6 +230,12 @@ impl ShastaClient {
 
   /// Replace many CFS component records sequentially. Stops at the
   /// first error (the partial results before that error are dropped).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_put_component_list(
     &self,
     token: &str,
@@ -206,6 +254,12 @@ impl ShastaClient {
   /// Delete a CFS component by id.
   ///
   /// `DELETE /cfs/v2/components/{component_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_component_v2_delete_single_component(
     &self,
     token: &str,

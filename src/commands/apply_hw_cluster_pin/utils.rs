@@ -14,6 +14,12 @@ pub type NodeHwComponentCount = (String, HashMap<String, usize>);
 /// returning `(target_hsm, parent_hsm)` — the left element is the
 /// nodes moved into the target group, the right is what remains in the
 /// parent.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn resolve_hw_description_to_xnames(
   mut target_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
   mut parent_hsm_node_hw_component_count_vec: Vec<NodeHwComponentCount>,
@@ -156,6 +162,12 @@ pub fn get_best_candidate_in_target_and_parent_hsm_pin(
 /// number of nodes being changed in the cluster
 /// Returns a list of tuples, the first element is the xname and the last element is a hardware
 /// summary of the node
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn calculate_target_hsm_pin(
   user_defined_hsm_hw_components_count_hashmap: &HashMap<String, usize>, // hw
   // components summary the target hsm group should have according to user requests (this is
@@ -505,6 +517,12 @@ pub fn keep_iterating_final_hsm(
 /// Note: list of hw components can be either the hw componentn pattern provided by user or the
 /// description from the HSM API
 /// NOTE: backend it not borrowed because we need to clone it in order to use it across threads
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_node_hw_component_count(
   shasta_token: String,
   shasta_base_url: &str,
@@ -610,6 +628,12 @@ pub fn get_node_hw_properties_from_value(
 /// Inventory and produce a `(xname, component -> count)` row covering
 /// the `user_defined_hw_component_vec` of interest, with memory
 /// normalised against the supplied LCM.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_hsm_node_hw_component_counter(
   shasta_token: &str,
   shasta_base_url: &str,

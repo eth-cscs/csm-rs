@@ -7,6 +7,12 @@ use crate::{ShastaClient, common::http, error::Error};
 impl ShastaClient {
   /// `POST /bos/v1/session` — create a v1 BOS session for the given
   /// template name and operation (e.g. `boot`, `reboot`, `shutdown`).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_session_v1_post(
     &self,
     token: &str,

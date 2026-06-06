@@ -27,6 +27,12 @@ pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
 
 impl ShastaClient {
   /// Fetch all HSM components. `nid_only` toggles the lightweight nid-only response.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_get_all(
     &self,
     token: &str,
@@ -41,6 +47,12 @@ impl ShastaClient {
   }
 
   /// Fetch all HSM components with `Type=Node`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_get_all_nodes(
     &self,
     token: &str,
@@ -74,6 +86,12 @@ impl ShastaClient {
 
   /// `GET /hsm/v2/State/Components` then filter the result down to
   /// components whose xname appears in `xname_list`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_get_and_filter(
     &self,
     token: &str,
@@ -94,6 +112,12 @@ impl ShastaClient {
   /// parameters (id, type, state, flag, role, subrole, enabled,
   /// software status, subtype, arch, class, nid, nid range, partition,
   /// group, and the `*only` projection toggles).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_component_get(
     &self,
@@ -171,6 +195,12 @@ impl ShastaClient {
   /// with method + URL + RFC 7807 detail — same shape as
   /// `hsm_redfish_*` and the other `handle_json_or_request_error`
   /// users.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_get_one(
     &self,
     token: &str,
@@ -184,6 +214,12 @@ impl ShastaClient {
   }
 
   /// `POST /hsm/v2/State/Components` — create components in bulk.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_post(
     &self,
     token: &str,
@@ -223,6 +259,12 @@ impl ShastaClient {
 
   /// `POST /hsm/v2/State/Components` query — components matching the
   /// supplied criteria.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_post_query(
     &self,
     token: &str,
@@ -262,6 +304,12 @@ impl ShastaClient {
 
   /// `POST /hsm/v2/State/Components/ByNID/Query` — components matching
   /// the supplied NID query.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_post_bynid_query(
     &self,
     token: &str,
@@ -301,6 +349,12 @@ impl ShastaClient {
   }
 
   /// `PUT /hsm/v2/State/Components/{xname}` — replace a component.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_put(
     &self,
     token: &str,
@@ -342,6 +396,12 @@ impl ShastaClient {
 
   /// `DELETE /hsm/v2/State/Components/{xname}` — remove a single
   /// component.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_delete_one(
     &self,
     token: &str,
@@ -360,6 +420,12 @@ impl ShastaClient {
   }
 
   /// `DELETE /hsm/v2/State/Components` — remove all components.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_delete(
     &self,
     token: &str,

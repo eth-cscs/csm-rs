@@ -27,6 +27,12 @@ impl ShastaClient {
   ///
   /// See <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>
   /// for the underlying REST contract.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   #[allow(clippy::too_many_arguments)]
   pub async fn cfs_session_v3_get(
     &self,
@@ -89,6 +95,12 @@ impl ShastaClient {
   /// Create a new CFS session via the v3 API.
   ///
   /// `POST /cfs/v3/sessions`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v3_post(
     &self,
     token: &str,
@@ -103,6 +115,12 @@ impl ShastaClient {
   /// Delete a CFS session by name via the v3 API.
   ///
   /// `DELETE /cfs/v3/sessions/{session_name}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_session_v3_delete(
     &self,
     token: &str,

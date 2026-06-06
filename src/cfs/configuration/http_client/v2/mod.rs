@@ -22,6 +22,12 @@ impl ShastaClient {
   /// `GET /cfs/v2/configurations[/{name}]`. Always returns a `Vec` for
   /// uniform handling at the call site — single-name lookups produce a
   /// one-element vector.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v2_get(
     &self,
     token: &str,
@@ -61,6 +67,12 @@ impl ShastaClient {
   /// List every CFS configuration on the system.
   ///
   /// Convenience wrapper for `cfs_configuration_v2_get(None)`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v2_get_all(
     &self,
     token: &str,
@@ -73,6 +85,12 @@ impl ShastaClient {
   ///
   /// `PUT /cfs/v2/configurations/{configuration_name}`. The request body
   /// is `{ "layers": configuration.layers }`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v2_put(
     &self,
     token: &str,
@@ -104,6 +122,12 @@ impl ShastaClient {
   /// `DELETE /cfs/v2/configurations/{configuration_id}`. CFS rejects
   /// the delete if the configuration is still referenced by an image
   /// or runtime binding; that surfaces as an HTTP error.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v2_delete(
     &self,
     token: &str,

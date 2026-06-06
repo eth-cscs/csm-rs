@@ -7,6 +7,12 @@ use super::types::RecipeGetResponse;
 impl ShastaClient {
   /// Fetch IMS recipes. If `recipe_id_opt` is `Some`, only that recipe is
   /// returned (wrapped in a single-element Vec); otherwise all recipes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_recipe_get(
     &self,
     token: &str,

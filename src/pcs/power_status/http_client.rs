@@ -18,6 +18,12 @@ impl ShastaClient {
   /// - `power_state_filter_opt` — e.g. `"on"`, `"off"`, `"undefined"`.
   /// - `management_state_filter_opt` — e.g. `"available"`,
   ///   `"unavailable"`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn pcs_power_status_post(
     &self,
     token: &str,

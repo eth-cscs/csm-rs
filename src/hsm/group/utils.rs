@@ -15,6 +15,12 @@ use super::types::Member;
 /// Return the full HSM groups visible to the caller — all groups for
 /// admins (`pa_admin` realm role), otherwise filtered to those named in
 /// the caller's Keycloak roles, with site-wide groups stripped.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_group_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
@@ -61,6 +67,12 @@ pub async fn get_group_available(
 /// Return the names of HSM groups visible to the caller — all groups
 /// for admins, otherwise derived from the JWT's Keycloak roles with
 /// site-wide group names stripped.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_group_name_available(
   shasta_auth_token: &str,
   shasta_base_url: &str,
@@ -124,6 +136,12 @@ pub async fn get_group_name_available(
 
 /// Add a list of xnames to target HSM group
 /// Returns the new list of nodes in target HSM group
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn add_member(
   auth_token: &str,
   base_url: &str,
@@ -170,6 +188,12 @@ pub async fn add_member(
 }
 
 /// Removes list of xnames from  HSM group
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn remove_hsm_members(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -240,6 +264,12 @@ pub async fn remove_hsm_members(
 }
 
 /// Moves list of xnames from parent to target HSM group
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn migrate_hsm_members(
   shasta_token: &str,
@@ -331,6 +361,12 @@ pub async fn migrate_hsm_members(
 }
 
 /// Receives 2 lists of xnames old xnames to remove from parent HSM group and new xhanges to add to target HSM group, and does just that
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn update_hsm_group_members(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -372,6 +408,12 @@ pub async fn update_hsm_group_members(
 
 /// Return a `HashMap` keyed by xname, valued with the group labels each
 /// xname belongs to. Restricted to the provided `xname_vec`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_xname_map_and_filter_by_xname_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -405,6 +447,12 @@ pub async fn get_xname_map_and_filter_by_xname_vec(
 
 /// Return a `HashMap` keyed by HSM group label with the member xnames
 /// as values, restricted to the given `hsm_name_vec` labels.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -428,6 +476,12 @@ pub async fn get_hsm_map_and_filter_by_hsm_name_vec(
 
 /// Return a `HashMap` keyed by HSM group label with member xnames as
 /// values, restricted to groups containing any xname in `member_vec`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -525,6 +579,12 @@ pub fn get_member_vec_from_hsm_group(hsm_group: &Group) -> Vec<String> {
 /// and `tenant_b: [x1003c1s7b1n0]`, calling with `hsm_name_vec:
 /// &["tenant_a", "tenant_b"]` returns `[x1003c1s7b0n0, x1003c1s7b0n1,
 /// x1003c1s7b1n0]`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_member_vec_from_hsm_name_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -621,6 +681,12 @@ pub struct GroupMembers {
 /// Lifted from the former `crate::common::cluster_ops::get_details`;
 /// the operation is purely an HSM-group lookup + member expansion, so
 /// it belongs in this namespace.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_members_for_groups_matching(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -650,6 +716,12 @@ pub async fn get_members_for_groups_matching(
 }
 
 /// Fetch a single HSM group by label and return its member xnames.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_member_vec_from_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,

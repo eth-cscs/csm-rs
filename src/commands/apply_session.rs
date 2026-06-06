@@ -13,6 +13,12 @@ use serde_json::Value;
 /// Creates a CFS session target dynamic.
 ///
 /// Returns a tuple like (`cfs configuration name`, `cfs session name`).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   client: &crate::ShastaClient,
@@ -158,6 +164,12 @@ pub async fn exec(
 /// session for `cfs_configuration_name`. Useful as a pre-flight wrapper
 /// around the lower-level CFS session APIs when nodes might still be
 /// running a previous configuration.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   client: &crate::ShastaClient,

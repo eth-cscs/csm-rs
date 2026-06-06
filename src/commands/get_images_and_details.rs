@@ -9,6 +9,12 @@ use crate::{error::Error, ims::image::http_client::types::Image};
 
 /// See [`crate::ims::image::utils::get_with_details`] for the full
 /// description.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_images_and_details(
   client: &crate::ShastaClient,
   shasta_token: &str,

@@ -3,6 +3,12 @@
 use crate::{ShastaClient, error::Error, ims::job::types::Job};
 
 /// Wait for an IMS job to finish (polls every 2s, max 1800 attempts ~ 1h).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_ims_job_to_finish(
   shasta_token: &str,
   shasta_base_url: &str,

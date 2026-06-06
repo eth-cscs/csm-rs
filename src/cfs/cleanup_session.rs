@@ -34,6 +34,12 @@ use crate::{
 ///   used to decide what needs cleaning up.
 /// - `dry_run` — when `true`, log the intended deletions without
 ///   mutating CSM.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
   client: &crate::ShastaClient,

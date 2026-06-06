@@ -12,6 +12,12 @@ impl ShastaClient {
   /// `GET /smd/hsm/v2/State/Components?id=…&id=…`. Use
   /// [`Self::hsm_component_status_get`] instead when the list might be
   /// large — CSM rejects requests with more than ~30 ids.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_status_get_raw(
     &self,
     token: &str,
@@ -50,6 +56,12 @@ impl ShastaClient {
   /// Wraps [`Self::hsm_component_status_get_raw`] to work around the
   /// per-request id limit on `GET /smd/hsm/v2/State/Components`. Order
   /// of the returned values is not preserved.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_component_status_get(
     &self,
     token: &str,

@@ -18,6 +18,12 @@ use crate::{
 
 /// Attach to the `cray-console-node` pod that owns the given xname's
 /// serial console (via conman) and return the open process handle.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_container_attachment_to_conman(
   xname: &str,
   k8s_api_url: &str,
@@ -116,6 +122,12 @@ pub async fn get_container_attachment_to_conman(
 
 /// Attach to the Ansible container of a CFS session's image-build pod
 /// so the caller can stream its logs / shell.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_container_attachment_to_cfs_session_image_target(
   cfs_session_name: &str,
   k8s_api_url: &str,

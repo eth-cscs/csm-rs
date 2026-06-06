@@ -6,6 +6,12 @@ use super::types::Membership;
 
 impl ShastaClient {
   /// `GET /hsm/v2/memberships` — every membership record HSM knows.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_memberships_get_all(
     &self,
     token: &str,
@@ -16,6 +22,12 @@ impl ShastaClient {
 
   /// `GET /hsm/v2/memberships/{xname}` — membership record for a
   /// single component.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_memberships_get_xname(
     &self,
     token: &str,

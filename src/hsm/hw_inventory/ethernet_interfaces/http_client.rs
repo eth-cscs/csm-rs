@@ -10,6 +10,12 @@ use super::types::{ComponentEthernetInterface, IpAddressMapping};
 impl ShastaClient {
   /// `POST /hsm/v2/Inventory/EthernetInterfaces` — register a new
   /// ethernet interface for a component.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_eth_post(
     &self,
     token: &str,
@@ -49,6 +55,12 @@ impl ShastaClient {
 
   /// `POST /hsm/v2/Inventory/EthernetInterfaces/{component_id}/IPAddresses`
   /// — add IP address mappings to an existing component's interface.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_eth_post_ip_addresses(
     &self,
     token: &str,
@@ -96,6 +108,12 @@ impl ShastaClient {
   }
 
   /// Get list of network interfaces. Ref: <https://csm12-apidocs.svc.cscs.ch/iaas/hardware-state-manager/operation/doCompEthInterfacesGetV2/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_eth_get(
     &self,
@@ -135,6 +153,12 @@ impl ShastaClient {
   /// `PATCH /hsm/v2/Inventory/EthernetInterfaces/{id}` — update the
   /// description, owning component, or IP/network mapping of an
   /// existing ethernet interface.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_eth_patch(
     &self,
     token: &str,

@@ -7,6 +7,12 @@ use globset::Glob;
 
 /// Filter a vector of BOS session templates in place by configuration
 /// glob, target HSM groups, target xnames, and an optional row limit.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn filter(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   configuration_name_pattern_opt: Option<&str>,

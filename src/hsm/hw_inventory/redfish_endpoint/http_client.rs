@@ -13,6 +13,12 @@ impl ShastaClient {
   /// Query Redfish endpoints filtered by xname.
   ///
   /// `GET /smd/hsm/v2/Inventory/RedfishEndpoint/Query/{xname}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_get_query(
     &self,
     token: &str,
@@ -38,6 +44,12 @@ impl ShastaClient {
   /// List Redfish endpoints with optional filters.
   ///
   /// `GET /smd/hsm/v2/Inventory/RedfishEndpoints`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   #[allow(clippy::too_many_arguments)]
   pub async fn hsm_redfish_get(
     &self,
@@ -67,6 +79,12 @@ impl ShastaClient {
   /// Fetch one Redfish endpoint by xname.
   ///
   /// `GET /smd/hsm/v2/Inventory/RedfishEndpoints/{xname}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_get_one(
     &self,
     token: &str,
@@ -86,6 +104,12 @@ impl ShastaClient {
   /// URIs (typically one entry per posted endpoint).
   ///
   /// `POST /smd/hsm/v2/Inventory/RedfishEndpoints`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_post(
     &self,
     token: &str,
@@ -107,6 +131,12 @@ impl ShastaClient {
 
   /// `PUT /hsm/v2/State/Components/{xname}` — replace a Redfish
   /// endpoint definition.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_put(
     &self,
     token: &str,
@@ -129,6 +159,12 @@ impl ShastaClient {
 
   /// `DELETE /hsm/v2/Inventory/RedfishEndpoints` — remove every Redfish
   /// endpoint.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_delete_all(
     &self,
     token: &str,
@@ -148,6 +184,12 @@ impl ShastaClient {
 
   /// `DELETE /hsm/v2/Inventory/RedfishEndpoints/{xname}` — remove one
   /// Redfish endpoint.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn hsm_redfish_delete_one(
     &self,
     token: &str,

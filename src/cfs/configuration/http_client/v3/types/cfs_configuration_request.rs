@@ -98,6 +98,11 @@ impl CfsConfigurationRequest {
     }
   }
 
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn from_sat_file_serde_yaml(
     shasta_root_cert: &[u8],
     gitea_base_url: &str,
@@ -322,6 +327,11 @@ impl CfsConfigurationRequest {
     Ok((cfs_configuration_name, cfs_configuration))
   }
 
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn create_from_repos(
     gitea_token: &str,
     gitea_base_url: &str,

@@ -16,6 +16,12 @@ use crate::{
 
 impl ShastaClient {
   /// Get BOS session templates. Ref: <https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v2_get(
     &self,
     token: &str,
@@ -40,6 +46,12 @@ impl ShastaClient {
 
   /// `GET /bos/v2/sessiontemplates` — list every BOS v2 session
   /// template.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v2_get_all(
     &self,
     token: &str,
@@ -49,6 +61,12 @@ impl ShastaClient {
 
   /// `PUT /bos/v2/sessiontemplates/{name}` — create or replace a BOS
   /// v2 session template.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v2_put(
     &self,
     token: &str,
@@ -71,6 +89,12 @@ impl ShastaClient {
   }
 
   /// Delete BOS session templates.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v2_delete(
     &self,
     token: &str,

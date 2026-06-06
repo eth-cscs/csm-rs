@@ -26,6 +26,12 @@ use super::http_client::{
 
 /// Create (or replace, when `overwrite=true`) a CFS v2 configuration
 /// by name.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn create_new_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -87,6 +93,12 @@ pub async fn create_new_configuration(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub fn filter(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
@@ -226,6 +238,12 @@ pub fn filter(
 /// If filtering by HSM group, then configuration name must include HSM group name (It assumms each configuration
 /// is built for a specific cluster based on ansible vars used by the CFS session). The reason
 /// for this is because CSCS staff deletes all CFS sessions every now and then...
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_and_filter(
   shasta_token: &str,
@@ -295,6 +313,12 @@ pub async fn get_and_filter(
 /// Collect everything that references a CFS configuration: the CFS
 /// sessions that ran against it, the IMS images it produced, and the
 /// BOS session templates that consume those images.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_derivatives(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -366,6 +390,12 @@ pub async fn get_derivatives(
 
 /// Resolve a CFS configuration layer to its detailed view by calling
 /// Gitea for the layer's repo metadata (commit message, author, etc.).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_configuration_layer_details(
   shasta_root_cert: &[u8],
   gitea_base_url: &str,

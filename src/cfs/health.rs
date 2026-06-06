@@ -7,6 +7,12 @@ use crate::error::Error;
 /// Verify connectivity to the CSM CFS service by issuing `GET /cfs/healthz`
 /// with a 3-second connect timeout. Used to short-circuit slow failure
 /// paths during startup.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn test_connectivity_to_backend(
   shasta_base_url: &str,
 ) -> Result<(), Error> {

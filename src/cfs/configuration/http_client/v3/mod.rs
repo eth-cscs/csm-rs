@@ -24,6 +24,12 @@ impl ShastaClient {
   /// `GET /cfs/v3/configurations[/{name}]`. CFS v3 returns plain-text
   /// error bodies and a different success shape for single vs. list
   /// lookups; both are normalised here.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v3_get(
     &self,
     token: &str,
@@ -66,6 +72,12 @@ impl ShastaClient {
   /// `PUT`, this checks first via [`Self::cfs_configuration_v3_get`]
   /// and returns [`Error::Message`] if a configuration with the same
   /// name is already present.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v3_put(
     &self,
     token: &str,
@@ -123,6 +135,12 @@ impl ShastaClient {
   /// Delete a CFS configuration by id via the v3 API.
   ///
   /// `DELETE /cfs/v3/configurations/{configuration_id}`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn cfs_configuration_v3_delete(
     &self,
     token: &str,

@@ -10,6 +10,12 @@ use crate::{
 
 impl ShastaClient {
   /// Get BOS session templates. Ref: <https://apidocs.svc.cscs.ch/paas/bos/operation/get_v1_sessiontemplates/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v1_get(
     &self,
     token: &str,
@@ -37,6 +43,12 @@ impl ShastaClient {
 
   /// `POST /bos/v1/sessiontemplate` — create a v1 BOS session
   /// template.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn bos_template_v1_post(
     &self,
     token: &str,

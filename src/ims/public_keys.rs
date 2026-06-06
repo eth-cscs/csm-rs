@@ -20,6 +20,12 @@ pub struct PublicKey {
 impl ShastaClient {
   /// Get one user public key in IMS. Returns `None` if no key matches the
   /// username or more than one matches.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_public_keys_v3_get_single(
     &self,
     token: &str,
@@ -36,6 +42,12 @@ impl ShastaClient {
 
   /// Fetch IMS public keys, optionally filtered by `username`. Ref:
   /// <https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_public_keys_v3_get(
     &self,
     token: &str,

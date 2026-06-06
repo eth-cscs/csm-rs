@@ -17,6 +17,12 @@ use crate::{ShastaClient, error::Error};
 impl ShastaClient {
   /// `GET /ims/v3/images` (or `/ims/v3/images/{id}` if `image_id_opt`
   /// is supplied) — list IMS images or fetch one by ID.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_image_get(
     &self,
     token: &str,
@@ -65,6 +71,12 @@ impl ShastaClient {
   }
 
   /// `GET /ims/v3/images` — every IMS image.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_image_get_all(
     &self,
     token: &str,
@@ -73,6 +85,12 @@ impl ShastaClient {
   }
 
   /// Register a new image in IMS.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_image_post(
     &self,
     token: &str,
@@ -96,6 +114,12 @@ impl ShastaClient {
   }
 
   /// Delete an IMS image (soft delete + permanent deletion in sequence).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_image_delete(
     &self,
     token: &str,
@@ -141,6 +165,12 @@ impl ShastaClient {
   }
 
   /// Patch an IMS image record (link to S3 manifest, metadata, etc).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn ims_image_patch(
     &self,
     token: &str,
