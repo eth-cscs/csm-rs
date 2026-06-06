@@ -178,9 +178,11 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
   if let Err(e) = response.error_for_status_ref() {
     match response.status() {
       reqwest::StatusCode::UNAUTHORIZED => {
+        let url = response.url().to_string();
         let payload = response.text().await.map_err(Error::NetError)?;
         return Err(Error::RequestError {
           response: e,
+          url,
           payload,
         });
       }

@@ -29,9 +29,11 @@ impl ShastaClient {
     if let Err(e) = response.error_for_status_ref() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
+          let url = response.url().to_string();
           let error_payload = response.text().await?;
           return Err(Error::RequestError {
             response: e,
+            url,
             payload: error_payload,
           });
         }
@@ -75,9 +77,11 @@ impl ShastaClient {
     if let Err(e) = response.error_for_status_ref() {
       match response.status() {
         reqwest::StatusCode::UNAUTHORIZED => {
+          let url = response.url().to_string();
           let error_payload = response.text().await?;
           return Err(Error::RequestError {
             response: e,
+            url,
             payload: error_payload,
           });
         }

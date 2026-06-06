@@ -59,9 +59,15 @@ pub enum Error {
   #[cfg(feature = "ims-s3")]
   #[error("CSM-RS > URL parse error: {0}")]
   SmithyDataStreamError(#[from] byte_stream::error::Error),
-  #[error("http request:\nresponse: {response}\npayload: {payload}")]
+  #[error(
+    "http request:\nurl: {url}\nresponse: {response}\npayload: {payload}"
+  )]
   RequestError {
     response: reqwest::Error,
+    /// URL that returned the error. Captured for log-correlation so an
+    /// operator seeing a 401 can grep production logs for the endpoint
+    /// that rejected the token. Same role as `CsmError::{method, url}`.
+    url: String,
     payload: String, // NOTE: CSM/OCHAMI Apis either returns plain text or a json therefore, we
                      // will just return a String
   },
@@ -218,9 +224,18 @@ impl From<crate::error::Error> for MantaError {
       Error::SerdeJsonError(e) => MantaError::SerdeError(e),
       Error::SerdeYamlError(e) => MantaError::YamlError(e),
       Error::NetError(e) => MantaError::NetError(e),
-      Error::RequestError { response, payload } => {
-        MantaError::RequestError { response, payload }
-      }
+      Error::RequestError {
+        response,
+        url,
+        payload,
+      } => MantaError::RequestError {
+        response,
+        // The dispatcher's `RequestError` variant only carries
+        // `{response, payload}`; fold our `url` into the start of the
+        // payload so it survives the boundary. Lift to a dedicated
+        // field when manta-backend-dispatcher gains one.
+        payload: format!("url: {url}\npayload: {payload}"),
+      },
       Error::CsmError {
         method,
         url,
