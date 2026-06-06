@@ -71,7 +71,7 @@ pub async fn validate_sat_file_session_template_section(
 
     for hsm_group in bos_session_template_hsm_groups {
       if !hsm_group_available_vec.contains(&hsm_group) {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "HSM group '{}' in session_templates {} not allowed, List of HSM groups available {:?}. Exit",
           hsm_group, session_template_yaml.name, hsm_group_available_vec
         )));
@@ -97,7 +97,7 @@ pub async fn validate_sat_file_session_template_section(
         .any(|image| image.ref_name.eq(&Some(ref_name_to_find).cloned()));
 
       if !image_ref_name_found {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Could not find image ref '{}' in SAT file. Exit",
           ref_name_to_find
         )));
@@ -145,7 +145,7 @@ pub async fn validate_sat_file_session_template_section(
           }
 
           if !image_found {
-            return Err(Error::Message(format!(
+            return Err(Error::SatFile(format!(
               "Could not find image name '{}' in session_template '{}'. Exit",
               image_name_substr_to_find, session_template_yaml.name
             )));
@@ -169,7 +169,7 @@ pub async fn validate_sat_file_session_template_section(
           .is_ok();
 
           if !image_found {
-            return Err(Error::Message(format!(
+            return Err(Error::SatFile(format!(
               "Could not find image id '{}' in session_template '{}'. Exit",
               image_id, session_template_yaml.name
             )));
@@ -187,7 +187,7 @@ pub async fn validate_sat_file_session_template_section(
         .any(|image| image.name.eq(&image_name.clone()));
 
       if !image_ref_name_found {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Could not find image '{}' in SAT file. Exit",
           image_name
         )));
@@ -235,7 +235,7 @@ pub async fn validate_sat_file_session_template_section(
       .is_ok();
 
       if !configuration_found {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Could not find configuration '{}' in session_template '{}'. Exit",
           session_template_yaml.configuration, session_template_yaml.name,
         )));
@@ -391,13 +391,13 @@ pub async fn process_session_template_section_in_sat_file(
 
     // let ims_image_name = image_details.name.to_string();
     let image_link = image_details.link.as_ref().ok_or_else(|| {
-      Error::Message(format!(
+      Error::SatFile(format!(
         "IMS image '{}' has no 'link' (no S3 manifest)",
         image_details.name
       ))
     })?;
     let ims_image_etag: &str = image_link.etag.as_deref().ok_or_else(|| {
-      Error::Message(format!(
+      Error::SatFile(format!(
         "IMS image '{}' link has no 'etag'",
         image_details.name
       ))
@@ -481,7 +481,7 @@ pub async fn process_session_template_section_in_sat_file(
       // Check hsm groups in SAT file includes the hsm_group_param
       for node_group in node_groups_opt.clone().unwrap_or_default() {
         if !hsm_group_available_vec.contains(&node_group) {
-          return Err(Error::Message(format!(
+          return Err(Error::SatFile(format!(
             "User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit",
             node_group
           )));
@@ -704,7 +704,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
 
       Ok((image_id, true))
     } else {
-      Err(Error::Message("neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()))
+      Err(Error::SatFile("neither 'image.ims.name' nor 'image.ims.id' fields defined in session_template.".to_string()))
     }
   } else if let Some(bos_session_template_image_image_ref) =
     bos_sessiontemplate_image.get("image_ref")
@@ -739,7 +739,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
 
     Ok((image_name.to_string(), false))
   } else {
-    Err(Error::Message("neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()))
+    Err(Error::SatFile("neither 'image.ims' nor 'image.image_ref' nor 'image.<image id>' sections found in session_template.image.\nExit".to_string()))
   }
 }
 
@@ -891,7 +891,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
         .as_object()
         .cloned()
         .ok_or_else(|| {
-          Error::Message(format!(
+          Error::SatFile(format!(
             "Cray product catalog: '{}.{}.{}' is missing or not an object",
             product_name, product_version, product_type
           ))
@@ -916,7 +916,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           .and_then(serde_json::Value::as_str)
           .map(str::to_string)
           .ok_or_else(|| {
-            Error::Message(format!(
+            Error::SatFile(format!(
               "Cray product catalog: '{}.{}.{}' has no entries with an 'id' field",
               product_name, product_version, product_type
             ))

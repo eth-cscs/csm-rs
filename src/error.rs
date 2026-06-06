@@ -154,6 +154,13 @@ pub enum Error {
   /// name, version, etc.).
   #[error("CSM-RS > Cray product catalog: {0}")]
   CrayProductCatalog(String),
+  /// SAT-file processing error: validation failure, unrecognised
+  /// section shape, referenced image/configuration missing, or an
+  /// HSM-group access check rejecting the file. The string
+  /// describes what's wrong; the caller's UX surface is "tell the
+  /// user to fix their SAT file".
+  #[error("CSM-RS > SAT file: {0}")]
+  SatFile(String),
 }
 
 impl Error {
@@ -314,6 +321,7 @@ impl From<crate::error::Error> for MantaError {
       Error::CrayProductCatalog(s) => {
         MantaError::NotFound(format!("Cray product catalog: {s}"))
       }
+      Error::SatFile(s) => MantaError::Message(format!("SAT file: {s}")),
     }
   }
 }

@@ -280,7 +280,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     let cfs_session = match cfs_session_rslt {
       Ok(cfs_session) => cfs_session,
       Err(e) => {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Could not create Image. Reason:\n{}",
           e
         )));
@@ -288,7 +288,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
     };
 
     if !cfs_session.is_success() {
-      return Err(Error::Message(format!(
+      return Err(Error::SatFile(format!(
         "CFS session '{}' failed. Exit",
         cfs_session.name
       )));
@@ -532,7 +532,7 @@ async fn get_session_from_image_yaml(
   if !invalid_groups.is_empty() {
     log::debug!("CFS session group validation - failed");
 
-    return Err(Error::Message(format!(
+    return Err(Error::SatFile(format!(
       "Please fix 'images' section in SAT file.\nInvalid groups: {:?}",
       invalid_groups
     )));
@@ -643,7 +643,7 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   };
 
   ims_job.resultant_image_id.ok_or_else(|| {
-    Error::Message(format!(
+    Error::SatFile(format!(
       "IMS job for image '{}' did not produce a resultant_image_id",
       image_name
     ))
@@ -679,13 +679,13 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
 
   // Check recipe with requested name exists
   let recipe_detail = recipe_detail_opt.ok_or_else(|| {
-    Error::Message(format!(
+    Error::SatFile(format!(
       "IMS recipe with name '{}' - not found. Exit",
       recipe_name
     ))
   })?;
   let recipe_id = recipe_detail.id.as_ref().ok_or_else(|| {
-    Error::Message(format!("IMS recipe '{}' has no 'id' field", recipe_name))
+    Error::SatFile(format!("IMS recipe '{}' has no 'id' field", recipe_name))
   })?;
 
   log::debug!("IMS recipe id found '{}'", recipe_id);
@@ -750,7 +750,7 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   log::debug!("IMS job response:\n{:#?}", ims_job);
 
   ims_job.resultant_image_id.ok_or_else(|| {
-    Error::Message(format!(
+    Error::SatFile(format!(
       "IMS job for image '{}' did not produce a resultant_image_id",
       image_name
     ))
@@ -767,7 +767,7 @@ pub(super) fn process_sat_file_image_old_version_struct(
   {
     Ok(id.to_string())
   } else {
-    Err(Error::Message("Functionality not built. Exit".to_string()))
+    Err(Error::SatFile("Functionality not built. Exit".to_string()))
   }
 }
 
@@ -921,7 +921,7 @@ pub fn validate_sat_file_images_section(
         );
 
         if !is_image_base_id_in_csm {
-          return Err(Error::Message(format!(
+          return Err(Error::SatFile(format!(
             "Could not find base image id '{}' in image '{}'. Exit",
             id, image_yaml.name
           )));
@@ -946,7 +946,7 @@ pub fn validate_sat_file_images_section(
         });
 
         if !image_found {
-          return Err(Error::Message(format!(
+          return Err(Error::SatFile(format!(
             "Could not find image with ref name '{}' in SAT file. Cancelling image build proccess. Exit",
             image_ref.as_str(),
           )));
@@ -1077,7 +1077,7 @@ pub fn validate_sat_file_images_section(
                 .any(|recipe| recipe.name.eq(image_base_ims_name_to_find));
 
               if !image_found {
-                return Err(Error::Message(format!(
+                return Err(Error::SatFile(format!(
                   "Could not find IMS recipe '{}' in CSM. Cancelling image build proccess. Exit",
                   image_base_ims_name_to_find,
                 )));
@@ -1099,7 +1099,7 @@ pub fn validate_sat_file_images_section(
                 .any(|image| image.name.contains(image_base_ims_name_to_find));
 
               if !image_found {
-                return Err(Error::Message(format!(
+                return Err(Error::SatFile(format!(
                   "Could not find image base '{}' in image '{}'. Cancelling image build proccess. Exit",
                   image_base_ims_name_to_find, image_name
                 )));
@@ -1113,13 +1113,13 @@ pub fn validate_sat_file_images_section(
           );
         };
       } else {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Image '{}' yaml not recognised. Exit",
           image_name
         )));
       }
     } else {
-      return Err(Error::Message(format!(
+      return Err(Error::SatFile(format!(
         "Image '{}' neither have 'ims' nor 'base' value. Exit",
         image_name
       )));
@@ -1160,7 +1160,7 @@ pub fn validate_sat_file_images_section(
         });
 
         if !configuration_found {
-          return Err(Error::Message(format!(
+          return Err(Error::SatFile(format!(
             "Could not find configuration '{}' in image '{}'. Cancelling image build proccess. Exit",
             configuration_name_to_find, image_name
           )));
@@ -1181,7 +1181,7 @@ pub fn validate_sat_file_images_section(
         );
 
       if configuration_group_names_vec.is_empty() {
-        return Err(Error::Message(format!(
+        return Err(Error::SatFile(format!(
           "Image '{}' must have group name values assigned to it. Canceling image build process. Exit",
           image_name
         )));
@@ -1194,7 +1194,7 @@ pub fn validate_sat_file_images_section(
           })
         {
           if !hsm_group_available_vec.contains(hsm_group) {
-            return Err(Error::Message(format!(
+            return Err(Error::SatFile(format!(
               "HSM group '{}' in image '{}' not allowed, List of HSM groups available:\n{:?}. Exit",
               hsm_group, image_yaml.name, hsm_group_available_vec
             )));
