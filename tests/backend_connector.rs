@@ -19,8 +19,10 @@ use manta_backend_dispatcher::interfaces::{
   bss::BootParametersTrait,
   cfs::CfsTrait,
   hsm::{
-    component::ComponentTrait, group::GroupTrait,
-    hardware_inventory::HardwareInventory, redfish_endpoint::RedfishEndpointTrait,
+    component::ComponentTrait,
+    component_ethernet_interface::ComponentEthernetInterfaceTrait,
+    group::GroupTrait, hardware_inventory::HardwareInventory,
+    redfish_endpoint::RedfishEndpointTrait,
   },
   ims::ImsTrait,
   pcs::PCSTrait,
@@ -130,6 +132,11 @@ async fn pcs_transitions_get_hits_v1_transitions_by_id() {
   Mock::given(method("GET"))
     .and(path("/power-control/v1/transitions/tr-123"))
     .and(bearer_token(TEST_TOKEN))
+    // NOTE: PCS uses camelCase keys for the top-level fields
+    // (`transitionID`, `taskCounts`, `createTime`,
+    // `automaticExpirationTime`) but **kebab-case** for the
+    // task-counts entries (`in-progress`, `un-supported`). Both forms
+    // must be present or `serde` rejects the response.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "transitionID": "tr-123",
       "operation": "On",
@@ -173,6 +180,12 @@ async fn pcs_transitions_post_hits_v1_transitions() {
     .await;
 
   let csm = make_csm(&server.uri());
+  // NOTE: `pcs_transitions_post` takes a `&str` and parses it
+  // through `Operation::from_str` (which accepts lowercase: "on",
+  // "off", "soft-restart", ...). The parsed enum is then re-
+  // serialised before sending, producing the wire form ("On",
+  // "Off", "Soft-Restart") — that's why the `body_partial_json`
+  // matcher above expects `"On"` even though we pass `"on"` here.
   let started = csm
     .pcs_transitions_post(TEST_TOKEN, "on", &["x1000c0s0b0n0".to_string()])
     .await
@@ -227,6 +240,10 @@ async fn group_delete_group_hits_singular_endpoint() {
   Mock::given(method("DELETE"))
     .and(path("/smd/hsm/v2/groups/zinal"))
     .and(bearer_token(TEST_TOKEN))
+    // NOTE: `HsmActionResponse.code` deserialises as a *String*, not
+    // an integer. Returning `"code": 0` would fail with `expected a
+    // string` even though every real CSM response uses a numeric
+    // string like "0".
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "code": "0", "message": "deleted"
     })))
@@ -341,6 +358,11 @@ async fn pcs_power_status_posts_filters() {
       "powerStateFilter": "on",
       "managementStateFilter": "available",
     })))
+    // NOTE: PCS `PowerStatus` requires *both* `supportedPowerTransitions`
+    // (an array, possibly empty) and `lastUpdated` (camelCase) on every
+    // entry. Omitting either rejects deserialisation; an early mock
+    // shape that dropped them silently produced "missing field" errors
+    // that were easy to mistake for a routing bug.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "status": [{
         "xname": "x1000c0s0b0n0",
@@ -531,6 +553,10 @@ async fn cfs_get_configuration_hits_v3_configurations() {
   Mock::given(method("GET"))
     .and(path("/cfs/v3/configurations"))
     .and(bearer_token(TEST_TOKEN))
+    // NOTE: CFS v3 configuration responses use `last_updated`
+    // (snake_case) — in contrast to PCS v1, which uses `lastUpdated`
+    // (camelCase). The two services were written by different teams
+    // and never reconciled.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "configurations": [
         {"name": "cfg-1", "last_updated": "2026-01-01T00:00:00Z", "layers": []}
@@ -647,6 +673,11 @@ async fn hw_inventory_get_hits_hardware_endpoint() {
   Mock::given(method("GET"))
     .and(path("/smd/hsm/v2/Inventory/Hardware"))
     .and(bearer_token(TEST_TOKEN))
+    // NOTE: `NodeSummary::try_from_csm_value` requires `ID` *and*
+    // `Type`, plus the four per-category arrays (`Processors`,
+    // `Memory`, `NodeAccels`, `NodeHsnNics`) — empty arrays are fine
+    // but they must be present. Missing `Type` produces a confusing
+    // `HsmInventoryShape("required field 'Type' is missing")` error.
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "Nodes": [{
         "ID": "x1000c0s0b0n0",
@@ -709,4 +740,134 @@ async fn component_post_nodes_posts_to_state_components() {
     force: Some(false),
   };
   csm.post_nodes(TEST_TOKEN, arr).await.expect("ok");
+}
+
+// ---------- GroupTrait::add_members_to_group ----------
+
+#[tokio::test]
+async fn group_add_members_to_group_does_get_then_post() {
+  let server = MockServer::start().await;
+  // hsm::group::utils::add_member does GET /smd/hsm/v2/groups?group=zinal
+  // first to verify the group exists, then POST .../members with the
+  // new id.
+  Mock::given(method("GET"))
+    .and(path("/smd/hsm/v2/groups"))
+    .and(query_param("group", "zinal"))
+    .and(bearer_token(TEST_TOKEN))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!([{
+      "label": "zinal",
+      "members": {"ids": []}
+    }])))
+    .expect(1)
+    .mount(&server)
+    .await;
+  Mock::given(method("POST"))
+    .and(path("/smd/hsm/v2/groups/zinal/members"))
+    .and(bearer_token(TEST_TOKEN))
+    .and(body_partial_json(json!({"id": "x1000c0s0b0n0"})))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+      "code": "0", "message": "added"
+    })))
+    .expect(1)
+    .mount(&server)
+    .await;
+
+  let csm = make_csm(&server.uri());
+  // NOTE: don't assert on the returned member list. The underlying
+  // `hsm::group::utils::add_member` calls
+  // `group.get_members().push(new_member);` but `get_members` returns
+  // a fresh `Vec<String>` by value (`src/hsm/group/types.rs`), so the
+  // push targets a throwaway and the returned list is always
+  // whatever the GET returned. This test pins the *wire* contract
+  // (both endpoints fire, in order, with the right bodies) and lets
+  // `.expect(1)` catch a regression. Fixing `add_member` itself is a
+  // separate change.
+  let _ = csm
+    .add_members_to_group(TEST_TOKEN, "zinal", &["x1000c0s0b0n0"])
+    .await
+    .expect("ok");
+}
+
+// ---------- ComponentEthernetInterfaceTrait stubs (no network) ----------
+
+#[tokio::test]
+async fn cei_get_all_returns_not_implemented_error() {
+  let server = MockServer::start().await;
+  let csm = make_csm(&server.uri());
+  let err = csm
+    .get_all_component_ethernet_interfaces(TEST_TOKEN)
+    .await
+    .expect_err("stub returns Err");
+  assert!(
+    err.to_string().contains("not implemented"),
+    "expected 'not implemented' in {err}"
+  );
+}
+
+#[tokio::test]
+async fn cei_get_one_returns_not_implemented_error() {
+  let server = MockServer::start().await;
+  let csm = make_csm(&server.uri());
+  let err = csm
+    .get_component_ethernet_interface(TEST_TOKEN, "abc-1234")
+    .await
+    .expect_err("stub returns Err");
+  assert!(
+    err.to_string().contains("not implemented"),
+    "expected 'not implemented' in {err}"
+  );
+}
+
+// ---------- RedfishEndpointTrait stubs (no network) ----------
+
+#[tokio::test]
+async fn redfish_add_returns_not_implemented_error() {
+  let server = MockServer::start().await;
+  let csm = make_csm(&server.uri());
+  let endpoint =
+    manta_backend_dispatcher::types::hsm::inventory::RedfishEndpointArray {
+      redfish_endpoints: None,
+    };
+  let err = csm
+    .add_redfish_endpoint(TEST_TOKEN, &endpoint)
+    .await
+    .expect_err("stub returns Err");
+  assert!(
+    err.to_string().contains("not implemented"),
+    "expected 'not implemented' in {err}"
+  );
+}
+
+#[tokio::test]
+async fn redfish_update_returns_not_implemented_error() {
+  let server = MockServer::start().await;
+  let csm = make_csm(&server.uri());
+  let endpoint =
+    manta_backend_dispatcher::types::hsm::inventory::RedfishEndpoint {
+      id: "x1000c0s0b0".to_string(),
+      r#type: None,
+      name: None,
+      hostname: None,
+      domain: None,
+      fqdn: None,
+      enabled: None,
+      uuid: None,
+      user: None,
+      password: None,
+      use_ssdp: None,
+      mac_required: None,
+      mac_addr: None,
+      ip_address: None,
+      rediscover_on_update: None,
+      template_id: None,
+      discovery_info: None,
+    };
+  let err = csm
+    .update_redfish_endpoint(TEST_TOKEN, &endpoint)
+    .await
+    .expect_err("stub returns Err");
+  assert!(
+    err.to_string().contains("not implemented"),
+    "expected 'not implemented' in {err}"
+  );
 }
