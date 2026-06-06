@@ -32,7 +32,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "GET").await
   }
 
   /// List Redfish endpoints with optional filters.
@@ -61,7 +61,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "GET").await
   }
 
   /// Fetch one Redfish endpoint by xname.
@@ -79,7 +79,7 @@ impl ShastaClient {
     );
 
     let response = self.http().get(api_url).bearer_auth(token).send().await?;
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "GET").await
   }
 
   /// Create a Redfish endpoint. Returns the array of created resource
@@ -102,7 +102,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "POST").await
   }
 
   /// `PUT /hsm/v2/State/Components/{xname}` — replace a Redfish
@@ -124,7 +124,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "PUT").await
   }
 
   /// `DELETE /hsm/v2/Inventory/RedfishEndpoints` — remove every Redfish
@@ -143,7 +143,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "DELETE").await
   }
 
   /// `DELETE /hsm/v2/Inventory/RedfishEndpoints/{xname}` — remove one
@@ -166,6 +166,6 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error(response).await
+    http::handle_json_or_request_error(response, "DELETE").await
   }
 }

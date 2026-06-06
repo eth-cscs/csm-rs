@@ -182,8 +182,14 @@ impl ShastaClient {
         }
         _ => {
           let status = response.status().as_u16();
+          let url = response.url().to_string();
           let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
+          return Err(Error::csm_from_response(
+            "GET",
+            &url,
+            status,
+            payload,
+          ));
         }
       }
     }
@@ -214,8 +220,14 @@ impl ShastaClient {
         }
         _ => {
           let status = response.status().as_u16();
+          let url = response.url().to_string();
           let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
+          return Err(Error::csm_from_response(
+            "POST",
+            &url,
+            status,
+            payload,
+          ));
         }
       }
     }
@@ -247,8 +259,14 @@ impl ShastaClient {
         }
         _ => {
           let status = response.status().as_u16();
+          let url = response.url().to_string();
           let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
+          return Err(Error::csm_from_response(
+            "POST",
+            &url,
+            status,
+            payload,
+          ));
         }
       }
     }
@@ -281,8 +299,14 @@ impl ShastaClient {
         }
         _ => {
           let status = response.status().as_u16();
+          let url = response.url().to_string();
           let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
+          return Err(Error::csm_from_response(
+            "POST",
+            &url,
+            status,
+            payload,
+          ));
         }
       }
     }
@@ -315,8 +339,14 @@ impl ShastaClient {
         }
         _ => {
           let status = response.status().as_u16();
+          let url = response.url().to_string();
           let payload = response.json::<Value>().await?;
-          return Err(Error::csm_from_response(status, payload));
+          return Err(Error::csm_from_response(
+            "PUT",
+            &url,
+            status,
+            payload,
+          ));
         }
       }
     }
@@ -340,7 +370,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "DELETE").await
   }
 
   /// `DELETE /hsm/v2/State/Components` — remove all components.
@@ -356,6 +386,6 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "DELETE").await
   }
 }

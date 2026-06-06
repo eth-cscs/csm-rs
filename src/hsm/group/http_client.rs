@@ -252,7 +252,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "DELETE").await
   }
 
   /// Add a member (component xname) to an HSM group.
@@ -278,7 +278,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "POST").await
   }
 
   /// Remove a member (component xname) from an HSM group.

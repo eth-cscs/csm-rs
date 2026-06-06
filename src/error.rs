@@ -66,13 +66,18 @@ pub enum Error {
                      // will just return a String
   },
   /// Structured error payload returned by CSM/HSM endpoints when an
-  /// HTTP request fails. `status` is the HTTP status code, `detail` is
-  /// the human-readable message extracted from the RFC 7807
-  /// `Problem7807` body (`detail` field, falling back to `title`), and
-  /// `body` retains the raw JSON so callers needing extension fields
-  /// can still reach them without string-parsing the Display output.
-  #[error("CSM-RS > CSM: status={status} {detail}")]
+  /// HTTP request fails. `method` and `url` carry the request context
+  /// (so operators grepping a production log can correlate the error
+  /// with the CSM endpoint that returned it). `status` is the HTTP
+  /// status code, `detail` is the human-readable message extracted
+  /// from the RFC 7807 `Problem7807` body (`detail` field, falling
+  /// back to `title`), and `body` retains the raw JSON so callers
+  /// needing extension fields can still reach them without
+  /// string-parsing the Display output.
+  #[error("CSM-RS > CSM: {method} {url} -> status={status} {detail}")]
   CsmError {
+    method: String,
+    url: String,
     status: u16,
     detail: String,
     body: Option<Value>,
@@ -129,11 +134,17 @@ pub enum Error {
 }
 
 impl Error {
-  /// Build a [`CsmError`](Error::CsmError) from an HTTP status code and
-  /// the parsed JSON response body. Extracts the RFC 7807 `detail`
-  /// field (falling back to `title`, then empty) and keeps the raw
-  /// payload available via `body`.
-  pub(crate) fn csm_from_response(status: u16, payload: Value) -> Self {
+  /// Build a [`CsmError`](Error::CsmError) from request context and a
+  /// non-success HTTP response. Extracts the RFC 7807 `detail` field
+  /// (falling back to `title`, then empty) and keeps the raw payload
+  /// available via `body`. `method` and `url` are stored so the
+  /// resulting `Display` output names the endpoint that failed.
+  pub(crate) fn csm_from_response(
+    method: &str,
+    url: &str,
+    status: u16,
+    payload: Value,
+  ) -> Self {
     let detail = payload
       .get("detail")
       .and_then(Value::as_str)
@@ -141,6 +152,8 @@ impl Error {
       .map(str::to_string)
       .unwrap_or_default();
     Error::CsmError {
+      method: method.to_string(),
+      url: url.to_string(),
       status,
       detail,
       body: Some(payload),
@@ -167,12 +180,19 @@ impl From<crate::error::Error> for MantaError {
         MantaError::RequestError { response, payload }
       }
       Error::CsmError {
+        method,
+        url,
         status,
         detail,
         body,
       } => MantaError::CsmError {
         status,
-        detail,
+        // Fold method+url into the dispatcher-side detail so the
+        // endpoint that failed is still visible across the boundary
+        // (manta-backend-dispatcher's CsmError variant currently only
+        // carries {status, detail, body}; lift this if the dispatcher
+        // gains structured fields).
+        detail: format!("{method} {url} -> {detail}"),
         body,
       },
 

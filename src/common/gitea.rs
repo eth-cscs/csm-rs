@@ -282,8 +282,11 @@ pub mod http_client {
       // CSM" — this is a gitea error smuggled through CsmError; a future
       // cleanup should introduce a proper GiteaError variant.
       let status = response.status().as_u16();
+      let url = response.url().to_string();
       let payload = response.text().await?;
       Err(Error::csm_from_response(
+        "GET",
+        &url,
         status,
         serde_json::json!({ "detail": payload }),
       ))

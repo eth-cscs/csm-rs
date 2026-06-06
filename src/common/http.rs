@@ -24,6 +24,14 @@ use crate::error::Error;
 pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
   Duration::from_secs(45 * 60);
 
+/// Per-request deadline (response must arrive within this). Without
+/// it, a CSM endpoint that accepts the connection and then hangs
+/// mid-response would block the caller indefinitely. Sized to be
+/// liberal enough for slow CSM dumps (`hsm_*_get_all`, full-cluster
+/// inventory queries) but short enough to surface a hung peer.
+pub(crate) const HTTP_REQUEST_TIMEOUT: Duration =
+  Duration::from_secs(15 * 60);
+
 /// Build a `reqwest::Client` configured with the CSM root certificate and an
 /// optional SOCKS5 proxy. This is the per-request setup that used to be
 /// inlined at every call site.
@@ -33,6 +41,7 @@ pub(crate) fn build_client(
 ) -> Result<reqwest::Client, Error> {
   let builder = reqwest::Client::builder()
     .connect_timeout(HTTP_CONNECT_TIMEOUT)
+    .timeout(HTTP_REQUEST_TIMEOUT)
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
 
   let client = match socks5_proxy {
@@ -44,16 +53,19 @@ pub(crate) fn build_client(
 }
 
 /// On a 2xx response, deserialize the body as `T`. On any other status,
-/// deserialize the body as `serde_json::Value` and return `Error::CsmError`.
+/// deserialize the body as `serde_json::Value` and return `Error::CsmError`
+/// stamped with `method` and the response URL for log-correlation.
 pub(crate) async fn handle_json_response<T: DeserializeOwned>(
   response: reqwest::Response,
+  method: &str,
 ) -> Result<T, Error> {
   if response.status().is_success() {
     response.json::<T>().await.map_err(Error::NetError)
   } else {
     let status = response.status().as_u16();
+    let url = response.url().to_string();
     let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-    Err(Error::csm_from_response(status, payload))
+    Err(Error::csm_from_response(method, &url, status, payload))
   }
 }
 
@@ -84,7 +96,7 @@ pub(crate) async fn get_json<T: DeserializeOwned>(
     .await
     .map_err(Error::NetError)?;
 
-  handle_json_response(response).await
+  handle_json_response(response, "GET").await
 }
 
 /// POST JSON `body` to `url` with bearer auth, deserialize success body as `T`.
@@ -106,7 +118,7 @@ where
     .await
     .map_err(Error::NetError)?;
 
-  handle_json_response(response).await
+  handle_json_response(response, "POST").await
 }
 
 /// PUT JSON `body` to `url` with bearer auth, deserialize success body as `T`.
@@ -128,7 +140,7 @@ where
     .await
     .map_err(Error::NetError)?;
 
-  handle_json_response(response).await
+  handle_json_response(response, "PUT").await
 }
 
 /// GET `url` with bearer auth and a query string, deserialize success body as `T`.
@@ -151,7 +163,7 @@ where
     .await
     .map_err(Error::NetError)?;
 
-  handle_json_response(response).await
+  handle_json_response(response, "GET").await
 }
 
 /// On a 2xx response, deserialize the body as `T`. On `UNAUTHORIZED`, return
@@ -161,6 +173,7 @@ where
 /// API errors.
 pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
   response: reqwest::Response,
+  method: &str,
 ) -> Result<T, Error> {
   if let Err(e) = response.error_for_status_ref() {
     match response.status() {
@@ -173,9 +186,12 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
       }
       _ => {
         let status = response.status().as_u16();
+        let url = response.url().to_string();
         let payload =
           response.json::<Value>().await.map_err(Error::NetError)?;
-        return Err(Error::csm_from_response(status, payload));
+        return Err(Error::csm_from_response(
+          method, &url, status, payload,
+        ));
       }
     }
   }
@@ -253,7 +269,7 @@ pub(crate) async fn delete(
   } else {
     let status = response.status().as_u16();
     let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-    Err(Error::csm_from_response(status, payload))
+    Err(Error::csm_from_response("DELETE", url, status, payload))
   }
 }
 
@@ -518,7 +534,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       .await
       .unwrap();
     let result: Result<Widget, _> =
-      handle_json_or_request_error(response).await;
+      handle_json_or_request_error(response, "GET").await;
     match result {
       Err(Error::RequestError { payload, .. }) => {
         assert_eq!(payload, "auth header missing")
@@ -546,7 +562,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       .await
       .unwrap();
     let result: Result<Widget, _> =
-      handle_json_or_request_error(response).await;
+      handle_json_or_request_error(response, "GET").await;
     match result {
       Err(Error::CsmError { detail, .. }) => {
         assert_eq!(detail, "db unavailable")

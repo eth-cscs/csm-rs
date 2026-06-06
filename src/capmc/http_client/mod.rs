@@ -38,7 +38,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "POST").await
   }
 
   /// Power off the given xnames and wait until CAPMC reports each one
@@ -79,7 +79,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "POST").await
   }
 
   /// Power on the given xnames and wait until CAPMC reports each one
@@ -115,7 +115,7 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "POST").await
   }
 
   /// Power-cycle the given xnames by powering off then back on
@@ -210,6 +210,6 @@ impl ShastaClient {
       .send()
       .await
       .map_err(Error::NetError)?;
-    http::handle_json_response(response).await
+    http::handle_json_response(response, "POST").await
   }
 }
