@@ -31,9 +31,8 @@ impl ShastaClient {
 
     match payload.pointer("/Nodes/0") {
       Some(node_value) => NodeSummary::try_from_csm_value(node_value),
-      None => Err(Error::Message(format!(
-        "ERROR - json section '/Node' missing in json response API for node '{}'",
-        xname
+      None => Err(Error::HsmInventoryShape(format!(
+        "json section '/Nodes/0' missing in response for xname '{xname}'"
       ))),
     }
   }

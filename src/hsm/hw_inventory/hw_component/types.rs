@@ -11,16 +11,16 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 use crate::error::Error;
 
 /// Extract a required string field from an HSM inventory JSON object.
-/// Returns a descriptive [`Error::Message`] if the key is missing or the
-/// value isn't a string, instead of panicking like the previous `.unwrap()`.
+/// Returns a descriptive [`Error::HsmInventoryShape`] if the key is
+/// missing or the value isn't a string, instead of panicking like the
+/// previous `.unwrap()`.
 fn required_str(v: &Value, key: &str) -> Result<String, Error> {
   v.get(key)
     .and_then(Value::as_str)
     .map(str::to_string)
     .ok_or_else(|| {
-      Error::Message(format!(
-        "HSM hardware inventory: required field '{}' is missing or not a string",
-        key
+      Error::HsmInventoryShape(format!(
+        "required field '{key}' is missing or not a string"
       ))
     })
 }
@@ -262,9 +262,8 @@ impl ArtifactSummary {
 fn parse_artifact_type(v: &Value) -> Result<ArtifactType, Error> {
   let type_str = required_str(v, "Type")?;
   ArtifactType::from_str(&type_str).map_err(|e| {
-    Error::Message(format!(
-      "HSM hardware inventory: unknown ArtifactType '{}': {:?}",
-      type_str, e
+    Error::HsmInventoryShape(format!(
+      "unknown ArtifactType '{type_str}': {e:?}"
     ))
   })
 }

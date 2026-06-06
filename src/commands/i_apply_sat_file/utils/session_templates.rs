@@ -418,7 +418,7 @@ pub async fn process_session_template_section_in_sat_file(
       .and_then(|bos_parameters| bos_parameters.get("boot_sets"))
       .and_then(Value::as_mapping)
       .ok_or_else(|| {
-        Error::Message(
+        Error::YamlShape(
           "SAT file: session_template is missing 'bos_parameters.boot_sets'"
             .to_string(),
         )
@@ -428,7 +428,7 @@ pub async fn process_session_template_section_in_sat_file(
         .get("kernel_parameters")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::Message(
+          Error::YamlShape(
             "SAT file: boot_set is missing 'kernel_parameters'".to_string(),
           )
         })?;
@@ -542,7 +542,7 @@ pub async fn process_session_template_section_in_sat_file(
       };
 
       let parameter_str = parameter.as_str().ok_or_else(|| {
-        Error::Message("SAT file: boot_set key is not a string".to_string())
+        Error::YamlShape("SAT file: boot_set key is not a string".to_string())
       })?;
       boot_set_vec.insert(parameter_str.to_string(), boot_set);
     }
@@ -680,7 +680,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       let image_name = bos_session_template_image_ims_name
         .as_str()
         .ok_or_else(|| {
-          Error::Message(
+          Error::YamlShape(
             "SAT file: session_template image.ims.name is not a string"
               .to_string(),
           )
@@ -695,7 +695,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       let image_id = bos_session_template_image_ims_id
         .as_str()
         .ok_or_else(|| {
-          Error::Message(
+          Error::YamlShape(
             "SAT file: session_template image.ims.id is not a string"
               .to_string(),
           )
@@ -713,7 +713,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
     let image_ref = bos_session_template_image_image_ref
       .as_str()
       .ok_or_else(|| {
-        Error::Message(
+        Error::YamlShape(
           "SAT file: session_template image.image_ref is not a string"
             .to_string(),
         )
@@ -724,7 +724,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       .get(&image_ref)
       .cloned()
       .ok_or_else(|| {
-        Error::Message(format!(
+        Error::YamlShape(format!(
           "SAT file: image_ref '{}' not found in processed image set",
           image_ref
         ))
@@ -762,7 +762,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {
-        Error::Message(format!("Image '{}' not found in CSM", image_reference))
+        Error::ImageNotFound(image_reference.to_string())
       })
     })
   } else {
@@ -778,7 +778,7 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .await
     .and_then(|image_vec| {
       image_vec.first().cloned().ok_or_else(|| {
-        Error::Message(format!("Image '{}' not found in CSM", image_reference))
+        Error::ImageNotFound(image_reference.to_string())
       })
     })
   }
@@ -877,7 +877,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       let product_name = &product.name;
 
       let product_version = product.version.as_ref().ok_or_else(|| {
-        Error::Message(format!(
+        Error::YamlShape(format!(
           "SAT file: image base.product '{}' is missing 'version'",
           product_name
         ))

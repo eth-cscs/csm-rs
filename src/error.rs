@@ -131,6 +131,15 @@ pub enum Error {
   CfsComponentNameFieldNotDefined(),
   #[error("CSM-RS > CFS component does not have a 'desired_conf' defined")]
   CfsComponentDesiredConfFieldNotDefined(),
+  /// YAML payload didn't match the expected shape (e.g. a SAT-file
+  /// field is missing or has the wrong type). The string is a
+  /// human-readable description naming the offending field.
+  #[error("CSM-RS > YAML shape: {0}")]
+  YamlShape(String),
+  /// An HSM hardware-inventory response didn't decode into the
+  /// expected typed shape. The string names the field or context.
+  #[error("CSM-RS > HSM hardware inventory: {0}")]
+  HsmInventoryShape(String),
 }
 
 impl Error {
@@ -280,6 +289,13 @@ impl From<crate::error::Error> for MantaError {
       e @ Error::ParseStrIntError(_) => MantaError::Message(e.to_string()),
       #[cfg(feature = "ims-s3")]
       e @ Error::SmithyDataStreamError(_) => MantaError::Message(e.to_string()),
+
+      // New shape/format errors fold into MissingField since the dispatcher
+      // doesn't yet have richer structural variants for them.
+      Error::YamlShape(s) => MantaError::MissingField(format!("YAML: {s}")),
+      Error::HsmInventoryShape(s) => {
+        MantaError::MissingField(format!("HSM inventory: {s}"))
+      }
     }
   }
 }

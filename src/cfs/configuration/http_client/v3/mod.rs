@@ -82,10 +82,9 @@ impl ShastaClient {
     if cfs_configuration_rslt
       .is_ok_and(|cfs_configuration_vec| !cfs_configuration_vec.is_empty())
     {
-      return Err(Error::Message(format!(
-        "CFS configuration '{}' already exists.",
-        configuration_name
-      )));
+      return Err(Error::ConfigurationAlreadyExists(
+        configuration_name.to_string(),
+      ));
     }
 
     log::debug!(

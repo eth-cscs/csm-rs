@@ -511,7 +511,7 @@ async fn get_session_from_image_yaml(
   // Get CFS configuration related to CFS session in SAT file
   let configuration_name =
     image_yaml.configuration.as_ref().ok_or_else(|| {
-      Error::Message(format!(
+      Error::YamlShape(format!(
         "SAT file: image '{}' is missing 'configuration' field",
         image_yaml.name
       ))
@@ -963,7 +963,7 @@ pub fn validate_sat_file_images_section(
         let product_name = &product.name;
 
         let product_version = product.version.as_ref().ok_or_else(|| {
-          Error::Message(format!(
+          Error::YamlShape(format!(
             "SAT file: image '{}' base.product '{}' is missing 'version'",
             image_name, product_name
           ))
