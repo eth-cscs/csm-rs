@@ -68,7 +68,7 @@ struct SatApplyContext<'a> {
 /// - `hsm_group_available_vec` — HSM groups the caller is allowed to
 ///   target; used to reject SAT files that reference out-of-scope groups.
 /// - `shasta_k8s_secrets` / `k8s_api_url` — credentials for the in-cluster
-///   `cray-product-catalog` ConfigMap lookup.
+///   `cray-product-catalog` `ConfigMap` lookup.
 /// - `dry_run` — when `true`, validates and logs the intended actions
 ///   without mutating CSM.
 /// - `overwrite` — replace existing CFS configurations / images with the
@@ -245,7 +245,7 @@ pub async fn exec(
 }
 
 /// Parse the SAT file into a [`SatFile`] and fetch the live state it is
-/// validated against: the `cray-product-catalog` ConfigMap from Kubernetes
+/// validated against: the `cray-product-catalog` `ConfigMap` from Kubernetes
 /// and the current CFS configurations, IMS images and IMS recipes from CSM.
 async fn gather_sat_apply_data(
   ctx: &SatApplyContext<'_>,
@@ -293,8 +293,7 @@ async fn gather_sat_apply_data(
 
   let duration = start.elapsed();
   log::info!(
-    "Time elapsed to fetch information from backend: {:?}",
-    duration
+    "Time elapsed to fetch information from backend: {duration:?}"
   );
 
   let sat_file: SatFile =
@@ -370,7 +369,7 @@ async fn process_hardware_section(
   sat_file: &SatFile,
 ) -> Result<(), Error> {
   let hardware_patterns = sat_file.hardware.as_deref().unwrap_or_default();
-  log::info!("hardware pattern: {:?}", hardware_patterns);
+  log::info!("hardware pattern: {hardware_patterns:?}");
 
   for hw in hardware_patterns {
     let target_hsm_group_name = hw.target.as_str();
@@ -378,10 +377,7 @@ async fn process_hardware_section(
 
     if let Some(pattern) = hw.pattern.as_deref() {
       log::info!(
-        "Processing hw component pattern for '{}' for target HSM group '{}' and parent HSM group '{}'",
-        pattern,
-        target_hsm_group_name,
-        parent_hsm_group_name
+        "Processing hw component pattern for '{pattern}' for target HSM group '{target_hsm_group_name}' and parent HSM group '{parent_hsm_group_name}'"
       );
       // When applying a SAT file, assume the caller does not want to
       // create new HSM groups or delete empty parent HSM groups (the
@@ -423,16 +419,12 @@ async fn process_hardware_section(
         .collect();
 
       log::info!(
-        "Processing new nodes '{}' for target HSM group '{}'",
-        nodes,
-        target_hsm_group_name,
+        "Processing new nodes '{nodes}' for target HSM group '{target_hsm_group_name}'",
       );
 
       if ctx.dry_run {
         log::info!(
-          "Dry Run mode: Update HSM group '{}' members to:\n{:?}",
-          target_hsm_group_name,
-          new_target_hsm_group_members_vec
+          "Dry Run mode: Update HSM group '{target_hsm_group_name}' members to:\n{new_target_hsm_group_members_vec:?}"
         );
       } else {
         update_hsm_group_members(
@@ -473,7 +465,7 @@ async fn process_configurations_section(
   let mut cfs_configurations_created: Vec<CfsConfigurationResponse> =
     Vec::new();
 
-  for configuration_yaml in configuration_yaml_vec_opt.unwrap_or(&vec![]).iter()
+  for configuration_yaml in configuration_yaml_vec_opt.unwrap_or(&vec![])
   {
     let cfs_configuration: CfsConfigurationResponse =
       utils::create_cfs_configuration_from_sat_file(

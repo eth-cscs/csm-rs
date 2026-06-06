@@ -24,7 +24,7 @@ fn test_add_xnames() {
       "xname3".to_string(),
       "xname4".to_string()
     ]
-  )
+  );
 }
 
 #[test]

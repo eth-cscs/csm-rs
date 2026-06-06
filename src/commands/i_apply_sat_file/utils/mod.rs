@@ -58,7 +58,7 @@ pub struct SatFile {
 }
 
 impl SatFile {
-  /// Filter either images or session_templates section according to user request
+  /// Filter either images or `session_templates` section according to user request
   ///
   /// # Errors
   ///
@@ -94,7 +94,7 @@ impl SatFile {
       if let Some(configuration_vec) = self.configurations.as_mut() {
         configuration_vec.retain(|configuration| {
           configuration_name_image_vec.contains(&configuration.name)
-        })
+        });
       }
 
       // Remove section "session_templates"
@@ -133,9 +133,9 @@ impl SatFile {
             configuration_vec.retain(|configuration| {
               configuration_name_sessiontemplate_vec
                 .contains(&configuration.name)
-            })
+            });
           })
-          .unwrap_or_default()
+          .unwrap_or_default();
       } else {
         self.configurations = None;
       }
@@ -167,10 +167,10 @@ impl SatFile {
       if let Some(image_vec) = self.images.as_mut() {
         image_vec.retain(|sat_image| {
           image_name_sessiontemplate_vec.contains(&sat_image.name)
-        })
+        });
       }
 
-      if self.images.as_ref().is_some_and(|images| images.is_empty()) {
+      if self.images.as_ref().is_some_and(std::vec::Vec::is_empty) {
         self.images = None;
       }
     }
@@ -200,8 +200,7 @@ impl TryFrom<SessionTemplate> for BosSessionTemplate {
     for (property, boot_set) in value.bos_parameters.boot_sets {
       let boot_set = BootSet {
         name: Some(format!(
-          "Boot set property '{}' created by manta from SAT file",
-          property
+          "Boot set property '{property}' created by manta from SAT file"
         )),
         path: None,
         r#type: None,

@@ -16,7 +16,7 @@ use crate::{
   ims::{image::http_client::types::Image, recipe::types::RecipeGetResponse},
 };
 
-/// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing
+/// Test function "`get_ref_name`" so it falls back to "name" field if "`ref_name`" is missing
 #[test]
 fn test_get_ref_name() {
   let image_vec: Vec<image::Image> = serde_yaml::from_str(
@@ -44,7 +44,7 @@ fn test_get_ref_name() {
   assert_eq!(image_ref, "base_image");
 }
 
-/// Test function "get_next_image_to_process" in an images section is SAT file with one image with ref_name
+/// Test function "`get_next_image_to_process`" in an images section is SAT file with one image with `ref_name`
 #[test]
 fn test_get_next_image_to_process_1() {
   let image_vec: Vec<image::Image> = Vec::new();
@@ -83,7 +83,7 @@ fn test_get_next_image_to_process_2() {
   assert_eq!(next_image_to_process.unwrap().name, "base_image");
 }
 
-/// Test function "get_next_image_to_process" in an images section in SAT file with 2 images.
+/// Test function "`get_next_image_to_process`" in an images section in SAT file with 2 images.
 /// The test should pass if the first image to process is the one with no dependencies and the
 /// second is the one which depends on the first one
 #[test]
@@ -177,7 +177,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-base-image-id
@@ -186,16 +186,16 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -237,7 +237,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-base-image-id
@@ -246,7 +246,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
@@ -302,7 +302,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-image-id
@@ -311,7 +311,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
@@ -374,10 +374,10 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -412,7 +412,7 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -422,16 +422,16 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -445,8 +445,8 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
     id: None,
     created: None,
     link: None,
-    recipe_type: "".to_string(),
-    linux_distribution: "".to_string(),
+    recipe_type: String::new(),
+    linux_distribution: String::new(),
     name: "fake-my-ims-recipe".to_string(),
   }];
 
@@ -473,7 +473,7 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -483,16 +483,16 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -506,8 +506,8 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
     id: None,
     created: None,
     link: None,
-    recipe_type: "".to_string(),
-    linux_distribution: "".to_string(),
+    recipe_type: String::new(),
+    linux_distribution: String::new(),
     name: "my-ims-recipe-name".to_string(),
   }];
 
@@ -534,7 +534,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -544,16 +544,16 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -595,7 +595,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -605,16 +605,16 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -655,7 +655,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -665,16 +665,16 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
               configuration_group_names:
                 - Compute
                 - fake-tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
               layers: []
-            "#,
+            ",
     )
     .unwrap();
 
@@ -715,13 +715,13 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
                   name: my-ims-image-name
                   type: image
-            "#,
+            ",
   )
   .unwrap();
 

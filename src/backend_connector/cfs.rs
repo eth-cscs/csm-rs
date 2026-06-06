@@ -50,7 +50,7 @@ impl CfsTrait for Csm {
       .shasta_client()
       .cfs_session_v3_post(shasta_token, &session.clone().into())
       .await
-      .map(|cfs_session| cfs_session.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 
@@ -91,7 +91,7 @@ impl CfsTrait for Csm {
       .map(|cfs_session_vec| {
         cfs_session_vec
           .into_iter()
-          .map(|cfs_session| cfs_session.into())
+          .map(std::convert::Into::into)
           .collect::<Vec<CfsSessionGetResponse>>()
       })
       .map_err(Error::from)
@@ -137,11 +137,11 @@ impl CfsTrait for Csm {
         return Err(Error::Message(
           "None of the requested HSM groups are available".to_string(),
         ));
-      };
+      }
 
       let mut member_available_vec = hsm_group_available_vec
         .iter()
-        .flat_map(|g| g.get_members())
+        .flat_map(super::super::hsm::group::types::Group::get_members)
         .collect::<Vec<String>>();
 
       member_available_vec.sort();
@@ -175,14 +175,14 @@ impl CfsTrait for Csm {
           .into_iter()
           .map(|group| group.label)
           .collect(),
-        xname_vec.into_iter().map(|s| s.to_string()).collect(),
+        xname_vec.into_iter().map(std::string::ToString::to_string).collect(),
       )
     } else {
       // all HSM groups available
       // all members available
       let member_available_vec = hsm_group_available_vec
         .iter()
-        .flat_map(|g| g.get_members())
+        .flat_map(super::super::hsm::group::types::Group::get_members)
         .collect::<Vec<String>>();
 
       (
@@ -225,8 +225,8 @@ impl CfsTrait for Csm {
       return Err(Error::SessionNotFound);
     }
 
-    for cfs_session in cfs_session_vec.iter_mut() {
-      log::debug!("CFS session:\n{:#?}", cfs_session);
+    for cfs_session in &mut cfs_session_vec {
+      log::debug!("CFS session:\n{cfs_session:#?}");
 
       if cfs_session.is_target_def_image() && cfs_session.is_success() {
         log::info!(
@@ -287,7 +287,7 @@ impl CfsTrait for Csm {
     Ok(
       cfs_session_vec
         .into_iter()
-        .map(|cfs_session| cfs_session.into())
+        .map(std::convert::Into::into)
         .collect(),
     )
   }
@@ -364,13 +364,13 @@ impl CfsTrait for Csm {
       .shasta_client()
       .cfs_configuration_v3_get(
         auth_token,
-        configuration_name_opt.map(|elem| elem.as_str()),
+        configuration_name_opt.map(std::string::String::as_str),
       )
       .await
       .map_err(Error::from);
 
     cfs_configuration_vec
-      .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
+      .map(|config_vec| config_vec.into_iter().map(std::convert::Into::into).collect())
   }
 
   async fn get_and_filter_configuration(
@@ -396,7 +396,7 @@ impl CfsTrait for Csm {
       limit_number_opt,
     )
     .await
-    .map(|config_vec| config_vec.into_iter().map(|c| c.into()).collect())
+    .map(|config_vec| config_vec.into_iter().map(std::convert::Into::into).collect())
     .map_err(Error::from)
   }
 
@@ -416,8 +416,8 @@ impl CfsTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map(|layer_details| layer_details.into())
-    .map_err(|e| e.into())
+    .map(std::convert::Into::into)
+    .map_err(std::convert::Into::into)
   }
 
   /// Create a new CFS configuration
@@ -438,7 +438,7 @@ impl CfsTrait for Csm {
       overwrite,
     )
     .await
-    .map(|cfs_configuration| cfs_configuration.into())
+    .map(std::convert::Into::into)
     .map_err(Error::from)
   }
 
@@ -517,9 +517,7 @@ impl CfsTrait for Csm {
 
     if exit_code != 0 {
       log::error!(
-        "CFS session '{}' git-clone init container failed with exit code {}",
-        cfs_session_name,
-        exit_code
+        "CFS session '{cfs_session_name}' git-clone init container failed with exit code {exit_code}"
       );
       return Ok(Box::pin(log_stream_git_clone));
     }
@@ -597,17 +595,17 @@ impl CfsTrait for Csm {
         cfs_session_vec.map(|cfs_session_vec| {
           cfs_session_vec
             .into_iter()
-            .map(|cfs_session| cfs_session.into())
+            .map(std::convert::Into::into)
             .collect()
         }),
         bos_session_template_vec.map(|bos_session_template_vec| {
           bos_session_template_vec
             .into_iter()
-            .map(|bos_session_template| bos_session_template.into())
+            .map(std::convert::Into::into)
             .collect()
         }),
         image_vec.map(|image_vec| {
-          image_vec.into_iter().map(|image| image.into()).collect()
+          image_vec.into_iter().map(std::convert::Into::into).collect()
         }),
       )
     })
@@ -636,7 +634,7 @@ impl CfsTrait for Csm {
       .map(|component_vec| {
         component_vec
           .into_iter()
-          .map(|component| component.into())
+          .map(std::convert::Into::into)
           .collect()
       })
       .map_err(Error::from)

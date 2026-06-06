@@ -58,7 +58,7 @@ impl PCSTrait for Csm {
       )
       .await
       .map(|status| {
-        log::info!("return value from async fn power_status : {:?}", status);
+        log::info!("return value from async fn power_status : {status:?}");
         status.into()
       })
       .map_err(Error::from)

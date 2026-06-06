@@ -80,6 +80,28 @@
 #![allow(clippy::doc_lazy_continuation)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![warn(missing_docs)]
+// Promote clippy::pedantic to a warn baseline. The categories below
+// are silenced because they generate too much noise for too little
+// signal in this crate's shape (lots of moved-by-value tokens,
+// many-arg HTTP wrappers, HashMap-on-the-boundary types).
+#![warn(clippy::pedantic)]
+#![allow(
+  clippy::needless_pass_by_value,      // signatures take owned tokens by design
+  clippy::implicit_hasher,             // HashMap<_, _> on API boundary is fine
+  clippy::too_many_lines,              // long workflow fns are unavoidable
+  clippy::cast_precision_loss,         // f32 used for normalized scarcity scores
+  clippy::cast_possible_truncation,    // ditto + intentional u8/u16 narrowing
+  clippy::cast_sign_loss,              // ditto
+  clippy::module_name_repetitions,     // accepted in this crate's layout
+  clippy::missing_panics_doc,          // covered by `# Errors` + invariants
+  clippy::doc_markdown,                // tolerates CSM/HSM/IMS acronyms
+  clippy::struct_excessive_bools,      // a few config structs have several bools
+  clippy::fn_params_excessive_bools,   // ditto for some workflow entry points
+  clippy::missing_errors_doc,          // already addressed in the doc-hygiene pass
+  clippy::redundant_else,              // tolerated in HTTP error-handling shape
+  clippy::assigning_clones,            // x = y.clone() reads fine; .clone_from is unidiomatic at call sites
+  clippy::unreadable_literal,          // status codes (404 etc.) read better unseparated
+)]
 
 /// Backend-dispatcher integration layer. Implements the trait families
 /// from the `manta-backend-dispatcher` crate so csm-rs can be plugged

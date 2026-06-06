@@ -66,13 +66,13 @@ impl From<PowerStatus> for FrontEndPowerStatus {
   fn from(val: PowerStatus) -> Self {
     FrontEndPowerStatus {
       xname: val.xname,
-      power_state: val.power_state.map(|v| v.into()),
-      management_state: val.management_state.map(|v| v.into()),
+      power_state: val.power_state.map(std::convert::Into::into),
+      management_state: val.management_state.map(std::convert::Into::into),
       error: val.error,
       supported_power_transitions: val
         .supported_power_transitions
         .into_iter()
-        .map(|v| v.into())
+        .map(std::convert::Into::into)
         .collect(),
       last_updated: val.last_updated,
     }

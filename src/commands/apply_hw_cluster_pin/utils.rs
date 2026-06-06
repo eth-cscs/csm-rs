@@ -225,7 +225,7 @@ pub fn calculate_target_hsm_pin(
   for (node, score) in &target_hsm_node_score_tuple_vec {
     group_target_hsm_node_by_score_hashmap
       .entry(*score as usize)
-      .and_modify(|node_vec| node_vec.push(node.to_string()))
+      .and_modify(|node_vec| node_vec.push(node.clone()))
       .or_insert(vec![node.clone()]);
   }
 
@@ -235,7 +235,7 @@ pub fn calculate_target_hsm_pin(
   for (node, score) in &parent_hsm_node_score_tuple_vec {
     group_parent_hsm_node_by_score_hashmap
       .entry(*score as usize)
-      .and_modify(|node_vec| node_vec.push(node.to_string()))
+      .and_modify(|node_vec| node_vec.push(node.clone()))
       .or_insert(vec![node.clone()]);
   }
 
@@ -269,15 +269,13 @@ pub fn calculate_target_hsm_pin(
   let mut iter = 0;
 
   while work_to_do {
-    log::debug!("----- ITERATION {} -----", iter);
+    log::debug!("----- ITERATION {iter} -----");
 
     log::debug!(
-      "HSM group hw component counters: {:?}",
-      combination_target_parent_hsm_hw_component_summary_hashmap
+      "HSM group hw component counters: {combination_target_parent_hsm_hw_component_summary_hashmap:?}"
     );
     log::debug!(
-      "Final hw component counters the user wants: {:?}",
-      user_defined_hsm_hw_components_count_hashmap
+      "Final hw component counters the user wants: {user_defined_hsm_hw_components_count_hashmap:?}"
     );
     log::debug!(
       "Best candidate is '{}' with score {} and hw component counters {:?}",
@@ -349,7 +347,7 @@ pub fn calculate_target_hsm_pin(
     for (node, score) in &target_hsm_node_score_tuple_vec {
       group_target_hsm_node_by_score_hashmap
         .entry(*score as usize)
-        .and_modify(|node_vec| node_vec.push(node.to_string()))
+        .and_modify(|node_vec| node_vec.push(node.clone()))
         .or_insert(vec![node.clone()]);
     }
 
@@ -361,7 +359,7 @@ pub fn calculate_target_hsm_pin(
     for (node, score) in &parent_hsm_node_score_tuple_vec {
       group_parent_hsm_node_by_score_hashmap
         .entry(*score as usize)
-        .and_modify(|node_vec| node_vec.push(node.to_string()))
+        .and_modify(|node_vec| node_vec.push(node.clone()))
         .or_insert(vec![node.clone()]);
     }
 
@@ -396,6 +394,7 @@ pub fn calculate_target_hsm_pin(
 /// Compute a scarcity score per hardware component name — components
 /// that appear fewer times across the HSM score higher. Used to
 /// prioritise nodes carrying rare hardware during pinning.
+#[must_use]
 pub fn calculate_hw_component_scarcity_scores(
   hsm_node_hw_component_count: &Vec<(String, HashMap<String, usize>)>,
 ) -> HashMap<String, f32> {
@@ -428,14 +427,13 @@ pub fn calculate_hw_component_scarcity_scores(
     }
 
     hw_component_scarcity_score_hashmap.insert(
-      hw_component.to_string(),
+      hw_component.clone(),
       (total_num_hw_components as f32) / (hsm_hw_component_count as f32),
     );
   }
 
   log::debug!(
-    "Hw component scarcity scores: {:?}",
-    hw_component_scarcity_score_hashmap
+    "Hw component scarcity scores: {hw_component_scarcity_score_hashmap:?}"
   );
 
   hw_component_scarcity_score_hashmap
@@ -443,6 +441,7 @@ pub fn calculate_hw_component_scarcity_scores(
 
 /// Calculates a normalized score for each hw component in HSM group based on component
 /// scarcity.
+#[must_use]
 pub fn calculate_hsm_node_scores_from_final_hsm(
   parent_hsm_node_hw_component_count_vec: &Vec<(
     String,
@@ -482,7 +481,7 @@ pub fn calculate_hsm_node_scores_from_final_hsm(
         }
       }
     }
-    node_score_vec.push((xname.to_string(), node_score));
+    node_score_vec.push((xname.clone(), node_score));
   }
 
   node_score_vec
@@ -491,6 +490,7 @@ pub fn calculate_hsm_node_scores_from_final_hsm(
 /// Return `true` while the current HSM summary still exceeds the
 /// target (final) per-component minimum — i.e. there's slack to keep
 /// moving nodes during pinning.
+#[must_use]
 pub fn keep_iterating_final_hsm(
   hsm_final_hw_component_summary_hashmap: &HashMap<String, usize>, // hw components in
   // the target hsm group asked by the user (this is the minimum boundary, we can't provide
@@ -556,6 +556,7 @@ pub async fn get_node_hw_component_count(
 
 /// Sum per-node hardware component counts into a single
 /// `component -> total` map for the HSM group.
+#[must_use]
 pub fn calculate_hsm_hw_component_summary(
   target_hsm_group_node_hw_component_vec: &Vec<(
     String,
@@ -569,7 +570,7 @@ pub fn calculate_hsm_hw_component_summary(
   {
     for (hw_component, &qty) in node_hw_component_count_hashmap {
       hsm_hw_component_count_hashmap
-        .entry(hw_component.to_string())
+        .entry(hw_component.clone())
         .and_modify(|qty_aux| *qty_aux += qty)
         .or_insert(qty);
     }
@@ -578,8 +579,9 @@ pub fn calculate_hsm_hw_component_summary(
   hsm_hw_component_count_hashmap
 }
 
-/// Returns the properties in hw_property_list found in the node_hw_inventory_value which is
+/// Returns the properties in `hw_property_list` found in the `node_hw_inventory_value` which is
 /// HSM hardware inventory API json response
+#[must_use]
 pub fn get_node_hw_properties_from_value(
   node_hw_inventory_value: &Value,
   hw_component_pattern_list: Vec<String>,
@@ -609,7 +611,7 @@ pub fn get_node_hw_properties_from_value(
       .iter()
       .find(|&hw_component| actual_hw_component_pattern.contains(hw_component))
     {
-      node_hw_component_pattern_vec.push(hw_component_pattern.to_string());
+      node_hw_component_pattern_vec.push(hw_component_pattern.clone());
     } else {
       node_hw_component_pattern_vec.push(actual_hw_component_pattern);
     }
@@ -718,7 +720,7 @@ pub async fn get_hsm_node_hw_component_counter(
   }
 
   let duration = start.elapsed();
-  log::debug!("Time elapsed to calculate hw components is: {:?}", duration);
+  log::debug!("Time elapsed to calculate hw components is: {duration:?}");
 
   Ok(target_hsm_node_hw_component_count_vec)
 }

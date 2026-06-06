@@ -52,7 +52,7 @@ pub async fn validate_target_hsm_members(
       hsm_group_members_opt
         .as_ref()
         .iter()
-        .cloned()
+        .copied()
         .map(str::to_string)
         .collect(),
     )
@@ -109,7 +109,7 @@ pub fn validate_xname_format(xname: &str) -> bool {
 
 /// Validates a list of xnames.
 /// Checks xnames strings are valid
-/// If hsm_group_name_opt provided, then checks all xnames belongs to that hsm_group
+/// If `hsm_group_name_opt` provided, then checks all xnames belongs to that `hsm_group`
 // TODO: idually, we should create a struct with the data available to the user, then operate with
 // it in memory, that way we avoid multiple calls to Shasta APIs
 pub async fn validate_xnames_format_and_membership_against_single_hsm(
@@ -214,17 +214,11 @@ pub async fn get_node_details(
       .iter()
       .find(|component_status| component_status.id.as_ref().eq(&Some(&xname)));
 
-    // FIXME: fix this by converting 'compoennt_details_opt' into a Result, with
-    // backend-dispatcher::Error and resolve the value using '?'
-    let component_details =
-      if let Some(component_details) = component_details_opt {
-        component_details
-      } else {
-        return Err(Error::Message(format!(
-          "ERROR - CFS component details for node {}.\nReason:\n{:#?}",
-          xname, component_details_opt
-        )));
-      };
+    let Some(component_details) = component_details_opt else {
+      return Err(Error::Message(format!(
+        "ERROR - CFS component details for node {xname}"
+      )));
+    };
 
     let desired_configuration = &component_details.desired_config;
     let configuration_status = &component_details.configuration_status;
@@ -269,7 +263,7 @@ pub async fn get_node_details(
       {
         (node_boot_params.get_boot_image(), node_boot_params.params)
       } else {
-        log::warn!("BSS boot parameters for node '{}' - NOT FOUND", xname);
+        log::warn!("BSS boot parameters for node '{xname}' - NOT FOUND");
         ("Not found".to_string(), "Not found".to_string())
       };
 
@@ -309,20 +303,16 @@ pub async fn get_node_details(
       .clone()
       .unwrap_or_else(|| "Not found".to_string());
     let enabled_str = enabled
-      .as_ref()
-      .map(bool::to_string)
-      .unwrap_or_else(|| "Not found".to_string());
+      .as_ref().map_or_else(|| "Not found".to_string(), bool::to_string);
     let error_count_str = error_count
-      .as_ref()
-      .map(u64::to_string)
-      .unwrap_or_else(|| "Not found".to_string());
+      .as_ref().map_or_else(|| "Not found".to_string(), u64::to_string);
 
     node_details_map
       .entry(xname.clone())
       .and_modify(|node_details: &mut NodeDetails| {
         node_details.xname = xname.clone();
         node_details.nid = node_nid.clone();
-        node_details.hsm = "".to_string();
+        node_details.hsm = String::new();
         node_details.power_status = node_power_status.clone();
         node_details.desired_configuration = desired_configuration_str.clone();
         node_details.configuration_status = configuration_status_str.clone();
@@ -335,7 +325,7 @@ pub async fn get_node_details(
       .or_insert(NodeDetails {
         xname: xname.clone(),
         nid: node_nid,
-        hsm: "".to_string(),
+        hsm: String::new(),
         power_status: node_power_status,
         desired_configuration: desired_configuration_str,
         configuration_status: configuration_status_str,
@@ -365,29 +355,29 @@ pub async fn get_node_details(
     let node_membership = message??;
 
     let node_details = NodeDetails {
-      xname: "".to_string(),
-      nid: "".to_string(),
+      xname: String::new(),
+      nid: String::new(),
       hsm: node_membership.group_labels.join(", "),
-      power_status: "".to_string(),
-      desired_configuration: "".to_string(),
-      configuration_status: "".to_string(),
-      enabled: "".to_string(),
-      error_count: "".to_string(),
-      boot_image_id: "".to_string(),
-      boot_configuration: "".to_string(),
-      kernel_params: "".to_string(),
+      power_status: String::new(),
+      desired_configuration: String::new(),
+      configuration_status: String::new(),
+      enabled: String::new(),
+      error_count: String::new(),
+      boot_image_id: String::new(),
+      boot_configuration: String::new(),
+      kernel_params: String::new(),
     };
 
     node_details_map
       .entry(node_membership.id.clone())
       .and_modify(|node_details: &mut NodeDetails| {
-        node_details.hsm = node_membership.group_labels.join(", ")
+        node_details.hsm = node_membership.group_labels.join(", ");
       })
       .or_insert(node_details);
   }
 
   let duration = start.elapsed();
-  log::debug!("Time elapsed to get node details is: {:?}", duration);
+  log::debug!("Time elapsed to get node details is: {duration:?}");
   // ------------------------------------------------------------------------
 
   Ok(node_details_map.into_values().collect())

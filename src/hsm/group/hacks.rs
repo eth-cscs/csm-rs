@@ -50,6 +50,7 @@ pub static SUBROLES: [&str; 8] = [
 
 /// Removes 'system wide' HSM groups from the provided HSM group vector.
 /// See the module-level note on why this filter exists.
+#[must_use]
 pub fn filter_system_hsm_groups(hsm_group_vec: Vec<Group>) -> Vec<Group> {
   hsm_group_vec
     .iter()
@@ -66,13 +67,14 @@ pub fn filter_keycloak_roles(keycloak_roles: &[&str]) -> Vec<String> {
   keycloak_roles
     .iter()
     .filter(|role| !KEYCLOAK_ROLES_TO_IGNORE.contains(role))
-    .cloned()
+    .copied()
     .map(str::to_string)
     .collect()
 }
 
 /// Removes 'system wide' group names. See the module-level note on
 /// why this filter exists.
+#[must_use]
 pub fn filter_system_hsm_group_names(
   hsm_group_name_vec: Vec<String>,
 ) -> Vec<String> {
@@ -91,7 +93,7 @@ pub fn filter_roles_and_subroles(hsm_group_name_vec: &[&str]) -> Vec<String> {
     .filter(|hsm_group_name| {
       !ROLES.contains(hsm_group_name) && !SUBROLES.contains(hsm_group_name)
     })
-    .cloned()
+    .copied()
     .map(str::to_string)
     .collect()
 }
@@ -154,7 +156,7 @@ pub fn validate_groups(
     // Remove 'system wide' groups from CFS session groups
     let groups_without_system_wide =
       hsm::group::hacks::filter_system_hsm_group_names(
-        groups_without_roles_subroles.to_vec(),
+        groups_without_roles_subroles.clone(),
       );
     // Get list of groups in CFS session not in user auth token
     groups_without_system_wide

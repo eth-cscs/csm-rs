@@ -89,7 +89,7 @@ pub async fn validate_sat_file_session_template_section(
     {
       // Validate image_ref (session_template.image.image_ref). Search in SAT file for any
       // image with images[].ref_name
-      log::debug!("Searching ref_name '{}' in SAT file", ref_name_to_find,);
+      log::debug!("Searching ref_name '{ref_name_to_find}' in SAT file");
 
       let image_ref_name_found = image_yaml_vec
         .iter()
@@ -97,8 +97,7 @@ pub async fn validate_sat_file_session_template_section(
 
       if !image_ref_name_found {
         return Err(Error::SatFile(format!(
-          "Could not find image ref '{}' in SAT file. Exit",
-          ref_name_to_find
+          "Could not find image ref '{ref_name_to_find}' in SAT file. Exit"
         )));
       }
     } else if let sessiontemplate::Image::Ims { ims } =
@@ -121,8 +120,7 @@ pub async fn validate_sat_file_session_template_section(
 
           if !image_found {
             log::warn!(
-              "Image name '{}' not found in SAT file, looking in CSM",
-              image_name_substr_to_find
+              "Image name '{image_name_substr_to_find}' not found in SAT file, looking in CSM"
             );
             log::debug!(
               "Searching image name '{}' related to session template '{}' in CSM",
@@ -179,7 +177,7 @@ pub async fn validate_sat_file_session_template_section(
       &session_template_yaml.image
     {
       // Validate image name (session_template.image.image). Search in SAT file for any
-      log::debug!("Searching image name '{}' in SAT file", image_name,);
+      log::debug!("Searching image name '{image_name}' in SAT file");
 
       let image_ref_name_found = image_yaml_vec
         .iter()
@@ -187,8 +185,7 @@ pub async fn validate_sat_file_session_template_section(
 
       if !image_ref_name_found {
         return Err(Error::SatFile(format!(
-          "Could not find image '{}' in SAT file. Exit",
-          image_name
+          "Could not find image '{image_name}' in SAT file. Exit"
         )));
       }
     }
@@ -306,7 +303,7 @@ pub async fn process_session_template_section_in_sat_file(
               if is_image_id {
                 // Image reference is an image ID
                 ims::image::http_client::types::Image {
-                  id: Some(image_reference.to_string()),
+                  id: Some(image_reference.clone()),
                   created: None,
                   name: "dryrun_image".to_string(),
                   link: Some(Link {
@@ -322,7 +319,7 @@ pub async fn process_session_template_section_in_sat_file(
                 ims::image::http_client::types::Image {
                   id: None,
                   created: None,
-                  name: image_reference.to_string(),
+                  name: image_reference.clone(),
                   link: Some(Link {
                     path: "dryrun_path".to_string(),
                     etag: Some("dryrun_etag".to_string()),
@@ -366,14 +363,12 @@ pub async fn process_session_template_section_in_sat_file(
 
     // Check CFS configuration exists in CSM
     log::debug!(
-      "Looking for CFS configuration with name: {}",
-      bos_session_template_configuration_name
+      "Looking for CFS configuration with name: {bos_session_template_configuration_name}"
     );
 
     if dry_run {
       log::debug!(
-        "Dry run mode: CFS configuration '{}' found in CSM.",
-        bos_session_template_configuration_name
+        "Dry run mode: CFS configuration '{bos_session_template_configuration_name}' found in CSM."
       );
     } else {
       crate::ShastaClient::new(
@@ -386,7 +381,7 @@ pub async fn process_session_template_section_in_sat_file(
         Some(&bos_session_template_configuration_name),
       )
       .await?;
-    };
+    }
 
     // let ims_image_name = image_details.name.to_string();
     let image_link = image_details.link.as_ref().ok_or_else(|| {
@@ -480,8 +475,7 @@ pub async fn process_session_template_section_in_sat_file(
       for node_group in node_groups_opt.clone().unwrap_or_default() {
         if !hsm_group_available_vec.contains(&node_group) {
           return Err(Error::SatFile(format!(
-            "User does not have access to HSM group '{}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit",
-            node_group
+            "User does not have access to HSM group '{node_group}' in SAT file under session_templates.bos_parameters.boot_sets.compute.node_groups section. Exit"
           )));
         }
       }
@@ -506,7 +500,7 @@ pub async fn process_session_template_section_in_sat_file(
           shasta_base_url,
           shasta_root_cert,
           socks5_proxy,
-          &node_list.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+          &node_list.iter().map(std::string::String::as_str).collect::<Vec<&str>>(),
         )
         .await?;
       }
@@ -569,8 +563,7 @@ pub async fn process_session_template_section_in_sat_file(
       let dry_run_bos_sessiontemplate_name =
         format!("DRYRUN_{}", Uuid::new_v4());
       log::debug!(
-        "Dry Run Mode: BOS sessiontemplate name '{}' created",
-        dry_run_bos_sessiontemplate_name
+        "Dry Run Mode: BOS sessiontemplate name '{dry_run_bos_sessiontemplate_name}' created"
       );
       let mut mock_template = create_bos_session_template_payload.clone();
       mock_template.name = Some(dry_run_bos_sessiontemplate_name);
@@ -589,8 +582,7 @@ pub async fn process_session_template_section_in_sat_file(
       .await?;
 
       log::debug!(
-        "BOS sessiontemplate name '{}' created",
-        bos_sessiontemplate_name
+        "BOS sessiontemplate name '{bos_sessiontemplate_name}' created"
       );
 
       if bos_sessiontemplate.name.is_none() {
@@ -611,8 +603,7 @@ pub async fn process_session_template_section_in_sat_file(
     for bos_st in &bos_st_created_vec {
       let bos_st_name = bos_st.name.clone().unwrap_or_default();
       log::debug!(
-        "Creating BOS session for BOS sessiontemplate '{}' with action 'reboot'",
-        bos_st_name
+        "Creating BOS session for BOS sessiontemplate '{bos_st_name}' with action 'reboot'"
       );
 
       // BOS session v2
@@ -650,16 +641,16 @@ pub async fn process_session_template_section_in_sat_file(
   let user = common::jwt_ops::get_name(shasta_token)?;
   let username = common::jwt_ops::get_preferred_username(shasta_token)?;
 
-  log::debug!(target: "app::audit", "User: {} ({}) ; Operation: Apply cluster", user, username);
+  log::debug!(target: "app::audit", "User: {user} ({username}) ; Operation: Apply cluster");
 
   Ok((bos_st_created_vec, bos_sessions_created))
 }
 
 /// Returns image reference related to a session template in SAT file.
 /// An image refenrece can be:
-///     - image_name
-///     - image_id
-/// Image names are supposed to be fetched using 'get_fuzzy' function (so we increase the probablity of finding the image in CSM if it was created using 'sat bootprep --overwrite-images') while image ids can be fetched
+///     - `image_name`
+///     - `image_id`
+/// Image names are supposed to be fetched using '`get_fuzzy`' function (so we increase the probablity of finding the image in CSM if it was created using 'sat bootprep --overwrite-images') while image ids can be fetched
 /// by just 'get' function
 /// This function returns a tuple with the image reference and a boolean indicating whether the image is
 /// an image id or not
@@ -723,8 +714,7 @@ fn get_image_reference_from_bos_sessiontemplate_yaml(
       .cloned()
       .ok_or_else(|| {
         Error::YamlShape(format!(
-          "SAT file: image_ref '{}' not found in processed image set",
-          image_ref
+          "SAT file: image_ref '{image_ref}' not found in processed image set"
         ))
       })?;
 
@@ -845,7 +835,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           if r#type == "image" {
             log::debug!("SAT file - 'image.base.ims' job of type 'image'");
 
-            id.to_string()
+            id.clone()
           } else {
             return Err(Error::SatFile(
               "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
@@ -872,8 +862,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
 
       let product_version = product.version.as_ref().ok_or_else(|| {
         Error::YamlShape(format!(
-          "SAT file: image base.product '{}' is missing 'version'",
-          product_name
+          "SAT file: image base.product '{product_name}' is missing 'version'"
         ))
       })?;
 
@@ -886,8 +875,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
         .cloned()
         .ok_or_else(|| {
           Error::SatFile(format!(
-            "Cray product catalog: '{}.{}.{}' is missing or not an object",
-            product_name, product_version, product_type
+            "Cray product catalog: '{product_name}.{product_version}.{product_type}' is missing or not an object"
           ))
         })?;
 
@@ -911,8 +899,7 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           .map(str::to_string)
           .ok_or_else(|| {
             Error::SatFile(format!(
-              "Cray product catalog: '{}.{}.{}' has no entries with an 'id' field",
-              product_name, product_version, product_type
+              "Cray product catalog: '{product_name}.{product_version}.{product_type}' has no entries with an 'id' field"
             ))
           })?
       };

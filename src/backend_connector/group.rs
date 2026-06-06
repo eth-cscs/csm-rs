@@ -60,7 +60,7 @@ impl GroupTrait for Csm {
       .map_err(Error::from)?;
 
     // let group: FrontEndGroup = group_csm.into();
-    log::info!("Group created: {}", group_csm);
+    log::info!("Group created: {group_csm}");
 
     Ok(group)
   }
@@ -151,8 +151,7 @@ impl GroupTrait for Csm {
     // Error if more than one HSM group found
     if hsm_group_backend_vec.len() > 1 {
       return Err(Error::Message(format!(
-        "ERROR - multiple HSM groups with name '{}' found. Exit",
-        hsm_name
+        "ERROR - multiple HSM groups with name '{hsm_name}' found. Exit"
       )));
     }
 

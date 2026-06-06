@@ -59,7 +59,7 @@ pub async fn exec(
   // Get ansible limit nodes from cli arg
   let ansible_limit = ansible_limit.unwrap_or_default();
   let ansible_limit_nodes: Vec<&str> =
-    ansible_limit.split(',').map(|xname| xname.trim()).collect();
+    ansible_limit.split(',').map(str::trim).collect();
 
   // Parse hsm group
   let mut hsm_group_value_opt = None;
@@ -93,11 +93,15 @@ pub async fn exec(
     hsm_groups_node_list = hsm_group_list
       .iter()
       .flat_map(|hsm_group| {
-        hsm_group.members.iter().map(|xname| xname.as_str())
+        hsm_group.members.iter().map(std::string::String::as_str)
       })
       .collect();
 
-    if !ansible_limit_nodes.is_empty() {
+    if ansible_limit_nodes.is_empty() {
+      // hsm_group provided but no ansible_limit provided --> target nodes are the ones from hsm_group
+      // included = hsm_groups_nodes
+      xname_list = hsm_groups_node_list;
+    } else {
       // both hsm_group provided and ansible_limit provided --> check ansible_limit belongs to hsm_group
       xname_list = hsm_groups_node_list;
       // Check user has provided valid XNAMES
@@ -114,10 +118,6 @@ pub async fn exec(
       {
         return Err(Error::ValidationFailed("xname/s invalid"));
       }
-    } else {
-      // hsm_group provided but no ansible_limit provided --> target nodes are the ones from hsm_group
-      // included = hsm_groups_nodes
-      xname_list = hsm_groups_node_list;
     }
   } else {
     // no hsm_group provided but ansible_limit provided --> target nodes are the ones from ansible_limit
@@ -128,7 +128,7 @@ pub async fn exec(
   // * End Process/validate hsm group value (and ansible limit)
 
   // Remove duplicates in xname_list
-  xname_list.sort();
+  xname_list.sort_unstable();
   xname_list.dedup();
 
   log::debug!("Replacing '_' with '-' in repo name.");
@@ -230,12 +230,11 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
         .into_iter()
         .flatten()
     })
-    .map(|xname| xname.trim())
+    .map(str::trim)
     .collect(); // TODO: remove duplicates... sort() + dedup() ???
 
   log::info!(
-    "Nodes with cfs session running or pending: {:?}",
-    nodes_in_running_or_pending_cfs_session
+    "Nodes with cfs session running or pending: {nodes_in_running_or_pending_cfs_session:?}"
   );
 
   // NOTE: nodes can be a list of xnames or hsm group name
@@ -243,7 +242,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // Convert limit (String with list of target nodes for new CFS session) into list of String
   let limit_value = limit.unwrap_or("");
   let nodes_list: Vec<&str> =
-    limit_value.split(',').map(|node| node.trim()).collect();
+    limit_value.split(',').map(str::trim).collect();
 
   // Check each node if it has a CFS session already running
   for node in nodes_list {
@@ -261,7 +260,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     .collect();
 
   for xname in xnames {
-    log::debug!("Checking status of component {}", xname);
+    log::debug!("Checking status of component {xname}");
 
     let component_status = client
       .cfs_component_v2_get_single_component(shasta_token, &xname)
@@ -282,9 +281,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       })?;
 
     log::debug!(
-      "HSM component state for component {}: {}",
-      xname,
-      hsm_component_status_state
+      "HSM component state for component {xname}: {hsm_component_status_state}"
     );
     log::debug!(
       "Is component enabled for batched CFS: {:?}",

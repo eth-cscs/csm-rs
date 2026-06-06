@@ -53,9 +53,9 @@ pub async fn exec(
   // *********************************************************************************************************
   // PREPREQUISITES - FORMAT USER INPUT
 
-  let pattern = format!("{}:{}", target_hsm_group_name, pattern);
+  let pattern = format!("{target_hsm_group_name}:{pattern}");
 
-  log::info!("pattern: {}", pattern);
+  log::info!("pattern: {pattern}");
 
   // lcm -> used to normalize and quantify memory capacity
   let mem_lcm = 16384; // 1024 * 16
@@ -93,8 +93,7 @@ pub async fn exec(
   }
 
   log::info!(
-    "User defined hw components with counters: {:?}",
-    user_defined_target_hsm_hw_component_count_hashmap
+    "User defined hw components with counters: {user_defined_target_hsm_hw_component_count_hashmap:?}"
   );
 
   let mut user_defined_target_hsm_hw_component_vec: Vec<String> =
@@ -118,13 +117,12 @@ pub async fn exec(
     .await
   {
     Ok(_) => {
-      log::debug!("Target HSM group {} exists, good.", target_hsm_group_name)
+      log::debug!("Target HSM group {target_hsm_group_name} exists, good.");
     }
     Err(_) => {
       if create_target_hsm_group {
         log::info!(
-          "Target HSM group {} does not exist, but the option to create the group has been selected, creating it now.",
-          target_hsm_group_name
+          "Target HSM group {target_hsm_group_name} does not exist, but the option to create the group has been selected, creating it now."
         );
         if nodryrun {
           let group = Group {
@@ -147,7 +145,7 @@ pub async fn exec(
         )));
       }
     }
-  };
+  }
 
   // Get target HSM group members
   let target_hsm_group_member_vec: Vec<String> =
@@ -185,9 +183,7 @@ pub async fn exec(
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
   log::debug!(
-    "HSM group '{}' hw component summary: {:?}",
-    target_hsm_group_name,
-    target_hsm_hw_component_summary_hashmap
+    "HSM group '{target_hsm_group_name}' hw component summary: {target_hsm_hw_component_summary_hashmap:?}"
   );
 
   // *********************************************************************************************************
@@ -294,12 +290,9 @@ pub async fn exec(
   // *********************************************************************************************************
   // UPDATE TARGET HSM GROUP IN CSM
   log::info!(
-    "Updating target HSM group '{}' members",
-    target_hsm_group_name
+    "Updating target HSM group '{target_hsm_group_name}' members"
   );
-  if !nodryrun {
-    log::info!("Dry run enabled, not modifying the HSM groups on the system.");
-  } else {
+  if nodryrun {
     // The target HSM group will never be empty, the way the pattern works it'll always
     // contain at least one node, so there is no need to add code to delete it if it's empty.
     let _ = hsm::group::utils::update_hsm_group_members(
@@ -318,17 +311,16 @@ pub async fn exec(
         .collect::<Vec<&str>>(),
     )
     .await;
+  } else {
+    log::info!("Dry run enabled, not modifying the HSM groups on the system.");
   }
 
   // *********************************************************************************************************
   // UPDATE PARENT GROUP IN CSM
   log::info!(
-    "Updating parent HSM group '{}' members",
-    parent_hsm_group_name
+    "Updating parent HSM group '{parent_hsm_group_name}' members"
   );
-  if !nodryrun {
-    log::info!("Dry run enabled, not modifying the HSM groups on the system.");
-  } else {
+  if nodryrun {
     // The parent group might be out of resources after applying this, so it's safe to check
     // if there are still nodes there and, delete it after moving out the resources.
     let parent_group_will_be_empty =
@@ -352,8 +344,7 @@ pub async fn exec(
     if parent_group_will_be_empty {
       if delete_empty_parent_hsm_group {
         log::info!(
-          "Parent HSM group {} is now empty and the option to delete empty groups has been selected, removing it.",
-          parent_hsm_group_name
+          "Parent HSM group {parent_hsm_group_name} is now empty and the option to delete empty groups has been selected, removing it."
         );
         match shasta_client
           .hsm_group_delete_group(shasta_token, parent_hsm_group_name)
@@ -361,17 +352,17 @@ pub async fn exec(
         {
           Ok(_) => log::info!("HSM group removed successfully."),
           Err(e2) => log::debug!(
-            "Error removing the HSM group. This always fails, ignore please. Reported: {}",
-            e2
+            "Error removing the HSM group. This always fails, ignore please. Reported: {e2}"
           ),
-        };
+        }
       } else {
         log::debug!(
-          "Parent HSM group {} is now empty and the option to delete empty groups has NOT been selected, will not remove it.",
-          parent_hsm_group_name
-        )
+          "Parent HSM group {parent_hsm_group_name} is now empty and the option to delete empty groups has NOT been selected, will not remove it."
+        );
       }
     }
+  } else {
+    log::info!("Dry run enabled, not modifying the HSM groups on the system.");
   }
   // *********************************************************************************************************
   // RETURN VALUES
@@ -381,9 +372,7 @@ pub async fn exec(
 
   // Print target HSM data
   log::info!(
-    "HSM '{}' hw component summary: {:?}",
-    target_hsm_group_name,
-    target_hsm_hw_component_summary_hashmap
+    "HSM '{target_hsm_group_name}' hw component summary: {target_hsm_hw_component_summary_hashmap:?}"
   );
 
   let target_hsm_group_value = serde_json::json!({
@@ -401,9 +390,7 @@ pub async fn exec(
 
   // Print parent HSM data
   log::info!(
-    "HSM '{}' hw component summary: {:?}",
-    parent_hsm_group_name,
-    parent_hsm_hw_component_summary_hashmap
+    "HSM '{parent_hsm_group_name}' hw component summary: {parent_hsm_hw_component_summary_hashmap:?}"
   );
 
   let parent_hsm_group_value = serde_json::json!({

@@ -45,7 +45,7 @@ pub async fn wait_nodes_to_power_on(
         .capmc_node_power_status_post(token, &xname_vec)
         .await
     },
-    |status| status.off.as_ref().is_none_or(|off| off.is_empty()),
+    |status| status.off.as_ref().is_none_or(std::vec::Vec::is_empty),
   )
   .await
 }

@@ -40,7 +40,9 @@ pub async fn get_group_available(
   let realm_access_role_vec =
     crate::common::jwt_ops::get_roles(shasta_auth_token)?;
 
-  if !realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
+  if realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
+    Ok(group_vec)
+  } else {
     let available_groups_name = get_group_name_available(
       shasta_auth_token,
       shasta_base_url,
@@ -57,8 +59,6 @@ pub async fn get_group_available(
       hsm::group::hacks::filter_system_hsm_groups(group_vec.clone());
 
     Ok(realm_access_role_filtered_vec)
-  } else {
-    Ok(group_vec)
   }
 }
 
@@ -83,28 +83,7 @@ pub async fn get_group_name_available(
   let realm_access_role_vec =
     crate::common::jwt_ops::get_roles(shasta_auth_token)?;
 
-  if !realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
-    log::debug!("User is not admin, getting HSM groups available from JWT");
-
-    let realm_access_role_vec = hsm::group::hacks::filter_keycloak_roles(
-      realm_access_role_vec
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<&str>>()
-        .as_slice(),
-    );
-
-    // Remove site-wide HSM groups (alps, prealps, …) — see
-    // `hsm::group::hacks` module docs for why.
-    let mut realm_access_role_filtered_vec =
-      hsm::group::hacks::filter_system_hsm_group_names(
-        realm_access_role_vec.clone(),
-      );
-
-    realm_access_role_filtered_vec.sort();
-
-    Ok(realm_access_role_filtered_vec)
-  } else {
+  if realm_access_role_vec.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()) {
     log::debug!("User is admin, getting all HSM groups in the system");
     let all_hsm_groups = crate::ShastaClient::new(
       shasta_base_url,
@@ -125,6 +104,27 @@ pub async fn get_group_name_available(
     all_hsm_groups_filtered.sort();
 
     Ok(all_hsm_groups_filtered)
+  } else {
+    log::debug!("User is not admin, getting HSM groups available from JWT");
+
+    let realm_access_role_vec = hsm::group::hacks::filter_keycloak_roles(
+      realm_access_role_vec
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<&str>>()
+        .as_slice(),
+    );
+
+    // Remove site-wide HSM groups (alps, prealps, …) — see
+    // `hsm::group::hacks` module docs for why.
+    let mut realm_access_role_filtered_vec =
+      hsm::group::hacks::filter_system_hsm_group_names(
+        realm_access_role_vec.clone(),
+      );
+
+    realm_access_role_filtered_vec.sort();
+
+    Ok(realm_access_role_filtered_vec)
   }
 }
 
@@ -238,9 +238,7 @@ pub async fn remove_hsm_members(
   // UPDATE HSM GROUP MEMBERS IN CSM
   if dryrun {
     log::debug!(
-      "Remove following nodes from HSM group {}:\n{:?}",
-      target_hsm_group_name,
-      new_target_hsm_members
+      "Remove following nodes from HSM group {target_hsm_group_name}:\n{new_target_hsm_members:?}"
     );
 
     log::debug!("dry-run enabled, changes not persisted.");
@@ -307,7 +305,7 @@ pub async fn migrate_hsm_members(
 
   // merge HSM group list with the list of xnames provided by the user
   target_hsm_group_member_vec
-    .extend(new_target_hsm_members.iter().cloned().map(str::to_string));
+    .extend(new_target_hsm_members.iter().copied().map(str::to_string));
 
   target_hsm_group_member_vec.sort();
   target_hsm_group_member_vec.dedup();
@@ -500,8 +498,9 @@ pub async fn get_hsm_group_map_and_filter_by_hsm_group_member_vec(
   ))
 }
 
-/// Given a list of HsmGroup struct and a list of Hsm group names, it will filter out those
-/// not in the Hsm group names and convert from HsmGroup struct to HashMap
+/// Given a list of `HsmGroup` struct and a list of Hsm group names, it will filter out those
+/// not in the Hsm group names and convert from `HsmGroup` struct to `HashMap`
+#[must_use]
 pub fn filter_by_hsm_group_name_and_convert_to_map(
   hsm_name_vec: &[&str],
   hsm_group_vec: &[&Group],
@@ -523,8 +522,9 @@ pub fn filter_by_hsm_group_name_and_convert_to_map(
   hsm_group_map
 }
 
-/// Given a list of HsmGroup struct and a list of Hsm group members, it will filter out those
-/// not in the Hsm group names and convert from HsmGroup struct to HashMap
+/// Given a list of `HsmGroup` struct and a list of Hsm group members, it will filter out those
+/// not in the Hsm group names and convert from `HsmGroup` struct to `HashMap`
+#[must_use]
 pub fn filter_by_hsm_group_members_and_convert_to_map(
   member_vec: &[&str],
   hsm_group_vec: Vec<Group>,
@@ -565,6 +565,7 @@ pub fn get_member_vec_from_hsm_group_value(hsm_group: &Value) -> Vec<String> {
 }
 
 /// Extract member xnames from a typed HSM `Group`.
+#[must_use]
 pub fn get_member_vec_from_hsm_group(hsm_group: &Group) -> Vec<String> {
   // Take all nodes for all hsm_groups found and put them in a Vec
   hsm_group.get_members()
@@ -590,7 +591,7 @@ pub async fn get_member_vec_from_hsm_name_vec(
   hsm_name_vec: &[String],
 ) -> Result<Vec<String>, Error> {
   log::debug!("Get xnames from HSM groups");
-  log::debug!("Get xnames from HSM groups: {:?}", hsm_name_vec);
+  log::debug!("Get xnames from HSM groups: {hsm_name_vec:?}");
 
   let hsm_group_vec = crate::ShastaClient::new(
     shasta_base_url,
@@ -644,8 +645,7 @@ pub fn group_members_by_hsm_group_from_hsm_groups_value(
       .map(str::to_string)
     else {
       log::warn!(
-        "Skipping HSM group with missing or non-string 'label': {}",
-        hsm_group_value
+        "Skipping HSM group with missing or non-string 'label': {hsm_group_value}"
       );
       continue;
     };

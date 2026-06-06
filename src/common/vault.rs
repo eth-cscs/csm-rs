@@ -30,9 +30,9 @@ pub mod http_client {
     };
 
     let api_url =
-      format!("{}/v1/auth/jwt-manta-{}/login", vault_base_url, site_name);
+      format!("{vault_base_url}/v1/auth/jwt-manta-{site_name}/login");
 
-    log::debug!("Accessing/login to {}", api_url);
+    log::debug!("Accessing/login to {api_url}");
 
     let request_payload = json!({
             "jwt": shasta_token,
@@ -82,7 +82,7 @@ pub mod http_client {
 
     let api_url = vault_base_url.to_owned() + secret_path;
 
-    log::debug!("Vault url to fetch VCS secrets is '{}'", api_url);
+    log::debug!("Vault url to fetch VCS secrets is '{api_url}'");
 
     let resp = client
       .get(api_url)
@@ -101,7 +101,7 @@ pub mod http_client {
 
   /// Fetch the Kubernetes API URL, token, and CA cert from
   /// `secret/manta/data/<site>/k8s` — the credentials csm-rs uses to
-  /// read the in-cluster `cray-product-catalog` ConfigMap and to attach
+  /// read the in-cluster `cray-product-catalog` `ConfigMap` and to attach
   /// node consoles.
   pub async fn fetch_shasta_k8s_secrets_from_vault(
     vault_base_url: &str,
@@ -116,12 +116,12 @@ pub mod http_client {
       auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy)
         .await?;
 
-    let vault_secret_path = format!("manta/data/{}", site_name);
+    let vault_secret_path = format!("manta/data/{site_name}");
 
     fetch_secret(
       &vault_token,
       vault_base_url,
-      &format!("/v1/{}/k8s", vault_secret_path),
+      &format!("/v1/{vault_secret_path}/k8s"),
       socks5_proxy,
     )
     .await

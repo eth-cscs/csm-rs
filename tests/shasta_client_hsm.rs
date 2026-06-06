@@ -57,8 +57,7 @@ async fn hsm_group_get_one_unauthorized_returns_request_error() {
     .expect_err("err");
   assert!(
     matches!(err, csm_rs::Error::RequestError { .. }),
-    "expected RequestError, got: {:?}",
-    err
+    "expected RequestError, got: {err:?}"
   );
 }
 

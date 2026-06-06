@@ -1,9 +1,9 @@
-//! Shared helpers for ShastaClient wiremock integration tests.
+//! Shared helpers for `ShastaClient` wiremock integration tests.
 
 use csm_rs::ShastaClient;
 
 /// Self-signed PEM that `reqwest::Certificate::from_pem` accepts; only used
-/// to satisfy the ShastaClient::new contract. The mock server itself runs on
+/// to satisfy the `ShastaClient::new` contract. The mock server itself runs on
 /// plain HTTP, so this cert is never actually exercised.
 pub const TEST_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
 MIIBhTCCASugAwIBAgIQIRi6zePL6mKjOipn+dNuaTAKBggqhkjOPQQDAjASMRAw\n\

@@ -89,8 +89,7 @@ pub async fn get_data_to_delete(
 
   let duration = start.elapsed();
   log::info!(
-    "Time elapsed to fetch information from backend: {:?}",
-    duration
+    "Time elapsed to fetch information from backend: {duration:?}"
   );
 
   let mut cfs_session_to_delete_vec = cfs_session_vec.clone();
@@ -152,7 +151,7 @@ pub async fn get_data_to_delete(
       .map(str::to_string)
       .collect();
 
-  log::info!("Image ids to delete: {:?}", image_id_vec);
+  log::info!("Image ids to delete: {image_id_vec:?}");
 
   // Get list of CFS session name, CFS configuration name and image id for CFS sessions which
   // created an image
@@ -247,7 +246,7 @@ pub async fn get_data_to_delete(
       cfs_configuration_name_used_to_configure_nodes_vec
         .push(cfs_configuration_name.to_string());
 
-      nodes_using_cfs_configuration_as_dessired_configuration_vec.sort();
+      nodes_using_cfs_configuration_as_dessired_configuration_vec.sort_unstable();
 
       log::warn!(
         "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
@@ -282,14 +281,8 @@ pub async fn get_data_to_delete(
       .contains(&cfs_configuration_value.name)
   });
 
-  let cfs_session_cfs_configuration_image_id_tuple_filtered_vec: Vec<(
-    String,
-    String,
-    String,
-  )>;
-  let bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec: Vec<
-    (String, String, String),
-  >;
+  
+  
 
   // EVALUATE IF NEED TO CONTINUE.
   // CHECK IF ANY CFS CONFIGURAION OR IMAGE IS CURRENTLY USED TO CONFIGURE OR BOOT NODES
@@ -304,40 +297,43 @@ pub async fn get_data_to_delete(
     return Err(
       Error::ConfigurationUsedAsRuntimeConfigurationOrUsedToBuildBootImageUsed,
     );
-  } else {
-    // We are safe to delete, none of the data selected for deletion is currently used as
-    // neither configure nor boot the nodes
-    cfs_configuration_from_bos_st_and_cfs_session_name_vec.retain(
-      |cfs_configuration_name| {
-        !cfs_configuration_name_used_to_configure_nodes_vec
-          .contains(&cfs_configuration_name.to_string())
-      },
-    );
-
-    image_id_vec.retain(|image_id| {
-      !image_id_used_to_boot_nodes_vec.contains(&image_id.to_string())
-    });
-
-    cfs_session_cfs_configuration_image_id_tuple_filtered_vec =
-      cfs_session_cfs_configuration_image_id_tuple_vec
-        .into_iter()
-        .filter(|(_, cfs_configuration_name, image_id)| {
-          !cfs_configuration_name_used_to_configure_nodes_vec
-            .contains(&cfs_configuration_name.to_string())
-            && !image_id_used_to_boot_nodes_vec.contains(&image_id.to_string())
-        })
-        .collect();
-
-    bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec =
-      bos_sessiontemplate_cfs_configuration_image_id_tuple_vec
-        .into_iter()
-        .filter(|(_, cfs_configuration_name, image_id)| {
-          !cfs_configuration_name_used_to_configure_nodes_vec
-            .contains(cfs_configuration_name)
-            && !image_id_used_to_boot_nodes_vec.contains(image_id)
-        })
-        .collect();
   }
+  // We are safe to delete, none of the data selected for deletion is currently used as
+  // neither configure nor boot the nodes
+  cfs_configuration_from_bos_st_and_cfs_session_name_vec.retain(
+    |cfs_configuration_name| {
+      !cfs_configuration_name_used_to_configure_nodes_vec
+        .contains(&cfs_configuration_name.clone())
+    },
+  );
+
+  image_id_vec.retain(|image_id| {
+    !image_id_used_to_boot_nodes_vec.contains(&image_id.clone())
+  });
+
+  let cfs_session_cfs_configuration_image_id_tuple_filtered_vec: Vec<(
+    String,
+    String,
+    String,
+  )> = cfs_session_cfs_configuration_image_id_tuple_vec
+      .into_iter()
+      .filter(|(_, cfs_configuration_name, image_id)| {
+        !cfs_configuration_name_used_to_configure_nodes_vec
+          .contains(&cfs_configuration_name.clone())
+          && !image_id_used_to_boot_nodes_vec.contains(&image_id.clone())
+      })
+      .collect();
+
+  let bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec: Vec<
+    (String, String, String),
+  > = bos_sessiontemplate_cfs_configuration_image_id_tuple_vec
+      .into_iter()
+      .filter(|(_, cfs_configuration_name, image_id)| {
+        !cfs_configuration_name_used_to_configure_nodes_vec
+          .contains(cfs_configuration_name)
+          && !image_id_used_to_boot_nodes_vec.contains(image_id)
+      })
+      .collect();
 
   // Return ERROR IF THERE IS NO DATA TO DELETE
   if image_id_vec.is_empty()
@@ -397,13 +393,13 @@ pub async fn delete(
   //
   // DELETE IMAGES
   for image_id in image_id_vec {
-    log::info!("Deleting IMS image '{}'", image_id);
+    log::info!("Deleting IMS image '{image_id}'");
     let image_deleted_value_rslt =
       client.ims_image_delete(shasta_token, image_id).await;
 
     // process api response
     match image_deleted_value_rslt {
-      Ok(_) => log::info!("IMS image deleted: {}", image_id),
+      Ok(()) => log::info!("IMS image deleted: {image_id}"),
       Err(e) => {
         log::warn!("{e}. Continue");
       }
@@ -420,7 +416,7 @@ pub async fn delete(
       log::warn!("BOS session has no 'name' field; skipping deletion");
       continue;
     };
-    log::info!("Deleting BOS sesion '{}'", bos_session_id);
+    log::info!("Deleting BOS sesion '{bos_session_id}'");
 
     if bos_sessiontemplate_name_vec.contains(&bos_session.template_name) {
       shasta_client
@@ -428,20 +424,19 @@ pub async fn delete(
         .await?;
 
       log::info!(
-        "BOS session deleted: {}",
-        bos_session_id // For some reason CSM API to delete a BOS
+        "BOS session deleted: {bos_session_id}" // For some reason CSM API to delete a BOS
                        // session does not returns the BOS session
                        // ID in the payload...
       );
     } else {
-      log::debug!("Ignoring BOS session template {}", bos_session_id);
+      log::debug!("Ignoring BOS session template {bos_session_id}");
     }
   }
 
   // DELETE CFS SESSIONS
   let max_attempts = 5;
   for cfs_session_name in cfs_session_name_vec {
-    log::info!("Deleting IMS image '{}'", cfs_session_name);
+    log::info!("Deleting IMS image '{cfs_session_name}'");
     let mut counter = 0;
     loop {
       let deletion_rslt = shasta_client
@@ -450,22 +445,18 @@ pub async fn delete(
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
-          "Could not delete CFS session {} attempt {} of {}, trying again in 2 seconds...",
-          cfs_session_name,
-          counter,
-          max_attempts
+          "Could not delete CFS session {cfs_session_name} attempt {counter} of {max_attempts}, trying again in 2 seconds..."
         );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
         log::warn!(
-          "ERROR deleting CFS session {}, please delete it manually.",
-          cfs_session_name,
+          "ERROR deleting CFS session {cfs_session_name}, please delete it manually.",
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        log::info!("CfS session deleted: {}", cfs_session_name);
+        log::info!("CfS session deleted: {cfs_session_name}");
         break;
       }
     }
@@ -475,8 +466,7 @@ pub async fn delete(
   let max_attempts = 5;
   for bos_sessiontemplate_name in bos_sessiontemplate_name_vec {
     log::info!(
-      "Deleting BOS sessiontemplate '{}'",
-      bos_sessiontemplate_name
+      "Deleting BOS sessiontemplate '{bos_sessiontemplate_name}'"
     );
     let mut counter = 0;
     loop {
@@ -486,22 +476,18 @@ pub async fn delete(
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
-          "Could not delete BOS sessiontemplate {} attempt {} of {}, trying again in 2 seconds...",
-          bos_sessiontemplate_name,
-          counter,
-          max_attempts
+          "Could not delete BOS sessiontemplate {bos_sessiontemplate_name} attempt {counter} of {max_attempts}, trying again in 2 seconds..."
         );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
         log::warn!(
-          "ERROR deleting BOS sessiontemplate {}, please delete it manually.",
-          bos_sessiontemplate_name,
+          "ERROR deleting BOS sessiontemplate {bos_sessiontemplate_name}, please delete it manually.",
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        log::info!("BOS sessiontemplate deleted: {}", bos_sessiontemplate_name);
+        log::info!("BOS sessiontemplate deleted: {bos_sessiontemplate_name}");
         break;
       }
     }
@@ -510,7 +496,7 @@ pub async fn delete(
   // DELETE CFS CONFIGURATIONS
   let max_attempts = 5;
   for cfs_configuration in cfs_configuration_name_vec {
-    log::info!("Deleting CFS configuration '{}'", cfs_configuration);
+    log::info!("Deleting CFS configuration '{cfs_configuration}'");
     let mut counter = 0;
     loop {
       let deletion_rslt = shasta_client
@@ -519,22 +505,18 @@ pub async fn delete(
 
       if deletion_rslt.is_err() && counter <= max_attempts {
         log::warn!(
-          "Could not delete CFS configuration {} attempt {} of {}, trying again in 2 seconds...",
-          cfs_configuration,
-          counter,
-          max_attempts
+          "Could not delete CFS configuration {cfs_configuration} attempt {counter} of {max_attempts}, trying again in 2 seconds..."
         );
         tokio::time::sleep(time::Duration::from_secs(2)).await;
         counter += 1;
       } else if deletion_rslt.is_err() && counter > max_attempts {
         log::warn!(
-          "ERROR deleting CFS configuration {}, please delete it manually.",
-          cfs_configuration,
+          "ERROR deleting CFS configuration {cfs_configuration}, please delete it manually.",
         );
         log::debug!("ERROR:\n{:#?}", deletion_rslt.unwrap_err());
         break;
       } else {
-        log::info!("CFS configuration deleted: {}", cfs_configuration);
+        log::info!("CFS configuration deleted: {cfs_configuration}");
         break;
       }
     }
@@ -543,7 +525,8 @@ pub async fn delete(
   Ok(())
 }
 
-/// Given a list of boot params, this function returns the list of hosts booting an image_id
+/// Given a list of boot params, this function returns the list of hosts booting an `image_id`
+#[must_use]
 pub fn get_node_vec_booting_image(
   image_id: &str,
   boot_param_vec: &[BootParameters],

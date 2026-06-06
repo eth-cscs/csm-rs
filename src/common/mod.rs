@@ -11,7 +11,7 @@
 //!   its signature.
 //! - [`kubernetes`] — in-cluster API client used to read CSM-side state
 //!   that isn't exposed over REST (e.g. the `cray-product-catalog`
-//!   ConfigMap).
+//!   `ConfigMap`).
 //! - [`vault`] — fetch K8s service-account secrets from Vault, which is
 //!   the supported way to obtain CSM cluster credentials off-cluster.
 //! - [`gitea`] — small client for the embedded CSM Gitea instance used
@@ -25,7 +25,7 @@ pub mod gitea;
 pub(crate) mod http;
 pub mod jwt_ops;
 pub(crate) mod poll;
-/// In-cluster Kubernetes client helpers (used to read ConfigMaps such
+/// In-cluster Kubernetes client helpers (used to read `ConfigMaps` such
 /// as `cray-product-catalog`). Requires the `k8s-console` Cargo
 /// feature.
 #[cfg(feature = "k8s-console")]

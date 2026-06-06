@@ -50,32 +50,32 @@ fn test_update_boot_image_ncn() {
 
   if !changed {
     pass = false;
-    println!("DEBUG - pass 1 {}", pass);
+    println!("DEBUG - pass 1 {pass}");
   }
 
   for kernel_param in boot_parameters.params.split_whitespace() {
     if kernel_param.contains("metal.server=s3://boot-images/") {
       pass = pass && kernel_param.contains(new_image_id);
-      println!("DEBUG - pass 2 {}", pass);
+      println!("DEBUG - pass 2 {pass}");
     }
 
     if kernel_param.contains("root=craycps-s3:s3://boot-images/") {
       pass = pass && kernel_param.contains(new_image_id);
-      println!("DEBUG - pass 3 {}", pass);
+      println!("DEBUG - pass 3 {pass}");
     }
 
     if kernel_param.contains("nmd_data=url=s3://boot-images/") {
       pass = pass && kernel_param.contains(new_image_id);
-      println!("DEBUG - pass 4 {}", pass);
+      println!("DEBUG - pass 4 {pass}");
     }
   }
 
   pass = pass && boot_parameters.kernel.contains(new_image_id);
-  println!("DEBUG - pass 5 {}", pass);
+  println!("DEBUG - pass 5 {pass}");
   pass = pass && boot_parameters.initrd.contains(new_image_id);
-  println!("DEBUG - pass 6 {}", pass);
+  println!("DEBUG - pass 6 {pass}");
 
-  assert!(pass)
+  assert!(pass);
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn test_update_boot_image_cn() {
   pass = pass && boot_parameters.kernel.contains(new_image_id) && changed;
   pass = pass && boot_parameters.initrd.contains(new_image_id) && changed;
 
-  assert!(pass)
+  assert!(pass);
 }
 
 #[test]
@@ -137,16 +137,16 @@ fn test_add_kernel_param() {
   let param_value_opt = boot_parameters.get_kernel_param_value("test");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == num_params + 1)
     && param_value_opt == Some("1".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 #[test]
@@ -169,17 +169,17 @@ fn test_add_kernel_param_2() {
   let param_value_2_opt = boot_parameters.get_kernel_param_value("test2");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == num_params + 2)
     && param_value_opt == Some("1".to_string())
     && param_value_2_opt == Some("2".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use apply_kernel_param function to remove 'quiet' kernel parameter
@@ -202,14 +202,14 @@ fn test_apply_kernel_param() {
   let param_value_opt = boot_parameters.get_kernel_param_value("quiet");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
 
   let pass =
     changed && (new_num_params == num_params - 1) && param_value_opt.is_none();
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use apply_kernel_param function to add 'test=1' kernel parameter
@@ -232,16 +232,16 @@ fn test_apply_kernel_param_2() {
   let param_value_opt = boot_parameters.get_kernel_param_value("test");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == num_params + 1)
     && param_value_opt == Some("1".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use apply_kernel_param function to add 2 kernel params 'test=1 test2=2'
@@ -265,17 +265,17 @@ fn test_apply_kernel_param_3() {
   let param_value_2_opt = boot_parameters.get_kernel_param_value("test2");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == num_params + 2)
     && param_value_opt == Some("1".to_string())
     && param_value_2_opt == Some("2".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use apply_kernel_param function to remove kernel param 'root'
@@ -298,15 +298,15 @@ fn test_delete_kernel_param() {
   let param_value_opt = boot_parameters.get_kernel_param_value("root");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass =
     changed && (new_num_params == num_params - 1) && param_value_opt.is_none();
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use delete_kernel_param function to remove all kernel params but 'root'
@@ -329,16 +329,16 @@ fn test_delete_kernel_param_2() {
   let param_value_opt = boot_parameters.get_kernel_param_value("root");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == 1)
     && param_value_opt == Some("test".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use set_kernel_param function to change value of kernel param 'root'
@@ -361,16 +361,16 @@ fn test_set_kernel_param() {
   let param_value_opt = boot_parameters.get_kernel_param_value("root");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass = changed
     && (new_num_params == num_params)
     && param_value_opt == Some("test".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use set_kernel_param function to change 2 kernel parameters 'root' and 'console'
@@ -394,18 +394,18 @@ fn test_set_kernel_param_2() {
   let param_value_opt_2 = boot_parameters.get_kernel_param_value("console");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
-  println!("DEBUG - kernel param 2 value test: {:?}", param_value_opt_2);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
+  println!("DEBUG - kernel param 2 value test: {param_value_opt_2:?}");
 
   let pass = changed
     && (new_num_params == num_params)
     && param_value_opt == Some("test".to_string())
     && param_value_opt_2 == Some("test2".to_string());
 
-  assert!(pass)
+  assert!(pass);
 }
 
 // Use set_kernel_param function to try to update a kernel param that does not exists. The end
@@ -429,13 +429,13 @@ fn test_set_kernel_param_3() {
   let param_value_opt = boot_parameters.get_kernel_param_value("test");
   let new_num_params = boot_parameters.get_num_kernel_params();
 
-  println!("DEBUG - num kp: {}", num_params);
-  println!("DEBUG - new num kp: {}", new_num_params);
-  println!("DEBUG - changed: {}", changed);
-  println!("DEBUG - kernel param value test: {:?}", param_value_opt);
+  println!("DEBUG - num kp: {num_params}");
+  println!("DEBUG - new num kp: {new_num_params}");
+  println!("DEBUG - changed: {changed}");
+  println!("DEBUG - kernel param value test: {param_value_opt:?}");
 
   let pass =
     changed && (new_num_params == num_params) && param_value_opt.is_none();
 
-  assert!(pass)
+  assert!(pass);
 }

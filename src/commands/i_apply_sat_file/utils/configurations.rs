@@ -28,8 +28,7 @@ pub async fn create_cfs_configuration_from_sat_file(
   overwrite: bool,
 ) -> Result<CfsConfigurationResponse, Error> {
   log::debug!(
-    "Convert CFS configuration in SAT file (yaml):\n{:#?}",
-    sat_file_configuration_yaml
+    "Convert CFS configuration in SAT file (yaml):\n{sat_file_configuration_yaml:#?}"
   );
 
   let (cfs_configuration_name, cfs_configuration) =
@@ -53,7 +52,7 @@ pub async fn create_cfs_configuration_from_sat_file(
     // Generate mock CFS configuration
     let cfs_configuration = CfsConfigurationResponse {
       name: cfs_configuration_name,
-      last_updated: "".to_string(),
+      last_updated: String::new(),
       layers: Vec::new(),
       additional_inventory: None,
     };

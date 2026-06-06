@@ -61,9 +61,9 @@ impl Layer {
     special_parameters: Option<Vec<SpecialParameter>>,
   ) -> Self {
     Self {
+      name,
       clone_url,
       commit,
-      name,
       playbook,
       branch,
       // tag,
@@ -79,6 +79,7 @@ impl Default for CfsConfigurationRequest {
 }
 
 impl CfsConfigurationRequest {
+  #[must_use]
   pub fn new() -> Self {
     Self {
       layers: Vec::default(),
@@ -89,15 +90,15 @@ impl CfsConfigurationRequest {
     self.layers.push(layer);
   }
 
-  /// Converts a CFS configuration in the SAT file represented as a serde_yaml::Value into a
-  /// CfsConfigurationRequest struct that we can use to create CFS configuration in CSM through its
+  /// Converts a CFS configuration in the SAT file represented as a `serde_yaml::Value` into a
+  /// `CfsConfigurationRequest` struct that we can use to create CFS configuration in CSM through its
   /// APIs. This function also resolves the git commit id for git layers in the SAT file if the
   /// user provides a git tag or a branch name instead of a commit id and it also resolves the git
   /// commit id for product layers in the SAT file if the user provides a branch name instead of a
   /// commit id. To resolve the git commit id, this function calls Gitea APIs and for that it needs
   /// Gitea base URL, token and Shasta root certificate to be able to call Gitea APIs in a secure
   /// way from Manta which may run outside the CSM local network.
-  /// Returns the CFS configuration name and the CfsConfigurationRequest struct created from the
+  /// Returns the CFS configuration name and the `CfsConfigurationRequest` struct created from the
   /// SAT file.
   ///
   /// # Errors
@@ -147,7 +148,7 @@ impl CfsConfigurationRequest {
           // Git tag
           let git_tag = as_yaml_str(git_tag_value)?;
 
-          log::debug!("git tag: {}", git_tag);
+          log::debug!("git tag: {git_tag}");
 
           let tag_details_rslt = gitea::http_client::get_tag_details(
             &repo_url,
@@ -160,12 +161,11 @@ impl CfsConfigurationRequest {
           .await;
 
           let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
+            log::debug!("tag details:\n{tag_details:#?}");
             tag_details
           } else {
             return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              git_tag, cfs_configuration_name, tag_details_rslt
+              "ERROR - Could not get details for git tag '{git_tag}' in CFS configuration '{cfs_configuration_name}'. Reason:\n{tag_details_rslt:#?}"
             )));
           };
 
@@ -236,8 +236,7 @@ impl CfsConfigurationRequest {
         let product =
           cray_product_catalog.get(product_name).ok_or_else(|| {
             Error::CrayProductCatalog(format!(
-              "Product {} not found in cray product catalog",
-              product_name
+              "Product {product_name} not found in cray product catalog"
             ))
           })?;
 
@@ -249,22 +248,18 @@ impl CfsConfigurationRequest {
           .cloned()
           .ok_or_else(|| {
             Error::CrayProductCatalog(format!(
-              "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-              product_name, product_version
+              "Product details for product name '{product_name}', product_version '{product_version}' and 'configuration' not found in cray product catalog"
             ))
           })?;
 
         log::debug!(
-          "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-          product_name,
-          product_version,
-          product_details
+          "CRAY product catalog details for product: {product_name}, version: {product_version}:\n{product_details:#?}"
         );
 
         // Manta may run outside the CSM local network therefore we have to change the
         // internal URLs for the external one
         let repo_url = yaml_str(&product_details, "clone_url")?.replace(
-          format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
+          format!("vcs.cmn.{site_name}.cscs.ch").as_str(),
           crate::common::gitea::INTERNAL_API_HOST,
         );
 

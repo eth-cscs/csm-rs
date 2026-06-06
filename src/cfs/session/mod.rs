@@ -44,7 +44,7 @@ pub async fn get_one(
   let mut iter = cfs_session_vec.into_iter();
   match (iter.next(), iter.next()) {
     (Some(session), None) => Ok(session),
-    _ => Err(Error::SessionNotFound(session_name.to_string())),
+    _ => Err(Error::SessionNotFound(session_name.clone())),
   }
 }
 
@@ -86,7 +86,7 @@ pub async fn get_and_sort(
   .await?;
 
   // Sort CFS sessions by start time order ASC
-  cfs_session_vec.sort_by_key(|a| a.get_start_time());
+  cfs_session_vec.sort_by_key(http_client::v2::types::CfsSessionGetResponse::get_start_time);
 
   Ok(cfs_session_vec)
 }
@@ -107,7 +107,7 @@ pub async fn post(
   session: &CfsSessionPostRequest,
 ) -> Result<CfsSessionGetResponse, Error> {
   log::info!("Create CFS session '{}'", session.name);
-  log::debug!("Create CFS session request payload:\n{:#?}", session);
+  log::debug!("Create CFS session request payload:\n{session:#?}");
 
   crate::ShastaClient::new(
     shasta_base_url,

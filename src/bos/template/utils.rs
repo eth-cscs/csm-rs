@@ -31,7 +31,7 @@ pub fn filter(
         .configuration_name()
         .is_some_and(|configuration_name| glob.is_match(configuration_name))
     });
-  };
+  }
 
   // Filter by list of HSM group or xnames as target
   if !target_hsm_group_name_vec.is_empty() || !xname_vec.is_empty() {
@@ -64,12 +64,12 @@ pub fn filter(
       .to_vec();
   }
 
-  Ok(bos_sessiontemplate_vec.to_vec())
+  Ok(bos_sessiontemplate_vec.clone())
 }
 
 /// Retain only BOS session templates whose `configuration` equals the
 /// supplied CFS configuration name.
-pub async fn filter_by_configuration(
+pub fn filter_by_configuration(
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
   cfs_configuration_name: &str,
 ) {
@@ -81,6 +81,7 @@ pub async fn filter_by_configuration(
 /// For each BOS session template, return a tuple of
 /// `(image_id, cfs_configuration_name, target_xnames)` extracted from
 /// the template's boot sets.
+#[must_use]
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
   bos_sessiontemplate_value_vec: &Vec<BosSessionTemplate>,
 ) -> Vec<(String, String, Vec<String>)> {
@@ -113,8 +114,8 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
       .concat();
 
       image_id_cfs_configuration_from_bos_sessiontemplate.push((
-        first_image_id.to_string(),
-        cfs_configuration.to_string(),
+        first_image_id.clone(),
+        cfs_configuration.clone(),
         target,
       ));
     } else {
@@ -166,7 +167,7 @@ mod tests {
       cfs: None,
       node_list: None,
       node_roles_groups: None,
-      node_groups: Some(node_groups.iter().map(|s| s.to_string()).collect()),
+      node_groups: Some(node_groups.iter().map(std::string::ToString::to_string).collect()),
       rootfs_provider: None,
       rootfs_provider_passthrough: None,
       arch: None,
@@ -181,7 +182,7 @@ mod tests {
       etag: None,
       kernel_parameters: None,
       cfs: None,
-      node_list: Some(node_list.iter().map(|s| s.to_string()).collect()),
+      node_list: Some(node_list.iter().map(std::string::ToString::to_string).collect()),
       node_roles_groups: None,
       node_groups: None,
       rootfs_provider: None,
@@ -344,7 +345,7 @@ mod tests {
       cfs: None,
       node_list: None,
       node_roles_groups: None,
-      node_groups: Some(node_groups.iter().map(|s| s.to_string()).collect()),
+      node_groups: Some(node_groups.iter().map(std::string::ToString::to_string).collect()),
       rootfs_provider: None,
       rootfs_provider_passthrough: None,
       arch: None,

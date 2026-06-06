@@ -8,12 +8,14 @@ use super::types::BootParameters;
 /// - `s3://boot-images/<image-id>/kernel`
 /// - `craycps-s3:s3://boot-images/<image-id>/rootfs:...`
 /// - `url=s3://boot-images/<image-id>/rootfs,etag=...`
+#[must_use]
 pub fn get_image_id_from_s3_path(s3_path: &str) -> Option<&str> {
-  s3_path.split("/").nth(3)
+  s3_path.split('/').nth(3)
 }
 
 /// Find the [`BootParameters`] entry whose `hosts` list contains the
 /// requested node, returning a clone or `None`.
+#[must_use]
 pub fn find_boot_params_related_to_node(
   node_boot_params_list: &[BootParameters],
   node: &str,

@@ -83,15 +83,14 @@ pub mod http_client {
   ) -> Result<Vec<Value>, Error> {
     let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
-      "{}/api/v1/repos/cray/{}/git/refs",
-      gitea_base_url, repo_name
+      "{gitea_base_url}/api/v1/repos/cray/{repo_name}/git/refs"
     );
 
-    log::debug!("Get refs in gitea using through API call: {}", api_url);
+    log::debug!("Get refs in gitea using through API call: {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -117,7 +116,7 @@ pub mod http_client {
     )
     .await?;
 
-    let want = format!("refs/heads/{}", branch_name);
+    let want = format!("refs/heads/{branch_name}");
     let ref_details_opt = all_ref_vec.into_iter().find(|ref_details| {
       ref_details
         .get("ref")
@@ -153,7 +152,7 @@ pub mod http_client {
   ) -> Result<Value, Error> {
     let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/";
     let gitea_external_base_url =
-      format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
+      format!("https://api.cmn.{site_name}.cscs.ch/vcs/");
 
     let gitea_api_base_url = gitea_internal_base_url.to_owned() + "api/v1";
 
@@ -166,13 +165,13 @@ pub mod http_client {
 
     let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url =
-      format!("{}/repos/{}/tags/{}", gitea_api_base_url, repo_name, tag);
+      format!("{gitea_api_base_url}/repos/{repo_name}/tags/{tag}");
 
-    log::debug!("Request to {}", api_url);
+    log::debug!("Request to {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -192,8 +191,7 @@ pub mod http_client {
     site_name: &str,
   ) -> Result<Value, Error> {
     let external_vcs_base_url = format!(
-      "https://vcs.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/",
-      site_name
+      "https://vcs.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/"
     );
     let repo_name: &str = gitea_api_tag_url
       .trim_start_matches(&external_vcs_base_url)
@@ -202,17 +200,16 @@ pub mod http_client {
       .ok_or_else(|| Error::Message("Invalid repo URL".to_string()))?;
 
     let api_url = format!(
-      "https://api.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/{}/tags/{}",
-      site_name, repo_name, tag
+      "https://api.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/{repo_name}/tags/{tag}"
     );
 
     let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-    log::debug!("Request to {}", api_url);
+    log::debug!("Request to {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await
       .map_err(Error::NetError)?;
@@ -236,7 +233,7 @@ pub mod http_client {
     site_name: &str,
   ) -> Result<Value, crate::error::Error> {
     let gitea_external_base_url =
-      format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
+      format!("https://api.cmn.{site_name}.cscs.ch/vcs/");
 
     get_commit_details(
       &gitea_external_base_url,
@@ -262,15 +259,14 @@ pub mod http_client {
   ) -> Result<Value, crate::error::Error> {
     let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
-      "{}api/v1/repos/{}/git/commits/{}",
-      gitea_base_url, repo_name, commitid
+      "{gitea_base_url}api/v1/repos/{repo_name}/git/commits/{commitid}"
     );
 
-    log::debug!("url to get commit details: {}", api_url);
+    log::debug!("url to get commit details: {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await?;
 

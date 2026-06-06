@@ -106,7 +106,7 @@ impl ShastaClient {
     token: &str,
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
-    log::debug!("Session:\n{:#?}", session);
+    log::debug!("Session:\n{session:#?}");
 
     let api_url = format!("{}/cfs/v3/sessions", self.base_url());
     http::post_json(self.http(), &api_url, token, session).await
@@ -126,7 +126,7 @@ impl ShastaClient {
     token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
-    log::debug!("Deleting CFS session id: {}", session_name);
+    log::debug!("Deleting CFS session id: {session_name}");
 
     let api_url =
       format!("{}/cfs/v3/sessions/{}", self.base_url(), session_name);

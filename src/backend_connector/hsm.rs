@@ -83,7 +83,7 @@ impl ComponentTrait for Csm {
       .shasta_client()
       .hsm_component_get_all_nodes(auth_token, nid_only)
       .await
-      .map(|c| c.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 
@@ -95,7 +95,7 @@ impl ComponentTrait for Csm {
       .get_group_available(auth_token)
       .await?
       .iter()
-      .flat_map(|group| group.get_members())
+      .flat_map(manta_backend_dispatcher::types::Group::get_members)
       .collect();
 
     let node_metadata_vec_rslt = self
@@ -168,7 +168,7 @@ impl ComponentTrait for Csm {
         nid_only,
       )
       .await
-      .map(|c| c.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 
@@ -214,7 +214,7 @@ impl ComponentTrait for Csm {
       log::debug!("Regex found, getting xnames from NIDs");
       // Get list of regex
       let regex_vec: Vec<Regex> = user_input_nid
-        .split(",")
+        .split(',')
         .map(|regex_str| Regex::new(regex_str.trim()))
         .collect::<Result<Vec<Regex>, regex::Error>>()
         .map_err(|e| Error::Message(e.to_string()))?;
@@ -262,13 +262,12 @@ impl ComponentTrait for Csm {
       );
       let nid_hostlist_expanded_vec = parse(user_input_nid).map_err(|e| {
         Error::Message(format!(
-          "Could not parse list of nodes as a hostlist. Reason:\n{}Exit",
-          e
+          "Could not parse list of nodes as a hostlist. Reason:\n{e}Exit"
         ))
       })?;
 
-      log::debug!("hostlist: {}", user_input_nid);
-      log::debug!("hostlist expanded: {:?}", nid_hostlist_expanded_vec);
+      log::debug!("hostlist: {user_input_nid}");
+      log::debug!("hostlist expanded: {nid_hostlist_expanded_vec:?}");
 
       let mut nid_short_vec = Vec::new();
 
@@ -277,18 +276,17 @@ impl ComponentTrait for Csm {
           .strip_prefix("nid")
           .ok_or_else(|| {
             Error::Message(format!(
-              "Nid '{}' not valid, 'nid' prefix missing",
-              nid_long
+              "Nid '{nid_long}' not valid, 'nid' prefix missing"
             ))
           })?
-          .trim_start_matches("0");
+          .trim_start_matches('0');
 
         nid_short_vec.push(nid_short_elem.to_string());
       }
 
       let nid_short = nid_short_vec.join(",");
 
-      log::debug!("short NID list: {}", nid_short);
+      log::debug!("short NID list: {nid_short}");
 
       let hsm_components = self
         .shasta_client()
@@ -325,7 +323,7 @@ impl ComponentTrait for Csm {
         .filter_map(|component| component.id.clone())
         .collect();
 
-      log::debug!("xname list:\n{:#?}", xname_vec);
+      log::debug!("xname list:\n{xname_vec:#?}");
 
       Ok(xname_vec)
     }
@@ -423,7 +421,7 @@ impl RedfishEndpointTrait for Csm {
         last_status,
       )
       .await
-      .map(|arr| arr.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 

@@ -60,7 +60,7 @@ pub async fn update_component_list_desired_configuration(
 
   for xname in xnames {
     let component = Component {
-      id: Some(xname.to_string()),
+      id: Some(xname.clone()),
       desired_config: Some(desired_configuration.to_string()),
       state: None,
       error_count: None,

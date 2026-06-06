@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -1405,7 +1405,7 @@ pub enum HWInventoryByLocation {
   HWInvByLocRouterModule(HWInvByLocRouterModule),
 }
 
-/// struct used in POST and GET endpoints that manage multiple instances of 'HWInventoryByLocation'
+/// struct used in POST and GET endpoints that manage multiple instances of '`HWInventoryByLocation`'
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HWInventoryByLocationList {
   #[serde(rename = "Hardware")]

@@ -372,27 +372,27 @@ impl From<HWInvByLocNode> for FrontEndHWInvByLocNode {
       r#type: val.r#type,
       ordinal: val.ordinal,
       status: val.status,
-      populated_fru: val.populated_fru.map(|v| v.into()),
-      node_location_info: val.node_location_info.map(|v| v.into()),
+      populated_fru: val.populated_fru.map(std::convert::Into::into),
+      node_location_info: val.node_location_info.map(std::convert::Into::into),
       processors: val.processors.map(|processor_vec| {
         processor_vec
           .into_iter()
-          .map(|processor| processor.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
       node_accels: val.node_accels.map(|node_accel_vec| {
         node_accel_vec
           .into_iter()
-          .map(|node_accel| node_accel.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
       drives: None,
       memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(|memory| memory.into()).collect()
+        memory_vec.into_iter().map(std::convert::Into::into).collect()
       }),
       node_accel_risers: None,
       node_hsn_nics: val.node_hsn_nics.map(|node_hsn_nic_vec| {
-        node_hsn_nic_vec.into_iter().map(|v| v.into()).collect()
+        node_hsn_nic_vec.into_iter().map(std::convert::Into::into).collect()
       }),
     }
   }
@@ -459,22 +459,22 @@ impl From<HWInventory> for FrontEndHWInventory {
       cdu_mgmt_switches: None,
       nodes: val
         .nodes
-        .map(|node_vec| node_vec.into_iter().map(|node| node.into()).collect()),
+        .map(|node_vec| node_vec.into_iter().map(std::convert::Into::into).collect()),
       processors: val.processors.map(|processor_vec| {
         processor_vec
           .into_iter()
-          .map(|processor| processor.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
       node_accels: val.node_accels.map(|node_accel_vec| {
         node_accel_vec
           .into_iter()
-          .map(|node_accel| node_accel.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
       drives: None,
       memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(|memory| memory.into()).collect()
+        memory_vec.into_iter().map(std::convert::Into::into).collect()
       }),
       cabinet_pdus: None,
       cabinet_pdu_power_connectors: None,

@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -39,8 +39,7 @@ fn parse_kernel_params(kernel_params: &str) -> impl Iterator<Item = (&str, &str)
   kernel_params.split_whitespace().map(|kernel_param| {
     kernel_param
       .split_once('=')
-      .map(|(k, v)| (k.trim(), v.trim()))
-      .unwrap_or((kernel_param, ""))
+      .map_or((kernel_param, ""), |(k, v)| (k.trim(), v.trim()))
   })
 }
 
@@ -67,6 +66,7 @@ where
 impl BootParameters {
   /// Returns the image id. This function may fail since it assumes kernel path has the following
   // FIXME: Change function signature so it returns a Result<String, Error> instead of String
+  #[must_use]
   pub fn get_boot_image(&self) -> String {
     let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
 
@@ -120,7 +120,7 @@ impl BootParameters {
 
     let mut root_kernel_param: Vec<&str> = match root_kernel_param_rslt {
       Some(root_kernel_param) => {
-        root_kernel_param.split("/").collect::<Vec<&str>>()
+        root_kernel_param.split('/').collect::<Vec<&str>>()
       }
       None => {
         return Err(Error::Message(
@@ -162,7 +162,7 @@ impl BootParameters {
     // NOTE: NCN nodes have UUID image id in 'metal.server' kernel parameter
     let mut metal_server_kernel_param: Vec<&str>;
     if let Some(metal_server_data) = params.get("metal.server") {
-      metal_server_kernel_param = metal_server_data.split("/").collect();
+      metal_server_kernel_param = metal_server_data.split('/').collect();
 
       for substring in &mut metal_server_kernel_param {
         if uuid::Uuid::try_parse(substring).is_ok() {
@@ -176,19 +176,19 @@ impl BootParameters {
       params
         .entry("metal.server")
         .and_modify(|metal_server_param| {
-          *metal_server_param = &new_metal_server_kernel_param
+          *metal_server_param = &new_metal_server_kernel_param;
         });
 
       self.update_kernel_param("metal.server", &new_metal_server_kernel_param);
 
       // convert kernel params to a hashmap
       params = parse_kernel_params(&self.params).collect();
-    };
+    }
 
     // NOTE: NCN nodes have UUID image id 'nmd_data' kernel parameter
     let mut nmd_kernel_param: Vec<&str>;
     if let Some(nmd_data) = params.get("nmd_data") {
-      nmd_kernel_param = nmd_data.split("/").collect();
+      nmd_kernel_param = nmd_data.split('/').collect();
 
       for substring in &mut nmd_kernel_param {
         if uuid::Uuid::try_parse(substring).is_ok() {
@@ -204,20 +204,21 @@ impl BootParameters {
         .and_modify(|nmd_param| *nmd_param = &new_nmd_kernel_param);
 
       self.update_kernel_param("nmd_data", &new_nmd_kernel_param);
-    };
+    }
 
-    self.kernel = format!("s3://boot-images/{}/kernel", new_image_id);
+    self.kernel = format!("s3://boot-images/{new_image_id}/kernel");
 
-    self.initrd = format!("s3://boot-images/{}/initrd", new_image_id);
+    self.initrd = format!("s3://boot-images/{new_image_id}/initrd");
 
     Ok(changed)
   }
 
   pub fn get_kernel_param_value(&self, key: &str) -> Option<String> {
     let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
-    params.get(key).cloned().map(str::to_string)
+    params.get(key).copied().map(str::to_string)
   }
 
+  #[must_use]
   pub fn get_num_kernel_params(&self) -> usize {
     parse_kernel_params(&self.params).count()
   }
@@ -234,16 +235,16 @@ impl BootParameters {
     let mut params: HashMap<&str, &str> = HashMap::new();
 
     for (new_key, new_value) in &new_params {
-      for (key, value) in params.iter_mut() {
+      for (key, value) in &mut params {
         if *key == *new_key {
-          log::debug!("key '{}' found", key);
-          if value != new_value {
-            log::debug!("changing key {} from {} to {}", key, value, new_value);
+          log::debug!("key '{key}' found");
+          if value == new_value {
+            log::debug!("key '{key}' value does not change ({value})");
+          } else {
+            log::debug!("changing key {key} from {value} to {new_value}");
 
             *value = new_value;
-            change = true
-          } else {
-            log::debug!("key '{}' value does not change ({})", key, value);
+            change = true;
           }
         }
       }
@@ -277,16 +278,16 @@ impl BootParameters {
       parse_kernel_params(&self.params).collect();
 
     for (new_key, new_value) in &new_params {
-      for (key, value) in params.iter_mut() {
+      for (key, value) in &mut params {
         if *key == *new_key {
-          log::debug!("key '{}' found", key);
-          if value != new_value {
-            log::debug!("changing key {} from {} to {}", key, value, new_value);
+          log::debug!("key '{key}' found");
+          if value == new_value {
+            log::debug!("key '{key}' value does not change ({value})");
+          } else {
+            log::debug!("changing key {key} from {value} to {new_value}");
 
             *value = new_value;
-            change = true
-          } else {
-            log::debug!("key '{}' value does not change ({})", key, value);
+            change = true;
           }
         }
       }
@@ -323,25 +324,20 @@ impl BootParameters {
 
     // Update kernel param with new value
     // params.entry(key).and_modify(|value| *value = new_value);
-    for (current_key, current_value) in params.iter_mut() {
+    for (current_key, current_value) in &mut params {
       if *current_key == new_key {
-        log::debug!("key '{}' found", new_key);
-        if *current_value != new_value {
+        log::debug!("key '{new_key}' found");
+        if *current_value == new_value {
           log::debug!(
-            "changing key {} from {} to {}",
-            new_key,
-            current_value,
-            new_value
+            "key '{new_key}' value does not change ({current_value})"
+          );
+        } else {
+          log::debug!(
+            "changing key {new_key} from {current_value} to {new_value}"
           );
 
           *current_value = new_value;
-          changed = true
-        } else {
-          log::debug!(
-            "key '{}' value does not change ({})",
-            new_key,
-            current_value
-          );
+          changed = true;
         }
       }
     }
@@ -369,17 +365,14 @@ impl BootParameters {
       // how do we know if the key already exists or not
       if params.contains_key(key) {
         log::debug!(
-          "key '{}' already exists, the new kernel parameter won't be added since it already exists",
-          key
+          "key '{key}' already exists, the new kernel parameter won't be added since it already exists"
         );
       } else {
         log::debug!(
-          "key '{}' not found, adding new kernel param with value '{}'",
-          key,
-          new_value
+          "key '{key}' not found, adding new kernel param with value '{new_value}'"
         );
         params.insert(key, new_value);
-        changed = true
+        changed = true;
       }
     }
 

@@ -51,7 +51,7 @@ impl ShastaClient {
       format!("{}/power-control/v1/transitions/{}", self.base_url(), id);
     let transition: TransitionResponse =
       http::get_json(self.http(), &url, token).await?;
-    log::debug!("PCS transition details\n{:#?}", transition);
+    log::debug!("PCS transition details\n{transition:#?}");
     Ok(transition)
   }
 
@@ -71,12 +71,12 @@ impl ShastaClient {
     operation: &str,
     xname_vec: &[String],
   ) -> Result<TransitionStartOutput, Error> {
-    log::debug!("Create PCS transition '{}' on {:?}", operation, xname_vec);
+    log::debug!("Create PCS transition '{operation}' on {xname_vec:?}");
 
     let location_vec: Vec<Location> = xname_vec
       .iter()
       .map(|xname| Location {
-        xname: xname.to_string(),
+        xname: xname.clone(),
         deputy_key: None,
       })
       .collect();

@@ -97,8 +97,8 @@ impl ShastaClient {
     configuration: &CfsConfigurationRequest,
     configuration_name: &str,
   ) -> Result<CfsConfigurationResponse, Error> {
-    log::debug!("Create CFS configuration '{}'", configuration_name);
-    log::debug!("Create CFS configuration request:\n{:#?}", configuration);
+    log::debug!("Create CFS configuration '{configuration_name}'");
+    log::debug!("Create CFS configuration request:\n{configuration:#?}");
 
     let api_url = format!(
       "{}/cfs/v2/configurations/{}",
@@ -111,7 +111,7 @@ impl ShastaClient {
     log::debug!(
       "CFS configuration request payload:\n{}",
       serde_json::to_string_pretty(&request_payload)
-        .unwrap_or_else(|e| format!("<serialize error: {}>", e))
+        .unwrap_or_else(|e| format!("<serialize error: {e}>"))
     );
 
     http::put_json(self.http(), &api_url, token, &request_payload).await
@@ -133,7 +133,7 @@ impl ShastaClient {
     token: &str,
     configuration_id: &str,
   ) -> Result<(), Error> {
-    log::debug!("Delete CFS configuration {:?}", configuration_id);
+    log::debug!("Delete CFS configuration {configuration_id:?}");
 
     let api_url = format!(
       "{}/cfs/v2/configurations/{}",

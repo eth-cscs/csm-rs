@@ -23,7 +23,7 @@ use crate::error::Error;
 use http::Uri;
 use secrecy::SecretBox;
 
-/// Name of the `services`-namespace ConfigMap that CSM exposes the
+/// Name of the `services`-namespace `ConfigMap` that CSM exposes the
 /// product catalog through. CFS layers and SAT workflows read it to
 /// resolve product versions to git URLs and commit ids.
 #[cfg(feature = "commands-admin")]
@@ -261,10 +261,7 @@ pub async fn i_print_cfs_session_logs(
 
   while result.is_err() && attempt < max_attempts {
     log::debug!(
-      "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
-      container_name,
-      attempt,
-      max_attempts
+      "Could not get logs from container '{container_name}'. Trying again. Attempt {attempt} of {max_attempts}"
     );
 
     attempt += 1;
@@ -294,10 +291,7 @@ pub async fn i_print_cfs_session_logs(
 
   while result.is_err() && attempt < max_attempts {
     log::debug!(
-      "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
-      container_name,
-      attempt,
-      max_attempts
+      "Could not get logs from container '{container_name}'. Trying again. Attempt {attempt} of {max_attempts}"
     );
 
     attempt += 1;
@@ -315,14 +309,14 @@ pub async fn i_print_cfs_session_logs(
   Ok(())
 }
 
-/// Fetch the `.data` of a ConfigMap in the `services` namespace.
+/// Fetch the `.data` of a `ConfigMap` in the `services` namespace.
 ///
-/// Used by callers that need CSM-side state surfaced through ConfigMaps
+/// Used by callers that need CSM-side state surfaced through `ConfigMaps`
 /// (e.g. the `cray-product-catalog`).
 ///
 /// # Errors
 ///
-/// Returns [`Error::K8sError`] if the ConfigMap is missing or has no
+/// Returns [`Error::K8sError`] if the `ConfigMap` is missing or has no
 /// `data` field.
 #[cfg(feature = "commands-admin")]
 pub async fn try_get_configmap(
@@ -365,7 +359,7 @@ pub(crate) async fn i_print_init_container_logs(
     cfs_session_name.to_string(),
     init_container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await?
@@ -373,7 +367,7 @@ pub(crate) async fn i_print_init_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    log::debug!("{}", line);
+    log::debug!("{line}");
   }
 
   Ok(())
@@ -401,10 +395,10 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
 ) -> Result<(impl AsyncBufRead, i32), Error> {
   get_init_container_logs_stream(
     client,
-    cfs_session_name.to_string(),
+    cfs_session_name.clone(),
     "git-clone",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
@@ -422,14 +416,14 @@ pub(crate) async fn i_print_container_logs(
     cfs_session_name.to_string(),
     container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await?
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    log::debug!("{}", line);
+    log::debug!("{line}");
   }
 
   Ok(())
@@ -449,7 +443,7 @@ pub async fn get_cfs_session_container_inventory_logs_stream(
     cfs_session_name.clone(),
     "inventory",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
@@ -466,10 +460,10 @@ pub async fn get_cfs_session_container_ansible_logs_stream(
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
-    cfs_session_name.to_string(),
+    cfs_session_name.clone(),
     "ansible",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
@@ -622,22 +616,19 @@ pub(crate) async fn get_pod_and_wait_items(
 
   if cfs_session_pods.items.is_empty() {
     return Err(Error::K8sError(format!(
-      "Pod for cfs session {} missing. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} missing. Aborting operation"
     )));
   }
 
   if cfs_session_pods.items.len() > 1 {
     return Err(Error::K8sError(format!(
-      "Multiple pods found for cfs session '{}'. Using the first one.",
-      cfs_session_name
+      "Multiple pods found for cfs session '{cfs_session_name}'. Using the first one."
     )));
   }
 
   let cfs_session_pod = cfs_session_pods.items.first().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' not found",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' not found"
     ))
   })?;
 
@@ -657,16 +648,14 @@ pub(crate) async fn get_init_container_and_wait_to_ready(
 
   if init_container_opt.is_none() {
     return Err(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
+      "Init container '{init_container_name}' not found in pod '{cfs_session_pod_name}'",
     )));
   }
 
   // Waiting for init container to start
   let init_container = get_init_container(cfs_session_pod, init_container_name)
     .ok_or(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
+      "Init container '{init_container_name}' not found in pod '{cfs_session_pod_name}'",
     )))?;
 
   let mut i = 0;
@@ -711,16 +700,12 @@ pub(crate) async fn get_init_container_logs_stream(
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' has no name",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' has no name"
     ))
   })?;
 
   log::debug!(
-    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
-    init_container_name,
-    namespace,
-    cfs_session_pod_name,
+    "Fetching logs from init container '{init_container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let init_container =
@@ -731,8 +716,7 @@ pub(crate) async fn get_init_container_logs_stream(
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name)
   {
     return Err(Error::K8sError(format!(
-      "Init container '{}' not in 'running' state. Aborting operation",
-      init_container_name
+      "Init container '{init_container_name}' not in 'running' state. Aborting operation"
     )));
   }
 
@@ -741,10 +725,7 @@ pub(crate) async fn get_init_container_logs_stream(
       .unwrap_or(-1);
 
   log::debug!(
-    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
-    init_container_name,
-    namespace,
-    cfs_session_pod_name,
+    "Fetching logs from init container '{init_container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let container_log_stream = pods_api
@@ -784,32 +765,26 @@ pub(crate) async fn get_container_logs_stream(
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' has no name",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' has no name"
     ))
   })?;
 
   log::debug!(
-    "Fetching logs from container '{}' in namespace/pod '{}/{}'",
-    container_name,
-    namespace,
-    cfs_session_pod_name,
+    "Fetching logs from container '{container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let container_opt = get_container(&cfs_session_pod, container_name);
 
   if container_opt.is_none() {
     return Err(Error::K8sError(format!(
-      "Container '{}' not found in pod '{}'",
-      container_name, cfs_session_pod_name,
+      "Container '{container_name}' not found in pod '{cfs_session_pod_name}'",
     )));
   }
 
   // Waiting for container to start
   let container = get_container(&cfs_session_pod, container_name).ok_or(
     Error::K8sError(format!(
-      "Container '{}' not found in pod '{}'",
-      container_name, cfs_session_pod_name,
+      "Container '{container_name}' not found in pod '{cfs_session_pod_name}'",
     )),
   )?;
 
@@ -840,8 +815,7 @@ pub(crate) async fn get_container_logs_stream(
     || is_container_state_waiting(&cfs_session_pod, &container.name)
   {
     return Err(Error::K8sError(format!(
-      "Container '{}' not ready. Aborting operation",
-      container_name
+      "Container '{container_name}' not ready. Aborting operation"
     )));
   }
 
@@ -893,7 +867,7 @@ pub async fn get_output(mut attached: AttachedProcess) -> String {
   // join() returns the process exit status; failures are logged rather than
   // surfaced because get_output is infallible by signature.
   if let Err(e) = attached.join().await {
-    log::warn!("kube exec join failed: {}", e);
+    log::warn!("kube exec join failed: {e}");
   }
 
   out

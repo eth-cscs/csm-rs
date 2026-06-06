@@ -22,7 +22,7 @@ use crate::error::Error;
 /// and let it fail rather than letting it sit forever — the AWS SDK
 /// default is "no timeout", which would block an embedder
 /// indefinitely on a hung peer.
-const S3_OPERATION_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+const S3_OPERATION_TIMEOUT: Duration = Duration::from_hours(1);
 
 /// Extract the four interesting fields from a CSM STS response.
 fn parse_sts_credentials(
@@ -76,8 +76,7 @@ pub async fn s3_auth(
     .error_for_status()
     .map_err(|e| {
       Error::S3Transport(format!(
-        "ERROR - could not authenticate to S3 server. Reason:\n{}",
-        e
+        "ERROR - could not authenticate to S3 server. Reason:\n{e}"
       ))
     })?;
 
@@ -103,7 +102,7 @@ async fn setup_client(
     aws_config::meta::region::RegionProviderChain::default_provider()
       .or_else("us-east-1");
   let app_name = aws_config::AppName::new("manta")
-    .map_err(|e| Error::S3Transport(format!("Error setting app name: {}", e)))?;
+    .map_err(|e| Error::S3Transport(format!("Error setting app name: {e}")))?;
 
   let timeout_config = TimeoutConfig::builder()
     .operation_timeout(S3_OPERATION_TIMEOUT)
@@ -145,7 +144,7 @@ async fn setup_client(
   Ok(client)
 }
 /// Gets the size of a given object in S3
-/// path of the object: s3://bucket/key
+/// path of the object: <s3://bucket/key>
 /// returns i64 or error
 ///
 /// # Errors
@@ -166,8 +165,7 @@ pub async fn s3_get_object_size(
       Error::S3Transport("Error, content length not found".to_string())
     })?),
     Err(e) => Err(Error::S3Transport(format!(
-      "Error, unable to get object from s3. Error msg: {}",
-      e
+      "Error, unable to get object from s3. Error msg: {e}"
     ))),
   }
 }
@@ -203,22 +201,20 @@ pub async fn s3_download_object(
 
   let filename = Path::new(object_path).file_name().ok_or_else(|| {
     Error::S3Transport(format!(
-      "Error getting filename from S3 object path: {}",
-      object_path
+      "Error getting filename from S3 object path: {object_path}"
     ))
   })?;
 
   let file_path = Path::new(destination_path).join(filename);
-  log::debug!("Create directory '{}'", destination_path);
+  log::debug!("Create directory '{destination_path}'");
 
   std::fs::create_dir_all(destination_path).map_err(|e| {
     Error::S3Transport(format!(
-      "Error creating directory {}: {}",
-      destination_path, e
+      "Error creating directory {destination_path}: {e}"
     ))
   })?;
 
-  log::debug!("Created directory '{}' successfully", destination_path);
+  log::debug!("Created directory '{destination_path}' successfully");
 
   let mut file = File::create(&file_path).map_err(|e| {
     Error::S3Transport(format!(
@@ -241,8 +237,7 @@ pub async fn s3_download_object(
     .await
     .map_err(|e| {
       Error::S3Transport(format!(
-        "ERROR - could not download S3 object.\nReason:\n{}",
-        e,
+        "ERROR - could not download S3 object.\nReason:\n{e}",
       ))
     })?;
 
@@ -253,15 +248,13 @@ pub async fn s3_download_object(
   let bar = ProgressBar::new(bar_size as u64);
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
     Error::S3Transport(format!(
-      "ERROR - Could not create progress bar.\nReason:\n{}",
-      e
+      "ERROR - Could not create progress bar.\nReason:\n{e}"
     ))
   })?);
 
   while let Some(bytes) = object.body.try_next().await.map_err(|e| {
     Error::S3Transport(format!(
-      "ERROR - Could not finish s3 object download.\nReason:\n{}",
-      e
+      "ERROR - Could not finish s3 object download.\nReason:\n{e}"
     ))
   })? {
     let bytes = file.write(&bytes)?;
@@ -275,7 +268,7 @@ pub async fn s3_download_object(
 
 /// Upload a local file to S3 in a single request.
 ///
-/// Returns the ETag of the uploaded object.
+/// Returns the `ETag` of the uploaded object.
 ///
 /// # Arguments
 ///
@@ -312,8 +305,7 @@ pub async fn s3_upload_object(
     .await
     .map_err(|e| {
       Error::S3Transport(format!(
-        "ERROR - could not upload S3 object.\nReason:\n{}",
-        e
+        "ERROR - could not upload S3 object.\nReason:\n{e}"
       ))
     })?;
 
@@ -392,11 +384,11 @@ pub async fn s3_multipart_upload_object(
   use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
   use aws_smithy_types::byte_stream::Length;
 
-  let client = setup_client(sts_value, socks5_proxy).await?;
-
   //In bytes, minimum chunk size of 5MB. Increase CHUNK_SIZE to send larger chunks.
   const CHUNK_SIZE: u64 = 1024 * 1024 * 5;
   const MAX_CHUNKS: u64 = 10000;
+
+  let client = setup_client(sts_value, socks5_proxy).await?;
 
   // create multipart upload
   let multipart_upload_res: CreateMultipartUploadOutput = client
@@ -407,8 +399,7 @@ pub async fn s3_multipart_upload_object(
     .await
     .map_err(|e| {
       Error::S3Transport(format!(
-        "ERROR - Could not create multipart object.\nReason:\n{}",
-        e
+        "ERROR - Could not create multipart object.\nReason:\n{e}"
       ))
     })?;
 
@@ -422,8 +413,7 @@ pub async fn s3_multipart_upload_object(
   let file_size = std::fs::metadata(path)
     .map_err(|e| {
       Error::S3Transport(format!(
-        "ERROR - Could not get file size from '{}'.\nReason\n{}",
-        file_path, e
+        "ERROR - Could not get file size from '{file_path}'.\nReason\n{e}"
       ))
     })?
     .len();
@@ -438,8 +428,7 @@ pub async fn s3_multipart_upload_object(
   let bar = ProgressBar::new(file_size);
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
     Error::S3Transport(format!(
-      "ERROR - Could not create progress bar.\nReason:\n{}",
-      e
+      "ERROR - Could not create progress bar.\nReason:\n{e}"
     ))
   })?);
 
@@ -488,8 +477,7 @@ pub async fn s3_multipart_upload_object(
       .await
       .map_err(|e| {
         Error::S3Transport(format!(
-          "ERROR - could not upload to S3.\nReason:\n{}",
-          e
+          "ERROR - could not upload to S3.\nReason:\n{e}"
         ))
       })?;
 
@@ -520,7 +508,7 @@ pub async fn s3_multipart_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::S3Transport(format!("ERROR - could not upload to S3.\nReason:\n{}", e))
+      Error::S3Transport(format!("ERROR - could not upload to S3.\nReason:\n{e}"))
     })?;
 
   bar.finish();

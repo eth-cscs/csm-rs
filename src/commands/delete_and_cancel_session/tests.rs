@@ -3,7 +3,7 @@ use crate::cfs::{
   v3::{CfsSessionGetResponse, Configuration, Session, Status, Target},
 };
 
-/// Test is_cfs_configuration_a_desired_configuration returns TRUE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns TRUE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_true() {
@@ -56,7 +56,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_true() {
   assert!(sol.eq(&vec!["1".to_string()]));
 }
 
-/// Test is_cfs_configuration_a_desired_configuration returns TRUE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns TRUE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
@@ -97,7 +97,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
   assert!(sol.is_empty());
 }
 
-/// Test is_cfs_configuration_a_desired_configuration returns FALSE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns FALSE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_false_2() {
@@ -305,6 +305,6 @@ pub fn is_cfs_configuration_used_to_build_image(
         && cfs_session.is_target_def_image()
         && cfs_session.is_success()
     })
-    .flat_map(|cfs_session| cfs_session.get_result_id_vec())
+    .flat_map(crate::cfs::session::http_client::v3::types::CfsSessionGetResponse::get_result_id_vec)
     .collect()
 }

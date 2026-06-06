@@ -33,7 +33,7 @@ impl ShastaClient {
     token: &str,
     xname: &str,
   ) -> Result<Membership, Error> {
-    log::debug!("Get membership of node '{}'", xname);
+    log::debug!("Get membership of node '{xname}'");
     let url = format!("{}/smd/hsm/v2/memberships/{}", self.base_url(), xname);
     http::get_json(self.http(), &url, token).await
   }

@@ -38,9 +38,9 @@ impl From<CfsSessionGetResponseList> for FrontEndCfsSessionGetResponseList {
       sessions: val
         .sessions
         .into_iter()
-        .map(|session| session.into())
+        .map(std::convert::Into::into)
         .collect(),
-      next: val.next.map(|next| next.into()),
+      next: val.next.map(std::convert::Into::into),
     }
   }
 }
@@ -232,10 +232,10 @@ impl From<CfsSessionGetResponse> for FrontEndCfsSessionGetResponse {
       name: val.name,
       configuration: val
         .configuration
-        .map(|configuration| configuration.into()),
-      ansible: val.ansible.map(|ansible| ansible.into()),
-      target: val.target.map(|target| target.into()),
-      status: val.status.map(|status| status.into()),
+        .map(std::convert::Into::into),
+      ansible: val.ansible.map(std::convert::Into::into),
+      target: val.target.map(std::convert::Into::into),
+      status: val.status.map(std::convert::Into::into),
       tags: val.tags,
       debug_on_failure: val.debug_on_failure,
       logs: val.logs,

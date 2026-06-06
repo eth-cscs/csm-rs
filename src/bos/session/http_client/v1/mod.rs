@@ -25,7 +25,7 @@ impl ShastaClient {
     });
 
     log::debug!("Create BOS session v1");
-    log::debug!("Create BOS session v1 payload:\n{:#?}", payload);
+    log::debug!("Create BOS session v1 payload:\n{payload:#?}");
 
     let url = format!("{}/bos/v1/session", self.base_url());
     http::post_json(self.http(), &url, token, &payload).await

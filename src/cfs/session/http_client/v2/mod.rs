@@ -53,13 +53,13 @@ impl ShastaClient {
       query_params.push(("succeced", is_succeded.to_string()));
     }
     if let Some(min_age) = min_age_opt {
-      query_params.push(("min_age", min_age.to_string()));
+      query_params.push(("min_age", min_age.clone()));
     }
     if let Some(max_age) = max_age_opt {
-      query_params.push(("max_age", max_age.to_string()));
+      query_params.push(("max_age", max_age.clone()));
     }
     if let Some(status) = status_opt {
-      query_params.push(("status", status.to_string()));
+      query_params.push(("status", status.clone()));
     }
 
     if session_name_opt.is_some() {
@@ -106,7 +106,7 @@ impl ShastaClient {
     token: &str,
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
-    log::debug!("Session:\n{:#?}", session);
+    log::debug!("Session:\n{session:#?}");
 
     let api_url = format!("{}/cfs/v2/sessions", self.base_url());
     http::post_json(self.http(), &api_url, token, session).await
@@ -126,7 +126,7 @@ impl ShastaClient {
     token: &str,
     session_name: &str,
   ) -> Result<(), Error> {
-    log::debug!("Deleting CFS session id: {}", session_name);
+    log::debug!("Deleting CFS session id: {session_name}");
 
     let api_url =
       format!("{}/cfs/v2/sessions/{}", self.base_url(), session_name);

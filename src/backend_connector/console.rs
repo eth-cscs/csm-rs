@@ -83,8 +83,8 @@ impl ConsoleTrait for Csm {
         cause: e.to_string(),
       })?;
 
-    log::info!("Connected to {}!", xname,);
-    log::info!("Use &. key combination to exit the console.",);
+    log::info!("Connected to {xname}!");
+    log::info!("Use &. key combination to exit the console.");
 
     let stdin = attached.stdin().ok_or_else(|| {
       crate::Error::ConsoleAttach {
@@ -169,10 +169,9 @@ impl ConsoleTrait for Csm {
       })?;
 
     log::info!(
-      "Connected to session target container for session name: {}!",
-      session_name
+      "Connected to session target container for session name: {session_name}!"
     );
-    log::info!("Use &. key combination to exit the console.",);
+    log::info!("Use &. key combination to exit the console.");
 
     let stdin = attached.stdin().ok_or_else(|| {
       crate::Error::ConsoleAttach {

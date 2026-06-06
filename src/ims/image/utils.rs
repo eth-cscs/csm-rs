@@ -50,7 +50,7 @@ pub async fn get_fuzzy(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
 /// Return images whose name *exactly equals* `image_name`, restricted
@@ -91,7 +91,7 @@ pub async fn get_by_name(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
 /// Get Image using exact name match among the images available to the user based on the HSM groups
@@ -139,7 +139,7 @@ pub async fn try_get_by_name(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
 /// Just sorts images by creation time in ascendent order. Images with no
@@ -194,7 +194,7 @@ pub async fn get_with_details(
   )
   .await
   .map_err(|e| {
-    Error::Message(format!("ERROR - Failed to get image details: {}", e))
+    Error::Message(format!("ERROR - Failed to get image details: {e}"))
   })
 }
 
@@ -310,7 +310,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   let image_id_from_boot_params: Vec<String> = boot_param_vec
     .iter()
-    .map(|boot_param| boot_param.get_boot_image())
+    .map(crate::bss::types::BootParameters::get_boot_image)
     .collect();
 
   // Get Image details from IMS images API endpoint
@@ -360,7 +360,7 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
     image_detail_vec.push((
       image.clone(),
-      cfs_configuration.to_string(),
+      cfs_configuration.clone(),
       target_groups.clone(),
       boot_image,
     ));
@@ -512,9 +512,7 @@ pub async fn get_image_available_vec(
       // not limited to anything, a tenant may create an image which name contains "generic"
       // but they don't want to share it with other tenants meaning the scope of generic here
       // does not moves across tenants boundaries
-      image_available_vec.push(image.clone())
-    } else {
-      continue;
+      image_available_vec.push(image.clone());
     }
 
     // let target_groups = target_group_name_vec.join(", ");

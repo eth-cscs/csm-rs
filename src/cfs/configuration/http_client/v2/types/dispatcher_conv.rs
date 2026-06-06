@@ -34,7 +34,7 @@ impl From<FrontEndLayer> for RequestLayer {
         |special_parameters| {
           special_parameters
             .into_iter()
-            .map(|special_parameter| special_parameter.into())
+            .map(std::convert::Into::into)
             .collect()
         },
       ),
@@ -54,7 +54,7 @@ impl From<RequestLayer> for FrontEndLayer {
       special_parameters: val.special_parameters.map(|special_parameters| {
         special_parameters
           .into_iter()
-          .map(|special_parameter| special_parameter.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
     }

@@ -53,8 +53,7 @@ impl ShastaClient {
         ),
         Some(_) => Error::NetError(e),
         None => Error::Message(format!(
-          "ERROR - Http response with no status code?.\nReason:\n{}",
-          e
+          "ERROR - Http response with no status code?.\nReason:\n{e}"
         )),
       })?;
 
@@ -131,8 +130,7 @@ impl ShastaClient {
       }
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e
+        "ERROR - Http response with no status code?.\nReason:\n{e}"
       )),
     };
 

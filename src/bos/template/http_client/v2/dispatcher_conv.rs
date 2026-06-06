@@ -49,7 +49,7 @@ impl From<FrontEndBootSet> for BootSet {
     Self {
       name: frontend_boot_set.name,
       path: frontend_boot_set.path,
-      cfs: frontend_boot_set.cfs.map(|cfs| cfs.into()),
+      cfs: frontend_boot_set.cfs.map(std::convert::Into::into),
       r#type: frontend_boot_set.r#type,
       etag: frontend_boot_set.etag,
       kernel_parameters: frontend_boot_set.kernel_parameters,
@@ -69,7 +69,7 @@ impl From<BootSet> for FrontEndBootSet {
     FrontEndBootSet {
       name: val.name,
       path: val.path,
-      cfs: val.cfs.map(|cfs| cfs.into()),
+      cfs: val.cfs.map(std::convert::Into::into),
       r#type: val.r#type,
       etag: val.etag,
       kernel_parameters: val.kernel_parameters,
@@ -90,13 +90,13 @@ impl From<FrontEndBosSessionTemplate> for BosSessionTemplate {
       tenant: frontend_bos_session_template.tenant,
       description: frontend_bos_session_template.description,
       enable_cfs: frontend_bos_session_template.enable_cfs,
-      cfs: frontend_bos_session_template.cfs.map(|cfs| cfs.into()),
+      cfs: frontend_bos_session_template.cfs.map(std::convert::Into::into),
       boot_sets: frontend_bos_session_template.boot_sets.map(|boot_sets| {
         boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
       }),
       links: frontend_bos_session_template
         .links
-        .map(|links| links.into_iter().map(|link| link.into()).collect()),
+        .map(|links| links.into_iter().map(std::convert::Into::into).collect()),
     }
   }
 }
@@ -108,13 +108,13 @@ impl From<BosSessionTemplate> for FrontEndBosSessionTemplate {
       tenant: val.tenant,
       description: val.description,
       enable_cfs: val.enable_cfs,
-      cfs: val.cfs.map(|cfs| cfs.into()),
+      cfs: val.cfs.map(std::convert::Into::into),
       boot_sets: val.boot_sets.map(|boot_sets| {
         boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
       }),
       links: val
         .links
-        .map(|links| links.into_iter().map(|link| link.into()).collect()),
+        .map(|links| links.into_iter().map(std::convert::Into::into).collect()),
     }
   }
 }

@@ -30,7 +30,7 @@ pub async fn wait_ims_job_to_finish(
       .first()
       .cloned()
       .ok_or_else(|| {
-        Error::Message(format!("ERROR - IMS job '{}' not found", ims_job_id))
+        Error::Message(format!("ERROR - IMS job '{ims_job_id}' not found"))
       })?;
 
     log::debug!(
@@ -42,20 +42,14 @@ pub async fn wait_ims_job_to_finish(
 
     if (ims_job_status != "error" && ims_job_status != "success") && i < max {
       log::debug!(
-        "Waiting IMS job '{}' with job status '{}'. Checking again in 2 secs. Attempt {} of {}.",
-        ims_job_id,
-        ims_job_status,
-        i,
-        max
+        "Waiting IMS job '{ims_job_id}' with job status '{ims_job_status}'. Checking again in 2 secs. Attempt {i} of {max}."
       );
       tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
       i += 1;
     } else {
       log::debug!(
-        "\nIMS job '{}' finished with job status '{}'",
-        ims_job_id,
-        ims_job_status
+        "\nIMS job '{ims_job_id}' finished with job status '{ims_job_status}'"
       );
       break;
     }

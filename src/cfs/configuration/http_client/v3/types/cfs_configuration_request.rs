@@ -44,13 +44,13 @@ impl Layer {
     special_parameters: Option<Vec<SpecialParameter>>,
   ) -> Self {
     Self {
-      clone_url,
-      commit,
       name,
+      clone_url,
+      source,
       playbook,
+      commit,
       branch,
       special_parameters,
-      source,
     }
   }
 }
@@ -84,6 +84,7 @@ impl Default for CfsConfigurationRequest {
 }
 
 impl CfsConfigurationRequest {
+  #[must_use]
   pub fn new() -> Self {
     Self {
       description: None,
@@ -143,7 +144,7 @@ impl CfsConfigurationRequest {
           // Git tag
           let git_tag = as_yaml_str(git_tag_value)?;
 
-          log::debug!("git tag: {}", git_tag);
+          log::debug!("git tag: {git_tag}");
 
           let tag_details_rslt = gitea::http_client::get_tag_details(
             &repo_url,
@@ -156,12 +157,11 @@ impl CfsConfigurationRequest {
           .await;
 
           let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
+            log::debug!("tag details:\n{tag_details:#?}");
             tag_details
           } else {
             return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              git_tag, cfs_configuration_name, tag_details_rslt
+              "ERROR - Could not get details for git tag '{git_tag}' in CFS configuration '{cfs_configuration_name}'. Reason:\n{tag_details_rslt:#?}"
             )));
           };
 
@@ -238,8 +238,7 @@ impl CfsConfigurationRequest {
         let product =
           cray_product_catalog.get(product_name).ok_or_else(|| {
             Error::CrayProductCatalog(format!(
-              "Product {} not found in cray product catalog",
-              product_name
+              "Product {product_name} not found in cray product catalog"
             ))
           })?;
 
@@ -251,22 +250,18 @@ impl CfsConfigurationRequest {
           .cloned()
           .ok_or_else(|| {
             Error::CrayProductCatalog(format!(
-              "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-              product_name, product_version
+              "Product details for product name '{product_name}', product_version '{product_version}' and 'configuration' not found in cray product catalog"
             ))
           })?;
 
         log::debug!(
-          "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-          product_name,
-          product_version,
-          product_details
+          "CRAY product catalog details for product: {product_name}, version: {product_version}:\n{product_details:#?}"
         );
 
         // Manta may run outside the CSM local network therefore we have to change the
         // internal URLs for the external one
         let repo_url = yaml_str(&product_details, "clone_url")?.replace(
-          format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
+          format!("vcs.cmn.{site_name}.cscs.ch").as_str(),
           crate::common::gitea::INTERNAL_API_HOST,
         );
 
@@ -362,9 +357,7 @@ impl CfsConfigurationRequest {
       match shasta_commitid_details_resp {
         Ok(_) => {
           log::debug!(
-            "Local latest commit id {} for repo {} exists in shasta",
-            local_last_commit,
-            repo_name
+            "Local latest commit id {local_last_commit} for repo {repo_name} exists in shasta"
           );
         }
         Err(e) => {
@@ -374,7 +367,7 @@ impl CfsConfigurationRequest {
 
       let clone_url = gitea_base_url.to_owned() + repo_name;
 
-      log::debug!("clone url: {}", clone_url);
+      log::debug!("clone url: {clone_url}");
 
       // Create CFS layer
       let cfs_layer = Layer::new(
@@ -394,7 +387,7 @@ impl CfsConfigurationRequest {
       CfsConfigurationRequest::add_layer(&mut cfs_configuration, cfs_layer);
     }
 
-    log::debug!("CFS configuration:\n{:#?}", cfs_configuration);
+    log::debug!("CFS configuration:\n{cfs_configuration:#?}");
 
     Ok(cfs_configuration)
   }

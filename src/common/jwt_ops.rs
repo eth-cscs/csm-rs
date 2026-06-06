@@ -100,7 +100,7 @@ mod tests {
   /// The header and signature are dummy; only the middle claims segment is read.
   fn jwt_with_claims(claims: serde_json::Value) -> String {
     let claims_b64 = STANDARD.encode(claims.to_string());
-    format!("dummy-header.{}.dummy-sig", claims_b64)
+    format!("dummy-header.{claims_b64}.dummy-sig")
   }
 
   // ---------- get_name ----------
@@ -208,8 +208,8 @@ mod tests {
     // the original token. So "Bearer <jwt>" should also work.
     let claims = json!({"name": "Alice"});
     let claims_b64 = STANDARD.encode(claims.to_string());
-    let jwt = format!("dummy-header.{}.dummy-sig", claims_b64);
-    let bearer = format!("Bearer {}", jwt);
+    let jwt = format!("dummy-header.{claims_b64}.dummy-sig");
+    let bearer = format!("Bearer {jwt}");
     assert_eq!(get_name(&bearer).unwrap(), "Alice");
   }
 }

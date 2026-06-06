@@ -58,12 +58,12 @@ impl ShastaClient {
     log::debug!(
       "Create BOS sessiontemplate request payload:\n{}",
       serde_json::to_string_pretty(bos_template)
-        .unwrap_or_else(|e| format!("<serialize error: {}>", e))
+        .unwrap_or_else(|e| format!("<serialize error: {e}>"))
     );
 
     let api_url = format!("{}/bos/v1/sessiontemplate", self.base_url());
 
-    log::debug!("API URL request: {}", api_url);
+    log::debug!("API URL request: {api_url}");
 
     http::post_json(self.http(), &api_url, token, bos_template).await
   }

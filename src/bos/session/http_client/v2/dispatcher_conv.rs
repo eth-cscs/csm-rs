@@ -16,13 +16,13 @@ impl From<FrontEndBosSession> for BosSession {
       tenant: frontend_bos_session.tenant,
       operation: frontend_bos_session
         .operation
-        .map(|operation| operation.into()),
+        .map(std::convert::Into::into),
       template_name: frontend_bos_session.template_name,
       limit: frontend_bos_session.limit,
       stage: frontend_bos_session.stage,
       components: frontend_bos_session.components,
       include_disabled: frontend_bos_session.include_disabled,
-      status: frontend_bos_session.status.map(|status| status.into()),
+      status: frontend_bos_session.status.map(std::convert::Into::into),
     }
   }
 }
@@ -32,13 +32,13 @@ impl From<BosSession> for FrontEndBosSession {
     FrontEndBosSession {
       name: val.name,
       tenant: val.tenant,
-      operation: val.operation.map(|operation| operation.into()),
+      operation: val.operation.map(std::convert::Into::into),
       template_name: val.template_name,
       limit: val.limit,
       stage: val.stage,
       components: val.components,
       include_disabled: val.include_disabled,
-      status: val.status.map(|status| status.into()),
+      status: val.status.map(std::convert::Into::into),
     }
   }
 }

@@ -66,6 +66,7 @@ pub struct PowerStatus {
 }
 
 impl PowerStatus {
+  #[must_use]
   pub fn new(
     reason: Option<String>,
     xnames: Vec<String>,
@@ -92,6 +93,7 @@ pub struct NodeStatus {
 }
 
 impl NodeStatus {
+  #[must_use]
   pub fn new(
     filter: Option<String>,
     xnames: Option<Vec<String>>,

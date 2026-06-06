@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -67,6 +67,7 @@ pub struct BosSessionTemplate {
 }
 
 impl BosSessionTemplate {
+  #[must_use]
   pub fn configuration_name(&self) -> Option<&str> {
     self
       .cfs
@@ -74,6 +75,7 @@ impl BosSessionTemplate {
       .and_then(|cfs| cfs.configuration.as_deref())
   }
 
+  #[must_use]
   pub fn get_target(&self) -> Vec<String> {
     let target_hsm = self.get_target_hsm();
     let target_xname = self.get_target_xname();
@@ -82,6 +84,7 @@ impl BosSessionTemplate {
   }
 
   /// Returns HSM group names related to the BOS sessiontemplate
+  #[must_use]
   pub fn get_target_hsm(&self) -> Vec<String> {
     self
       .boot_sets
@@ -97,6 +100,7 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[must_use]
   pub fn get_target_xname(&self) -> Vec<String> {
     self
       .boot_sets
@@ -112,6 +116,7 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[must_use]
   pub fn get_configuration(&self) -> Option<&str> {
     self
       .cfs
@@ -119,6 +124,7 @@ impl BosSessionTemplate {
       .and_then(|cfs| cfs.configuration.as_deref())
   }
 
+  #[must_use]
   pub fn get_path_vec(&self) -> Vec<String> {
     self
       .boot_sets
@@ -151,6 +157,7 @@ impl BosSessionTemplate {
   }
 
   #[allow(clippy::too_many_arguments)]
+  #[must_use]
   pub fn new_for_hsm_group(
     tenant_opt: Option<String>,
     cfs_configuration_name: String,

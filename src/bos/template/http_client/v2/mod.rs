@@ -27,7 +27,7 @@ impl ShastaClient {
     token: &str,
     bos_session_template_id_opt: Option<&str>,
   ) -> Result<Vec<BosSessionTemplate>, Error> {
-    log::debug!("Get BOS sessiontemplate {:?}", bos_session_template_id_opt);
+    log::debug!("Get BOS sessiontemplate {bos_session_template_id_opt:?}");
 
     let api_url = if let Some(id) = bos_session_template_id_opt {
       format!("{}/bos/v2/sessiontemplates/{}", self.base_url(), id)
@@ -73,11 +73,11 @@ impl ShastaClient {
     bos_template: &BosSessionTemplate,
     bos_template_name: &str,
   ) -> Result<BosSessionTemplate, Error> {
-    log::debug!("Create BOS sessiontemplte '{}'", bos_template_name);
+    log::debug!("Create BOS sessiontemplte '{bos_template_name}'");
     log::debug!(
       "Create BOS sessiontemplate request payload:\n{}",
       serde_json::to_string_pretty(bos_template)
-        .unwrap_or_else(|e| format!("<serialize error: {}>", e))
+        .unwrap_or_else(|e| format!("<serialize error: {e}>"))
     );
 
     let api_url = format!(

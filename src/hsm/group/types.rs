@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -31,6 +31,7 @@ pub struct Member {
 }
 
 impl Group {
+  #[must_use]
   pub fn new(label: &str, member_vec_opt: Option<Vec<&str>>) -> Self {
     let members_opt = member_vec_opt.map(|member_vec| Members {
       ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
@@ -54,6 +55,7 @@ impl Group {
   /// path; mutations should go through `Group::members.ids` directly,
   /// not through `get_members()` (see the bug fix in
   /// `crate::hsm::group::utils::add_member` for the prior pitfall).
+  #[must_use]
   pub fn get_members(&self) -> Vec<String> {
     self
       .members
@@ -65,6 +67,7 @@ impl Group {
   /// Get HSM group members, distinguishing "no members" (`Some(empty)`)
   /// from "missing field" (`None`). See [`Group::get_members`] for the
   /// rationale on returning owned `Vec` here.
+  #[must_use]
   pub fn get_members_opt(&self) -> Option<Vec<String>> {
     self
       .members

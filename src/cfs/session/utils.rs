@@ -14,6 +14,7 @@ use globset::Glob;
 
 /// `true` if the CFS session's target HSM groups overlap with any HSM
 /// group in `group_available` (used to enforce per-user visibility).
+#[must_use]
 pub fn check_cfs_session_against_groups_available(
   cfs_session: &CfsSessionGetResponse,
   group_available: Vec<Group>,
@@ -41,7 +42,7 @@ pub fn check_cfs_session_against_groups_available(
 /// - Application
 /// - Compute
 /// - UAN
-/// - UserDefined
+/// - `UserDefined`
 /// - etc
 /// How to calculate.
 /// 1) We extract the HSM groups the CFS session is linked to
@@ -97,10 +98,9 @@ pub fn filter(
 ) -> Result<(), Error> {
   log::debug!("Filter CFS sessions by groups");
   log::debug!(
-    "HSM groups to filter from: {:?}",
-    hsm_group_name_available_vec
+    "HSM groups to filter from: {hsm_group_name_available_vec:?}"
   );
-  log::debug!("Xnames to filter from: {:?}", xname_available_vec);
+  log::debug!("Xnames to filter from: {xname_available_vec:?}");
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)?.compile_matcher();
@@ -110,7 +110,7 @@ pub fn filter(
         .configuration_name()
         .is_some_and(|configuration_name| glob.is_match(configuration_name))
     });
-  };
+  }
 
   // Checks either target.groups contains hsm_group_name or ansible.limit is a subset of
   // hsm_group.members.ids
@@ -159,8 +159,7 @@ pub fn filter_by_cofiguration(
   cfs_configuration_name: &str,
 ) {
   log::debug!(
-    "Filter CFS sessions by configuration name '{}'",
-    cfs_configuration_name
+    "Filter CFS sessions by configuration name '{cfs_configuration_name}'"
   );
 
   cfs_session_vec.retain(|cfs_session| {
@@ -172,6 +171,7 @@ pub fn filter_by_cofiguration(
 /// all CFS sessions in the system using either the HSM group names or nodes as target.
 /// NOTE: Please make sure the user has access to the HSM groups and nodes he is asking for before
 /// calling this function
+#[must_use]
 pub fn find_cfs_session_related_to_image_id(
   cfs_session_vec: &[CfsSessionGetResponse],
   image_id: &str,
@@ -186,8 +186,9 @@ pub fn find_cfs_session_related_to_image_id(
     .cloned()
 }
 
-/// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
+/// Returns a tuple like (`image_id`, `cfs_configuration_name`, target) from a list of CFS
 /// sessions
+#[must_use]
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
   cfs_session_vec: &[CfsSessionGetResponse],
 ) -> Vec<(String, String, Vec<String>)> {
@@ -197,7 +198,7 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
     Vec<String>,
   )> = Vec::new();
 
-  cfs_session_vec.iter().for_each(|cfs_session| {
+  for cfs_session in cfs_session_vec {
     let result_id: &str = cfs_session.first_result_id().unwrap_or_default();
 
     let target: Vec<String> = cfs_session
@@ -217,13 +218,13 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
       cfs_configuration.to_string(),
       target,
     ));
-  });
+  }
 
   image_id_cfs_configuration_target_from_cfs_session
 }
 
-/// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
-/// sessions. Only returns values from CFS sessions with an artifact.result_id value
+/// Returns a tuple like (`image_id`, `cfs_configuration_name`, target) from a list of CFS
+/// sessions. Only returns values from CFS sessions with an `artifact.result_id` value
 /// (meaning CFS sessions completed and successful of type image)
 ///
 /// # Errors
@@ -259,8 +260,8 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
       ));
     } else {
       image_id_cfs_configuration_target_from_cfs_session.push((
-        "".to_string(),
-        "".to_string(),
+        String::new(),
+        String::new(),
         vec![],
       ));
     }
@@ -277,10 +278,10 @@ pub fn images_id_from_cfs_session(
 ) -> impl Iterator<Item = &str> {
   let mut image_id_vec: Vec<&str> = cfs_session_vec
     .iter()
-    .flat_map(|cfs_session| cfs_session.results_id())
+    .flat_map(super::http_client::v2::types::CfsSessionGetResponse::results_id)
     .collect();
 
-  image_id_vec.sort();
+  image_id_vec.sort_unstable();
   image_id_vec.dedup();
 
   image_id_vec.into_iter()
@@ -329,7 +330,7 @@ pub async fn wait_cfs_session_to_finish(
         .first()
         .ok_or_else(|| Error::SessionNotFound(cfs_session_id.to_string()))?;
 
-      log::debug!("CFS session details:\n{:#?}", session);
+      log::debug!("CFS session details:\n{session:#?}");
 
       let session_status = session
         .status
@@ -338,8 +339,7 @@ pub async fn wait_cfs_session_to_finish(
         .and_then(|session| session.status.as_deref())
         .ok_or_else(|| {
           Error::Message(format!(
-            "CFS session '{}' has no status",
-            cfs_session_id
+            "CFS session '{cfs_session_id}' has no status"
           ))
         })?
         .to_string();
@@ -351,9 +351,7 @@ pub async fn wait_cfs_session_to_finish(
   .await?;
 
   log::debug!(
-    "CFS session '{}' finished with status '{}'",
-    cfs_session_id,
-    status
+    "CFS session '{cfs_session_id}' finished with status '{status}'"
   );
   Ok(())
 }

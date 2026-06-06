@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -62,6 +62,9 @@ impl std::str::FromStr for Operation {
   }
 }
 
+// `Status.status` mirrors the CSM wire shape; the redundant naming
+// is the upstream API's choice, not ours.
+#[allow(clippy::struct_field_names)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {
   pub start_time: String,

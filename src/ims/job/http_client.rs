@@ -126,7 +126,7 @@ impl ShastaClient {
       .first()
       .cloned()
       .ok_or_else(|| {
-        Error::Message(format!("ERROR - IMS job '{}' not found", ims_job_id))
+        Error::Message(format!("ERROR - IMS job '{ims_job_id}' not found"))
       })
   }
 

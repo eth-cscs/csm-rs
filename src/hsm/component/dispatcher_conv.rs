@@ -20,11 +20,9 @@ impl From<FrontEndNodeMetadataArray> for ComponentArray {
         let mut component_vec: Vec<Component> =
           Vec::with_capacity(components.len());
 
-        components
-          .into_iter()
-          .for_each(|component: FrontEndComponent| {
-            component_vec.push(Component::from(component))
-          });
+        for component in components {
+            component_vec.push(Component::from(component));
+          }
 
         Some(component_vec)
       } else {
@@ -44,9 +42,9 @@ impl From<ComponentArray> for FrontEndNodeMetadataArray {
         let mut component_vec: Vec<FrontEndComponent> =
           Vec::with_capacity(components.len());
 
-        components.into_iter().for_each(|component: Component| {
-          component_vec.push(component.into())
-        });
+        for component in components {
+          component_vec.push(component.into());
+        }
 
         Some(component_vec)
       } else {

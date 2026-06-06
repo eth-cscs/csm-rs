@@ -18,13 +18,13 @@ pub async fn validate_api_token(
 
   let api_url = shasta_base_url.to_owned() + "/cfs/healthz";
 
-  log::debug!("Validate CSM token against {}", api_url);
+  log::debug!("Validate CSM token against {api_url}");
 
   let resp_rslt = client.get(api_url).bearer_auth(shasta_token).send().await;
 
   match resp_rslt {
     Ok(resp) => Ok(resp.error_for_status().map(|_| ())?),
-    Err(error) => Err(Error::Message(format!("Token is not valid: {}", error))),
+    Err(error) => Err(Error::Message(format!("Token is not valid: {error}"))),
   }
 }
 
@@ -46,11 +46,10 @@ pub async fn get_token_from_shasta_endpoint(
   let client = crate::common::http::build_client(shasta_root_cert, socks5_proxy)?;
 
   let api_url = format!(
-    "{}/realms/shasta/protocol/openid-connect/token",
-    keycloak_base_url
+    "{keycloak_base_url}/realms/shasta/protocol/openid-connect/token"
   );
 
-  log::debug!("Request to fetch authentication token: {}", api_url);
+  log::debug!("Request to fetch authentication token: {api_url}");
 
   client
     .post(api_url)

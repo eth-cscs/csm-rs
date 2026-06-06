@@ -69,7 +69,7 @@ impl From<FrontEndRequestLayer> for RequestLayer {
         |special_parameters| {
           special_parameters
             .into_iter()
-            .map(|special_parameter| special_parameter.into())
+            .map(std::convert::Into::into)
             .collect()
         },
       ),
@@ -89,7 +89,7 @@ impl From<RequestLayer> for FrontEndRequestLayer {
       special_parameters: val.special_parameters.map(|special_parameters| {
         special_parameters
           .into_iter()
-          .map(|special_parameter| special_parameter.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
     }
@@ -151,7 +151,7 @@ impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
         }),
       additional_inventory: front_end_cfs_configuration_request
         .additional_inventory
-        .map(|additional_inventory| additional_inventory.into()),
+        .map(std::convert::Into::into),
     }
   }
 }
@@ -165,7 +165,7 @@ impl From<CfsConfigurationRequest> for FrontEndCfsConfigurationRequest {
       }),
       additional_inventory: val
         .additional_inventory
-        .map(|additional_inventory| additional_inventory.into()),
+        .map(std::convert::Into::into),
     }
   }
 }

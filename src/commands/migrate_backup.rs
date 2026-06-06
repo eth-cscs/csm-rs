@@ -48,7 +48,7 @@ pub async fn exec(
   let bucket_name = "boot-images";
   let files2download = ["manifest.json", "initrd", "kernel", "rootfs"];
   let files2download_count = files2download.len() + 4; // manifest.json, initrd, kernel, rootfs, bos, cfs, hsm, ims
-  log::debug!("Create directory '{}'", destination);
+  log::debug!("Create directory '{destination}'");
   std::fs::create_dir_all(dest_path).map_err(|e| {
     Error::MigrateOp(format!(
       "Unable to create directory {}: {}",
@@ -115,8 +115,7 @@ pub async fn exec(
       .map(|node_group| node_group.replace('\"', ""))
       .ok_or_else(|| {
         Error::MigrateOp(format!(
-          "BOS template '{}': no 'compute' boot_set or no node_groups",
-          bos
+          "BOS template '{bos}': no 'compute' boot_set or no node_groups"
         ))
       })?;
 
@@ -125,7 +124,7 @@ pub async fn exec(
       shasta_root_cert.to_vec(),
       socks5_proxy.map(str::to_owned),
     )?
-    .hsm_group_get(shasta_token, Some(&[hsm_group_name.to_string()]), None)
+    .hsm_group_get(shasta_token, Some(std::slice::from_ref(&hsm_group_name)), None)
     .await?;
 
     log::debug!("{:#?}", &hsm_group_json);
@@ -138,8 +137,7 @@ pub async fn exec(
       .and_then(|cfs_value| cfs_value.configuration.as_ref())
       .ok_or_else(|| {
         Error::MigrateOp(format!(
-          "BOS template '{}': no CFS configuration referenced",
-          bos
+          "BOS template '{bos}': no CFS configuration referenced"
         ))
       })?;
 
@@ -175,7 +173,7 @@ pub async fn exec(
       .first()
       .and_then(|first_bos_template| first_bos_template.boot_sets.as_ref())
       .ok_or_else(|| {
-        Error::MigrateOp(format!("BOS template '{}': no boot_sets defined", bos))
+        Error::MigrateOp(format!("BOS template '{bos}': no boot_sets defined"))
       })?;
     for boot_sets_value in boot_sets.values() {
       if let Some(path) = &boot_sets_value.path {
@@ -185,8 +183,7 @@ pub async fn exec(
           .to_string();
 
         log::info!(
-          "Get image details for ID {}",
-          image_id_related_to_bos_sessiontemplate
+          "Get image details for ID {image_id_related_to_bos_sessiontemplate}"
         );
         let ims_file_name = String::from(
           image_id_related_to_bos_sessiontemplate.clone().as_str(),
@@ -216,11 +213,9 @@ pub async fn exec(
           Ok(ims_record) => {
             serde_json::to_writer_pretty(&ims_file, &ims_record)?;
             let image_id =
-              image_id_related_to_bos_sessiontemplate.clone().to_string();
+              image_id_related_to_bos_sessiontemplate.clone().clone();
             log::info!(
-              "Image ID found related to BOS sessiontemplate {} is {}",
-              bos,
-              image_id_related_to_bos_sessiontemplate
+              "Image ID found related to BOS sessiontemplate {bos} is {image_id_related_to_bos_sessiontemplate}"
             );
             let sts_value = match ims::s3_client::s3_auth(
               shasta_token,
@@ -272,7 +267,7 @@ pub async fn exec(
                     &src, error
                   )));
                 }
-              };
+              }
             } // for file in files2download
             log::info!("\nDone, the following image bundle was generated:");
             log::info!("\tBOS file: {}", &bos_file_path.to_string_lossy());
@@ -282,20 +277,19 @@ pub async fn exec(
             let ims_image_name = migrate_restore::get_image_name_from_ims_file(
               &ims_file_path.to_string_lossy(),
             )?;
-            log::info!("\tImage name: {}", ims_image_name);
+            log::info!("\tImage name: {ims_image_name}");
             for file in files2download {
               let dest = String::from(destination);
               let src = image_id.clone() + "/" + file;
-              log::info!("\t\tfile: {}/{}", dest, src);
+              log::info!("\t\tfile: {dest}/{src}");
             }
           }
           Err(e) => {
             return Err(Error::MigrateOp(format!(
-              "image related to BOS session template {} not found: {}",
-              image_id_related_to_bos_sessiontemplate, e
+              "image related to BOS session template {image_id_related_to_bos_sessiontemplate} not found: {e}"
             )));
           }
-        };
+        }
       }
     }
   }

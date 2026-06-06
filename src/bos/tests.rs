@@ -26,5 +26,5 @@ async fn test_bos_sessiontemplate_serde_json_to_struct_conversion() {
   let bos_sessiontemplate =
     serde_json::from_value::<CfsSessionGetResponse>(bos_sessiontemplate_value);
 
-  println!("{:#?}", bos_sessiontemplate);
+  println!("{bos_sessiontemplate:#?}");
 }

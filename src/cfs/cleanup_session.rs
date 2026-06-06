@@ -52,7 +52,7 @@ pub async fn exec(
 ) -> Result<(), Error> {
   let cfs_session_name = &cfs_session.name;
 
-  log::debug!("Deleting session '{}'", cfs_session_name);
+  log::debug!("Deleting session '{cfs_session_name}'");
 
   // Get xnames related to CFS session to delete:
   // - xnames belonging to HSM group related to CFS session
@@ -115,11 +115,11 @@ pub async fn exec(
     return Err(Error::ApplySession(format!(
       "CFS session target definition is '{cfs_session_target_definition}'. Don't know how to continue. Exit"
     )));
-  };
+  }
 
   // Delete CFS session
   if dry_run {
-    log::info!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
+    log::info!("Dry Run Mode: Delete CFS session '{cfs_session_name}'");
   } else {
     client
       .cfs_session_v3_delete(shasta_token, cfs_session_name)
@@ -142,20 +142,16 @@ async fn delete_images(
       .iter()
       .any(|boot_parameters| boot_parameters.get_boot_image().eq(image_id));
 
-    if !is_image_boot_node {
-      if dry_run {
-        log::info!(
-          "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{}'",
-          image_id
-        );
-      } else {
-        client.ims_image_delete(shasta_token, image_id).await?;
-      }
-    } else {
+    if is_image_boot_node {
       log::info!(
-        "Image '{}' is a boot node image. It will not be deleted.",
-        image_id
+        "Image '{image_id}' is a boot node image. It will not be deleted."
       );
+    } else if dry_run {
+      log::info!(
+        "Dry Run Mode: CFS session target definition is 'image'. Deleting image '{image_id}'"
+      );
+    } else {
+      client.ims_image_delete(shasta_token, image_id).await?;
     }
   }
 
@@ -173,9 +169,7 @@ async fn cancel_session(
 ) -> Result<(), Error> {
   // Set CFS components error_count == retry_policy so CFS batcher stops retrying running
   log::info!(
-    "Set 'error_count' {} to xnames {:?}",
-    retry_policy,
-    xname_vec
+    "Set 'error_count' {retry_policy} to xnames {xname_vec:?}"
   );
 
   // Update CFS component error_count
@@ -195,15 +189,12 @@ async fn cancel_session(
     .ok_or(Error::ValidationFailed("No CFS components"))?;
 
   log::info!(
-    "Update error count on nodes {:?} to {}",
-    xname_vec,
-    retry_policy
+    "Update error count on nodes {xname_vec:?} to {retry_policy}"
   );
 
   if dry_run {
     log::info!(
-      "Dry Run Mode: Update error count on nodes {:?}",
-      cfs_component_vec
+      "Dry Run Mode: Update error count on nodes {cfs_component_vec:?}"
     );
   } else {
     client

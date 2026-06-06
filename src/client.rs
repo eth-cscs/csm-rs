@@ -79,16 +79,19 @@ impl ShastaClient {
   }
 
   /// The Shasta API base URL (e.g. `https://api.shasta.example.com`).
+  #[must_use]
   pub fn base_url(&self) -> &str {
     &self.base_url
   }
 
   /// The PEM-encoded root certificate trusted for HTTPS calls.
+  #[must_use]
   pub fn root_cert(&self) -> &[u8] {
     &self.root_cert
   }
 
   /// The SOCKS5 proxy URL, if one was configured.
+  #[must_use]
   pub fn socks5_proxy(&self) -> Option<&str> {
     self.socks5_proxy.as_deref()
   }

@@ -42,7 +42,7 @@ pub async fn create_new_configuration(
   overwrite: bool,
 ) -> Result<CfsConfigurationResponse, Error> {
   // Check if CFS configuration already exists
-  log::debug!("Check CFS configuration '{}' exists", configuration_name);
+  log::debug!("Check CFS configuration '{configuration_name}' exists");
 
   let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
@@ -59,13 +59,11 @@ pub async fn create_new_configuration(
   if !cfs_configuration_vec.is_empty() {
     if overwrite {
       log::debug!(
-        "CFS configuration '{}' already exists but 'overwrite' has been enabled",
-        configuration_name
+        "CFS configuration '{configuration_name}' already exists but 'overwrite' has been enabled"
       );
     } else {
       log::warn!(
-        "CFS configuration '{}' already exists, cancel the process",
-        configuration_name
+        "CFS configuration '{configuration_name}' already exists, cancel the process"
       );
       return Err(Error::ConfigurationAlreadyExists(
         configuration_name.to_string(),
@@ -74,8 +72,7 @@ pub async fn create_new_configuration(
   }
 
   log::debug!(
-    "CFS configuration '{}' does not exists, creating new CFS configuration",
-    configuration_name
+    "CFS configuration '{configuration_name}' does not exists, creating new CFS configuration"
   );
 
   shasta_client
@@ -232,7 +229,7 @@ pub fn filter(
       .to_vec();
   }
 
-  Ok(cfs_configuration_vec.to_vec())
+  Ok(cfs_configuration_vec.clone())
 }
 
 /// If filtering by HSM group, then configuration name must include HSM group name (It assumms each configuration
@@ -366,14 +363,14 @@ pub async fn get_derivatives(
   image_id_vec.extend(
     cfs_session_vec
       .iter()
-      .flat_map(|cfs_session| cfs_session.results_id()),
+      .flat_map(super::super::session::http_client::v2::types::CfsSessionGetResponse::results_id),
   );
 
   // Add boot images from BOS sessiontemplate to image_id_vec
   image_id_vec.extend(
     bos_sessiontemplate_vec
       .iter()
-      .flat_map(|bos_sessiontemplate| bos_sessiontemplate.images_id()),
+      .flat_map(crate::bos::template::http_client::v2::types::BosSessionTemplate::images_id),
   );
 
   // Filter images
@@ -448,7 +445,7 @@ pub async fn get_configuration_layer_details(
 
   if let [ref_value] = ref_value_vec.as_slice() {
     // Potentially an annotated tag
-    log::debug!("Found ref in remote git repo:\n{:#?}", ref_value);
+    log::debug!("Found ref in remote git repo:\n{ref_value:#?}");
 
     let ref_type: &str = ref_value
       .pointer("/object/type")
@@ -460,7 +457,7 @@ pub async fn get_configuration_layer_details(
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
-      .map(|v| v.split("/").skip(1))
+      .map(|v| v.split('/').skip(1))
       .ok_or_else(|| {
         Error::GitRepoShape("ref".to_string())
       })?;
@@ -518,7 +515,7 @@ pub async fn get_configuration_layer_details(
   }
 
   for ref_value in ref_value_vec {
-    log::debug!("Found ref in remote git repo:\n{:#?}", ref_value);
+    log::debug!("Found ref in remote git repo:\n{ref_value:#?}");
     let ref_type: &str = ref_value
       .pointer("/object/type")
       .and_then(Value::as_str)
@@ -528,7 +525,7 @@ pub async fn get_configuration_layer_details(
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
-      .map(|v| v.split("/").skip(1))
+      .map(|v| v.split('/').skip(1))
       .ok_or_else(|| {
         Error::GitRepoShape("ref".to_string())
       })?;
@@ -552,7 +549,7 @@ pub async fn get_configuration_layer_details(
   }
 
   if let Some(cfs_config_layer_branch) = &layer.branch {
-    branch_name_vec.push(cfs_config_layer_branch.to_string());
+    branch_name_vec.push(cfs_config_layer_branch.clone());
   }
 
   let commit_id_opt = layer.commit.as_ref();
@@ -582,7 +579,7 @@ pub async fn get_configuration_layer_details(
     layer
       .clone_url
       .trim_start_matches(
-        format!("https://api.cmn.{}.cscs.ch", site_name).as_str(),
+        format!("https://api.cmn.{site_name}.cscs.ch").as_str(),
       )
       .trim_end_matches(".git"),
     &commit_id,

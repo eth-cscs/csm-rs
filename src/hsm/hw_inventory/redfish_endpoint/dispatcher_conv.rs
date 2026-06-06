@@ -49,7 +49,7 @@ impl From<FrontEndRedfishEndpoint> for RedfishEndpoint {
       ip_address: endpoint.ip_address,
       rediscover_on_update: endpoint.rediscover_on_update,
       template_id: endpoint.template_id,
-      discovery_info: endpoint.discovery_info.map(|info| info.into()),
+      discovery_info: endpoint.discovery_info.map(std::convert::Into::into),
     }
   }
 }
@@ -73,7 +73,7 @@ impl From<RedfishEndpoint> for FrontEndRedfishEndpoint {
       ip_address: val.ip_address,
       rediscover_on_update: val.rediscover_on_update,
       template_id: val.template_id,
-      discovery_info: val.discovery_info.map(|info| info.into()),
+      discovery_info: val.discovery_info.map(std::convert::Into::into),
     }
   }
 }
@@ -94,7 +94,7 @@ impl From<RedfishEndpointArray> for FrontEndRedfishEndpointArray {
       redfish_endpoints: val.redfish_endpoints.map(|endpoints| {
         endpoints
           .into_iter()
-          .map(|endpoint| endpoint.into())
+          .map(std::convert::Into::into)
           .collect()
       }),
     }

@@ -31,9 +31,9 @@ use crate::error::Error;
 
 /// TCP connect deadline for `reqwest::Client`s built by csm-rs. A
 /// long-running Manta server inheriting reqwest's default (no
-/// connect_timeout) would stall indefinitely on a hung upstream.
+/// `connect_timeout`) would stall indefinitely on a hung upstream.
 pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
-  Duration::from_secs(45 * 60);
+  Duration::from_mins(45);
 
 /// Per-request deadline (response must arrive within this). Without
 /// it, a CSM endpoint that accepts the connection and then hangs
@@ -41,7 +41,7 @@ pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
 /// liberal enough for slow CSM dumps (`hsm_*_get_all`, full-cluster
 /// inventory queries) but short enough to surface a hung peer.
 pub(crate) const HTTP_REQUEST_TIMEOUT: Duration =
-  Duration::from_secs(15 * 60);
+  Duration::from_mins(15);
 
 /// Total number of attempts (including the first) made by
 /// [`retry_on_5xx`] before propagating the last 5xx error to the
@@ -252,25 +252,22 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
   method: &str,
 ) -> Result<T, Error> {
   if let Err(e) = response.error_for_status_ref() {
-    match response.status() {
-      reqwest::StatusCode::UNAUTHORIZED => {
-        let url = response.url().to_string();
-        let payload = response.text().await.map_err(Error::NetError)?;
-        return Err(Error::RequestError {
-          response: e,
-          url,
-          payload,
-        });
-      }
-      _ => {
-        let status = response.status().as_u16();
-        let url = response.url().to_string();
-        let payload =
-          response.json::<Value>().await.map_err(Error::NetError)?;
-        return Err(Error::csm_from_response(
-          method, &url, status, payload,
-        ));
-      }
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+      let url = response.url().to_string();
+      let payload = response.text().await.map_err(Error::NetError)?;
+      return Err(Error::RequestError {
+        response: e,
+        url,
+        payload,
+      });
+    } else {
+      let status = response.status().as_u16();
+      let url = response.url().to_string();
+      let payload =
+        response.json::<Value>().await.map_err(Error::NetError)?;
+      return Err(Error::csm_from_response(
+        method, &url, status, payload,
+      ));
     }
   }
 
@@ -453,9 +450,9 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
         .await;
     match result {
       Err(Error::CsmError { detail, .. }) => {
-        assert_eq!(detail, "not found")
+        assert_eq!(detail, "not found");
       }
-      other => panic!("expected CsmError, got {:?}", other),
+      other => panic!("expected CsmError, got {other:?}"),
     }
   }
 
@@ -563,9 +560,9 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       delete(&client, &format!("{}/widgets/locked", server.uri()), "tok").await;
     match result {
       Err(Error::CsmError { detail, .. }) => {
-        assert_eq!(detail, "in use")
+        assert_eq!(detail, "in use");
       }
-      other => panic!("expected CsmError, got {:?}", other),
+      other => panic!("expected CsmError, got {other:?}"),
     }
   }
 
@@ -590,7 +587,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       handle_json_or_text_response(response).await;
     match result {
       Err(Error::Message(m)) => assert_eq!(m, "server boom"),
-      other => panic!("expected Message('server boom'), got {:?}", other),
+      other => panic!("expected Message('server boom'), got {other:?}"),
     }
   }
 
@@ -615,9 +612,9 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       handle_json_or_request_error(response, "GET").await;
     match result {
       Err(Error::RequestError { payload, .. }) => {
-        assert_eq!(payload, "auth header missing")
+        assert_eq!(payload, "auth header missing");
       }
-      other => panic!("expected RequestError, got {:?}", other),
+      other => panic!("expected RequestError, got {other:?}"),
     }
   }
 
@@ -643,9 +640,9 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       handle_json_or_request_error(response, "GET").await;
     match result {
       Err(Error::CsmError { detail, .. }) => {
-        assert_eq!(detail, "db unavailable")
+        assert_eq!(detail, "db unavailable");
       }
-      other => panic!("expected CsmError, got {:?}", other),
+      other => panic!("expected CsmError, got {other:?}"),
     }
   }
 
@@ -660,7 +657,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     .await
     .expect("should succeed");
     let mut sorted = out;
-    sorted.sort();
+    sorted.sort_unstable();
     assert_eq!(sorted, (0..10).map(|x| x * 2).collect::<Vec<_>>());
   }
 
@@ -674,7 +671,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       .await;
     match result {
       Err(Error::Message(m)) => assert_eq!(m, "boom"),
-      other => panic!("expected Message('boom'), got {:?}", other),
+      other => panic!("expected Message('boom'), got {other:?}"),
     }
   }
 

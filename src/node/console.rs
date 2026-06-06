@@ -30,7 +30,7 @@ pub async fn get_container_attachment_to_conman(
   shasta_k8s_secrets: Value,
   socks5_proxy: Option<&str>,
 ) -> Result<AttachedProcess, Error> {
-  log::info!("xname: {}", xname);
+  log::info!("xname: {xname}");
 
   let client =
     get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
@@ -54,12 +54,12 @@ pub async fn get_container_attachment_to_conman(
       Error::K8sError("Pod related to console has no name".to_string())
     })?;
 
-  log::info!("Console operator pod name '{}'", console_operator_pod_name);
+  log::info!("Console operator pod name '{console_operator_pod_name}'");
 
   let mut attached = pods_fabric
     .exec(
       console_operator_pod_name,
-      vec!["sh", "-c", &format!("/app/get-node {}", xname)],
+      vec!["sh", "-c", &format!("/app/get-node {xname}")],
       &AttachParams::default()
         .container("cray-console-operator")
         .stderr(false),
@@ -87,8 +87,7 @@ pub async fn get_container_attachment_to_conman(
     .and_then(Value::as_str)
     .ok_or_else(|| {
       Error::ConsoleError(format!(
-        "console-operator response missing string field 'podname' (got: {})",
-        output_json
+        "console-operator response missing string field 'podname' (got: {output_json})"
       ))
     })?;
 
@@ -96,9 +95,9 @@ pub async fn get_container_attachment_to_conman(
   // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
   // terminal session
 
-  log::info!("Console pod name: {}", console_pod_name,);
+  log::info!("Console pod name: {console_pod_name}");
 
-  log::info!("Connecting to console {}", xname);
+  log::info!("Connecting to console {xname}");
 
   pods_fabric
         .exec(
@@ -114,8 +113,7 @@ pub async fn get_container_attachment_to_conman(
         .await
         .map_err(|e| {
             Error::ConsoleError(format!(
-                "Error attaching to container 'cray-console-node' in pod '{}'. Reason:\n{}. Exit",
-                console_pod_name, e
+                "Error attaching to container 'cray-console-node' in pod '{console_pod_name}'. Reason:\n{e}. Exit"
             ))
         })
 }
@@ -141,7 +139,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   let params = kube::api::ListParams::default()
     .limit(1)
-    .labels(format!("cfsession={}", cfs_session_name).as_str());
+    .labels(format!("cfsession={cfs_session_name}").as_str());
 
   let mut pods = pods_fabric.list(&params).await?;
 
@@ -163,8 +161,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   if pods.items.is_empty() {
     return Err(Error::ConsoleError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} not ready. Aborting operation"
     )));
   }
 
@@ -176,7 +173,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
       Error::K8sError("Pod related to console has no name".to_string())
     })?;
 
-  log::info!("Ansible pod name: {}", console_operator_pod_name);
+  log::info!("Ansible pod name: {console_operator_pod_name}");
 
   let attached = pods_fabric
         .exec(
@@ -215,7 +212,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   let params = kube::api::ListParams::default()
     .limit(1)
-    .labels(format!("job-name={}", ansible_target_container_label).as_str());
+    .labels(format!("job-name={ansible_target_container_label}").as_str());
 
   let mut pods = pods_fabric.list(&params).await?;
 
@@ -237,8 +234,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   if pods.items.is_empty() {
     return Err(Error::ConsoleError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} not ready. Aborting operation"
     )));
   }
 
@@ -269,8 +265,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     .await
     .map_err(|e| {
       Error::ConsoleError(format!(
-        "Error attaching to container 'sshd' in pod '{}'. Reason\n{}\n. Exit",
-        console_operator_pod_name, e
+        "Error attaching to container 'sshd' in pod '{console_operator_pod_name}'. Reason\n{e}\n. Exit"
       ))
     })
 }

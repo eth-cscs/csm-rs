@@ -63,7 +63,7 @@ impl ClusterSessionTrait for Csm {
       .shasta_client()
       .bos_session_v2_post(shasta_token, bos_session.into())
       .await
-      .map(|bos_session| bos_session.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 }
@@ -81,7 +81,7 @@ impl ClusterTemplateTrait for Csm {
       .map(|bos_session_template_vec| {
         bos_session_template_vec
           .into_iter()
-          .map(|template| template.into())
+          .map(std::convert::Into::into)
           .collect::<Vec<BosSessionTemplate>>()
       })
       .map_err(Error::from)
@@ -113,7 +113,7 @@ impl ClusterTemplateTrait for Csm {
     Ok(
       bos_sessiontemplate_vec
         .into_iter()
-        .map(|template| template.into())
+        .map(std::convert::Into::into)
         .collect::<Vec<BosSessionTemplate>>(),
     )
   }
@@ -129,7 +129,7 @@ impl ClusterTemplateTrait for Csm {
       .map(|bos_session_template_vec| {
         bos_session_template_vec
           .into_iter()
-          .map(|template| template.into())
+          .map(std::convert::Into::into)
           .collect::<Vec<BosSessionTemplate>>()
       })
       .map_err(Error::from)
@@ -149,7 +149,7 @@ impl ClusterTemplateTrait for Csm {
         bos_template_name,
       )
       .await
-      .map(|bos_session_template| bos_session_template.into())
+      .map(std::convert::Into::into)
       .map_err(Error::from)
   }
 

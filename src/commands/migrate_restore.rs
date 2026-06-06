@@ -80,7 +80,7 @@ pub async fn exec(
 ) -> Result<(), Error> {
   fn require<'a>(opt: Option<&'a str>, name: &str) -> Result<&'a str, Error> {
     opt.ok_or_else(|| {
-      Error::MigrateOp(format!("Error, --{} argument is required.", name))
+      Error::MigrateOp(format!("Error, --{name} argument is required."))
     })
   }
 
@@ -98,8 +98,7 @@ pub async fn exec(
   ] {
     if !PathBuf::from(path).exists() {
       return Err(Error::MigrateOp(format!(
-        "Error, {} file {} does not exist or cannot be open.",
-        label, path
+        "Error, {label} file {path} does not exist or cannot be open."
       )));
     }
   }
@@ -118,15 +117,15 @@ pub async fn exec(
   let backup_hsm_file = hsm_file.to_string();
 
   let ims_image_name: String = get_image_name_from_ims_file(&backup_ims_file)?;
-  log::info!(" Image name: {}", ims_image_name);
+  log::info!(" Image name: {ims_image_name}");
 
-  let initrd_path = format!("{}/initrd", image_dir);
-  let kernel_path = format!("{}/kernel", image_dir);
-  let rootfs_path = format!("{}/rootfs", image_dir);
+  let initrd_path = format!("{image_dir}/initrd");
+  let kernel_path = format!("{image_dir}/kernel");
+  let rootfs_path = format!("{image_dir}/rootfs");
 
-  log::info!("\tinitrd file: {}", initrd_path);
-  log::info!("\tkernel file: {}", kernel_path);
-  log::info!("\trootfs file: {}", rootfs_path);
+  log::info!("\tinitrd file: {initrd_path}");
+  log::info!("\tkernel file: {kernel_path}");
+  log::info!("\trootfs file: {rootfs_path}");
 
   // These should come from the manifest, but let's assume these values are correct
   let vec_backup_image_files = vec![initrd_path, kernel_path, rootfs_path];
@@ -158,7 +157,7 @@ pub async fn exec(
   let ims_image_id: String = match ims_image_id_rslt {
     Ok(value) => value,
     Err(e) => {
-      return Err(Error::MigrateOp(format!("{}", e)));
+      return Err(Error::MigrateOp(format!("{e}")));
     }
   };
 
@@ -269,34 +268,32 @@ async fn create_bos_sessiontemplate(
     .await
     .map_err(|error| {
       Error::MigrateOp(format!(
-        "Unable to query CSM to get list of BOS sessiontemplates: {}",
-        error
+        "Unable to query CSM to get list of BOS sessiontemplates: {error}"
       ))
     })?;
 
-  log::debug!("BOS sessiontemplate filtered: {:#?}", vector);
+  log::debug!("BOS sessiontemplate filtered: {vector:#?}");
 
   if !vector.is_empty() {
-    if !overwrite {
-      return Err(Error::MigrateOp(
-        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
-      ));
-    } else {
+    if overwrite {
       match shasta_client
         .bos_template_v2_delete(shasta_token, &bos_sessiontemplate_name)
         .await
       {
-        Ok(_) => log::debug!(
+        Ok(()) => log::debug!(
           "Ok BOS session template {}, deleted.",
           &bos_sessiontemplate_name
         ),
         Result::Err(err1) => {
           return Err(Error::MigrateOp(format!(
-            "unable to delete BOS session template: {}",
-            err1
+            "unable to delete BOS session template: {err1}"
           )));
         }
-      };
+      }
+    } else {
+      return Err(Error::MigrateOp(
+        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
+      ));
     }
   }
 
@@ -306,7 +303,7 @@ async fn create_bos_sessiontemplate(
     serde_json::from_reader(BufReader::new(file_content))?;
 
   let path_modified =
-    format!("s3://boot-images/{}/manifest.json", ims_image_id);
+    format!("s3://boot-images/{ims_image_id}/manifest.json");
 
   bos_sessiontemplate
     .boot_sets
@@ -319,7 +316,7 @@ async fn create_bos_sessiontemplate(
     })?
     .path = Some(path_modified);
 
-  log::debug!("BOS sessiontemplate loaded:\n{:#?}", bos_sessiontemplate);
+  log::debug!("BOS sessiontemplate loaded:\n{bos_sessiontemplate:#?}");
   log::debug!("BOS sessiontemplate modified:\n{:#?}", &bos_sessiontemplate);
 
   match shasta_client
@@ -336,8 +333,7 @@ async fn create_bos_sessiontemplate(
     ),
     Err(e1) => {
       return Err(Error::MigrateOp(format!(
-        "unable to create BOS session template: {}",
-        e1
+        "unable to create BOS session template: {e1}"
       )));
     }
   }
@@ -373,7 +369,7 @@ async fn create_cfs_config(
     .cfs_configuration_v3_get(shasta_token, Some(&cfs_config_name))
     .await
     .map_err(|error| {
-      Error::MigrateOp(format!("Unable to fetch CFS configuration: {}", error))
+      Error::MigrateOp(format!("Unable to fetch CFS configuration: {error}"))
     })?;
 
   if !cfs_config_vec.is_empty() {
@@ -387,16 +383,15 @@ async fn create_cfs_config(
       .cfs_configuration_v3_delete(shasta_token, cfs_config_name.as_str())
       .await
     {
-      Ok(_) => {
-        log::debug!("Ok CFS configuration {}, deleted.", cfs_config_name)
+      Ok(()) => {
+        log::debug!("Ok CFS configuration {cfs_config_name}, deleted.");
       }
       Result::Err(error) => {
         return Err(Error::MigrateOp(format!(
-          "unable to delete CFS configuration {}: {}",
-          cfs_config_name, error
+          "unable to delete CFS configuration {cfs_config_name}: {error}"
         )));
       }
-    };
+    }
   }
 
   // At this point we're sure there's either no CFS config with that name
@@ -418,7 +413,7 @@ async fn create_cfs_config(
     .await
   {
     Ok(result) => {
-      log::debug!("Ok, result: {:#?}", result);
+      log::debug!("Ok, result: {result:#?}");
       log::info!(
         "Ok, CFS configuration {} created successfully.",
         &cfs_config_name
@@ -426,8 +421,7 @@ async fn create_cfs_config(
     }
     Err(e1) => {
       return Err(Error::MigrateOp(format!(
-        "unable to create CFS configuration: {}",
-        e1
+        "unable to create CFS configuration: {e1}"
       )));
     }
   }
@@ -436,7 +430,7 @@ async fn create_cfs_config(
 }
 
 /// Add the image manifest field to an IMS image record
-/// the manifest field will be: s3://boot-images/{ims_image_id}/manifest.json
+/// the manifest field will be: <s3://boot-images/{ims_image_id}/manifest.json>
 async fn ims_update_image_add_manifest(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -450,7 +444,7 @@ async fn ims_update_image_add_manifest(
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    &["".to_string()], // hsm_group_name
+    &[String::new()], // hsm_group_name
     Some(ims_image_name),
     None,
   )
@@ -470,7 +464,7 @@ async fn ims_update_image_add_manifest(
         &ims_image_name, &error
       )));
     }
-  };
+  }
 
   let _ims_record = ims::image::http_client::types::Image {
     name: ims_image_name.to_string(),
@@ -519,18 +513,17 @@ async fn ims_update_image_add_manifest(
     Ok(()) => log::debug!("Image updated"),
     Err(e) => {
       return Err(Error::MigrateOp(format!(
-        "unable to modify the record of the image: {}",
-        e
+        "unable to modify the record of the image: {e}"
       )));
     }
-  };
+  }
 
   Ok(())
 }
 
 /// Uploads to s3 under boot-images/ims_image_id all the files that
-/// vec_image_files refers to. If upload successful, it modifies
-/// ImageManifest to point to the right place within s3
+/// `vec_image_files` refers to. If upload successful, it modifies
+/// `ImageManifest` to point to the right place within s3
 async fn s3_upload_image_artifacts(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -555,25 +548,20 @@ async fn s3_upload_image_artifacts(
     Ok(sts_value) => sts_value,
     Err(error) => {
       return Err(Error::MigrateOp(format!(
-        "unable to authenticate with s3 when uploading images: {}",
-        error
+        "unable to authenticate with s3 when uploading images: {error}"
       )));
     }
   };
 
   for file in vec_image_files {
     let filename = Path::new(file).file_name().ok_or_else(|| {
-      Error::MigrateOp(format!("Path '{}' has no file name component", file))
+      Error::MigrateOp(format!("Path '{file}' has no file name component"))
     })?;
     let file_size = match fs::metadata(file) {
-      Ok(_file_metadata) => {
-        let res: String = humansize::format_size(_file_metadata.len(), DECIMAL);
-        res
-      }
+      Ok(file_metadata) => humansize::format_size(file_metadata.len(), DECIMAL),
       Err(e) => {
         log::warn!(
-          "Unable to fetch file metadata info, faking the value. Error: {}",
-          e
+          "Unable to fetch file metadata info, faking the value. Error: {e}"
         );
         "-1".to_string()
       }
@@ -604,8 +592,7 @@ async fn s3_upload_image_artifacts(
         }
         Err(error) => {
           return Err(Error::MigrateOp(format!(
-            "unable to upload file to s3: {}",
-            error
+            "unable to upload file to s3: {error}"
           )));
         }
       }
@@ -625,8 +612,7 @@ async fn s3_upload_image_artifacts(
         }
         Err(error) => {
           return Err(Error::MigrateOp(format!(
-            "unable to upload file to s3: {}",
-            error
+            "unable to upload file to s3: {error}"
           )));
         }
       }
@@ -634,7 +620,7 @@ async fn s3_upload_image_artifacts(
 
     // I'm pretty sure there's a better way to do this...
     if file.contains("kernel") {
-      for artifact in ims_image_manifest.artifacts.iter_mut() {
+      for artifact in &mut ims_image_manifest.artifacts {
         if !etag.is_empty() {
           // assign eTag if returned by s3, otherwise set to none
           artifact.link.etag = Some(etag.clone());
@@ -649,7 +635,7 @@ async fn s3_upload_image_artifacts(
         }
       }
     } else if file.contains("rootfs") {
-      for artifact in ims_image_manifest.artifacts.iter_mut() {
+      for artifact in &mut ims_image_manifest.artifacts {
         if !etag.is_empty() {
           // assign eTag if returned by s3, otherwise set to none
           artifact.link.etag = Some(etag.clone());
@@ -664,7 +650,7 @@ async fn s3_upload_image_artifacts(
         }
       }
     } else if file.contains("initrd") {
-      for artifact in ims_image_manifest.artifacts.iter_mut() {
+      for artifact in &mut ims_image_manifest.artifacts {
         if !etag.is_empty() {
           // assign eTag if returned by s3, otherwise set to none
           artifact.link.etag = Some(etag.clone());
@@ -695,8 +681,7 @@ async fn s3_upload_image_artifacts(
     .map(|path| path.join(&new_manifest_file_name))
     .ok_or_else(|| {
       Error::MigrateOp(format!(
-        "Path '{}' has no parent directory",
-        first_image_file
+        "Path '{first_image_file}' has no parent directory"
       ))
     })?;
 
@@ -718,7 +703,7 @@ async fn s3_upload_image_artifacts(
     socks5_proxy,
     &manifest_full_object_path,
     bucket_name,
-    &new_manifest_file_path.to_owned().to_string_lossy(),
+    &new_manifest_file_path.clone().to_string_lossy(),
   )
   .await
   {
@@ -727,11 +712,10 @@ async fn s3_upload_image_artifacts(
     }
     Err(error) => {
       return Err(Error::MigrateOp(format!(
-        "unable to upload file to s3: {}",
-        error
+        "unable to upload file to s3: {error}"
       )));
     }
-  };
+  }
 
   Ok(())
 }
@@ -740,16 +724,19 @@ async fn s3_upload_image_artifacts(
 /// opened, its metadata cannot be read, or an I/O error occurs while
 /// reading.
 fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
-  log::debug!("File {:?}...", &filename);
+  log::debug!("File {}...", filename.display());
 
   let f = File::open(&filename).map_err(|e| {
-    Error::MigrateOp(format!("file_md5sum: open {:?}: {}", filename, e))
+    Error::MigrateOp(format!("file_md5sum: open {}: {e}", filename.display()))
   })?;
   // Find the length of the file
   let len = f
     .metadata()
     .map_err(|e| {
-      Error::MigrateOp(format!("file_md5sum: metadata {:?}: {}", filename, e))
+      Error::MigrateOp(format!(
+        "file_md5sum: metadata {}: {e}",
+        filename.display()
+      ))
     })?
     .len();
   // Decide on a reasonable buffer size (100MB in this case, fastest will depend on hardware)
@@ -765,7 +752,10 @@ fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
   loop {
     // Get a chunk of the file
     let part = buf.fill_buf().map_err(|e| {
-      Error::MigrateOp(format!("file_md5sum: read {:?}: {}", filename, e))
+      Error::MigrateOp(format!(
+        "file_md5sum: read {}: {e}",
+        filename.display()
+      ))
     })?;
     // If that chunk was empty, the reader has reached EOF
     if part.is_empty() {
@@ -791,14 +781,10 @@ fn calculate_image_checksums(
 ) -> Result<(), Error> {
   for file in vec_backup_image_files {
     let file_size = match fs::metadata(file) {
-      Ok(_file_metadata) => {
-        let res: String = humansize::format_size(_file_metadata.len(), DECIMAL);
-        res
-      }
+      Ok(file_metadata) => humansize::format_size(file_metadata.len(), DECIMAL),
       Err(e) => {
         log::warn!(
-          "Unable to fetch file metadata info, faking the value. Error: {}",
-          e
+          "Unable to fetch file metadata info, faking the value. Error: {e}"
         );
         "-1".to_string()
       }
@@ -811,7 +797,7 @@ fn calculate_image_checksums(
 
     if file.contains("kernel") {
       artifact = Artifact {
-        md5: format!("{:x}", digest),
+        md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
           r#type: "s3".to_string(),
@@ -821,7 +807,7 @@ fn calculate_image_checksums(
       };
     } else if file.contains("rootfs") {
       artifact = Artifact {
-        md5: format!("{:x}", digest),
+        md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
           r#type: "s3".to_string(),
@@ -831,7 +817,7 @@ fn calculate_image_checksums(
       };
     } else {
       artifact = Artifact {
-        md5: format!("{:x}", digest),
+        md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
           r#type: "s3".to_string(),
@@ -868,7 +854,7 @@ async fn ims_register_image(
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    &["".to_string()], // hsm_group_name
+    &[String::new()], // hsm_group_name
     ims_image_name,
     None,
   )
@@ -919,7 +905,7 @@ pub fn get_image_name_from_ims_file(
     .and_then(Value::as_str)
     .map(|ims_name| ims_name.replace('"', ""))
     .ok_or_else(|| {
-      Error::MigrateOp(format!("IMS file '{}' is missing /0/name", ims_file))
+      Error::MigrateOp(format!("IMS file '{ims_file}' is missing /0/name"))
     })
 }
 
@@ -1000,16 +986,15 @@ pub async fn create_hsm_group_from_file(
                     );
                   }
                   Err(e) => {
-                    log::error!("Error message {}", e);
+                    log::error!("Error message {e}");
                     return Err(Error::MigrateOp(format!(
-                      "second error creating a new HSM group: {}",
-                      e
+                      "second error creating a new HSM group: {e}"
                     )));
                   }
                 }
               }
               Err(e) => {
-                log::error!("Error message {}", e);
+                log::error!("Error message {e}");
                 return Err(Error::MigrateOp(format!(
                   "error deleting the HSM group {}: {}",
                   &group.label, e
@@ -1027,7 +1012,7 @@ pub async fn create_hsm_group_from_file(
           ));
         }
       }
-    };
+    }
   }
 
   Ok(())

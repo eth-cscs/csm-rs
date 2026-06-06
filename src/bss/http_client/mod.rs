@@ -119,7 +119,7 @@ impl ShastaClient {
     }
   }
 
-  /// POST a single set of BootParameters. Used to create new entries.
+  /// POST a single set of `BootParameters`. Used to create new entries.
   ///
   /// # Errors
   ///

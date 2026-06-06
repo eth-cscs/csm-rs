@@ -53,6 +53,7 @@ pub struct Next {
 }
 
 impl Layer {
+  #[must_use]
   pub fn new(
     clone_url: String,
     commit: Option<String>,
@@ -61,9 +62,9 @@ impl Layer {
     branch: Option<String>,
   ) -> Self {
     Self {
+      name,
       clone_url,
       commit,
-      name,
       playbook,
       branch,
     }
@@ -93,6 +94,7 @@ impl Default for CfsConfigurationResponse {
 }
 
 impl CfsConfigurationResponse {
+  #[must_use]
   pub fn new() -> Self {
     Self {
       name: String::default(),

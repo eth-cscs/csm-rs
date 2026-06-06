@@ -29,7 +29,7 @@ impl ShastaClient {
       "Create BOS session '{}'",
       bos_session.name.as_deref().unwrap_or("unknown")
     );
-    log::debug!("Create BOS session request:\n{:#?}", bos_session);
+    log::debug!("Create BOS session request:\n{bos_session:#?}");
 
     let api_url = format!("{}/bos/v2/sessions", self.base_url());
     let created: BosSession =

@@ -73,7 +73,7 @@ impl From<Transition> for FrontEndTransition {
     FrontEndTransition {
       operation: val.operation.into(),
       task_deadline_minutes: val.task_deadline_minutes,
-      location: val.location.into_iter().map(|v| v.into()).collect(),
+      location: val.location.into_iter().map(std::convert::Into::into).collect(),
     }
   }
 }
@@ -146,7 +146,7 @@ impl From<TransitionResponse> for FrontEndTransitionResponse {
       transition_status: val.transition_status,
       operation: val.operation.into(),
       task_counts: val.task_counts.into(),
-      tasks: val.tasks.into_iter().map(|v| v.into()).collect(),
+      tasks: val.tasks.into_iter().map(std::convert::Into::into).collect(),
     }
   }
 }
@@ -160,7 +160,7 @@ impl From<Vec<FrontEndTransitionResponse>> for TransitionResponseList {
 }
 impl From<TransitionResponseList> for Vec<FrontEndTransitionResponse> {
   fn from(val: TransitionResponseList) -> Self {
-    val.transitions.into_iter().map(|v| v.into()).collect()
+    val.transitions.into_iter().map(std::convert::Into::into).collect()
   }
 }
 

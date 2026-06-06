@@ -85,9 +85,8 @@ where
 fn jittered(d: Duration) -> Duration {
   let entropy = std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
-    .map(|t| t.subsec_nanos())
-    .unwrap_or(0);
-  let pct = (entropy % 50) as i64 - 25; // -25..=24
+    .map_or(0, |t| t.subsec_nanos());
+  let pct = i64::from(entropy % 50) - 25; // -25..=24
   let nanos = d.as_nanos() as i64;
   let adjusted = nanos + (nanos * pct / 100);
   Duration::from_nanos(adjusted.max(0) as u64)
@@ -164,7 +163,7 @@ mod tests {
 
   #[test]
   fn jittered_stays_within_band() {
-    let d = Duration::from_millis(1000);
+    let d = Duration::from_secs(1);
     for _ in 0..50 {
       let j = jittered(d);
       assert!(j >= Duration::from_millis(750));

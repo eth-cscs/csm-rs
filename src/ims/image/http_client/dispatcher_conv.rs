@@ -56,7 +56,7 @@ impl From<FrontEndImage> for Image {
       id: frontend_image.id,
       created: frontend_image.created,
       name: frontend_image.name,
-      link: frontend_image.link.map(|link| link.into()),
+      link: frontend_image.link.map(std::convert::Into::into),
       arch: frontend_image.arch,
       metadata: frontend_image.metadata,
     }
@@ -69,7 +69,7 @@ impl From<Image> for FrontEndImage {
       id: val.id,
       created: val.created,
       name: val.name,
-      link: val.link.map(|link| link.into()),
+      link: val.link.map(std::convert::Into::into),
       arch: val.arch,
       metadata: val.metadata,
     }
@@ -99,7 +99,7 @@ impl From<PatchMetadata> for FrontEndPatchMetadata {
 impl From<FrontEndPatchImage> for PatchImage {
   fn from(frontend_patch_image: FrontEndPatchImage) -> Self {
     Self {
-      link: frontend_patch_image.link.map(|link| link.into()),
+      link: frontend_patch_image.link.map(std::convert::Into::into),
       arch: frontend_patch_image.arch,
       metadata: frontend_patch_image.metadata,
     }
@@ -109,7 +109,7 @@ impl From<FrontEndPatchImage> for PatchImage {
 impl From<PatchImage> for FrontEndPatchImage {
   fn from(val: PatchImage) -> Self {
     FrontEndPatchImage {
-      link: val.link.map(|link| link.into()),
+      link: val.link.map(std::convert::Into::into),
       arch: val.arch,
       metadata: val.metadata,
     }

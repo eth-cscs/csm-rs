@@ -160,7 +160,7 @@ impl ShastaClient {
     .await?;
 
     let duration = start.elapsed();
-    log::debug!("Time elapsed to get CFS components is: {:?}", duration);
+    log::debug!("Time elapsed to get CFS components is: {duration:?}");
 
     Ok(component_vec)
   }

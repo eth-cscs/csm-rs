@@ -20,7 +20,7 @@ impl BootParametersTrait for Csm {
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
-      .map(|boot_parameter| boot_parameter.into())
+      .map(std::convert::Into::into)
       .collect();
 
     Ok(boot_parameter_infra_vec)
@@ -39,7 +39,7 @@ impl BootParametersTrait for Csm {
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
-      .map(|boot_parameter| boot_parameter.into())
+      .map(std::convert::Into::into)
       .collect();
 
     Ok(boot_parameter_infra_vec)

@@ -1,4 +1,4 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
 //! shapes are dictated by the API.
 #![allow(missing_docs)]
 
@@ -99,6 +99,7 @@ pub struct CfsSessionGetResponse {
 
 impl CfsSessionGetResponse {
   /// Get start time
+  #[must_use]
   pub fn get_start_time(&self) -> Option<String> {
     self
       .status
@@ -107,7 +108,8 @@ impl CfsSessionGetResponse {
       .and_then(|session| session.start_time.clone())
   }
 
-  /// Returns list of result_ids
+  /// Returns list of `result_ids`
+  #[must_use]
   pub fn get_result_id_vec(&self) -> Vec<String> {
     self
       .status
@@ -124,7 +126,8 @@ impl CfsSessionGetResponse {
       .unwrap_or_default()
   }
 
-  /// Returns list of result_ids
+  /// Returns list of `result_ids`
+  #[must_use]
   pub fn get_first_result_id(&self) -> Option<String> {
     CfsSessionGetResponse::get_result_id_vec(self)
       .first()
@@ -132,11 +135,13 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns list of targets (either groups or xnames)
+  #[must_use]
   pub fn get_targets(&self) -> Option<Vec<String>> {
     self.get_target_hsm().or_else(|| self.get_target_xname())
   }
 
   /// Returns list of HSM groups targeted
+  #[must_use]
   pub fn get_target_hsm(&self) -> Option<Vec<String>> {
     self.target.as_ref().and_then(|target| {
       target.groups.as_ref().map(|group_vec| {
@@ -146,6 +151,7 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns list of xnames targeted
+  #[must_use]
   pub fn get_target_xname(&self) -> Option<Vec<String>> {
     self.ansible.as_ref().and_then(|ansible| {
       ansible.limit.as_ref().map(|limit| {
@@ -159,6 +165,7 @@ impl CfsSessionGetResponse {
 
   /// Returns 'true' if the CFS session target definition is 'image'. Otherwise (target
   /// definiton dynamic) will return 'false'
+  #[must_use]
   pub fn is_target_def_image(&self) -> bool {
     self
       .get_target_def()
@@ -168,6 +175,7 @@ impl CfsSessionGetResponse {
   /// Returns target definition of the CFS session:
   /// image --> CFS session to build an image
   /// dynamic --> CFS session to configure a node
+  #[must_use]
   pub fn get_target_def(&self) -> Option<String> {
     self
       .target
@@ -175,6 +183,7 @@ impl CfsSessionGetResponse {
       .and_then(|target| target.definition.clone())
   }
 
+  #[must_use]
   pub fn get_configuration_name(&self) -> Option<String> {
     self
       .configuration
@@ -183,6 +192,7 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns 'true' if CFS session succeeded
+  #[must_use]
   pub fn is_success(&self) -> bool {
     self.status.as_ref().is_some_and(|status| {
       status.session.as_ref().is_some_and(|session| {
