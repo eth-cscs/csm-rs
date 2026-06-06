@@ -44,7 +44,9 @@ fn get_claims_from_jwt_token(token: &str) -> Result<Value, Error> {
 }
 
 /// Extract the `name` claim from a Keycloak JWT (typically the user's
-/// display name).
+/// display name). Only used by the SAT-file admin workflow, so gated
+/// behind the `commands-admin` Cargo feature.
+#[cfg(feature = "commands-admin")]
 pub fn get_name(token: &str) -> Result<String, Error> {
   let jwt_claims = get_claims_from_jwt_token(token)?;
 
@@ -59,7 +61,9 @@ pub fn get_name(token: &str) -> Result<String, Error> {
 }
 
 /// Extract the `preferred_username` claim from a Keycloak JWT — the
-/// stable login identifier.
+/// stable login identifier. Only used by the SAT-file admin workflow,
+/// so gated behind the `commands-admin` Cargo feature.
+#[cfg(feature = "commands-admin")]
 pub fn get_preferred_username(token: &str) -> Result<String, Error> {
   let jwt_claims = get_claims_from_jwt_token(token)?;
 
@@ -113,18 +117,21 @@ mod tests {
 
   // ---------- get_name ----------
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_name_returns_name_claim() {
     let token = jwt_with_claims(json!({"name": "Alice Example"}));
     assert_eq!(get_name(&token).unwrap(), "Alice Example");
   }
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_name_errors_when_name_missing() {
     let token = jwt_with_claims(json!({"sub": "abc"}));
     assert!(get_name(&token).is_err());
   }
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_name_errors_on_malformed_token() {
     // Not three dot-separated parts; the implementation tolerates 1-part
@@ -134,12 +141,14 @@ mod tests {
 
   // ---------- get_preferred_username ----------
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_preferred_username_returns_claim() {
     let token = jwt_with_claims(json!({"preferred_username": "alice"}));
     assert_eq!(get_preferred_username(&token).unwrap(), "alice");
   }
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_preferred_username_errors_when_missing() {
     let token = jwt_with_claims(json!({"name": "Alice"}));
@@ -204,6 +213,7 @@ mod tests {
 
   // ---------- bearer-style "Bearer <jwt>" prefix handling ----------
 
+  #[cfg(feature = "commands-admin")]
   #[test]
   fn get_name_strips_bearer_prefix() {
     // The implementation calls .split(' ').nth(1) first, then falls back to

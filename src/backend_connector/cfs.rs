@@ -3,12 +3,16 @@
 use std::pin::Pin;
 
 use chrono::NaiveDateTime;
-use futures::{AsyncBufRead, AsyncReadExt};
+use futures::AsyncBufRead;
+#[cfg(feature = "k8s-console")]
+use futures::AsyncReadExt;
+#[cfg(feature = "k8s-console")]
+use manta_backend_dispatcher::types::K8sAuth;
 use manta_backend_dispatcher::{
   error::Error,
   interfaces::cfs::CfsTrait,
   types::{
-    K8sAuth, K8sDetails,
+    K8sDetails,
     bos::session_template::BosSessionTemplate,
     bss::BootParameters,
     cfs::{

@@ -32,5 +32,10 @@ pub mod jwt_ops;
 /// feature.
 #[cfg(feature = "k8s-console")]
 pub mod kubernetes;
+// The only user of `vault::http_client::fetch_shasta_k8s_secrets_from_vault`
+// is the Kubernetes secret-fetching path (CFS session log streaming
+// and `cfs::session::i_post_sync`), so the whole module rides the
+// same `k8s-console` feature gate.
+#[cfg(feature = "k8s-console")]
 pub mod vault;
 pub(crate) mod yaml;

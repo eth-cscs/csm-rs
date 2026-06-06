@@ -1,9 +1,12 @@
 use core::time;
+#[cfg(feature = "commands-admin")]
 use std::collections::BTreeMap;
 
 use futures::{AsyncBufRead, AsyncBufReadExt, StreamExt, TryStreamExt};
 
-use k8s_openapi::api::core::v1::{ConfigMap, Container, ContainerStatus, Pod};
+#[cfg(feature = "commands-admin")]
+use k8s_openapi::api::core::v1::ConfigMap;
+use k8s_openapi::api::core::v1::{Container, ContainerStatus, Pod};
 use kube::runtime::reflector::Lookup;
 use kube::{
   Api,
@@ -315,6 +318,7 @@ pub async fn i_print_cfs_session_logs(
 ///
 /// Returns [`Error::K8sError`] if the ConfigMap is missing or has no
 /// `data` field.
+#[cfg(feature = "commands-admin")]
 pub async fn try_get_configmap(
   client: kube::Client,
   configmap_name: &str,

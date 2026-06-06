@@ -99,43 +99,6 @@ pub mod http_client {
     }
   }
 
-  /// Fetch the VCS (Gitea) bearer token from
-  /// `secret/manta/data/<site>/vcs`. Authenticates against Vault via
-  /// the OIDC JWT backend using the caller's Shasta token.
-  pub async fn fetch_shasta_vcs_token(
-    shasta_token: &str,
-    vault_base_url: &str,
-    site_name: &str,
-    socks5_proxy: Option<&str>,
-    // vault_role_id: &str,
-    // secret_path: &str,
-  ) -> Result<String, Error> {
-    let vault_token =
-      auth_oidc_jwt(vault_base_url, shasta_token, site_name, socks5_proxy)
-        .await?;
-
-    let vault_secret_path = format!("manta/data/{}", site_name);
-
-    let vault_secret = fetch_secret(
-      &vault_token,
-      vault_base_url,
-      &format!("/v1/{}/vcs", vault_secret_path),
-      socks5_proxy,
-    )
-    .await?; // this works for hashicorp-vault for fulen may need /v1/secret/data/shasta/vcs
-
-    vault_secret
-      .get("data")
-      .and_then(|data| data.get("token"))
-      .and_then(Value::as_str)
-      .map(String::from)
-      .ok_or_else(|| {
-        Error::Message(
-          "ERROR - VCS token not found in vault secret".to_string(),
-        )
-      }) // this works for vault v1.12.0 for older versions may need vault_secret["data"]["token"]
-  }
-
   /// Fetch the Kubernetes API URL, token, and CA cert from
   /// `secret/manta/data/<site>/k8s` — the credentials csm-rs uses to
   /// read the in-cluster `cray-product-catalog` ConfigMap and to attach
