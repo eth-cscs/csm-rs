@@ -44,92 +44,6 @@ use crate::{
 };
 
 impl SatTrait for Csm {
-  async fn apply_sat_file(
-    &self,
-    params: ApplySatFileParams<'_>,
-  ) -> Result<
-    (
-      Vec<CfsConfigurationResponse>,
-      Vec<Image>,
-      Vec<BosSessionTemplate>,
-      Vec<BosSession>,
-    ),
-    Error,
-  > {
-    let ApplySatFileParams {
-      shasta_token,
-      vault_base_url,
-      site_name,
-      k8s_api_url,
-      sat_file,
-      hsm_group_available_vec,
-      ansible_verbosity,
-      ansible_passthrough,
-      gitea_base_url,
-      gitea_token,
-      reboot,
-      watch_logs,
-      timestamps,
-      debug_on_failure,
-      overwrite,
-      dry_run,
-    } = params;
-
-    // The trait carries the SAT file as a structured `serde_json::Value`
-    // (parsed once by the CLI). Transcode into `serde_yaml::Value` for
-    // the existing `exec` signature — lossless for any valid SAT file
-    // since the SAT spec is JSON-compatible.
-    let sat_template_file_yaml: serde_yaml::Value =
-      serde_json::from_value(sat_file).map_err(|e| {
-        Error::Message(format!(
-          "SAT file value is not a valid YAML mapping: {e}"
-        ))
-      })?;
-
-    let socks5_proxy = self.socks5_proxy.as_deref();
-    let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
-      vault_base_url,
-      shasta_token,
-      site_name,
-      socks5_proxy,
-    )
-    .await
-    .map_err(Error::from)?;
-
-    let (configurations, images, session_templates, sessions) =
-      crate::commands::i_apply_sat_file::command::exec(
-        shasta_token,
-        &self.base_url,
-        &self.root_cert,
-        socks5_proxy,
-        vault_base_url,
-        site_name,
-        k8s_api_url,
-        shasta_k8s_secrets,
-        sat_template_file_yaml,
-        hsm_group_available_vec,
-        ansible_verbosity,
-        ansible_passthrough,
-        gitea_base_url,
-        gitea_token,
-        reboot,
-        watch_logs,
-        timestamps,
-        debug_on_failure,
-        overwrite,
-        dry_run,
-      )
-      .await
-      .map_err(Error::from)?;
-
-    Ok((
-      configurations.into_iter().map(Into::into).collect(),
-      images.into_iter().map(Into::into).collect(),
-      session_templates.into_iter().map(Into::into).collect(),
-      sessions.into_iter().map(Into::into).collect(),
-    ))
-  }
-
   async fn apply_configuration(
     &self,
     params: ApplyConfigurationParams<'_>,
@@ -172,13 +86,12 @@ impl SatTrait for Csm {
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
         .await
         .map_err(Error::from)?;
-    let cray_product_catalog =
-      kubernetes::try_get_configmap(
-        kube_client,
-        crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
-      )
-        .await
-        .map_err(Error::from)?;
+    let cray_product_catalog = kubernetes::try_get_configmap(
+      kube_client,
+      crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+    )
+    .await
+    .map_err(Error::from)?;
 
     let cfs_configuration = utils::create_cfs_configuration_from_sat_file(
       shasta_token,
@@ -247,13 +160,12 @@ impl SatTrait for Csm {
       kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
         .await
         .map_err(Error::from)?;
-    let cray_product_catalog =
-      kubernetes::try_get_configmap(
-        kube_client,
-        crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
-      )
-        .await
-        .map_err(Error::from)?;
+    let cray_product_catalog = kubernetes::try_get_configmap(
+      kube_client,
+      crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+    )
+    .await
+    .map_err(Error::from)?;
 
     let image = utils::images::i_create_image_from_sat_file_serde_yaml(
       shasta_token,
