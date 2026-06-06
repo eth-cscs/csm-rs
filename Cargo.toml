@@ -42,7 +42,6 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 log = "0.4.27"
-log4rs = { version = "1.2.0" }
 tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "sync", "time", "io-util"] }
 tokio-util = "0.7.4" # used by manta_console to create a read stream from container stdout
 tokio-stream = { version = "0.1.11", default-features = false }
@@ -67,7 +66,6 @@ futures = { version = "0.3.31", default-features = false }
 futures-channel = "0.3.31"
 regex = "1.6.0"
 secrecy = { version = "0.10.0", default-features = false }
-termion = "2.0.1" # used by manta_console to enable terminal raw
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false }
 aws-config = { version = "1.1.2", default-features = false, features = ["behavior-version-latest"] }

@@ -64,7 +64,7 @@ pub mod capmc;
 pub mod cfs;
 pub mod client;
 pub mod commands;
-pub mod common;
+pub(crate) mod common;
 pub mod error;
 pub mod hsm;
 pub mod ims;
@@ -72,3 +72,16 @@ pub mod node;
 pub mod pcs;
 
 pub use client::ShastaClient;
+pub use error::Error;
+
+// Canonical type re-exports lifted from each namespace's `mod.rs`. Only
+// types that are already curated as the namespace-level canonical name
+// are re-exported here; deep `*::http_client::*::types::*` paths stay
+// internal so a future version bump is a single edit in the namespace.
+pub use bos::{BosSession, BosSessionTemplate};
+pub use bss::BootParameters;
+pub use capmc::{XnameError, XnamePowerActionResponse, XnameStatusResponse};
+pub use ims::{Image, Link, PatchImage, PublicKey};
+// CFS exposes both v2 and v3 endpoints with structurally different
+// wire types, so the canonical surface is the `cfs::v2` and `cfs::v3`
+// submodules rather than a single crate-root alias.
