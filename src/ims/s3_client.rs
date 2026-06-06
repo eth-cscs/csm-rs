@@ -1,9 +1,11 @@
 use aws_config::SdkConfig;
 use aws_sdk_s3::config::Credentials;
+use aws_smithy_types::timeout::TimeoutConfig;
 use hyper::client::HttpConnector;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 
 use serde_json::Value;
 
@@ -12,6 +14,16 @@ use aws_sdk_s3::{Client, primitives::ByteStream};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::error::Error;
+
+/// Per-S3-operation deadline. The CSM reqwest client uses
+/// [`crate::common::http::HTTP_REQUEST_TIMEOUT`] (15 min), but the AWS
+/// SDK uses a separate transport that doesn't inherit it. A multi-GB
+/// rootfs upload over a slow link can legitimately take well over 15
+/// minutes, so we apply a much higher per-operation cap here (60 min)
+/// and let it fail rather than letting it sit forever — the AWS SDK
+/// default is "no timeout", which would block an embedder
+/// indefinitely on a hung peer.
+const S3_OPERATION_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
 /// Extract the four interesting fields from a CSM STS response.
 fn parse_sts_credentials(
@@ -88,11 +100,15 @@ async fn setup_client(
   let app_name = aws_config::AppName::new("manta")
     .map_err(|e| Error::S3Transport(format!("Error setting app name: {}", e)))?;
 
+  let timeout_config = TimeoutConfig::builder()
+    .operation_timeout(S3_OPERATION_TIMEOUT)
+    .build();
   let mut loader = aws_config::from_env()
     .region(region_provider)
     .endpoint_url(endpoint_url)
     .app_name(app_name)
-    .credentials_provider(credentials);
+    .credentials_provider(credentials)
+    .timeout_config(timeout_config);
 
   if let Some(socks5_env) = socks5_proxy {
     log::debug!("SOCKS5 enabled");

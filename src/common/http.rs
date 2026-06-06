@@ -9,6 +9,17 @@
 //! This module is `pub(crate)` — it intentionally does not change csm-rs's
 //! public API. Existing `pub async fn x(shasta_token, shasta_base_url, ...)`
 //! free functions delegate here, but their signatures stay the same.
+//!
+//! ## Retry policy
+//!
+//! `get_json` and `get_json_with_query` retry on `Error::CsmError` with a
+//! 5xx status (`500..=599`) up to [`HTTP_5XX_RETRY_ATTEMPTS`] total
+//! attempts, with exponential backoff starting at
+//! [`HTTP_5XX_RETRY_INITIAL_DELAY`]. `post_json`, `put_json`, and `delete`
+//! do **not** retry — automatic retry of non-idempotent verbs would risk
+//! double-creating / double-deleting resources. Callers that need
+//! at-most-once-or-error semantics for a write should compose their own
+//! retry-with-idempotency-key wrapper.
 
 use std::time::Duration;
 
@@ -31,6 +42,63 @@ pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
 /// inventory queries) but short enough to surface a hung peer.
 pub(crate) const HTTP_REQUEST_TIMEOUT: Duration =
   Duration::from_secs(15 * 60);
+
+/// Total number of attempts (including the first) made by
+/// [`retry_on_5xx`] before propagating the last 5xx error to the
+/// caller. The convenience helpers `get_json` and
+/// `get_json_with_query` use this.
+pub(crate) const HTTP_5XX_RETRY_ATTEMPTS: u32 = 3;
+
+/// First sleep duration between retry attempts. Doubles each attempt,
+/// capped at 8 seconds, with the rationale that a transient 5xx
+/// usually clears within seconds and a sustained one shouldn't keep
+/// the caller waiting longer than ~14 s in total.
+pub(crate) const HTTP_5XX_RETRY_INITIAL_DELAY: Duration =
+  Duration::from_millis(500);
+
+/// Retry `op` while it returns `Err(Error::CsmError { status, .. })`
+/// with a 5xx `status`. Other errors (network, CSM 4xx, our own
+/// structured shape errors) propagate immediately. Used internally
+/// by the GET-shaped helpers — applying it to POST/PUT/DELETE would
+/// risk double-creating or double-deleting, so write-shaped helpers
+/// don't use it.
+pub(crate) async fn retry_on_5xx<F, Fut, T>(mut op: F) -> Result<T, Error>
+where
+  F: FnMut() -> Fut,
+  Fut: std::future::Future<Output = Result<T, Error>>,
+{
+  let mut delay = HTTP_5XX_RETRY_INITIAL_DELAY;
+  let mut last_err: Option<Error> = None;
+  for attempt in 0..HTTP_5XX_RETRY_ATTEMPTS {
+    match op().await {
+      Ok(v) => return Ok(v),
+      Err(e) => {
+        let retry = matches!(
+          &e,
+          Error::CsmError { status, .. } if (500..600).contains(status)
+        );
+        if !retry || attempt + 1 >= HTTP_5XX_RETRY_ATTEMPTS {
+          return Err(e);
+        }
+        log::debug!(
+          "retry_on_5xx: attempt {}/{} got {e}; sleeping {:?}",
+          attempt + 1,
+          HTTP_5XX_RETRY_ATTEMPTS,
+          delay
+        );
+        last_err = Some(e);
+        tokio::time::sleep(delay).await;
+        delay = (delay * 2).min(Duration::from_secs(8));
+      }
+    }
+  }
+  // Loop exit only happens if `op` was never called (impossible since
+  // `HTTP_5XX_RETRY_ATTEMPTS > 0`). The `last_err` path is unreachable
+  // for the same reason but the compiler can't see that.
+  Err(last_err.unwrap_or_else(|| {
+    Error::Message("retry_on_5xx exhausted with no attempt".to_string())
+  }))
+}
 
 /// Build a `reqwest::Client` configured with the CSM root certificate and an
 /// optional SOCKS5 proxy. This is the per-request setup that used to be
@@ -84,19 +152,23 @@ pub(crate) async fn handle_json_or_text_response<T: DeserializeOwned>(
 }
 
 /// GET `url` with bearer auth, deserialize success body as `T`.
+/// Retries transparently on CSM 5xx errors per the module-level
+/// retry policy.
 pub(crate) async fn get_json<T: DeserializeOwned>(
   client: &reqwest::Client,
   url: &str,
   shasta_token: &str,
 ) -> Result<T, Error> {
-  let response = client
-    .get(url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
-
-  handle_json_response(response, "GET").await
+  retry_on_5xx(|| async {
+    let response = client
+      .get(url)
+      .bearer_auth(shasta_token)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    handle_json_response(response, "GET").await
+  })
+  .await
 }
 
 /// POST JSON `body` to `url` with bearer auth, deserialize success body as `T`.
@@ -145,6 +217,8 @@ where
 
 /// GET `url` with bearer auth and a query string, deserialize success body as `T`.
 /// `query` is anything `serde_urlencoded` can serialize, e.g. `&[("limit", 100000)]`.
+/// Retries transparently on CSM 5xx errors per the module-level
+/// retry policy.
 pub(crate) async fn get_json_with_query<Q, T>(
   client: &reqwest::Client,
   url: &str,
@@ -155,15 +229,17 @@ where
   Q: Serialize + ?Sized,
   T: DeserializeOwned,
 {
-  let response = client
-    .get(url)
-    .query(query)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?;
-
-  handle_json_response(response, "GET").await
+  retry_on_5xx(|| async {
+    let response = client
+      .get(url)
+      .query(query)
+      .bearer_auth(shasta_token)
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+    handle_json_response(response, "GET").await
+  })
+  .await
 }
 
 /// On a 2xx response, deserialize the body as `T`. On `UNAUTHORIZED`, return
@@ -630,5 +706,86 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       get_json(&client, &format!("{}/auth", server.uri()), "test-token")
         .await
         .expect("should succeed");
+  }
+
+  // ---------- retry_on_5xx ----------
+
+  #[tokio::test]
+  async fn retry_on_5xx_returns_eventual_success() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let calls = AtomicU32::new(0);
+    let result: u32 = retry_on_5xx(|| async {
+      let n = calls.fetch_add(1, Ordering::SeqCst) + 1;
+      if n < 3 {
+        Err(Error::CsmError {
+          method: "GET".into(),
+          url: "http://example/x".into(),
+          status: 503,
+          detail: "transient".into(),
+          body: None,
+        })
+      } else {
+        Ok(42)
+      }
+    })
+    .await
+    .expect("third attempt succeeds");
+    assert_eq!(result, 42);
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
+  }
+
+  #[tokio::test]
+  async fn retry_on_5xx_propagates_after_exhausting_attempts() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let calls = AtomicU32::new(0);
+    let result: Result<u32, _> = retry_on_5xx(|| async {
+      calls.fetch_add(1, Ordering::SeqCst);
+      Err(Error::CsmError {
+        method: "GET".into(),
+        url: "http://example/x".into(),
+        status: 502,
+        detail: "still down".into(),
+        body: None,
+      })
+    })
+    .await;
+    match result {
+      Err(Error::CsmError { status, .. }) => assert_eq!(status, 502),
+      other => panic!("expected CsmError(502), got {other:?}"),
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), HTTP_5XX_RETRY_ATTEMPTS);
+  }
+
+  #[tokio::test]
+  async fn retry_on_5xx_does_not_retry_4xx() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let calls = AtomicU32::new(0);
+    let result: Result<u32, _> = retry_on_5xx(|| async {
+      calls.fetch_add(1, Ordering::SeqCst);
+      Err(Error::CsmError {
+        method: "GET".into(),
+        url: "http://example/x".into(),
+        status: 404,
+        detail: "not found".into(),
+        body: None,
+      })
+    })
+    .await;
+    assert!(matches!(result, Err(Error::CsmError { status: 404, .. })));
+    // First attempt only — 4xx is terminal.
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+  }
+
+  #[tokio::test]
+  async fn retry_on_5xx_does_not_retry_net_error() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let calls = AtomicU32::new(0);
+    let result: Result<u32, _> = retry_on_5xx(|| async {
+      calls.fetch_add(1, Ordering::SeqCst);
+      Err(Error::Message("network down".to_string()))
+    })
+    .await;
+    assert!(matches!(result, Err(Error::Message(_))));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
   }
 }
