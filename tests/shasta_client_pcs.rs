@@ -24,7 +24,7 @@ async fn pcs_transitions_post_hits_v1_transitions_endpoint() {
       "operation": "On",
       "createTime": "2024-01-01T00:00:00Z",
     })))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -67,7 +67,7 @@ async fn pcs_transitions_get_by_id_hits_correct_url() {
       },
       "tasks": [],
     })))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -93,7 +93,7 @@ async fn pcs_power_status_post_hits_correct_endpoint_with_filters() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"status": []})),
     )
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -126,7 +126,7 @@ async fn pcs_power_cap_get_hits_correct_url() {
         "failed": 0, "succeeded": 1, "un-supported": 0,
       },
     })))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());

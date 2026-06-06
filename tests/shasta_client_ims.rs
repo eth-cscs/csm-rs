@@ -19,7 +19,7 @@ async fn ims_image_get_all_returns_vec_from_v3_images() {
       ResponseTemplate::new(200)
         .set_body_json(json!([{"id": "abc", "name": "img-a"}])),
     )
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -41,7 +41,7 @@ async fn ims_image_get_with_id_hits_singular_endpoint() {
       ResponseTemplate::new(200)
         .set_body_json(json!({"id": "abc", "name": "img-a"})),
     )
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -56,7 +56,7 @@ async fn ims_image_get_404_returns_image_not_found_error() {
   Mock::given(method("GET"))
     .and(path("/ims/v3/images/missing"))
     .respond_with(ResponseTemplate::new(404))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -78,13 +78,13 @@ async fn ims_image_delete_issues_soft_then_permanent_deletes() {
     .and(path("/ims/v3/images/abc"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
   Mock::given(method("DELETE"))
     .and(path("/ims/v3/deleted/images/abc"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -103,7 +103,7 @@ async fn ims_recipe_get_all_hits_v2_recipes() {
     .and(path("/ims/v2/recipes"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -126,7 +126,7 @@ async fn ims_recipe_get_by_id_hits_singular_endpoint() {
       "recipe_type": "kiwi-ng",
       "linux_distribution": "sles15",
     })))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -146,7 +146,7 @@ async fn ims_job_get_all_hits_v3_jobs() {
     .and(path("/ims/v3/jobs"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -166,7 +166,7 @@ async fn ims_public_keys_v3_get_filters_by_username() {
       {"id": "k1", "name": "alice", "public_key": "ssh-rsa AAA..."},
       {"id": "k2", "name": "bob", "public_key": "ssh-rsa BBB..."},
     ])))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -186,7 +186,7 @@ async fn ims_public_keys_v3_get_single_returns_some_on_exactly_one_match() {
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([
       {"id": "k1", "name": "alice", "public_key": "ssh-rsa AAA..."}
     ])))
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -210,7 +210,7 @@ async fn ims_image_post_sends_json_body_to_v3_images() {
     .respond_with(
       ResponseTemplate::new(201).set_body_json(json!({"id": "new-id"})),
     )
-    .mount(&server)
+    .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
