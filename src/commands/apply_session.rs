@@ -49,7 +49,7 @@ pub async fn exec(
   // Neither hsm_group (both config file or cli arg) nor ansible_limit provided --> ERROR since we don't know the target nodes to apply the session to
   // NOTE: hsm group can be assigned either by config file or cli arg
   if ansible_limit.is_none() && hsm_group.is_none() && hsm_group.is_none() {
-    return Err(Error::Message("Need to specify either ansible-limit or hsm-group or both. (hsm-group value can be provided by cli param or in config file)".to_string()));
+    return Err(Error::ApplySession("Need to specify either ansible-limit or hsm-group or both. (hsm-group value can be provided by cli param or in config file)".to_string()));
   }
 
   // * End validation input params
@@ -71,7 +71,7 @@ pub async fn exec(
   // * End Parse input params
 
   let cfs_configuration_name = cfs_conf_sess_name.ok_or_else(|| {
-    Error::Message(
+    Error::ApplySession(
       "Error, --cfs-conf-sess-name argument is required.".to_string(),
     )
   })?;
@@ -87,8 +87,7 @@ pub async fn exec(
         socks5_proxy,
         hsm_group_value,
       )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .await?;
 
     // Take all nodes for all hsm_groups found and put them in a Vec
     hsm_groups_node_list = hsm_group_list
@@ -113,7 +112,7 @@ pub async fn exec(
         )
         .await
       {
-        return Err(Error::Message("xname/s invalid. Exit".to_string()));
+        return Err(Error::ValidationFailed("xname/s invalid"));
       }
     } else {
       // hsm_group provided but no ansible_limit provided --> target nodes are the ones from hsm_group
@@ -249,9 +248,8 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   // Check each node if it has a CFS session already running
   for node in nodes_list {
     if nodes_in_running_or_pending_cfs_session.contains(&node) {
-      return Err(Error::Message(format!(
-        "The node '{}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting",
-        node
+      return Err(Error::ApplySession(format!(
+        "The node '{node}' from the list provided is already assigned to a running/pending CFS session. Please try again latter or delete the CFS session. Exitting"
       )));
     }
   }
@@ -278,9 +276,8 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
       .and_then(|v| v.get("State"))
       .and_then(Value::as_str)
       .ok_or_else(|| {
-        Error::Message(format!(
-          "HSM component status for '{}' is missing 'State'",
-          xname
+        Error::ApplySession(format!(
+          "HSM component status for '{xname}' is missing 'State'"
         ))
       })?;
 
@@ -298,7 +295,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
     if hsm_component_status_state.eq("On")
       || hsm_component_status_state.eq("Standby")
     {
-      return Err(Error::Message("There is an CFS session scheduled to run on this node. Pleas try again later. Aborting".to_string()));
+      return Err(Error::ApplySession("There is an CFS session scheduled to run on this node. Pleas try again later. Aborting".to_string()));
     }
   }
 

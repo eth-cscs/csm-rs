@@ -80,10 +80,10 @@ pub async fn exec(
   // Check user input is correct
   for hw_component_counter in pattern_element_vec.chunks(2) {
     if hw_component_counter.len() < 2 {
-      return Err(Error::Message("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8".to_string()));
+      return Err(Error::ValidationFailed("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8"));
     }
     let count = hw_component_counter[1].parse::<usize>().map_err(|_| {
-      Error::Message(format!(
+      Error::ApplySession(format!(
         "Error in pattern: '{}' is not a valid integer count",
         hw_component_counter[1]
       ))
@@ -137,15 +137,13 @@ pub async fn exec(
 
           let _ = shasta_client.hsm_group_post(shasta_token, group).await?;
         } else {
-          return Err(Error::Message(
-            "Dryrun selected, cannot create the new group and continue."
-              .to_string(),
+          return Err(Error::ValidationFailed(
+            "Dryrun selected, cannot create the new group and continue.",
           ));
         }
       } else {
-        return Err(Error::Message(format!(
-          "Target HSM group {} does not exist, but the option to create the group was NOT specificied, cannot continue.",
-          target_hsm_group_name
+        return Err(Error::ApplySession(format!(
+          "Target HSM group {target_hsm_group_name} does not exist, but the option to create the group was NOT specificied, cannot continue."
         )));
       }
     }
@@ -257,8 +255,8 @@ pub async fn exec(
       // We are ok, user has access to enough resources to fullfill its request
     } else {
       // There are not enough resources to fulfill the user request
-      return Err(Error::Message(
-        "There are not enough resources to fulfill user request.".to_string(),
+      return Err(Error::ValidationFailed(
+        "There are not enough resources to fulfill user request.",
       ));
     }
   }

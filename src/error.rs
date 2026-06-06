@@ -179,6 +179,24 @@ pub enum Error {
   /// the field isn't present or has the wrong type.
   #[error("CSM-RS > Git repo shape: {0}")]
   GitRepoShape(String),
+  /// Caller-input validation failed: required field missing,
+  /// argument outside the expected shape, no NID/XName found in a
+  /// component lookup, etc. The string is a static description of
+  /// what the caller got wrong.
+  #[error("CSM-RS > Validation failed: {0}")]
+  ValidationFailed(&'static str),
+  /// Failure attaching to or executing on a node serial console pod
+  /// via Kubernetes (`cray-console-node`). Carries the pod name and
+  /// the underlying error message so operators can correlate the
+  /// failure with kube-side logs.
+  #[error("CSM-RS > Console attach failed for pod {pod}: {cause}")]
+  ConsoleAttach { pod: String, cause: String },
+  /// Workflow-level failure inside the `apply_session` command (no
+  /// HSM group provided, target nodes already busy, CFS session name
+  /// missing, etc.). The string names the specific workflow-state
+  /// violation.
+  #[error("CSM-RS > Apply session: {0}")]
+  ApplySession(String),
 }
 
 impl Error {
@@ -352,6 +370,15 @@ impl From<crate::error::Error> for MantaError {
       Error::MigrateOp(s) => MantaError::Message(format!("Migrate: {s}")),
       Error::GitRepoShape(s) => {
         MantaError::MissingField(format!("git repo: {s}"))
+      }
+      Error::ValidationFailed(s) => {
+        MantaError::Message(format!("Validation: {s}"))
+      }
+      Error::ConsoleAttach { pod, cause } => MantaError::ConsoleError(format!(
+        "console attach failed for pod {pod}: {cause}"
+      )),
+      Error::ApplySession(s) => {
+        MantaError::Message(format!("Apply session: {s}"))
       }
     }
   }

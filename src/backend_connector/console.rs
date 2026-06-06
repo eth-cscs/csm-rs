@@ -65,27 +65,38 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(Error::from)?;
 
+    let pod = xname;
     let mut terminal_size_writer: Sender<TerminalSize> =
       attached.terminal_size().ok_or_else(|| {
-        Error::Message(
-          "kube exec did not provide a terminal-size channel".to_string(),
-        )
+        crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a terminal-size channel".to_string(),
+        }
       })?;
     terminal_size_writer
       .try_send(TerminalSize {
         width: term_width,
         height: term_height,
       })
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(|e| crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: e.to_string(),
+      })?;
 
     log::info!("Connected to {}!", xname,);
     log::info!("Use &. key combination to exit the console.",);
 
     let stdin = attached.stdin().ok_or_else(|| {
-      Error::Message("kube exec did not provide a stdin stream".to_string())
+      crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a stdin stream".to_string(),
+      }
     })?;
     let stdout = attached.stdout().ok_or_else(|| {
-      Error::Message("kube exec did not provide a stdout stream".to_string())
+      crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a stdout stream".to_string(),
+      }
     })?;
     Ok((
       Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,
@@ -139,18 +150,23 @@ impl ConsoleTrait for Csm {
       .await
       .map_err(Error::from)?;
 
+    let pod = session_name;
     let mut terminal_size_writer: Sender<TerminalSize> =
       attached.terminal_size().ok_or_else(|| {
-        Error::Message(
-          "kube exec did not provide a terminal-size channel".to_string(),
-        )
+        crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a terminal-size channel".to_string(),
+        }
       })?;
     terminal_size_writer
       .try_send(TerminalSize {
         width: term_width,
         height: term_height,
       })
-      .map_err(|e| Error::Message(e.to_string()))?;
+      .map_err(|e| crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: e.to_string(),
+      })?;
 
     log::info!(
       "Connected to session target container for session name: {}!",
@@ -159,10 +175,16 @@ impl ConsoleTrait for Csm {
     log::info!("Use &. key combination to exit the console.",);
 
     let stdin = attached.stdin().ok_or_else(|| {
-      Error::Message("kube exec did not provide a stdin stream".to_string())
+      crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a stdin stream".to_string(),
+      }
     })?;
     let stdout = attached.stdout().ok_or_else(|| {
-      Error::Message("kube exec did not provide a stdout stream".to_string())
+      crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a stdout stream".to_string(),
+      }
     })?;
     Ok((
       Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,

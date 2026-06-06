@@ -236,7 +236,7 @@ impl ComponentTrait for Csm {
           "nid{:06}",
           &hsm_component
             .nid
-            .ok_or_else(|| Error::Message("No NID found".to_string()))?
+            .ok_or(crate::Error::ValidationFailed("No NID found"))?
         );
         for regex in &regex_vec {
           if regex.is_match(&nid_long) {
@@ -249,7 +249,7 @@ impl ComponentTrait for Csm {
               hsm_component
                 .id
                 .clone()
-                .ok_or_else(|| Error::Message("No XName found".to_string()))?,
+                .ok_or(crate::Error::ValidationFailed("No XName found"))?,
             );
           }
         }

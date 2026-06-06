@@ -64,11 +64,9 @@ pub async fn exec(
   .await?;
 
   let cfs_session_target_definition =
-    cfs_session.get_target_def().ok_or_else(|| {
-      Error::Message(
-        "CFS session has no target definition (image/dynamic)".to_string(),
-      )
-    })?;
+    cfs_session.get_target_def().ok_or(Error::ValidationFailed(
+      "CFS session has no target definition (image/dynamic)",
+    ))?;
 
   // DELETE DATA
   //
@@ -85,12 +83,9 @@ pub async fn exec(
     let retry_policy = cfs_global_options
       .get("default_batcher_retry_policy")
       .and_then(Value::as_u64)
-      .ok_or_else(|| {
-        Error::Message(
-          "CFS options response missing 'default_batcher_retry_policy'"
-            .to_string(),
-        )
-      })?;
+      .ok_or(Error::ValidationFailed(
+        "CFS options response missing 'default_batcher_retry_policy'",
+      ))?;
 
     cancel_session(
       client,
@@ -117,9 +112,8 @@ pub async fn exec(
       .await?;
     }
   } else {
-    return Err(Error::Message(format!(
-      "CFS session target definition is '{}'. Don't know how to continue. Exit",
-      cfs_session_target_definition
+    return Err(Error::ApplySession(format!(
+      "CFS session target definition is '{cfs_session_target_definition}'. Don't know how to continue. Exit"
     )));
   };
 
@@ -198,7 +192,7 @@ async fn cancel_session(
         .cloned()
         .collect()
     })
-    .ok_or_else(|| Error::Message("No CFS components".to_string()))?;
+    .ok_or(Error::ValidationFailed("No CFS components"))?;
 
   log::info!(
     "Update error count on nodes {:?} to {}",
