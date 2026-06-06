@@ -32,10 +32,8 @@ use crate::{
 ///   with zero members.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   target_hsm_group_name: &str,
   parent_hsm_group_name: &str,
   pattern: &str,
@@ -43,6 +41,9 @@ pub async fn exec(
   create_target_hsm_group: bool,
   delete_empty_parent_hsm_group: bool,
 ) -> Result<(), Error> {
+  let shasta_base_url = client.base_url();
+  let shasta_root_cert = client.root_cert();
+  let socks5_proxy = client.socks5_proxy();
   // *********************************************************************************************************
   // PREPREQUISITES - FORMAT USER INPUT
 
@@ -101,11 +102,7 @@ pub async fn exec(
   // *********************************************************************************************************
   // PREPREQUISITES - GET DATA - TARGET HSM
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
-  )?;
+  let shasta_client = client;
   match shasta_client
     .hsm_group_get(
       shasta_token,

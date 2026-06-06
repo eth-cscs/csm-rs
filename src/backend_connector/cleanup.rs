@@ -32,10 +32,8 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     Error,
   > {
     crate::commands::delete_configurations_and_data_related::get_data_to_delete(
+      self.shasta_client(),
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       hsm_name_available_vec,
       configuration_name_pattern_opt,
       since_opt,
@@ -73,10 +71,8 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     bos_sessiontemplate_name_vec: &[String],
   ) -> Result<(), Error> {
     crate::commands::delete_configurations_and_data_related::delete(
+      self.shasta_client(),
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       cfs_configuration_name_vec,
       image_id_vec,
       cfs_session_name_vec,

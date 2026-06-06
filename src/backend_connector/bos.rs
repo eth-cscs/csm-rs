@@ -31,12 +31,10 @@ impl ApplySessionTrait for Csm {
     k8s: &K8sDetails, */
   ) -> Result<(String, String), Error> {
     crate::commands::apply_session::exec(
+      self.shasta_client(),
       gitea_token,
       gitea_base_url,
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       // k8s_api_url,
       cfs_conf_sess_name,
       playbook_yaml_file_name_opt,

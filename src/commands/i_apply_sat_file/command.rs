@@ -389,11 +389,14 @@ async fn process_hardware_section(
       if ctx.dry_run {
         log::info!("Dry run: Create HSM groups based on hardware pattern");
       } else {
-        apply_hw_cluster_pin::command::exec(
-          ctx.shasta_token,
+        let client = crate::ShastaClient::new(
           ctx.shasta_base_url,
-          ctx.shasta_root_cert,
-          ctx.socks5_proxy,
+          ctx.shasta_root_cert.to_vec(),
+          ctx.socks5_proxy.map(str::to_owned),
+        )?;
+        apply_hw_cluster_pin::command::exec(
+          &client,
+          ctx.shasta_token,
           target_hsm_group_name,
           parent_hsm_group_name,
           pattern,

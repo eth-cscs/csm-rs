@@ -15,12 +15,10 @@ use serde_json::Value;
 /// Returns a tuple like (`cfs configuration name`, `cfs session name`).
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
+  client: &crate::ShastaClient,
   gitea_token: &str,
   gitea_base_url: &str,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   cfs_conf_sess_name: Option<&str>,
   playbook_yaml_file_name_opt: Option<&str>,
   hsm_group: Option<&str>,
@@ -31,6 +29,9 @@ pub async fn exec(
   ansible_passthrough: Option<&str>,
   // watch_logs: bool,
 ) -> Result<(String, String), Error> {
+  let shasta_base_url = client.base_url();
+  let shasta_root_cert = client.root_cert();
+  let socks5_proxy = client.socks5_proxy();
   let mut xname_list: Vec<&str>;
 
   // Check andible limit matches the nodes in hsm_group
@@ -131,6 +132,7 @@ pub async fn exec(
   // * Check nodes are ready to run, create CFS configuration and CFS session
   let cfs_session_name =
     check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
+      client,
       &cfs_configuration_name,
       playbook_yaml_file_name_opt,
       repo_name_vec,
@@ -138,9 +140,6 @@ pub async fn exec(
       gitea_token,
       gitea_base_url,
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       Some(&xname_list.join(",")), // Convert Hashset to String with comma separator, need to convert to Vec first following https://stackoverflow.com/a/47582249/1918003
       ansible_verbosity.map(|s| s.parse::<u8>().unwrap_or(2)),
       ansible_passthrough,
@@ -161,6 +160,7 @@ pub async fn exec(
 /// running a previous configuration.
 #[allow(clippy::too_many_arguments)]
 pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
+  client: &crate::ShastaClient,
   cfs_configuration_name: &str,
   playbook_yaml_file_name_opt: Option<&str>,
   repo_name_vec: &[&str],
@@ -168,13 +168,13 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   gitea_token: &str,
   gitea_base_url: &str,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   limit: Option<&str>,
   ansible_verbosity: Option<u8>,
   ansible_passthrough: Option<&str>,
 ) -> Result<String, Error> {
+  let shasta_base_url = client.base_url();
+  let shasta_root_cert = client.root_cert();
+  let socks5_proxy = client.socks5_proxy();
   // Get ALL sessions
   let cfs_sessions = cfs::session::get_and_sort(
     shasta_token,
@@ -253,21 +253,13 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   for xname in xnames {
     log::debug!("Checking status of component {}", xname);
 
-    let component_status = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .cfs_component_v2_get_single_component(shasta_token, &xname)
-    .await?;
+    let component_status = client
+      .cfs_component_v2_get_single_component(shasta_token, &xname)
+      .await?;
 
-    let hsm_component_status_rslt = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .hsm_component_status_get(shasta_token, std::slice::from_ref(&xname))
-    .await?;
+    let hsm_component_status_rslt = client
+      .hsm_component_status_get(shasta_token, std::slice::from_ref(&xname))
+      .await?;
 
     let hsm_component_status_state: &str = hsm_component_status_rslt
       .first()
@@ -310,18 +302,14 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
   .await?;
 
   // Update/PUT CFS configuration
-  let cfs_configuration_name: String = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
-  )?
-  .cfs_configuration_v3_put(
-    shasta_token,
-    &cfs_configuration,
-    cfs_configuration_name,
-  )
-  .await?
-  .name;
+  let cfs_configuration_name: String = client
+    .cfs_configuration_v3_put(
+      shasta_token,
+      &cfs_configuration,
+      cfs_configuration_name,
+    )
+    .await?
+    .name;
 
   // Create dynamic CFS session
   let cfs_session_name = format!(

@@ -30,10 +30,8 @@ use crate::{
 /// session_template_refs, configurations)`.
 #[allow(clippy::too_many_arguments)]
 pub async fn get_data_to_delete(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   hsm_name_available_vec: &[String],
   configuration_name_pattern_opt: Option<&str>,
   since_opt: Option<NaiveDateTime>,
@@ -54,20 +52,15 @@ pub async fn get_data_to_delete(
   let xname_from_groups_vec =
     crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
+      client.base_url(),
+      client.root_cert(),
+      client.socks5_proxy(),
       hsm_name_available_vec,
     )
     .await?;
 
   let start = Instant::now();
   log::info!("Fetching data from the backend...");
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
-  )?;
   let (
     cfs_component_vec,
     mut cfs_configuration_vec,
@@ -75,11 +68,11 @@ pub async fn get_data_to_delete(
     bos_sessiontemplate_vec,
     bss_bootparameters_vec,
   ) = tokio::try_join!(
-    shasta_client.cfs_component_v2_get_all(shasta_token),
-    shasta_client.cfs_configuration_v2_get_all(shasta_token),
-    shasta_client.cfs_session_v2_get_all(shasta_token),
-    shasta_client.bos_template_v2_get_all(shasta_token),
-    shasta_client.bss_bootparameters_get_all(shasta_token),
+    client.cfs_component_v2_get_all(shasta_token),
+    client.cfs_configuration_v2_get_all(shasta_token),
+    client.cfs_session_v2_get_all(shasta_token),
+    client.bos_template_v2_get_all(shasta_token),
+    client.bss_bootparameters_get_all(shasta_token),
   )?;
 
   let duration = start.elapsed();
@@ -374,27 +367,21 @@ pub async fn get_data_to_delete(
 /// configuration is used as a boot image of any node in the system.
 #[allow(clippy::too_many_arguments)]
 pub async fn delete(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   cfs_configuration_name_vec: &[String],
   image_id_vec: &[String],
   cfs_session_name_vec: &[String],
   bos_sessiontemplate_name_vec: &[String],
 ) -> Result<(), Error> {
+  let shasta_client = client;
   // DELETE DATA
   //
   // DELETE IMAGES
   for image_id in image_id_vec {
     log::info!("Deleting IMS image '{}'", image_id);
-    let image_deleted_value_rslt = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .ims_image_delete(shasta_token, image_id)
-    .await;
+    let image_deleted_value_rslt =
+      client.ims_image_delete(shasta_token, image_id).await;
 
     // process api response
     match image_deleted_value_rslt {
@@ -406,11 +393,6 @@ pub async fn delete(
   }
 
   // DELETE BOS SESSIONS
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
-  )?;
   let bos_session_vec =
     shasta_client.bos_session_v2_get(shasta_token, None).await?;
 

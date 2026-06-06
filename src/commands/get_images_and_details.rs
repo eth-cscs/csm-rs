@@ -28,36 +28,26 @@ use crate::{
 /// - Image names containing the HSM group name — fragile, but a
 ///   last-resort match because the name is free-form.
 pub async fn get_images_and_details(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   hsm_group_name_vec: &[String],
   id_opt: Option<&str>,
   limit_number: Option<&u8>,
 ) -> Result<Vec<(Image, String, String, bool)>, Error> {
-  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-    socks5_proxy.map(str::to_owned),
-  )?
-  .ims_image_get(shasta_token, id_opt)
-  .await?;
+  let mut image_vec: Vec<Image> =
+    client.ims_image_get(shasta_token, id_opt).await?;
 
-  let image_detail_vec_rslt: Result<Vec<(Image, String, String, bool)>, Error> =
-    image::utils::get_image_cfs_config_name_hsm_group_name(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &mut image_vec,
-      hsm_group_name_vec,
-      limit_number,
-    )
-    .await
-    .map_err(|e| {
-      Error::Message(format!("ERROR - Failed to get image details: {}", e))
-    });
-
-  image_detail_vec_rslt
+  image::utils::get_image_cfs_config_name_hsm_group_name(
+    shasta_token,
+    client.base_url(),
+    client.root_cert(),
+    client.socks5_proxy(),
+    &mut image_vec,
+    hsm_group_name_vec,
+    limit_number,
+  )
+  .await
+  .map_err(|e| {
+    Error::Message(format!("ERROR - Failed to get image details: {}", e))
+  })
 }

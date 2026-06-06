@@ -88,10 +88,8 @@ impl GetImagesAndDetailsTrait for Csm {
     limit_number: Option<&u8>,
   ) -> Result<Vec<(FrontEndImage, String, String, bool)>, Error> {
     crate::commands::get_images_and_details::get_images_and_details(
+      self.shasta_client(),
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       hsm_group_name_vec,
       id_opt,
       limit_number,

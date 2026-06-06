@@ -324,10 +324,8 @@ impl CfsTrait for Csm {
         .collect();
 
     crate::commands::delete_and_cancel_session::command::exec(
+      self.shasta_client(),
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       group_available_vec,
       &cfs_session,
       &cfs_component_vec,

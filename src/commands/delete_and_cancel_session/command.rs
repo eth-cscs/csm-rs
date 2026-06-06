@@ -30,10 +30,8 @@ use crate::{
 ///   mutating CSM.
 #[allow(clippy::too_many_arguments)]
 pub async fn exec(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   group_available_vec: Vec<Group>,
   cfs_session: &CfsSessionGetResponse,
   cfs_component_vec: &[Component],
@@ -69,13 +67,8 @@ pub async fn exec(
     // setting error_count to retry_policy value
     log::info!("CFS session target definition is 'dynamic'.");
 
-    let cfs_global_options = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .cfs_component_v3_get_options(shasta_token)
-    .await?;
+    let cfs_global_options =
+      client.cfs_component_v3_get_options(shasta_token).await?;
 
     let retry_policy = cfs_global_options
       .get("default_batcher_retry_policy")
@@ -88,10 +81,8 @@ pub async fn exec(
       })?;
 
     cancel_session(
+      client,
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
       xname_vec,
       Some(cfs_component_vec.to_vec()),
       retry_policy,
@@ -105,10 +96,8 @@ pub async fn exec(
     if !image_created_by_cfs_session_vec.is_empty() {
       // Delete images
       delete_images(
+        client,
         shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
         &image_created_by_cfs_session_vec,
         bos_bootparameters_vec,
         dry_run,
@@ -126,23 +115,17 @@ pub async fn exec(
   if dry_run {
     log::info!("Dry Run Mode: Delete CFS session '{}'", cfs_session_name);
   } else {
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .cfs_session_v3_delete(shasta_token, cfs_session_name)
-    .await?;
+    client
+      .cfs_session_v3_delete(shasta_token, cfs_session_name)
+      .await?;
   }
 
   Ok(())
 }
 
 async fn delete_images(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   image_created_by_cfs_session_vec: &[&str],
   bss_bootparameters_vec_opt: &[BootParameters],
   dry_run: bool,
@@ -160,13 +143,7 @@ async fn delete_images(
           image_id
         );
       } else {
-        crate::ShastaClient::new(
-          shasta_base_url,
-          shasta_root_cert.to_vec(),
-          socks5_proxy.map(str::to_owned),
-        )?
-        .ims_image_delete(shasta_token, image_id)
-        .await?;
+        client.ims_image_delete(shasta_token, image_id).await?;
       }
     } else {
       log::info!(
@@ -181,10 +158,8 @@ async fn delete_images(
 
 #[allow(clippy::too_many_arguments)]
 async fn cancel_session(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   xname_vec: Vec<String>,
   cfs_component_vec_opt: Option<Vec<Component>>,
   retry_policy: u64,
@@ -225,13 +200,9 @@ async fn cancel_session(
       cfs_component_vec
     );
   } else {
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?
-    .cfs_component_v2_put_component_list(shasta_token, cfs_component_vec)
-    .await?;
+    client
+      .cfs_component_v2_put_component_list(shasta_token, cfs_component_vec)
+      .await?;
   }
 
   Ok(())

@@ -350,10 +350,8 @@ impl ApplyHwClusterPin for Csm {
     delete_empty_parent_hsm_group: bool,
   ) -> Result<(), Error> {
     crate::commands::apply_hw_cluster_pin::command::exec(
+      self.shasta_client(),
       shasta_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
       target_hsm_group_name,
       parent_hsm_group_name,
       pattern,
