@@ -853,7 +853,7 @@ async fn ims_register_image(
   socks5_proxy: Option<&str>,
   ims_image_name: &str,
   overwrite: bool,
-) -> anyhow::Result<String> {
+) -> Result<String, Error> {
   let ims_record = Image {
     name: ims_image_name.to_string(),
     id: None,
@@ -875,10 +875,9 @@ async fn ims_register_image(
   .await?;
 
   if !list_images_with_same_name.is_empty() && !overwrite {
-    return Err(anyhow::anyhow!(
-      "IMS image '{}' already exists and --overwrite-image was not set",
-      ims_image_name
-    ));
+    return Err(Error::MigrateOp(format!(
+      "IMS image '{ims_image_name}' already exists and --overwrite-image was not set"
+    )));
   }
 
   let json_response = crate::ShastaClient::new(
@@ -893,7 +892,11 @@ async fn ims_register_image(
     .get("id")
     .and_then(Value::as_str)
     .map(|id| id.replace('"', ""))
-    .ok_or_else(|| anyhow::anyhow!("IMS image post response is missing 'id'"))
+    .ok_or_else(|| {
+      Error::MigrateOp(
+        "IMS image post response is missing 'id'".to_string(),
+      )
+    })
 }
 
 /// Gets the image name off an IMS yaml file

@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use anyhow::Result;
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use indicatif::{ProgressBar, ProgressStyle};
 
