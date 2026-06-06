@@ -115,10 +115,6 @@ hostlist-parser = "0.1.6"
 
 [dev-dependencies]
 wiremock = "0.6"
-# `anyhow` is only used by the workspace examples (`examples/*.rs`) for
-# their `Result<(), anyhow::Error>` main returns. Library code uses the
-# crate's typed `Error` enum.
-anyhow = { version = "1.0.44", default-features = false }
 
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.

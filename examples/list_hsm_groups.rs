@@ -16,7 +16,7 @@
 use csm_rs::ShastaClient;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let base_url = std::env::var("CSM_BASE_URL")?;
   let token = std::env::var("CSM_TOKEN")?;
   let root_cert_path = std::env::var("CSM_ROOT_CERT_PATH")?;
