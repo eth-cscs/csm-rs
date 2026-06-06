@@ -140,6 +140,20 @@ pub enum Error {
   /// expected typed shape. The string names the field or context.
   #[error("CSM-RS > HSM hardware inventory: {0}")]
   HsmInventoryShape(String),
+  /// S3 transport-level error encountered by the IMS S3 client
+  /// (auth, upload, download, ETag retrieval, ...). The string
+  /// describes the failing operation; underlying SDK errors are
+  /// folded in as context. Gated by the `ims-s3` Cargo feature on
+  /// the SmithyDataStreamError chain, but the variant itself is
+  /// always present so callers don't need feature-aware matches.
+  #[error("CSM-RS > S3: {0}")]
+  S3Transport(String),
+  /// Cray product-catalog lookup failed (entry missing, multiple
+  /// entries when one was expected, or a required field absent).
+  /// The string carries the lookup context (product name, image
+  /// name, version, etc.).
+  #[error("CSM-RS > Cray product catalog: {0}")]
+  CrayProductCatalog(String),
 }
 
 impl Error {
@@ -295,6 +309,10 @@ impl From<crate::error::Error> for MantaError {
       Error::YamlShape(s) => MantaError::MissingField(format!("YAML: {s}")),
       Error::HsmInventoryShape(s) => {
         MantaError::MissingField(format!("HSM inventory: {s}"))
+      }
+      Error::S3Transport(s) => MantaError::Message(format!("S3: {s}")),
+      Error::CrayProductCatalog(s) => {
+        MantaError::NotFound(format!("Cray product catalog: {s}"))
       }
     }
   }

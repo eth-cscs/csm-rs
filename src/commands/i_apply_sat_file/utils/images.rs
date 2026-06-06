@@ -788,12 +788,12 @@ pub fn filter_product_catalog_images(
       .collect::<Vec<_>>();
 
     if image_key_vec.is_empty() {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' not found. Exit",
         image_name
       )))
     } else if image_key_vec.len() > 1 {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' multiple items found. Exit",
         image_name
       )))
@@ -805,7 +805,7 @@ pub fn filter_product_catalog_images(
         .and_then(serde_json::Value::as_str)
         .map(str::to_string)
         .ok_or_else(|| {
-          Error::Message(format!(
+          Error::CrayProductCatalog(format!(
             "Product catalog entry '{}' for image '{}' has no 'id' field",
             image_key, image_name
           ))
@@ -820,12 +820,12 @@ pub fn filter_product_catalog_images(
       .collect::<Vec<_>>();
 
     if image_key_vec.is_empty() {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' not found. Exit",
         image_name
       )))
     } else if image_key_vec.len() > 1 {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' multiple items found. Exit",
         image_name
       )))
@@ -837,7 +837,7 @@ pub fn filter_product_catalog_images(
         .and_then(serde_json::Value::as_str)
         .map(str::to_string)
         .ok_or_else(|| {
-          Error::Message(format!(
+          Error::CrayProductCatalog(format!(
             "Product catalog entry '{}' for image '{}' has no 'id' field",
             image_key, image_name
           ))
@@ -852,12 +852,12 @@ pub fn filter_product_catalog_images(
       .collect::<Vec<_>>();
 
     if image_key_vec.is_empty() {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' not found. Exit",
         image_name
       )))
     } else if image_key_vec.len() > 1 {
-      Err(Error::Message(format!(
+      Err(Error::CrayProductCatalog(format!(
         "Product catalog for image '{}' multiple items found. Exit",
         image_name
       )))
@@ -869,14 +869,14 @@ pub fn filter_product_catalog_images(
         .and_then(serde_json::Value::as_str)
         .map(str::to_string)
         .ok_or_else(|| {
-          Error::Message(format!(
+          Error::CrayProductCatalog(format!(
             "Product catalog entry '{}' for image '{}' has no 'id' field",
             image_key, image_name
           ))
         })
     }
   } else {
-    Err(Error::Message(format!(
+    Err(Error::CrayProductCatalog(format!(
       "Product catalog for image '{}' not found. Exit",
       image_name
     )))
@@ -981,7 +981,7 @@ pub fn validate_sat_file_images_section(
         {
           product_catalog
         } else {
-          return Err(Error::Message(format!(
+          return Err(Error::CrayProductCatalog(format!(
             "Product catalog for image '{}' not found. Exit",
             image_name
           )));
@@ -995,7 +995,7 @@ pub fn validate_sat_file_images_section(
         let product_type_opt = if let Some(product_type) = product_type_opt {
           product_type.as_object().cloned()
         } else {
-          return Err(Error::Message(format!(
+          return Err(Error::CrayProductCatalog(format!(
             "Product catalog for image '{}' not found. Exit",
             image_name
           )));
@@ -1005,7 +1005,7 @@ pub fn validate_sat_file_images_section(
           if let Some(product_type) = &product_type_opt {
             product_type.clone()
           } else {
-            return Err(Error::Message(format!(
+            return Err(Error::CrayProductCatalog(format!(
               "Product catalog for image '{}' not found. Exit",
               image_name
             )));

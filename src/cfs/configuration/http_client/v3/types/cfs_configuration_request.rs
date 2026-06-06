@@ -232,7 +232,7 @@ impl CfsConfigurationRequest {
 
         let product =
           cray_product_catalog.get(product_name).ok_or_else(|| {
-            Error::Message(format!(
+            Error::CrayProductCatalog(format!(
               "Product {} not found in cray product catalog",
               product_name
             ))
@@ -245,7 +245,7 @@ impl CfsConfigurationRequest {
           .and_then(|product| product.get("configuration"))
           .cloned()
           .ok_or_else(|| {
-            Error::Message(format!(
+            Error::CrayProductCatalog(format!(
               "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
               product_name, product_version
             ))

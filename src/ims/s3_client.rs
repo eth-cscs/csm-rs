@@ -21,7 +21,7 @@ fn parse_sts_credentials(
     value
       .pointer(&format!("/Credentials/{name}"))
       .and_then(Value::as_str)
-      .ok_or_else(|| Error::Message(format!("Missing {name} in STS response")))
+      .ok_or_else(|| Error::S3Transport(format!("Missing {name} in STS response")))
   }
   let credentials = Credentials::new(
     field(sts_value, "AccessKeyId")?,
@@ -58,7 +58,7 @@ pub async fn s3_auth(
     .await?
     .error_for_status()
     .map_err(|e| {
-      Error::Message(format!(
+      Error::S3Transport(format!(
         "ERROR - could not authenticate to S3 server. Reason:\n{}",
         e
       ))
@@ -86,7 +86,7 @@ async fn setup_client(
     aws_config::meta::region::RegionProviderChain::default_provider()
       .or_else("us-east-1");
   let app_name = aws_config::AppName::new("manta")
-    .map_err(|e| Error::Message(format!("Error setting app name: {}", e)))?;
+    .map_err(|e| Error::S3Transport(format!("Error setting app name: {}", e)))?;
 
   let mut loader = aws_config::from_env()
     .region(region_provider)
@@ -102,7 +102,7 @@ async fn setup_client(
 
     let socks_http_connector = hyper_socks2::SocksConnector {
       proxy_addr: hyper::Uri::try_from(socks5_env)
-        .map_err(|e| Error::Message(e.to_string()))?, // scheme is required by HttpConnector
+        .map_err(|e| Error::S3Transport(e.to_string()))?, // scheme is required by HttpConnector
       auth: None,
       connector: http_connector.clone(),
     };
@@ -136,9 +136,9 @@ pub async fn s3_get_object_size(
 
   match client.get_object().bucket(bucket).key(key).send().await {
     Ok(object) => Ok(object.content_length().ok_or_else(|| {
-      Error::Message("Error, content length not found".to_string())
+      Error::S3Transport("Error, content length not found".to_string())
     })?),
-    Err(e) => Err(Error::Message(format!(
+    Err(e) => Err(Error::S3Transport(format!(
       "Error, unable to get object from s3. Error msg: {}",
       e
     ))),
@@ -175,7 +175,7 @@ pub async fn s3_download_object(
   let client = setup_client(sts_value, socks5_proxy).await?;
 
   let filename = Path::new(object_path).file_name().ok_or_else(|| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "Error getting filename from S3 object path: {}",
       object_path
     ))
@@ -185,7 +185,7 @@ pub async fn s3_download_object(
   log::debug!("Create directory '{}'", destination_path);
 
   std::fs::create_dir_all(destination_path).map_err(|e| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "Error creating directory {}: {}",
       destination_path, e
     ))
@@ -194,7 +194,7 @@ pub async fn s3_download_object(
   log::debug!("Created directory '{}' successfully", destination_path);
 
   let mut file = File::create(&file_path).map_err(|e| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "Error creating file {}: {}",
       &file_path.to_string_lossy(),
       e
@@ -213,26 +213,26 @@ pub async fn s3_download_object(
     .send()
     .await
     .map_err(|e| {
-      Error::Message(format!(
+      Error::S3Transport(format!(
         "ERROR - could not download S3 object.\nReason:\n{}",
         e,
       ))
     })?;
 
   let bar_size = object.content_length().ok_or_else(|| {
-    Error::Message("could not get S3 object size.".to_string())
+    Error::S3Transport("could not get S3 object size.".to_string())
   })?;
 
   let bar = ProgressBar::new(bar_size as u64);
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "ERROR - Could not create progress bar.\nReason:\n{}",
       e
     ))
   })?);
 
   while let Some(bytes) = object.body.try_next().await.map_err(|e| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "ERROR - Could not finish s3 object download.\nReason:\n{}",
       e
     ))
@@ -278,14 +278,14 @@ pub async fn s3_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::Message(format!(
+      Error::S3Transport(format!(
         "ERROR - could not upload S3 object.\nReason:\n{}",
         e
       ))
     })?;
 
   put_s3_object.e_tag.ok_or_else(|| {
-    Error::Message("could not get ETag from upload.".to_string())
+    Error::S3Transport("could not get ETag from upload.".to_string())
   })
 }
 
@@ -316,7 +316,7 @@ pub async fn s3_remove_object(
       log::debug!("Cleaned file '{}' successfully", &object_path);
       Ok(String::from("client"))
     }
-    Err(error) => Err(Error::Message(format!(
+    Err(error) => Err(Error::S3Transport(format!(
       "Error cleaning file {}: {}",
       &object_path, error
     ))),
@@ -361,14 +361,14 @@ pub async fn s3_multipart_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::Message(format!(
+      Error::S3Transport(format!(
         "ERROR - Could not create multipart object.\nReason:\n{}",
         e
       ))
     })?;
 
   let upload_id = multipart_upload_res.upload_id().ok_or_else(|| {
-    Error::Message("could not get upload ID.".to_string())
+    Error::S3Transport("could not get upload ID.".to_string())
   })?;
 
   // Get details of the upload, this is needed because multipart uploads
@@ -376,7 +376,7 @@ pub async fn s3_multipart_upload_object(
   let path = Path::new(&file_path);
   let file_size = std::fs::metadata(path)
     .map_err(|e| {
-      Error::Message(format!(
+      Error::S3Transport(format!(
         "ERROR - Could not get file size from '{}'.\nReason\n{}",
         file_path, e
       ))
@@ -392,17 +392,17 @@ pub async fn s3_multipart_upload_object(
 
   let bar = ProgressBar::new(file_size);
   bar.set_style(ProgressStyle::with_template(BAR_FORMAT).map_err(|e| {
-    Error::Message(format!(
+    Error::S3Transport(format!(
       "ERROR - Could not create progress bar.\nReason:\n{}",
       e
     ))
   })?);
 
   if file_size == 0 {
-    return Err(Error::Message("Bad file size.".to_string()));
+    return Err(Error::S3Transport("Bad file size.".to_string()));
   }
   if chunk_count > MAX_CHUNKS {
-    return Err(Error::Message(
+    return Err(Error::S3Transport(
       "Too many chunks! Try increasing your chunk size.".to_string(),
     ));
   }
@@ -422,7 +422,7 @@ pub async fn s3_multipart_upload_object(
       .build()
       .await
       .map_err(|e| {
-        Error::Message(format!(
+        Error::S3Transport(format!(
           "ERROR - Could not read file '{}'.\nReason:\n{}",
           path.display(),
           e
@@ -442,7 +442,7 @@ pub async fn s3_multipart_upload_object(
       .send()
       .await
       .map_err(|e| {
-        Error::Message(format!(
+        Error::S3Transport(format!(
           "ERROR - could not upload to S3.\nReason:\n{}",
           e
         ))
@@ -451,8 +451,8 @@ pub async fn s3_multipart_upload_object(
     upload_parts.push(
       CompletedPart::builder()
         .e_tag(upload_part_res.e_tag.ok_or_else(|| {
-          Error::Message(
-            "ERROR - could not get ETag from upload part.".to_string(),
+          Error::S3Transport(
+            "could not get ETag from upload part.".to_string(),
           )
         })?)
         .part_number(part_number)
@@ -475,12 +475,12 @@ pub async fn s3_multipart_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::Message(format!("ERROR - could not upload to S3.\nReason:\n{}", e))
+      Error::S3Transport(format!("ERROR - could not upload to S3.\nReason:\n{}", e))
     })?;
 
   bar.finish();
 
   complete_multipart_upload_res.e_tag.ok_or_else(|| {
-    Error::Message("could not get ETag from upload.".to_string())
+    Error::S3Transport("could not get ETag from upload.".to_string())
   })
 }
