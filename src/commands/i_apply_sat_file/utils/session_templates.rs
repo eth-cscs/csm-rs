@@ -63,9 +63,8 @@ pub async fn validate_sat_file_session_template_section(
       {
         boot_sets_uan.node_groups.clone().unwrap_or_default()
       } else {
-        return Err(Error::Message(
-          "No HSM group found in session_templates section in SAT file"
-            .to_string(),
+        return Err(Error::SatFile(
+          "No HSM group found in session_templates section in SAT file".to_string(),
         ));
       };
 
@@ -354,7 +353,7 @@ pub async fn process_session_template_section_in_sat_file(
           .await?
         }
       } else {
-        return Err(Error::Message(
+        return Err(Error::SatFile(
           "ERROR: no 'image' section in session_template.\nExit".to_string(),
         ));
       };
@@ -455,9 +454,8 @@ pub async fn process_session_template_section_in_sat_file(
           .clone()
           .is_some_and(|node_roles_groups| !node_roles_groups.is_empty())
       {
-        return Err(Error::Message(
-          "User type tenant can't user node roles in BOS sessiontemplate. Exit"
-            .to_string(),
+        return Err(Error::SatFile(
+          "User type tenant can't user node roles in BOS sessiontemplate. Exit".to_string(),
         ));
       }
 
@@ -596,7 +594,7 @@ pub async fn process_session_template_section_in_sat_file(
       );
 
       if bos_sessiontemplate.name.is_none() {
-        return Err(Error::Message(
+        return Err(Error::SatFile(
           "BOS sessiontemplate API response is missing 'name'".to_string(),
         ));
       }
@@ -837,9 +835,8 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           )
           .await?
         } else {
-          return Err(Error::Message(
-            "Can't process SAT file 'images.base.ims' is missing. Exit"
-              .to_string(),
+          return Err(Error::SatFile(
+            "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
           ));
         }
       } else if let image::Base::Ims { ims } = base {
@@ -850,21 +847,18 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
 
             id.to_string()
           } else {
-            return Err(Error::Message(
-              "Can't process SAT file 'images.base.ims' is missing. Exit"
-                .to_string(),
+            return Err(Error::SatFile(
+              "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
             ));
           }
         } else {
-          return Err(Error::Message(
-            "Can't process SAT file 'images.base.ims' is missing. Exit"
-              .to_string(),
+          return Err(Error::SatFile(
+            "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
           ));
         }
       } else {
-        return Err(Error::Message(
-          "Can't process SAT file 'images.base.ims' is missing. Exit"
-            .to_string(),
+        return Err(Error::SatFile(
+          "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
         ));
       }
     // ----------- BASE IMAGE - CRAY PRODUCT CATALOG
@@ -955,18 +949,17 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
 
         image_id
       } else {
-        return Err(Error::Message(
+        return Err(Error::SatFile(
           "Can't process SAT file, field 'images.base.product.type' must be either 'images' or 'recipes'. Exit".to_string(),
         ));
       }
     } else {
-      return Err(Error::Message(
-        "Can't process SAT file 'images.base.product' is missing. Exit"
-          .to_string(),
+      return Err(Error::SatFile(
+        "Can't process SAT file 'images.base.product' is missing. Exit".to_string(),
       ));
     }
   } else {
-    return Err(Error::Message(
+    return Err(Error::SatFile(
       "Can't process SAT file 'images.base' is missing. Exit".to_string(),
     ));
   };

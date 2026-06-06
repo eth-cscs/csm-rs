@@ -167,6 +167,12 @@ pub enum Error {
   /// argument, etc. The string carries the operation context.
   #[error("CSM-RS > Migrate: {0}")]
   MigrateOp(String),
+  /// A Gitea / git-repo API response didn't decode into the
+  /// expected shape. Used when extracting `ref`, `commit/sha`,
+  /// `object/type`, tag name/url, etc. from a Gitea response and
+  /// the field isn't present or has the wrong type.
+  #[error("CSM-RS > Git repo shape: {0}")]
+  GitRepoShape(String),
 }
 
 impl Error {
@@ -329,6 +335,9 @@ impl From<crate::error::Error> for MantaError {
       }
       Error::SatFile(s) => MantaError::Message(format!("SAT file: {s}")),
       Error::MigrateOp(s) => MantaError::Message(format!("Migrate: {s}")),
+      Error::GitRepoShape(s) => {
+        MantaError::MissingField(format!("git repo: {s}"))
+      }
     }
   }
 }

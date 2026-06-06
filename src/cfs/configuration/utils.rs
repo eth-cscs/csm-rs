@@ -424,7 +424,7 @@ pub async fn get_configuration_layer_details(
       .pointer("/object/type")
       .and_then(Value::as_str)
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref type".to_string())
+        Error::GitRepoShape("ref type".to_string())
       })?;
 
     let mut ref_iter = ref_value
@@ -432,7 +432,7 @@ pub async fn get_configuration_layer_details(
       .and_then(Value::as_str)
       .map(|v| v.split("/").skip(1))
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref".to_string())
+        Error::GitRepoShape("ref".to_string())
       })?;
 
     let ref_2 = ref_iter.nth(1);
@@ -440,14 +440,14 @@ pub async fn get_configuration_layer_details(
     if ref_type == "tag" {
       // Yes, we are processing an annotated tag
       let tag_name = ref_2.ok_or_else(|| {
-        Error::Message("Could not get git repo tag name".to_string())
+        Error::GitRepoShape("tag name".to_string())
       })?;
 
       let git_repo_tag_url = ref_value
         .get("url")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::Message("Could not get git repo tag url".to_string())
+          Error::GitRepoShape("tag url".to_string())
         })?;
 
       let commit_sha_value = gitea::http_client::get_commit_from_tag(
@@ -464,8 +464,8 @@ pub async fn get_configuration_layer_details(
         .pointer("/commit/sha")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::Message(
-            "Could not get commit sha from git repo tag".to_string(),
+          Error::GitRepoShape(
+            "commit sha from git repo tag".to_string(),
           )
         })?;
 
@@ -493,14 +493,14 @@ pub async fn get_configuration_layer_details(
       .pointer("/object/type")
       .and_then(Value::as_str)
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref type".to_string())
+        Error::GitRepoShape("ref type".to_string())
       })?;
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
       .map(|v| v.split("/").skip(1))
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref".to_string())
+        Error::GitRepoShape("ref".to_string())
       })?;
 
     let ref_1 = ref_iter.next();
