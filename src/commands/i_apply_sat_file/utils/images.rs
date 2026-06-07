@@ -295,6 +295,13 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
 /// call. Otherwise POSTs to CFS and returns the just-created session —
 /// the response carries only the session name and initial status, so
 /// callers must drive it to completion via [`wait_or_stream_cfs_session`].
+///
+/// Exposed `pub` so the [`crate::backend_connector::sat`]
+/// `SatTrait::apply_sat_image_create_session` impl can call this
+/// directly when the caller wants to drive the monitor + stamp steps
+/// itself (e.g. the manta-cli SAT-image build pipeline) instead of
+/// going through [`i_create_image_from_sat_file_serde_yaml`]'s
+/// monolithic flow.
 #[allow(clippy::too_many_arguments)]
 pub async fn create_cfs_session_for_sat_image(
   shasta_token: &str,
@@ -492,6 +499,12 @@ async fn wait_or_stream_cfs_session(
 ///
 /// In `dry_run` mode no IMS calls happen: a placeholder `Image` is
 /// constructed in-memory, stamped, and returned.
+///
+/// Exposed `pub` so the [`crate::backend_connector::sat`]
+/// `SatTrait::apply_sat_image_stamp_from_session` impl can call this
+/// directly after its own `cfs::session::get_one` lookup, letting the
+/// stamp run as a separate HTTP step rather than buried inside
+/// [`i_create_image_from_sat_file_serde_yaml`].
 pub async fn collect_and_stamp_image(
   shasta_token: &str,
   shasta_base_url: &str,

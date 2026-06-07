@@ -18,6 +18,19 @@
 //! [`crate::commands::i_apply_sat_file::utils::images::i_create_image_from_sat_file_serde_yaml`]
 //! before the image is returned, so callers never see the underlying
 //! CFS session.
+//!
+//! `apply_sat_image_create_session` and
+//! `apply_sat_image_stamp_from_session` expose the same flow as two
+//! halves so callers (e.g. manta-cli) can drive their own monitor +
+//! stamp orchestration: the first calls
+//! [`crate::commands::i_apply_sat_file::utils::images::create_cfs_session_for_sat_image`]
+//! (translate SAT image entry → CFS session payload, POST), the second
+//! calls [`crate::cfs::session::get_one`] +
+//! [`crate::commands::i_apply_sat_file::utils::images::collect_and_stamp_image`]
+//! (fetch the named session, derive `manta.image_session.*`, PATCH the
+//! produced IMS image). Both share the same csm-rs helpers
+//! `apply_image` already composes, so there's a single source of truth
+//! for the per-image flow.
 
 use manta_backend_dispatcher::{
   error::Error,
