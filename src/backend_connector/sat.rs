@@ -24,13 +24,17 @@ use manta_backend_dispatcher::{
   interfaces::{
     apply_hw_cluster_pin::ApplyHwClusterPin,
     apply_sat_file::{
-      ApplyConfigurationParams, ApplyImageParams, ApplySatFileParams,
+      ApplyConfigurationParams, ApplyImageCreateSessionParams,
+      ApplyImageParams, ApplyImageStampParams, ApplySatFileParams,
       ApplySessionTemplateParams, SatTrait,
     },
   },
   types::{
     bos::{session::BosSession, session_template::BosSessionTemplate},
-    cfs::cfs_configuration_response::CfsConfigurationResponse,
+    cfs::{
+      cfs_configuration_response::CfsConfigurationResponse,
+      session::CfsSessionGetResponse,
+    },
     ims::Image,
   },
 };
@@ -270,6 +274,122 @@ impl SatTrait for Csm {
       dry_run,
       watch_logs,
       timestamps,
+    )
+    .await
+    .map_err(Error::from)?;
+
+    Ok(image.into())
+  }
+
+  async fn apply_sat_image_create_session(
+    &self,
+    params: ApplyImageCreateSessionParams<'_>,
+  ) -> Result<CfsSessionGetResponse, Error> {
+    let ApplyImageCreateSessionParams {
+      shasta_token,
+      vault_base_url,
+      site_name,
+      k8s_api_url,
+      image,
+      ref_lookup,
+      hsm_group_available_vec: _,
+      ansible_verbosity,
+      ansible_passthrough,
+      dry_run,
+    } = params;
+    let socks5_proxy = self.socks5_proxy.as_deref();
+
+    let image_yaml: serde_yaml::Value =
+      serde_json::from_value(image).map_err(|e| {
+        Error::Message(format!(
+          "SAT image value is not a valid YAML mapping: {e}"
+        ))
+      })?;
+    let image_struct: utils::image::Image = serde_yaml::from_value(image_yaml)
+      .map_err(|e| {
+        Error::Message(format!(
+          "SAT image does not match the expected shape: {e}"
+        ))
+      })?;
+
+    let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
+      vault_base_url,
+      shasta_token,
+      site_name,
+      socks5_proxy,
+    )
+    .await
+    .map_err(Error::from)?;
+    let kube_client =
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+        .await
+        .map_err(Error::from)?;
+    let cray_product_catalog = kubernetes::try_get_configmap(
+      kube_client,
+      crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+    )
+    .await
+    .map_err(Error::from)?;
+
+    let cfs_session = utils::images::create_cfs_session_for_sat_image(
+      shasta_token,
+      &self.base_url,
+      &self.root_cert,
+      socks5_proxy,
+      &image_struct,
+      &cray_product_catalog,
+      ansible_verbosity,
+      ansible_passthrough,
+      &ref_lookup,
+      dry_run,
+    )
+    .await
+    .map_err(Error::from)?;
+
+    Ok(cfs_session.into())
+  }
+
+  async fn apply_sat_image_stamp_from_session(
+    &self,
+    params: ApplyImageStampParams<'_>,
+  ) -> Result<Image, Error> {
+    let ApplyImageStampParams {
+      shasta_token,
+      cfs_session_name,
+    } = params;
+    let socks5_proxy = self.socks5_proxy.as_deref();
+
+    let cfs_session = crate::cfs::session::get_one(
+      shasta_token,
+      &self.base_url,
+      &self.root_cert,
+      socks5_proxy,
+      &cfs_session_name.to_string(),
+    )
+    .await
+    .map_err(Error::from)?;
+
+    // Fail fast when the CFS session produced no image — there is
+    // nothing to PATCH and the upstream `collect_and_stamp_image`
+    // would error deeper in with a less specific message.
+    if cfs_session.first_result_id().is_none() {
+      return Err(Error::Message(format!(
+        "CFS session '{cfs_session_name}' produced no image (no result_id); refusing to stamp"
+      )));
+    }
+
+    // `image_name` is only used in dry-run mode (to seed the placeholder
+    // Image's `name`); in normal mode the IMS image is fetched by id and
+    // its existing name is preserved. The non-dry-run path is what this
+    // public entrypoint targets, so the empty placeholder is fine.
+    let image = utils::images::collect_and_stamp_image(
+      shasta_token,
+      &self.base_url,
+      &self.root_cert,
+      socks5_proxy,
+      &cfs_session,
+      "",
+      false,
     )
     .await
     .map_err(Error::from)?;

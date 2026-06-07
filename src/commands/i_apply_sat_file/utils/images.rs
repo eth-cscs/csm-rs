@@ -17,6 +17,11 @@ use crate::{
   ims::{self},
 };
 
+use crate::common::{
+  kubernetes::{self, i_print_cfs_session_logs},
+  vault::http_client::fetch_shasta_k8s_secrets_from_vault,
+};
+
 use super::{
   configuration,
   image::{self, Filter},
@@ -243,7 +248,66 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   watch_logs: bool,
   timestamps: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {
-  // Get CFS session from SAT file image yaml
+  let cfs_session = create_cfs_session_for_sat_image(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    image_yaml,
+    cray_product_catalog,
+    ansible_verbosity_opt,
+    ansible_passthrough_opt,
+    ref_name_image_id_hashmap,
+    dry_run,
+  )
+  .await?;
+
+  let cfs_session = wait_or_stream_cfs_session(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    vault_base_url,
+    site_name,
+    k8s_api_url,
+    cfs_session,
+    watch_logs,
+    timestamps,
+    dry_run,
+  )
+  .await?;
+
+  collect_and_stamp_image(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    &cfs_session,
+    &image_yaml.name,
+    dry_run,
+  )
+  .await
+}
+
+/// Part 1: build the CFS session request from the SAT-file image YAML
+/// and create it. In `dry_run` mode returns a synthetic
+/// `CfsSessionGetResponse` (`DRYRUN-<uuid>` result id) with no network
+/// call. Otherwise POSTs to CFS and returns the just-created session —
+/// the response carries only the session name and initial status, so
+/// callers must drive it to completion via [`wait_or_stream_cfs_session`].
+#[allow(clippy::too_many_arguments)]
+pub async fn create_cfs_session_for_sat_image(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  image_yaml: &image::Image,
+  cray_product_catalog: &BTreeMap<String, String>,
+  ansible_verbosity_opt: Option<u8>,
+  ansible_passthrough_opt: Option<&str>,
+  ref_name_image_id_hashmap: &HashMap<String, String>,
+  dry_run: bool,
+) -> Result<CfsSessionGetResponse, Error> {
   let cfs_session = get_session_from_image_yaml(
     shasta_token,
     shasta_base_url,
@@ -258,11 +322,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
   )
   .await?;
 
-  let image_name = &image_yaml.name;
-
-  // Create CFS session to build image
   if dry_run {
-    // Create mock CFS session result from image section in SAT file
     log::debug!(
       "Dry run mode: Create CFS session:\n{}",
       serde_json::to_string_pretty(&cfs_session)?
@@ -332,91 +392,172 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
       serde_json::to_string_pretty(&mock_cfs_session)?
     );
 
-    let image_id: &str = mock_cfs_session.results_id().next().unwrap();
+    Ok(mock_cfs_session)
+  } else {
+    cfs::session::post(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      socks5_proxy,
+      &cfs_session,
+    )
+    .await
+    .map_err(|e| {
+      Error::SatFile(format!("Could not create Image. Reason:\n{e}"))
+    })
+  }
+}
 
-    // create new image
+/// Part 2: drive a just-POSTed CFS session to completion. When
+/// `watch_logs` is true the session's container logs are streamed
+/// line-by-line through `log::info!`; either way the function blocks
+/// until the session finishes and returns the final
+/// `CfsSessionGetResponse`. Errors with `Error::SatFile` if the
+/// session ends without `is_success()`.
+///
+/// In `dry_run` mode no waiting happens — the input session is
+/// returned unchanged (it was already mocked as "complete" by
+/// [`create_cfs_session_for_sat_image`]).
+#[allow(clippy::too_many_arguments)]
+async fn wait_or_stream_cfs_session(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  vault_base_url: &str,
+  site_name: &str,
+  k8s_api_url: &str,
+  cfs_session: CfsSessionGetResponse,
+  watch_logs: bool,
+  timestamps: bool,
+  dry_run: bool,
+) -> Result<CfsSessionGetResponse, Error> {
+  if dry_run {
+    return Ok(cfs_session);
+  }
+
+  let cfs_session_name = cfs_session.name.clone();
+
+  if watch_logs {
+    log::info!("Fetching logs form CFS session {cfs_session_name} ...");
+    let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
+      vault_base_url,
+      shasta_token,
+      site_name,
+      socks5_proxy,
+    )
+    .await?;
+
+    let client =
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+        .await?;
+
+    i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
+  }
+
+  cfs::session::utils::wait_cfs_session_to_finish(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    &cfs_session_name,
+  )
+  .await?;
+
+  let cfs_session = cfs::session::get_one(
+    shasta_token,
+    shasta_base_url,
+    shasta_root_cert,
+    socks5_proxy,
+    &cfs_session_name,
+  )
+  .await?;
+
+  if !cfs_session.is_success() {
+    return Err(Error::SatFile(format!(
+      "CFS session '{}' failed. Exit",
+      cfs_session.name
+    )));
+  }
+
+  Ok(cfs_session)
+}
+
+/// Part 3: fetch the IMS image produced by the (already-complete) CFS
+/// session, stamp `manta.image_session.{base,groups,configuration}`
+/// provenance onto it, and best-effort PATCH the metadata back to IMS.
+///
+/// PATCH failure is logged at `warn` and otherwise swallowed — the
+/// image itself was built and the metadata can be backfilled.
+///
+/// In `dry_run` mode no IMS calls happen: a placeholder `Image` is
+/// constructed in-memory, stamped, and returned.
+pub async fn collect_and_stamp_image(
+  shasta_token: &str,
+  shasta_base_url: &str,
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  cfs_session: &CfsSessionGetResponse,
+  image_name: &str,
+  dry_run: bool,
+) -> Result<ims::image::http_client::types::Image, Error> {
+  let image_id = cfs_session.first_result_id().ok_or_else(|| {
+    Error::Message(format!(
+      "CFS session '{}' produced no result image id",
+      cfs_session.name
+    ))
+  })?;
+
+  if dry_run {
     let mut image = ims::image::http_client::types::Image {
       id: Some(image_id.to_string()),
-      name: image_name.clone(),
+      name: image_name.to_string(),
       ..Default::default()
     };
-    // patch image
-    stamp_image_session_metadata(&mut image, &mock_cfs_session);
+    stamp_image_session_metadata(&mut image, cfs_session);
 
     log::debug!(
       "Dry run mode: Image created:\n{}",
       serde_json::to_string_pretty(&image)?
     );
 
-    Ok(image)
-  } else {
-    let cfs_session_rslt = cfs::session::i_post_sync(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      vault_base_url,
-      site_name,
-      k8s_api_url,
-      socks5_proxy,
-      &cfs_session,
-      watch_logs,
-      timestamps,
-    )
-    .await;
+    return Ok(image);
+  }
 
-    let cfs_session = match cfs_session_rslt {
-      Ok(cfs_session) => cfs_session,
-      Err(e) => {
-        return Err(Error::SatFile(format!(
-          "Could not create Image. Reason:\n{e}"
-        )));
-      }
+  log::debug!("Image '{image_name}' ({image_id}) created");
+
+  let client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let mut image = client
+    .ims_image_get(shasta_token, Some(image_id))
+    .await?
+    .into_iter()
+    .next()
+    .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
+
+  if stamp_image_session_metadata(&mut image, cfs_session) {
+    let patch = ims::image::http_client::types::PatchImage {
+      metadata: image.metadata.clone(),
+      ..Default::default()
     };
 
-    if !cfs_session.is_success() {
-      return Err(Error::SatFile(format!(
-        "CFS session '{}' failed. Exit",
-        cfs_session.name
-      )));
+    let image_id_for_patch = image.id.clone().unwrap_or_default();
+    if let Err(e) = client
+      .ims_image_patch(shasta_token, &image_id_for_patch, &patch)
+      .await
+    {
+      log::warn!(
+        "image_session metadata PATCH failed for image \
+         {image_id_for_patch}: {e}; image built but provenance not \
+         persisted",
+      );
     }
-
-    let image_id = cfs_session.first_result_id().unwrap_or_default();
-    log::debug!("Image '{image_name}' ({image_id}) created");
-
-    let client = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-      socks5_proxy.map(str::to_owned),
-    )?;
-    let mut image = client
-      .ims_image_get(shasta_token, Some(image_id))
-      .await?
-      .into_iter()
-      .next()
-      .ok_or_else(|| Error::ImageNotFound(image_id.to_string()))?;
-
-    if stamp_image_session_metadata(&mut image, &cfs_session) {
-      dbg!(&image);
-      let patch = ims::image::http_client::types::PatchImage {
-        metadata: image.metadata.clone(),
-        ..Default::default()
-      };
-
-      let image_id_for_patch = image.id.clone().unwrap_or_default();
-      if let Err(e) = client
-        .ims_image_patch(shasta_token, &image_id_for_patch, &patch)
-        .await
-      {
-        log::warn!(
-          "image_session metadata PATCH failed for image \
-           {image_id_for_patch}: {e}; image built but provenance not \
-           persisted",
-        );
-      }
-    }
-
-    Ok(image)
   }
+
+  Ok(image)
 }
 
 /// Stamp `manta.image_session.{base,groups,configuration}` onto

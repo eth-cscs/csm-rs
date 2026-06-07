@@ -245,7 +245,7 @@ pub mod configuration;
 /// `configurations` section.
 pub(crate) mod configurations;
 /// IMS image build helpers driven by a SAT file's `images` section.
-pub(crate) mod images;
+pub mod images;
 /// BOS session template creation helpers driven by a SAT file's
 /// `session_templates` section.
 pub(crate) mod session_templates;
