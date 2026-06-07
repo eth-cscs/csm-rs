@@ -305,7 +305,6 @@ impl SatTrait for Csm {
       k8s_api_url,
       image,
       ref_lookup,
-      hsm_group_available_vec: _,
       ansible_verbosity,
       ansible_passthrough,
       dry_run,
