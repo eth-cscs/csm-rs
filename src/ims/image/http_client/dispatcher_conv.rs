@@ -10,6 +10,14 @@ use manta_backend_dispatcher::types::ims::{
 
 use super::types::{Image, ImsImageRecord2Update, Link, PatchImage, PatchMetadata};
 
+// Provenance metadata keys stamped by the apply_sat_file flow. Keep in
+// sync with `commands::i_apply_sat_file::utils::images::META_*` —
+// duplicated here because that module is gated on `commands-admin`
+// while this conversion is gated on `manta-dispatcher`.
+const META_BASE: &str = "manta.image_session.base";
+const META_GROUPS: &str = "manta.image_session.groups";
+const META_CONFIG: &str = "manta.image_session.configuration";
+
 impl From<FrontEndImsImageRecord2Update> for ImsImageRecord2Update {
   fn from(
     frontend_ims_image_record2_update: FrontEndImsImageRecord2Update,
@@ -65,6 +73,18 @@ impl From<FrontEndImage> for Image {
 
 impl From<Image> for FrontEndImage {
   fn from(val: Image) -> Self {
+    let base = val
+      .metadata
+      .as_ref()
+      .and_then(|m| m.get(META_BASE).cloned());
+    let configuration = val
+      .metadata
+      .as_ref()
+      .and_then(|m| m.get(META_CONFIG).cloned());
+    let groups = val.metadata.as_ref().and_then(|m| {
+      m.get(META_GROUPS)
+        .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
+    });
     FrontEndImage {
       id: val.id,
       created: val.created,
@@ -72,6 +92,9 @@ impl From<Image> for FrontEndImage {
       link: val.link.map(std::convert::Into::into),
       arch: val.arch,
       metadata: val.metadata,
+      groups,
+      base,
+      configuration,
     }
   }
 }
