@@ -28,7 +28,7 @@ ignored = ["strum"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["manta-dispatcher", "k8s-console", "ims-s3"]
+default = ["manta-dispatcher", "k8s-console", "ims-s3", "commands-admin"]
 # Enables the `backend_connector` adapter, the `From<csm_rs::Error> for
 # manta_backend_dispatcher::Error` impl, and the PCS/HSM type
 # conversions to/from the dispatcher. Users who only want csm-rs as a
