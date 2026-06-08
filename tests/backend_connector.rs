@@ -210,7 +210,7 @@ async fn group_get_all_groups_hits_smd_v2_groups() {
     .await;
 
   let csm = make_csm(&server.uri());
-  let groups = csm.get_all_groups(TEST_TOKEN).await.expect("ok");
+  let groups = csm.get_groups(TEST_TOKEN, None).await.expect("ok");
   assert_eq!(groups.len(), 2);
   assert_eq!(groups[0].label, "zinal");
 }
@@ -342,7 +342,10 @@ async fn bss_update_bootparameters_patches_endpoint() {
     initrd: "s3://boot-images/abc/initrd".to_string(),
     ..Default::default()
   };
-  csm.update_bootparameters(TEST_TOKEN, &bp).await.expect("ok");
+  csm
+    .update_bootparameters(TEST_TOKEN, &bp)
+    .await
+    .expect("ok");
 }
 
 // ---------- PCSTrait::power_status ----------
@@ -421,9 +424,7 @@ async fn group_add_group_posts_to_groups_endpoint() {
 async fn group_delete_member_from_group_hits_member_endpoint() {
   let server = MockServer::start().await;
   Mock::given(method("DELETE"))
-    .and(path(
-      "/smd/hsm/v2/groups/zinal/members/x1000c0s0b0n0",
-    ))
+    .and(path("/smd/hsm/v2/groups/zinal/members/x1000c0s0b0n0"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
     .expect(1)
@@ -489,9 +490,7 @@ async fn component_get_forwards_role_query_param() {
 async fn hw_inventory_get_query_hits_query_path() {
   let server = MockServer::start().await;
   Mock::given(method("GET"))
-    .and(path(
-      "/smd/hsm/v2/Inventory/Hardware/Query/x1000c0s0b0n0",
-    ))
+    .and(path("/smd/hsm/v2/Inventory/Hardware/Query/x1000c0s0b0n0"))
     .and(bearer_token(TEST_TOKEN))
     // Empty inventory is a valid response shape; the test exercises
     // URL routing and bearer forwarding, not field coverage.
@@ -568,10 +567,7 @@ async fn cfs_get_configuration_hits_v3_configurations() {
     .await;
 
   let csm = make_csm(&server.uri());
-  let configs = csm
-    .get_configuration(TEST_TOKEN, None)
-    .await
-    .expect("ok");
+  let configs = csm.get_configuration(TEST_TOKEN, None).await.expect("ok");
   assert_eq!(configs.len(), 1);
   assert_eq!(configs[0].name, "cfg-1");
 }
@@ -594,7 +590,9 @@ async fn cfs_get_sessions_hits_v3_sessions() {
 
   let csm = make_csm(&server.uri());
   let sessions = csm
-    .get_sessions(TEST_TOKEN, None, None, None, None, None, None, None, None, None)
+    .get_sessions(
+      TEST_TOKEN, None, None, None, None, None, None, None, None, None,
+    )
     .await
     .expect("ok");
   assert_eq!(sessions.len(), 1);
@@ -617,11 +615,12 @@ async fn cfs_post_session_posts_to_v3_sessions() {
     .await;
 
   let csm = make_csm(&server.uri());
-  let req = manta_backend_dispatcher::types::cfs::session::CfsSessionPostRequest {
-    name: "new-session".to_string(),
-    debug_on_failure: false,
-    ..Default::default()
-  };
+  let req =
+    manta_backend_dispatcher::types::cfs::session::CfsSessionPostRequest {
+      name: "new-session".to_string(),
+      debug_on_failure: false,
+      ..Default::default()
+    };
   let created = csm.post_session(TEST_TOKEN, &req).await.expect("ok");
   assert_eq!(created.name, "new-session");
 }
@@ -660,7 +659,8 @@ async fn auth_validate_api_token_returns_err_on_401() {
     .await;
 
   let csm = make_csm(&server.uri());
-  csm.validate_api_token(TEST_TOKEN)
+  csm
+    .validate_api_token(TEST_TOKEN)
     .await
     .expect_err("401 should map to Err");
 }

@@ -116,26 +116,6 @@ impl GroupTrait for Csm {
     .map_err(Error::from)
   }
 
-  async fn get_all_groups(
-    &self,
-    auth_token: &str,
-  ) -> Result<Vec<FrontEndGroup>, Error> {
-    // Get all HSM groups
-    let hsm_group_backend_vec = self
-      .shasta_client()
-      .hsm_group_get_all(auth_token)
-      .await
-      .map_err(Error::from)?;
-
-    // Convert all HSM groups from mesa to infra
-    let hsm_group_vec = hsm_group_backend_vec
-      .into_iter()
-      .map(hsm::group::types::Group::into)
-      .collect();
-
-    Ok(hsm_group_vec)
-  }
-
   async fn get_group(
     &self,
     auth_token: &str,
