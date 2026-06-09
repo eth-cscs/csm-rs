@@ -182,7 +182,7 @@ impl GroupTrait for Csm {
       .map_err(Error::from)
   }
 
-  async fn get_hsm_map_and_filter_by_hsm_name_vec(
+  async fn get_group_map_and_filter_by_group_name_vec(
     &self,
     shasta_token: &str,
     hsm_name_vec: &[&str],
