@@ -1,4 +1,4 @@
-//! `DeleteConfigurationsAndDataRelatedTrait` impl for [`Csm`](super::Csm).
+//! `DeleteConfigurationsAndDataRelatedTrait` impl for [`crate::ShastaClient`].
 
 use chrono::NaiveDateTime;
 use manta_backend_dispatcher::{
@@ -10,9 +10,9 @@ use manta_backend_dispatcher::{
   },
 };
 
-use super::Csm;
+use crate::ShastaClient;
 
-impl DeleteConfigurationsAndDataRelatedTrait for Csm {
+impl DeleteConfigurationsAndDataRelatedTrait for ShastaClient {
   async fn get_data_to_delete(
     &self,
     shasta_token: &str,
@@ -32,7 +32,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     Error,
   > {
     crate::cfs::cleanup::get_data_to_delete(
-      self.shasta_client(),
+      self,
       shasta_token,
       hsm_name_available_vec,
       configuration_name_pattern_opt,
@@ -71,7 +71,7 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     bos_sessiontemplate_name_vec: &[String],
   ) -> Result<(), Error> {
     crate::cfs::cleanup::delete(
-      self.shasta_client(),
+      self,
       shasta_token,
       cfs_configuration_name_vec,
       image_id_vec,

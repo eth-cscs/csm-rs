@@ -1,4 +1,4 @@
-//! `SatTrait`, `ApplyHwClusterPin` impls for [`Csm`](super::Csm).
+//! `SatTrait`, `ApplyHwClusterPin` impls for [`crate::ShastaClient`].
 //!
 //! `apply_sat_file` is a thin shim over
 //! [`crate::commands::i_apply_sat_file::command::exec`]: it destructures
@@ -52,7 +52,7 @@ use manta_backend_dispatcher::{
   },
 };
 
-use super::Csm;
+use crate::ShastaClient;
 use crate::{
   commands::i_apply_sat_file::utils,
   common::{
@@ -60,7 +60,7 @@ use crate::{
   },
 };
 
-impl SatTrait for Csm {
+impl SatTrait for ShastaClient {
   async fn apply_sat_file(
     &self,
     params: ApplySatFileParams<'_>,
@@ -468,7 +468,7 @@ impl SatTrait for Csm {
   }
 }
 
-impl ApplyHwClusterPin for Csm {
+impl ApplyHwClusterPin for ShastaClient {
   async fn apply_hw_cluster_pin(
     &self,
     shasta_token: &str,
@@ -480,7 +480,7 @@ impl ApplyHwClusterPin for Csm {
     delete_empty_parent_hsm_group: bool,
   ) -> Result<(), Error> {
     crate::commands::apply_hw_cluster_pin::command::exec(
-      self.shasta_client(),
+      self,
       shasta_token,
       target_hsm_group_name,
       parent_hsm_group_name,

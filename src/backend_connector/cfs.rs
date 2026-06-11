@@ -1,4 +1,4 @@
-//! `CfsTrait` impl for [`Csm`](super::Csm).
+//! `CfsTrait` impl for [`crate::ShastaClient`].
 
 use std::pin::Pin;
 
@@ -25,14 +25,14 @@ use manta_backend_dispatcher::{
   },
 };
 
-use super::Csm;
+use crate::ShastaClient;
 use crate::common::jwt_ops;
 #[cfg(feature = "k8s-console")]
 use crate::common::{
   kubernetes, vault::http_client::fetch_shasta_k8s_secrets_from_vault,
 };
 
-impl CfsTrait for Csm {
+impl CfsTrait for ShastaClient {
   type T = Pin<Box<dyn AsyncBufRead + Send>>;
 
   async fn get_cfs_health(&self) -> Result<(), Error> {
@@ -47,7 +47,6 @@ impl CfsTrait for Csm {
     session: &CfsSessionPostRequest,
   ) -> Result<CfsSessionGetResponse, Error> {
     self
-      .shasta_client()
       .cfs_session_v3_post(shasta_token, &session.clone().into())
       .await
       .map(std::convert::Into::into)
@@ -70,7 +69,6 @@ impl CfsTrait for Csm {
   ) -> Result<Vec<CfsSessionGetResponse>, Error> {
     // Get local/backend CFS sessions
     let local_cfs_session_vec = self
-      .shasta_client()
       .cfs_session_v3_get(
         shasta_token,
         session_name_opt,
@@ -258,7 +256,6 @@ impl CfsTrait for Csm {
             Vec<crate::ims::image::http_client::types::Image>,
             _,
           > = self
-            .shasta_client()
             .ims_image_get(shasta_token, image_id)
             .await;
 
@@ -324,7 +321,7 @@ impl CfsTrait for Csm {
         .collect();
 
     crate::cfs::cleanup_session::exec(
-      self.shasta_client(),
+      self,
       shasta_token,
       group_available_vec,
       &cfs_session,
@@ -361,7 +358,6 @@ impl CfsTrait for Csm {
     configuration_name_opt: Option<&String>,
   ) -> Result<Vec<CfsConfigurationResponse>, Error> {
     let cfs_configuration_vec = self
-      .shasta_client()
       .cfs_configuration_v3_get(
         auth_token,
         configuration_name_opt.map(std::string::String::as_str),
@@ -623,7 +619,6 @@ impl CfsTrait for Csm {
     Error,
   > {
     self
-      .shasta_client()
       .cfs_component_v3_get_query(
         shasta_token,
         configuration_name,

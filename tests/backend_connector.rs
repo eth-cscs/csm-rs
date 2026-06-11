@@ -1,9 +1,9 @@
-//! Wiremock smoke tests for the [`csm_rs::backend_connector::Csm`]
+//! Wiremock smoke tests for the [`csm_rs::ShastaClient`]
 //! dispatcher trait impls. Each test stands up a mock CSM, constructs
-//! a `Csm`, calls one trait method through the dispatcher interface,
-//! and asserts the request hit the expected endpoint with the right
-//! bearer auth and that the wire response decodes through the
-//! csm-rs -> manta-backend-dispatcher type conversion.
+//! a `ShastaClient`, calls one trait method through the dispatcher
+//! interface, and asserts the request hit the expected endpoint with
+//! the right bearer auth and that the wire response decodes through
+//! the csm-rs -> manta-backend-dispatcher type conversion.
 //!
 //! This file is gated on the `manta-dispatcher` Cargo feature because
 //! the dispatcher boundary itself is feature-gated.
@@ -13,7 +13,7 @@
 mod common;
 use common::{TEST_PEM, TEST_TOKEN};
 
-use csm_rs::backend_connector::Csm;
+use csm_rs::ShastaClient;
 use manta_backend_dispatcher::interfaces::{
   authentication::AuthenticationTrait,
   bss::BootParametersTrait,
@@ -34,8 +34,9 @@ use wiremock::matchers::{
 };
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-fn make_csm(base_url: &str) -> Csm {
-  Csm::new(base_url, TEST_PEM.as_bytes(), None).expect("Csm::new ok")
+fn make_csm(base_url: &str) -> ShastaClient {
+  ShastaClient::new(base_url, TEST_PEM.as_bytes(), None)
+    .expect("ShastaClient::new ok")
 }
 
 // ---------- BootParametersTrait ----------
@@ -154,8 +155,9 @@ async fn pcs_transitions_get_hits_v1_transitions_by_id() {
     .await;
 
   let csm = make_csm(&server.uri());
-  let tr = csm
-    .pcs_transitions_get(TEST_TOKEN, "tr-123")
+  // Disambiguate against the inherent `ShastaClient::pcs_transitions_get(token)`
+  // (1-arg list call) by calling the trait method explicitly.
+  let tr = PCSTrait::pcs_transitions_get(&csm, TEST_TOKEN, "tr-123")
     .await
     .expect("ok");
   assert_eq!(tr.transition_status, "completed");
