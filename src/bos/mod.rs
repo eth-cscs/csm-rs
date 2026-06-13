@@ -15,9 +15,11 @@
 //! Both v1 and v2 endpoints are wrapped; new code should generally prefer
 //! the v2 variants where available.
 
+pub(crate) mod generated;
 pub mod health_check;
 pub mod session;
 pub mod template;
+mod wrapper;
 /// Integration-style tests for the BOS namespace.
 #[cfg(test)]
 pub mod tests;
