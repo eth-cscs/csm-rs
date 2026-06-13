@@ -1,7 +1,69 @@
-//! CFS configurations v2 — `ShastaClient` methods for
-//! `/cfs/v2/configurations`.
-
-pub(crate) mod types;
+//! Wrapper for `/cfs/v2/configurations`. Replaces
+//! `src/cfs/configuration/http_client/v2/mod.rs`.
+//!
+//! Routed through the progenitor-generated client:
+//! - *(none)* — every generated v2 configuration method exchanges the
+//!   strict `types::V2Configuration{,Array}` shape:
+//!     * `name: Option<String>` (csm-rs's hand-written
+//!       `CfsConfigurationResponse.name` is `String`),
+//!     * `last_updated: Option<chrono::DateTime<chrono::offset::Utc>>`
+//!       (hand-written is `String` so we never have to drag `chrono`
+//!       into the public surface),
+//!     * `layers: Vec<V2ConfigurationLayer>` where each layer wraps
+//!       `clone_url`, `branch`, `commit`, `playbook` as **regex-validated
+//!       newtypes** (`V2ConfigurationLayerCloneUrl(String)`, etc.) with
+//!       `#[serde(deny_unknown_fields)]` on the struct,
+//!     * `additional_inventory: Option<V2AdditionalInventoryLayer>` (a
+//!       single layer; hand-written `CfsConfigurationResponse` keeps
+//!       the older `additional_inventory: Option<AdditionalInventory>`
+//!       shape with `cloneUrl`/`name`/`commit`/`branch` plain strings).
+//!   csm-rs's public `CfsConfigurationRequest` and
+//!   `CfsConfigurationResponse` are re-exported from `cfs::v2`,
+//!   consumed by `configuration/utils.rs`, `dispatcher_conv.rs`
+//!   (`From` impls between hand-written types and the dispatcher
+//!   mirrors), the SAT-file parser
+//!   (`CfsConfigurationRequest::from_sat_file_serde_yaml`), and the
+//!   `manta-backend-dispatcher` trait impls. Adopting the generated
+//!   types would force a structural change across all those consumers
+//!   (and the public `cfs::v2::CfsConfiguration{Request,Response}`
+//!   API) so this wave keeps everything on raw `reqwest`. A follow-up
+//!   commit can migrate individual methods once a
+//!   generated->hand-written conversion layer (or a swap of the public
+//!   types to the generated ones) lands.
+//!
+//! Stays on raw `reqwest` because the generated surface doesn't
+//! cover what the existing public API needs:
+//!
+//! - `cfs_configuration_v2_get` always sends `?limit=100000` and
+//!   returns the hand-written `Vec<CfsConfigurationResponse>` shape.
+//!   The generated `get_configurations_v2` takes only
+//!   `in_use: Option<bool>` (no `limit`) and returns the strict
+//!   `V2ConfigurationArray` — see the "routed via progenitor" section
+//!   above for the shape mismatch. The single-name code path also
+//!   wraps the response in a `Vec` of length 1 for uniform caller
+//!   handling, which the generated `get_configuration_v2` (returns one
+//!   `V2Configuration`) doesn't model.
+//! - `cfs_configuration_v2_get_all` is a convenience wrapper over
+//!   `cfs_configuration_v2_get(None)`, not an endpoint binding of its
+//!   own.
+//! - `cfs_configuration_v2_put` sends a hand-rolled
+//!   `{ "layers": configuration.layers }` JSON object — it deliberately
+//!   omits the `name` / `lastUpdated` / `additional_inventory` fields
+//!   the spec would otherwise require. The generated `put_configuration_v2`
+//!   takes a full `&V2Configuration` body (with the newtype-validated
+//!   layers described above) and returns `V2Configuration`. Adopting
+//!   it would change both the request shape (`CfsConfigurationRequest`
+//!   would have to become `V2Configuration`) and the response shape
+//!   (callers consume `CfsConfigurationResponse`).
+//! - `cfs_configuration_v2_delete` returns `()`, which lines up with
+//!   the generated `delete_configuration_v2` on its own. We still keep
+//!   it on raw `reqwest` for now to avoid leaving a single
+//!   progenitor-routed method dangling in a module whose other three
+//!   methods are blocked on the contract mismatches above; routing
+//!   just `delete` would force the wrapper to mix two error/transport
+//!   paths for no behavioural gain. Migrating delete on its own is
+//!   safe to revisit alongside the future swap of the public response
+//!   type.
 
 use crate::{
   ShastaClient,
