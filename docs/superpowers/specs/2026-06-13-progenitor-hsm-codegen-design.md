@@ -103,6 +103,11 @@ downstream callers (manta, etc.)        (recompile-clean)
   hw_component,redfish_endpoint,ethernet_interfaces,service_values}.rs`
   — one file per resource holding `impl ShastaClient { pub async fn
   hsm_*() }` blocks.
+- `src/hsm/wrapper/hw_component_types.rs` — projection types
+  (`NodeSummary`, `ArtifactSummary`, `ArtifactType`) and their
+  `try_from_generated` impls. Public types, re-exported through
+  `hsm/hw_inventory/hw_component/mod.rs` to preserve the existing
+  public path.
 - `src/hsm/csm_api_docs.openapi3.json` — converted spec, committed.
 - `Makefile` (or `xtask`) target `convert-spec` invoking
   `npx swagger2openapi` — developer step, not invoked by `cargo build`.
@@ -120,10 +125,10 @@ downstream callers (manta, etc.)        (recompile-clean)
 - `src/hsm/service/values/role/http_client.rs`
 
 **Modified**:
-- `src/hsm/*/types.rs` files reduce to `pub use` re-export blocks
-  pointing at generated types, except where projection types live
-  (`hw_component/types.rs` retains `NodeSummary`, `ArtifactSummary`,
-  `ArtifactType`).
+- `src/hsm/*/types.rs` files reduce to **pure** `pub use` re-export
+  blocks pointing at generated types. No hand-rolled structs survive
+  in `types.rs`. Projection types and module-private helpers move
+  into the wrapper layer (see Type strategy).
 
 ## Components
 
@@ -231,13 +236,32 @@ The exact mangled type names progenitor emits (e.g. `Group_1_0_0` vs
 `Group100`) get locked down in phase 0 by inspecting one generated
 file.
 
-**Retained projection types** (hand-rolled, no spec equivalent):
-- `NodeSummary` and `ArtifactSummary` in `hw_component/types.rs`.
-- `ArtifactType` enum (12 variants representing HW artifact categories).
+**Projection types live in the wrapper layer**, not in
+`hw_component/types.rs`. They have no spec equivalent and are an
+implementation detail of how the wrapper translates generated wire
+types into the csm-rs public API:
+
+- `NodeSummary` (public — returned from `hsm_hw_inventory_get`)
+- `ArtifactSummary` (public — embedded in `NodeSummary`)
+- `ArtifactType` enum (public — embedded in `ArtifactSummary`)
+
+These move to `src/hsm/wrapper/hw_component_types.rs` (or inline at
+the top of `src/hsm/wrapper/hw_component.rs` if small). The wrapper's
+`hsm_hw_inventory_get` method imports them and returns
+`NodeSummary` as the public return type. `src/hsm/hw_inventory/hw_component/mod.rs`
+re-exports them so the existing public path
+`csm_rs::hsm::hw_inventory::hw_component::NodeSummary` stays valid.
 
 Their `try_from_csm_value(&serde_json::Value)` constructors become
 `try_from_generated(&generated::types::HwInventory100HwInventoryByLocation)`
-— typed input rather than walking JSON, same projection logic.
+— typed input rather than walking JSON, same projection logic. The
+`try_from_generated` impls also live in the wrapper module since they
+are part of the wire-to-public translation.
+
+After this change, `hw_component/types.rs` is a pure re-export module
+like every other `*/types.rs`: only `pub use generated::...` lines
+plus `pub use crate::hsm::wrapper::hw_component_types::*` to surface
+the projection types.
 
 ### Extension traits for inherent methods
 
@@ -350,8 +374,9 @@ revertable.
 
 Per-commit checklist:
 
-- [ ] Replace `types.rs` content with `pub use` aliases to generated
-      types (retain projections and helper structs).
+- [ ] Replace `types.rs` content with pure `pub use` aliases to
+      generated types. Move any hand-rolled projection types or
+      helper structs into the corresponding `wrapper/` module.
 - [ ] Move any inherent methods to an `*Ext` extension trait.
 - [ ] Delete `http_client*.rs`. Add `wrapper/<resource>.rs`.
 - [ ] Update `mod.rs` re-exports (wrapper, extension trait).
