@@ -102,30 +102,7 @@ impl ShastaClient {
     let api_url = format!("{}/smd/hsm/v2/groups/{}", self.base_url(), label);
 
     let response = self.http().get(api_url).bearer_auth(token).send().await?;
-
-    if let Err(e) = response.error_for_status_ref() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          let url = response.url().to_string();
-          let error_payload = response.text().await?;
-          return Err(Error::RequestError {
-            response: e,
-            url,
-            payload: error_payload,
-          });
-        }
-        status => {
-          let status = status.as_u16();
-          let url = response.url().to_string();
-          let payload = response.text().await?;
-          return Err(Error::csm_text_from_response(
-            "GET", &url, status, payload,
-          ));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+    http::handle_json_or_request_error_text::<Group>(response, "GET").await
   }
 
   /// List HSM groups, optionally filtered by one or more labels and/or
@@ -169,30 +146,8 @@ impl ShastaClient {
       .bearer_auth(token)
       .send()
       .await?;
-
-    if let Err(e) = response.error_for_status_ref() {
-      match response.status() {
-        reqwest::StatusCode::UNAUTHORIZED => {
-          let url = response.url().to_string();
-          let error_payload = response.text().await?;
-          return Err(Error::RequestError {
-            response: e,
-            url,
-            payload: error_payload,
-          });
-        }
-        status => {
-          let status = status.as_u16();
-          let url = response.url().to_string();
-          let payload = response.text().await?;
-          return Err(Error::csm_text_from_response(
-            "GET", &url, status, payload,
-          ));
-        }
-      }
-    }
-
-    response.json().await.map_err(Error::NetError)
+    http::handle_json_or_request_error_text::<Vec<Group>>(response, "GET")
+      .await
   }
 
   /// List every HSM group on the system.

@@ -287,14 +287,11 @@ impl ShastaClient {
     token: &str,
     component_list: Vec<Component>,
   ) -> Result<Vec<Component>, Error> {
-    let mut result_vec: Vec<Result<Component, Error>> = Vec::new();
-
+    let mut out = Vec::with_capacity(component_list.len());
     for component in component_list {
-      let result = self.cfs_component_v2_put_component(token, component).await;
-      result_vec.push(result);
+      out.push(self.cfs_component_v2_put_component(token, component).await?);
     }
-
-    result_vec.into_iter().collect()
+    Ok(out)
   }
 
   /// Delete a CFS component by id.

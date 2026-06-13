@@ -275,6 +275,34 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
   method: &str,
 ) -> Result<T, Error> {
   if let Err(e) = response.error_for_status_ref() {
+    return Err(into_request_or_json_csm_error(e, response, method).await);
+  }
+
+  response.json().await.map_err(Error::NetError)
+}
+
+/// Variant of [`handle_json_or_request_error`] that discards the success
+/// body. Use for POST/PUT/DELETE endpoints whose success path is `()` and
+/// whose error path follows the HSM 401-RequestError + JSON-CsmError
+/// contract (HSM `/State/Components` POST/PUT, etc.).
+pub(crate) async fn handle_unit_or_request_error(
+  response: reqwest::Response,
+  method: &str,
+) -> Result<(), Error> {
+  if let Err(e) = response.error_for_status_ref() {
+    return Err(into_request_or_json_csm_error(e, response, method).await);
+  }
+  Ok(())
+}
+
+/// Variant of [`handle_json_or_request_error`] where the non-401 error path
+/// reads the body as TEXT (not JSON) and returns `Error::csm_text_from_response`.
+/// Used by HSM `/groups` GETs where the error body is plain text.
+pub(crate) async fn handle_json_or_request_error_text<T: DeserializeOwned>(
+  response: reqwest::Response,
+  method: &str,
+) -> Result<T, Error> {
+  if let Err(e) = response.error_for_status_ref() {
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
       let url = response.url().to_string();
       let payload = response.text().await.map_err(Error::NetError)?;
@@ -283,15 +311,42 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
         url,
         payload,
       });
-    } else {
-      let status = response.status().as_u16();
-      let url = response.url().to_string();
-      let payload = response.json::<Value>().await.map_err(Error::NetError)?;
-      return Err(Error::csm_from_response(method, &url, status, payload));
     }
+    let status = response.status().as_u16();
+    let url = response.url().to_string();
+    let payload = response.text().await.map_err(Error::NetError)?;
+    return Err(Error::csm_text_from_response(method, &url, status, payload));
   }
 
   response.json().await.map_err(Error::NetError)
+}
+
+/// Shared error-conversion body for the 401-RequestError / non-401-JSON-CsmError
+/// contract used by HSM mutating endpoints. Called by both
+/// [`handle_json_or_request_error`] and [`handle_unit_or_request_error`].
+async fn into_request_or_json_csm_error(
+  request_err: reqwest::Error,
+  response: reqwest::Response,
+  method: &str,
+) -> Error {
+  let status = response.status();
+  let url = response.url().to_string();
+  if status == reqwest::StatusCode::UNAUTHORIZED {
+    let payload = match response.text().await {
+      Ok(p) => p,
+      Err(e) => return Error::NetError(e),
+    };
+    return Error::RequestError {
+      response: request_err,
+      url,
+      payload,
+    };
+  }
+  let payload = match response.json::<Value>().await {
+    Ok(p) => p,
+    Err(e) => return Error::NetError(e),
+  };
+  Error::csm_from_response(method, &url, status.as_u16(), payload)
 }
 
 /// Run `f` across `items.chunks(chunk_size)` with at most

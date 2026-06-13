@@ -33,12 +33,11 @@
 //! variants will see their JSON change to spec-conformant PascalCase.
 
 use crate::{
-  ShastaClient, error::Error,
-  hsm::hw_inventory::ethernet_interfaces::types::EthernetInterface,
-};
-
-use super::super::hw_inventory::ethernet_interfaces::types::{
-  ComponentEthernetInterface, IpAddressMapping,
+  ShastaClient,
+  error::Error,
+  hsm::hw_inventory::ethernet_interfaces::types::{
+    ComponentEthernetInterface, EthernetInterface, IpAddressMapping,
+  },
 };
 
 impl ShastaClient {
