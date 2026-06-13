@@ -16,6 +16,7 @@ mod group;
 mod hw_component;
 pub(crate) mod hw_component_types;
 mod memberships;
+mod redfish_endpoint;
 mod service_values;
 
 /// Build a generated HSM `Client` bound to the caller's token.

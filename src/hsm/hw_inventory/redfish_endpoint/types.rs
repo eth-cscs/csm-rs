@@ -60,7 +60,10 @@ pub struct RedfishEndpoint {
   #[serde(rename = "IPAddress")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub ip_address: Option<String>,
-  #[serde(rename = "RediscoveryOnUpdate")]
+  // BEHAVIOUR FIX: previous hand-rolled rename was "RediscoveryOnUpdate"
+  // (extra "y"); the spec field is "RediscoverOnUpdate". Corrected so
+  // (de)serialization actually matches the upstream CSM payload.
+  #[serde(rename = "RediscoverOnUpdate")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub rediscover_on_update: Option<bool>,
   #[serde(rename = "TemplateID")]
