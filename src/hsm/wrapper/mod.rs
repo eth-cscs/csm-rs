@@ -11,6 +11,7 @@
 use crate::{ShastaClient, error::Error, hsm::generated};
 
 mod component;
+mod component_status;
 mod group;
 mod memberships;
 mod service_values;
