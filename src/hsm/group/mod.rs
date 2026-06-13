@@ -3,17 +3,26 @@
 //!
 //! Submodules:
 //!
-//! - [`http_client`] — `ShastaClient` methods for `/smd/hsm/v2/groups`.
-//! - [`types`] — request/response shapes.
+//! - `wrapper/group.rs` — `ShastaClient` methods for
+//!   `/smd/hsm/v2/groups` (the file lives under `src/hsm/wrapper/`).
+//! - [`types`] — re-exports of the progenitor-generated request/response
+//!   shapes.
+//! - [`ext`] — `GroupExt` trait with the convenience methods that used
+//!   to be inherent on `Group`.
 //! - [`utils`] — composed helpers (membership unions, substring lookup).
 //! - [`hacks`] — workarounds for CSM behaviour that doesn't fit cleanly
 //!   into the rest of the surface.
 
+/// `GroupExt` trait with the convenience methods (`new_with_members`,
+/// `get_members`, `get_members_opt`, `add_xnames`) that used to live as
+/// an inherent `impl Group` block. Re-exported at the module root so a
+/// glob import keeps working.
+pub mod ext;
+pub use ext::GroupExt;
+
 /// Workarounds for CSM HSM behaviour that does not fit cleanly into
 /// the rest of the surface.
 pub mod hacks;
-/// `ShastaClient` methods for `/hsm/v2/groups`.
-pub mod http_client;
 /// Integration-style tests for the HSM group namespace.
 #[cfg(test)]
 pub mod tests;

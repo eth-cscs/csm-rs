@@ -945,24 +945,43 @@ pub async fn create_hsm_group_from_file(
     socks5_proxy.map(str::to_owned),
   )?;
   for group in group_vec {
-    // Create the HSM group
-    let group_members_opt =
-      group.members.clone().and_then(|members| members.ids);
+    // Create the HSM group.
+    //
+    // Post-progenitor shape gymnastics:
+    // - `Group.members.ids` is `Vec<XNameRw100>` (no `Option`).
+    //   Map out the newtype to feed `hsm_group_create_new_group`'s
+    //   `&[String]` parameter.
+    // - `Group.label`/`exclusive_group` are `ResourceName(pub String)`;
+    //   reach into `.0` for the `&str` arg.
+    // - `Group.tags` is `Vec<ResourceName>` (no `Option`); same
+    //   unwrap-the-newtype dance for the `&[String]` parameter.
+    let group_members_vec: Vec<String> = group
+      .members
+      .as_ref()
+      .map(|m| m.ids.iter().map(|x| x.0.clone()).collect())
+      .unwrap_or_default();
+    let tags_vec: Vec<String> =
+      group.tags.iter().map(|t| t.0.clone()).collect();
+    let exclusive_group_str = group
+      .exclusive_group
+      .as_ref()
+      .map(|x| x.0.as_str())
+      .unwrap_or_default();
     match shasta_client
       .hsm_group_create_new_group(
         shasta_token,
-        &group.label,
-        &group_members_opt.unwrap_or_default(),
-        &group.exclusive_group.clone().unwrap_or_default(),
-        &group.description.clone().unwrap_or_default(),
-        &group.tags.clone().unwrap_or_default(),
+        &group.label.0,
+        &group_members_vec,
+        exclusive_group_str,
+        group.description.as_deref().unwrap_or_default(),
+        &tags_vec,
       )
       .await
     {
       Ok(group) => {
         log::info!(
           "The HSM group {} has been created successfully.",
-          &group.label
+          &group.label.0
         );
       }
       Err(error) => {
@@ -970,7 +989,7 @@ pub async fn create_hsm_group_from_file(
           if overwrite {
             log::info!("Looks like you want to continue");
             match shasta_client
-              .hsm_group_delete_group(shasta_token, &group.label)
+              .hsm_group_delete_group(shasta_token, &group.label.0)
               .await
             {
               Ok(_) => {
@@ -982,7 +1001,7 @@ pub async fn create_hsm_group_from_file(
                   Ok(_json) => {
                     log::info!(
                       "The HSM group {} has been created successfully.",
-                      &group.label
+                      &group.label.0
                     );
                   }
                   Err(e) => {
@@ -997,7 +1016,7 @@ pub async fn create_hsm_group_from_file(
                 log::error!("Error message {e}");
                 return Err(Error::MigrateOp(format!(
                   "error deleting the HSM group {}: {}",
-                  &group.label, e
+                  &group.label.0, e
                 )));
               }
             }

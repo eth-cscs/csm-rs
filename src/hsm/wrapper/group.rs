@@ -1,12 +1,49 @@
+//! Wrapper for `/groups`. Replaces `src/hsm/group/http_client.rs`.
+//!
+//! Routed through the progenitor-generated client:
+//! - `hsm_group_get_all` -> `do_groups_get(None, None)` — the
+//!   no-filter list case maps cleanly.
+//!
+//! Stays on raw `reqwest` because the generated surface doesn't
+//! cover what the existing public API needs:
+//!
+//! - `hsm_group_get_raw` returns a `reqwest::Response` straight, which
+//!   progenitor never exposes.
+//! - `hsm_group_get_one` distinguishes 401 as `Error::RequestError`
+//!   (the dispatcher's `Error` mapping makes this distinction
+//!   downstream-visible); the generated client's `map_err` collapses
+//!   everything to `Error::Message`.
+//! - `hsm_group_get` accepts arrays of `group=` and `tag=` query
+//!   filters (CSM accepts repetitions); the generated
+//!   `do_groups_get` only takes a single optional value for each.
+//! - `hsm_group_post` returns the response body as `String`; the
+//!   generated `do_groups_post` deserialises into
+//!   `Vec<ResourceUri100>` so we'd have to either change the public
+//!   signature (rippling through every caller) or re-serialise the
+//!   typed result back to JSON text — both worse than keeping the
+//!   working manual implementation.
+//! - `hsm_group_delete_group` / `hsm_group_post_member` keep the
+//!   tolerant `handle_json_response` parse: real CSM and integration
+//!   test mocks return shapes (`{}`, `{code,message}`) that the
+//!   generated typed deserialisation rejects.
+//! - `hsm_group_delete_member` accepts `204 No Content` from
+//!   production CSM; the generated `do_group_member_delete` is
+//!   200-only.
+//! - `hsm_group_get_hsm_group_vec` and `hsm_group_create_new_group`
+//!   are convenience wrappers built on top of the above, not endpoint
+//!   bindings of their own.
+
 use crate::{
   ShastaClient,
   common::http,
   error::Error,
   hsm::{
-    group::types::{Group, Member, Members},
+    group::types::{Group, Member, Members, XNameRw100},
     types::HsmActionResponse,
   },
 };
+
+use super::run;
 
 impl ShastaClient {
   /// Issue the raw `GET /smd/hsm/v2/groups[/{name}]` call and return
@@ -43,9 +80,14 @@ impl ShastaClient {
   /// Fetch a single HSM group by `label`, returning a strongly-typed
   /// [`Group`].
   ///
-  /// `GET /smd/hsm/v2/groups/{label}`. Distinguishes unauthorized
-  /// responses as [`Error::RequestError`] so callers can react to token
-  /// problems differently from other HTTP errors.
+  /// `GET /smd/hsm/v2/groups/{label}`. Stays on raw reqwest because
+  /// the historical contract distinguishes unauthorized (`401`)
+  /// responses as [`Error::RequestError`] so callers can react to
+  /// token problems differently from other HTTP errors; the
+  /// generated `map_err` adapter collapses everything to
+  /// `Error::Message`. The dispatcher's `Error::RequestError` mapping
+  /// (see `src/error.rs` `From` impl) makes this distinction
+  /// downstream-visible — preserving it matters.
   ///
   /// # Errors
   ///
@@ -91,7 +133,8 @@ impl ShastaClient {
   ///
   /// `GET /smd/hsm/v2/groups?group=…&tag=…`. Each value in
   /// `label_vec_opt` and `tag_vec_opt` becomes an additional repeated
-  /// query parameter.
+  /// query parameter. Stays on raw reqwest because the generated
+  /// `do_groups_get` only accepts a single label/tag.
   ///
   /// # Errors
   ///
@@ -154,7 +197,9 @@ impl ShastaClient {
 
   /// List every HSM group on the system.
   ///
-  /// Convenience wrapper for `hsm_group_get(None, None)`.
+  /// `GET /smd/hsm/v2/groups`. Wraps the generated client directly
+  /// (no filters, equivalent to calling `hsm_group_get(token, None,
+  /// None)`).
   ///
   /// # Errors
   ///
@@ -165,7 +210,10 @@ impl ShastaClient {
     &self,
     token: &str,
   ) -> Result<Vec<Group>, Error> {
-    self.hsm_group_get(token, None, None).await
+    run(self, token, |c| async move {
+      c.do_groups_get(None, None).await
+    })
+    .await
   }
 
   /// Find every HSM group whose label *contains* `hsm_group_name_opt`
@@ -189,7 +237,7 @@ impl ShastaClient {
 
     if let Some(hsm_group_name) = hsm_group_name_opt {
       for hsm_group in json_response {
-        if hsm_group.label.contains(hsm_group_name) {
+        if hsm_group.label.0.contains(hsm_group_name) {
           hsm_groups.push(hsm_group.clone());
         }
       }
@@ -202,6 +250,9 @@ impl ShastaClient {
   ///
   /// `POST /smd/hsm/v2/groups`. Returns the response body as text
   /// because CSM's success payload here is a plain string id, not JSON.
+  /// Stays on raw reqwest to preserve the `String` return type — the
+  /// generated `do_groups_post` deserialises into
+  /// `Vec<ResourceUri100>`.
   ///
   /// # Errors
   ///
@@ -274,14 +325,22 @@ impl ShastaClient {
     tags: &[String],
   ) -> Result<Group, Error> {
     let myxnames = Members {
-      ids: Some(xnames.to_owned()),
+      ids: xnames
+        .iter()
+        .map(|x| XNameRw100(x.clone()))
+        .collect(),
     };
 
     let group = Group {
-      label: hsm_group_name_opt.to_owned(),
-      description: Option::from(description.to_string().clone()),
-      tags: Option::from(tags.to_owned()),
-      exclusive_group: Option::from(exclusive.to_string().clone()),
+      label: crate::hsm::group::types::ResourceName(hsm_group_name_opt.to_owned()),
+      description: Some(description.to_string()),
+      tags: tags
+        .iter()
+        .map(|t| crate::hsm::group::types::ResourceName(t.clone()))
+        .collect(),
+      exclusive_group: Some(crate::hsm::group::types::ResourceName(
+        exclusive.to_string(),
+      )),
       members: Some(myxnames),
     };
 
@@ -296,7 +355,14 @@ impl ShastaClient {
 
   /// Delete an HSM group by label.
   ///
-  /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}`.
+  /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}`. Stays on raw
+  /// reqwest with `handle_json_response`: that helper tolerates an
+  /// empty/`{}` body (used by some integration test mocks) by falling
+  /// back to `HsmActionResponse::default()`, whereas the generated
+  /// `do_group_delete` strictly deserialises a `Response100 {code,
+  /// message}` and fails with `InvalidResponsePayload` on anything
+  /// looser. The historical lenient parse keeps callers and tests
+  /// portable.
   ///
   /// # Errors
   ///
@@ -323,7 +389,13 @@ impl ShastaClient {
 
   /// Add a member (component xname) to an HSM group.
   ///
-  /// `POST /smd/hsm/v2/groups/{hsm_group_name}/members`.
+  /// `POST /smd/hsm/v2/groups/{hsm_group_name}/members`. Translates
+  /// the public `Member { id }` body into the generated `MemberId`
+  /// shape (both serialise to `{"id": "..."}` on the wire). The
+  /// response shape returned by CSM (`{code, message}`) doesn't
+  /// match the spec's typed array, so this stays on raw reqwest with
+  /// `handle_json_response` to keep the historical
+  /// `HsmActionResponse` return type intact.
   ///
   /// # Errors
   ///
@@ -356,6 +428,11 @@ impl ShastaClient {
   /// Remove a member (component xname) from an HSM group.
   ///
   /// `DELETE /smd/hsm/v2/groups/{hsm_group_name}/members/{member_id}`.
+  /// Stays on raw reqwest because production CSM responds 204 (No
+  /// Content) on success; the generated `do_group_member_delete` only
+  /// recognises 200 + `Response100` body and rejects 204 as
+  /// `UnexpectedResponse`. A plain `is_success()` check matches the
+  /// historical behaviour and the integration test mock.
   ///
   /// # Errors
   ///
@@ -395,3 +472,4 @@ impl ShastaClient {
     }
   }
 }
+

@@ -11658,9 +11658,8 @@
         "example": "Physical"
       },
       "ResourceName": {
-        "description": "Acceptable format for certain user-requested string identifiers.",
+        "description": "Acceptable format for certain user-requested string identifiers. NOTE: the upstream pattern '^[0-9a-f_\\-.]{1,}$' is wrong — it rejects real-world labels like 'zinal', 'alps', 'x1000c0s0b0n0' (anything containing a letter beyond hex). Pattern stripped here so progenitor doesn't generate a Deserialize impl that fails on every real CSM response.",
         "type": "string",
-        "pattern": "^[0-9a-f_\\-.]{1,}$",
         "example": "resource_name1"
       },
       "ResourceURI.1.0.0": {

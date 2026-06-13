@@ -55,7 +55,9 @@ pub fn filter_system_hsm_groups(hsm_group_vec: Vec<Group>) -> Vec<Group> {
   hsm_group_vec
     .iter()
     .filter(|hsm_group| {
-      let label = hsm_group.label.as_str();
+      // `Group.label` is `ResourceName(pub String)`; reach through `.0`
+      // to get the inner `&str` for the `contains` check.
+      let label = hsm_group.label.0.as_str();
       !SYSTEM_WIDE_HSM_GROUPS.contains(&label)
     })
     .cloned()
@@ -171,10 +173,14 @@ mod tests {
   use super::*;
 
   fn group_with_label(label: &str) -> Group {
+    use crate::hsm::group::types::ResourceName;
     Group {
-      label: label.to_string(),
+      label: ResourceName(label.to_string()),
       description: None,
-      tags: None,
+      // `Group.tags` is now `Vec<ResourceName>` (was `Option<Vec<String>>`)
+      // — an absent `tags` field deserialises as `vec![]` thanks to
+      // `#[serde(default)]`, so the semantics are preserved.
+      tags: vec![],
       exclusive_group: None,
       members: None,
     }
@@ -192,7 +198,7 @@ mod tests {
       group_with_label("user-group"),
     ];
     let out = filter_system_hsm_groups(input);
-    let labels: Vec<&str> = out.iter().map(|g| g.label.as_str()).collect();
+    let labels: Vec<&str> = out.iter().map(|g| g.label.0.as_str()).collect();
     assert_eq!(labels, vec!["user-group"]);
   }
 

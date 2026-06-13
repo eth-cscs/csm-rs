@@ -1,90 +1,42 @@
-//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
-//! shapes are dictated by the API.
-#![allow(missing_docs)]
+//! Re-exports of the progenitor-generated `Group`/`Members` schemas, plus
+//! the hand-rolled `Member` body type used by `hsm_group_post_member`.
+//!
+//! Behaviour deltas vs. the previous hand-written types — driven by the
+//! OpenAPI schema being the source of truth:
+//!
+//! - `Group.label`: was `String`, now `ResourceName` (newtype around
+//!   `String` with `Deref<Target = String>` + `From<String>`). Callers
+//!   that need `&str` go via `&*group.label` (deref) or `group.label.as_str()`.
+//! - `Group.exclusive_group`: was `Option<String>`, now
+//!   `Option<ResourceName>`. Same newtype as `label`.
+//! - `Group.tags`: was `Option<Vec<String>>`, now `Vec<ResourceName>`
+//!   (the spec uses `#[serde(default)]` for an absent array — there is
+//!   no longer a way to distinguish "no tags field" from "empty tags",
+//!   but the on-wire shape is unchanged since both serialise as an
+//!   absent property when empty).
+//! - `Members.ids`: was `Option<Vec<String>>`, now `Vec<XNameRw100>`.
+//!   Same `#[serde(default)]` treatment as `tags`.
+//!
+//! The hand-rolled `Member` (singular) type is kept because the public
+//! `hsm_group_post_member(label, Member)` signature accepts it; on the
+//! wire it serialises to `{"id": "..."}` which is also what the generated
+//! `MemberId` produces. The wrapper translates between them.
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Group {
-  pub label: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tags: Option<Vec<String>>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub members: Option<Members>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "exclusiveGroup")]
-  pub exclusive_group: Option<String>,
-}
+pub use crate::hsm::generated::types::Group100 as Group;
+pub use crate::hsm::generated::types::Members100 as Members;
+pub use crate::hsm::generated::types::ResourceName;
+pub use crate::hsm::generated::types::XNameRw100;
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Members {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub ids: Option<Vec<String>>,
-}
-
+/// Single-member request body for `POST /groups/{label}/members`.
+/// On the wire this is `{"id": "<xname>"}`; the wrapper converts to the
+/// generated `MemberId` shape before delegating.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Member {
+  /// Component xname id of the new/existing member; serialises as
+  /// `{"id": "<xname>"}`. Optional so callers can build a default
+  /// struct without specifying an id.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
 }
-
-impl Group {
-  #[must_use]
-  pub fn new(label: &str, member_vec_opt: Option<Vec<&str>>) -> Self {
-    let members_opt = member_vec_opt.map(|member_vec| Members {
-      ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
-    });
-
-    Self {
-      label: label.to_string(),
-      description: None,
-      tags: None,
-      members: members_opt,
-      exclusive_group: None,
-    }
-  }
-
-  /// Get HSM group members.
-  ///
-  /// Returns owned `Vec<String>` rather than `&[String]` because most
-  /// callers immediately collect/filter/clone the IDs anyway and
-  /// switching to a borrow would ripple through ~10 sites. A
-  /// borrow-returning variant can be added later if it becomes a hot
-  /// path; mutations should go through `Group::members.ids` directly,
-  /// not through `get_members()` (see the bug fix in
-  /// `crate::hsm::group::utils::add_member` for the prior pitfall).
-  #[must_use]
-  pub fn get_members(&self) -> Vec<String> {
-    self
-      .members
-      .as_ref()
-      .and_then(|members| members.ids.clone())
-      .unwrap_or_default()
-  }
-
-  /// Get HSM group members, distinguishing "no members" (`Some(empty)`)
-  /// from "missing field" (`None`). See [`Group::get_members`] for the
-  /// rationale on returning owned `Vec` here.
-  #[must_use]
-  pub fn get_members_opt(&self) -> Option<Vec<String>> {
-    self
-      .members
-      .as_ref()
-      .and_then(|members| members.ids.clone())
-  }
-
-  /// Add list of xnames to HSM group members
-  pub fn add_xnames(&mut self, xnames: &[String]) -> Vec<String> {
-    self.members.as_mut().and_then(|members| {
-      members
-        .ids
-        .as_mut()
-        .map(|ids| ids.extend_from_slice(xnames))
-    });
-
-    self.get_members()
-  }
-}
-

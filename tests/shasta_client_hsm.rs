@@ -38,7 +38,9 @@ async fn hsm_group_get_one_hits_singular_endpoint() {
 
   let client = make_client(&server.uri());
   let g = client.hsm_group_get_one(TEST_TOKEN, "zinal").await.unwrap();
-  assert_eq!(g.label, "zinal");
+  // `Group.label` is the generated `ResourceName(pub String)` newtype;
+  // compare against the inner string to keep this test on plain `&str`.
+  assert_eq!(g.label.0, "zinal");
 }
 
 #[tokio::test]

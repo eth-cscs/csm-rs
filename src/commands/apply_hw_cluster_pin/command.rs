@@ -125,12 +125,16 @@ pub async fn exec(
           "Target HSM group {target_hsm_group_name} does not exist, but the option to create the group has been selected, creating it now."
         );
         if nodryrun {
+          // Post-progenitor field shapes: `label` and `exclusive_group`
+          // wrap a `String` in `ResourceName(pub String)`; `tags` is
+          // a `Vec<ResourceName>` (no `Option`).
+          use crate::hsm::group::types::ResourceName;
           let group = Group {
-            label: target_hsm_group_name.to_string(),
+            label: ResourceName(target_hsm_group_name.to_string()),
             description: None,
-            tags: None,
+            tags: vec![],
             members: None,
-            exclusive_group: Some("false".to_string()),
+            exclusive_group: Some(ResourceName("false".to_string())),
           };
 
           let _ = shasta_client.hsm_group_post(shasta_token, group).await?;

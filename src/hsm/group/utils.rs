@@ -6,7 +6,10 @@ use serde_json::Value;
 
 use crate::{
   error::Error,
-  hsm::{self, group::types::Group},
+  hsm::{
+    self,
+    group::{GroupExt, types::Group},
+  },
   node::utils::validate_xnames_format_and_membership_against_single_hsm,
 };
 
@@ -51,7 +54,9 @@ pub async fn get_group_available(
     )
     .await?;
 
-    group_vec.retain(|group| available_groups_name.contains(&group.label));
+    // `group.label` is now `ResourceName(pub String)`; compare its inner
+    // `String` against the `Vec<String>` of available group names.
+    group_vec.retain(|group| available_groups_name.contains(&group.label.0));
 
     // Remove site-wide HSM groups (alps, prealps, …) — see
     // `hsm::group::hacks` module docs for why.
@@ -93,7 +98,10 @@ pub async fn get_group_name_available(
     .hsm_group_get_all(shasta_auth_token)
     .await?
     .iter()
-    .map(|hsm_value| hsm_value.label.clone())
+    // Unwrap the `ResourceName` newtype to the underlying `String` so
+    // the rest of this function — which builds `Vec<String>` for
+    // downstream consumers — stays unchanged.
+    .map(|hsm_value| hsm_value.label.0.clone())
     .collect::<Vec<String>>();
 
     // Remove site-wide HSM groups (alps, prealps, …) — see
@@ -173,10 +181,17 @@ pub async fn add_member(
     // `Group::get_members(&self) -> Vec<String>` returns by value, so
     // the push went to a throwaway. Mutate `members.ids` directly so
     // the post-call snapshot actually reflects the new member.
-    let members = group
-      .members
-      .get_or_insert_with(crate::hsm::group::types::Members::default);
-    members.ids.get_or_insert_with(Vec::new).push(new_member);
+    //
+    // Post-progenitor: `Members.ids` is `Vec<XNameRw100>` (not
+    // `Option<Vec<String>>`), so wrap the raw xname in the newtype.
+    // `Members100` is not `Default`, so build it explicitly with an
+    // empty `ids` if absent.
+    let members = group.members.get_or_insert_with(|| {
+      crate::hsm::group::types::Members { ids: vec![] }
+    });
+    members
+      .ids
+      .push(crate::hsm::group::types::XNameRw100(new_member));
 
     Ok(group.get_members())
   } else {
@@ -431,8 +446,8 @@ pub async fn get_xname_map_and_filter_by_xname_vec(
       if xname_vec.contains(&xname.as_str()) {
         xname_map
           .entry(xname)
-          .and_modify(|group_vec| group_vec.push(hsm_group.label.clone()))
-          .or_insert(vec![hsm_group.label.clone()]);
+          .and_modify(|group_vec| group_vec.push(hsm_group.label.0.clone()))
+          .or_insert(vec![hsm_group.label.0.clone()]);
       }
     }
   }
@@ -508,13 +523,17 @@ pub fn filter_by_hsm_group_name_and_convert_to_map(
   let mut hsm_group_map: HashMap<String, Vec<String>> = HashMap::new();
 
   for hsm_group in hsm_group_vec {
-    if hsm_name_vec.contains(&hsm_group.label.as_str()) {
-      hsm_group_map.entry(hsm_group.label.clone()).or_insert(
-        hsm_group
-          .members
-          .clone()
-          .and_then(|members| members.ids)
-          .unwrap_or_default(),
+    // `Group.label` is `ResourceName(pub String)`; reach into `.0` for
+    // the `&str` comparison and for the map key.
+    if hsm_name_vec.contains(&hsm_group.label.0.as_str()) {
+      hsm_group_map.entry(hsm_group.label.0.clone()).or_insert(
+        // `Members.ids` is now `Vec<XNameRw100>` (no `Option`). Map the
+        // newtype out; an absent `members` block still yields `vec![]`
+        // via the explicit `map_or_else` rather than a silent
+        // `unwrap_or_default()` on the prior `Option<Vec<…>>`.
+        hsm_group.members.as_ref().map_or_else(Vec::new, |members| {
+          members.ids.iter().map(|x| x.0.clone()).collect()
+        }),
       );
     }
   }
@@ -537,11 +556,17 @@ pub fn filter_by_hsm_group_members_and_convert_to_map(
       .iter()
       .any(|member| member_vec.contains(&member.as_str()))
     {
-      hsm_group_map.entry(hsm_group.label).or_insert(
+      // Same shape gymnastics as
+      // `filter_by_hsm_group_name_and_convert_to_map`: unwrap the
+      // `ResourceName` for the map key and translate `Vec<XNameRw100>`
+      // to `Vec<String>` for the value.
+      let key = hsm_group.label.0;
+      hsm_group_map.entry(key).or_insert(
         hsm_group
           .members
-          .and_then(|members| members.ids)
-          .unwrap_or_default(),
+          .map_or_else(Vec::new, |members| {
+            members.ids.into_iter().map(|x| x.0).collect()
+          }),
       );
     }
   }

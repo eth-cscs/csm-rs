@@ -4,6 +4,7 @@ use crate::{
   cfs,
   error::Error,
   hsm::group::{
+    GroupExt,
     hacks::{filter_roles_and_subroles, filter_system_hsm_group_names},
     types::Group,
   },
@@ -20,9 +21,12 @@ pub fn check_cfs_session_against_groups_available(
   group_available: Vec<Group>,
 ) -> bool {
   group_available.iter().any(|group| {
+    // `Group.label` is now `ResourceName(pub String)`; compare against
+    // the inner `String` so the `Vec<String>` returned by
+    // `get_target_hsm` lines up.
     cfs_session
       .get_target_hsm()
-      .is_some_and(|group_vec| group_vec.contains(&group.label))
+      .is_some_and(|group_vec| group_vec.contains(&group.label.0))
       || cfs_session
         .get_target_xname()
         .is_some_and(|session_xname_vec| {
@@ -373,7 +377,8 @@ pub async fn get_list_xnames_related_to_session(
   {
     group_available_vec
       .into_iter()
-      .filter(|group_available| target_hsm_vec.contains(&group_available.label))
+      // `Group.label` is `ResourceName(pub String)` post-progenitor.
+      .filter(|group_available| target_hsm_vec.contains(&group_available.label.0))
       .flat_map(|group_available| group_available.get_members())
       .collect()
   } else {
