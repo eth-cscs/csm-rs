@@ -10,6 +10,8 @@
 
 use crate::{ShastaClient, error::Error, hsm::generated};
 
+mod service_values;
+
 /// Build a generated HSM `Client` bound to the caller's token.
 ///
 /// Returns `Result<_, Error>`: bearer tokens containing bytes that are
