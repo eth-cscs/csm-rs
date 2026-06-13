@@ -13,8 +13,7 @@ use manta_backend_dispatcher::{
     Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
     HWInventory as FrontEndHWInventory,
     HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
-    HsmActionResponse, NodeMetadataArray,
-    NodeSummary as FrontEndNodeSummary,
+    HsmActionResponse, NodeMetadataArray, NodeSummary as FrontEndNodeSummary,
     hsm::inventory::{
       ComponentEthernetInterface,
       RedfishEndpointArray as FrontEndRedfishEndpointArray,
@@ -95,7 +94,7 @@ impl ComponentTrait for ShastaClient {
       .collect();
 
     let node_metadata_vec_rslt = self
-      .get_all_nodes(auth_token, Some("true"))
+      .get_all_nodes(auth_token, Some("false"))
       .await?
       .components
       .unwrap_or_default()
