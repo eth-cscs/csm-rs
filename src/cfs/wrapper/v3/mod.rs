@@ -9,5 +9,4 @@
 
 mod component;
 mod configuration;
-// Per-resource modules added by Task 8:
-//   mod session;
+mod session;
