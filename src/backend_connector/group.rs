@@ -150,6 +150,7 @@ impl GroupTrait for ShastaClient {
     auth_token: &str,
     hsm_name_vec_opt: Option<&[String]>,
   ) -> Result<Vec<FrontEndGroup>, Error> {
+    dbg!("================================================================");
     // Get all HSM groups
     let hsm_group_backend_vec = self
       .hsm_group_get(auth_token, hsm_name_vec_opt, None)
