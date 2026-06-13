@@ -636,26 +636,36 @@ impl CfsTrait for ShastaClient {
     Vec<manta_backend_dispatcher::types::cfs::component::Component>,
     Error,
   > {
-    let xname_vec: Vec<String> = if let Some(component_ids) = components_ids {
-      component_ids.split(',').map(|v| v.to_string()).collect()
+    // When the caller doesn't specify any ids, do NOT route through
+    // `cfs_component_v3_get_query_batch` — `parallel_batch` short-circuits
+    // on an empty input slice and never issues a request, silently
+    // dropping any `configuration_name`/`status` filters. Send a single
+    // GET (no `ids` query param) instead, which is what every consumer
+    // of "all components matching this filter" expects.
+    let component_vec = if let Some(component_ids) = components_ids {
+      let xname_vec: Vec<String> =
+        component_ids.split(',').map(|v| v.to_string()).collect();
+      self
+        .cfs_component_v3_get_query_batch(
+          shasta_token,
+          configuration_name.map(|v| v.to_string()),
+          &xname_vec,
+          status.map(|v| v.to_string()),
+        )
+        .await
     } else {
-      Vec::new()
+      self
+        .cfs_component_v3_get_query(
+          shasta_token,
+          configuration_name,
+          None,
+          status,
+        )
+        .await
     };
 
-    self
-      .cfs_component_v3_get_query_batch(
-        shasta_token,
-        configuration_name.map(|v| v.to_string()),
-        &xname_vec,
-        status.map(|v| v.to_string()),
-      )
-      .await
-      .map(|component_vec| {
-        component_vec
-          .into_iter()
-          .map(std::convert::Into::into)
-          .collect()
-      })
+    component_vec
+      .map(|cs| cs.into_iter().map(std::convert::Into::into).collect())
       .map_err(Error::from)
   }
 }
