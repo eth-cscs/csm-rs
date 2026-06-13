@@ -10,12 +10,14 @@
 //! - [`types`] — request/response shapes for the BSS API.
 //! - [`utils`] — convenience helpers built on top of the raw client.
 
+pub(crate) mod generated;
 pub mod http_client;
 /// Integration-style tests for the BSS namespace.
 #[cfg(test)]
 pub mod tests;
 pub mod types;
 pub mod utils;
+mod wrapper;
 
 /// Bidirectional `From` impls between [`types`] and the dispatcher's
 /// BSS mirror types. Gated behind the `manta-dispatcher` Cargo feature.
