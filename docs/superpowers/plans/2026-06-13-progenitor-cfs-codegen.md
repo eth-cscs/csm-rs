@@ -4,7 +4,7 @@
 
 **Goal:** Replace the hand-written `src/cfs/` HTTP client and wire-format types with code generated from `src/cfs/csm_api_docs.yaml` (OpenAPI 3.0.2), preserving the existing public `ShastaClient` API and the v2/v3 dual surface.
 
-**Architecture:** Single-step pipeline (no Swagger 2.0 conversion needed — CFS spec is already OpenAPI 3.0.2). `build.rs` runs `progenitor::Generator` on `csm_api_docs.yaml` directly and writes `$OUT_DIR/cfs_generated.rs` next to the existing `hsm_generated.rs`. Output is `include!`-d into a `pub(crate)` `src/cfs/generated.rs` module. A thin wrapper layer at `src/cfs/wrapper/` maps the existing `cfs_*` methods on `ShastaClient` to generated client calls; methods that don't fit cleanly stay on raw `reqwest` with documented rationale (per the established partial-migration policy from the HSM migration).
+**Architecture:** Single-step pipeline (no Swagger 2.0 conversion needed — CFS spec is already OpenAPI 3.0.2). `build.rs` runs `progenitor::Generator` on `csm_api_docs.yaml` directly and writes `$OUT_DIR/cfs_generated.rs` next to the existing `hsm_generated.rs`. Output is `include!`-d into a single `pub(crate)` `src/cfs/generated.rs` module that contains BOTH v2 and v3 surfaces. A thin wrapper layer at `src/cfs/wrapper/` maps the existing `cfs_*` methods on `ShastaClient` to generated client calls, organised by API version (`wrapper/v2/` and `wrapper/v3/`) so the version boundary is visible in the directory tree. Methods that don't fit cleanly stay on raw `reqwest` with documented rationale (per the established partial-migration policy from the HSM migration).
 
 **Tech Stack:** Rust (edition 2021), `progenitor ~ 0.8` (already pulled in by the HSM work), `openapiv3 ~ 2` (already in build-dependencies), `reqwest 0.12`, `serde 1`, `tokio 1.45`.
 
@@ -406,7 +406,9 @@ git commit -m "feat(cfs): extend build.rs to generate CFS client from OpenAPI 3.
 
 **Files:**
 - Create: `src/cfs/generated.rs`
-- Create: `src/cfs/wrapper/mod.rs`
+- Create: `src/cfs/wrapper/mod.rs` — shared `gen_client` / `map_err` / `run` and the `mod v2; mod v3;` declarations.
+- Create: `src/cfs/wrapper/v2/mod.rs` — empty placeholder; per-resource `mod component; mod configuration; mod session;` lines are added by Tasks 3, 5, 7.
+- Create: `src/cfs/wrapper/v3/mod.rs` — empty placeholder; per-resource `mod component; mod configuration; mod session;` lines are added by Tasks 4, 6, 8.
 - Modify: `src/cfs/mod.rs`
 
 This task creates the CFS-side analogues of `src/hsm/generated.rs` and `src/hsm/wrapper/mod.rs`. The structure is intentionally symmetric — anyone who learned the HSM layout will recognise the CFS one.
@@ -523,7 +525,54 @@ where
 
 If the `progenitor_client::Error<E>` enum variant names don't match, the compiler will tell you exactly which arms are wrong (Section C of the reference doc has the truth).
 
-- [ ] **Step 3: Wire the new modules into `src/cfs/mod.rs`**
+- [ ] **Step 3: Create the v2 and v3 wrapper submodule shells**
+
+The v2/v3 subdirectories exist so per-resource wrappers (Tasks 3-8) land in
+`src/cfs/wrapper/v2/component.rs`, `src/cfs/wrapper/v3/component.rs`, etc.
+Create the two `mod.rs` placeholders so the compiler sees the modules now,
+even though they're empty:
+
+Create `src/cfs/wrapper/v2/mod.rs`:
+```rust
+//! `manta`-facing CFS v2 wrapper methods. Per-resource sub-modules
+//! (`component`, `configuration`, `session`) attach
+//! `impl ShastaClient { pub async fn cfs_<resource>_v2_*() }` blocks
+//! to the public client. Each sub-module's docstring records the
+//! per-method routing decision (generated client vs raw reqwest).
+//!
+//! See `crate::cfs::wrapper` for the shared `gen_client` / `map_err`
+//! / `run` helpers — they're version-agnostic and serve both v2 and v3.
+
+// Per-resource modules are added by Tasks 3, 5, 7:
+//   mod component;
+//   mod configuration;
+//   mod session;
+```
+
+Create `src/cfs/wrapper/v3/mod.rs`:
+```rust
+//! `manta`-facing CFS v3 wrapper methods. Per-resource sub-modules
+//! (`component`, `configuration`, `session`) attach
+//! `impl ShastaClient { pub async fn cfs_<resource>_v3_*() }` blocks
+//! to the public client. Each sub-module's docstring records the
+//! per-method routing decision (generated client vs raw reqwest).
+//!
+//! See `crate::cfs::wrapper` for the shared `gen_client` / `map_err`
+//! / `run` helpers — they're version-agnostic and serve both v2 and v3.
+
+// Per-resource modules are added by Tasks 4, 6, 8:
+//   mod component;
+//   mod configuration;
+//   mod session;
+```
+
+At the bottom of `src/cfs/wrapper/mod.rs` (the file from Step 2), add:
+```rust
+mod v2;
+mod v3;
+```
+
+- [ ] **Step 4: Wire the new modules into `src/cfs/mod.rs`**
 
 Open `src/cfs/mod.rs` and read it first to understand the existing layout:
 ```bash
@@ -536,18 +585,18 @@ pub(crate) mod generated;
 mod wrapper;
 ```
 
-- [ ] **Step 4: Verify it compiles**
+- [ ] **Step 5: Verify it compiles**
 
 ```bash
 cargo build 2>&1 | tail -10
 ```
-Expected: `Finished` with two dead-code warnings for `cfs::wrapper::gen_client`, `cfs::wrapper::map_err`, `cfs::wrapper::run` (and possibly more once Tasks 3+ start using them). If `progenitor_client::Error` variant names don't match, the compiler will tell you exactly which arms are wrong — update them against Section C of the reference doc.
+Expected: `Finished` with dead-code warnings for `cfs::wrapper::gen_client`, `cfs::wrapper::map_err`, `cfs::wrapper::run`, plus rust-analyzer "module empty" hints for `wrapper/v2/mod.rs` and `wrapper/v3/mod.rs` (expected — Tasks 3-8 fill them in). If `progenitor_client::Error` variant names don't match, the compiler will tell you exactly which arms are wrong — update them against Section C of the reference doc.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/cfs/generated.rs src/cfs/wrapper/mod.rs src/cfs/mod.rs
-git commit -m "feat(cfs): scaffold generated module + wrapper skeleton (gen_client, map_err, run)"
+git add src/cfs/generated.rs src/cfs/wrapper/ src/cfs/mod.rs
+git commit -m "feat(cfs): scaffold generated module + wrapper skeleton (v2/v3 split)"
 ```
 
 ---
@@ -566,7 +615,8 @@ For every migration task below, the same rhythm applies:
 ### Task 3: Migrate `cfs::component` v2 (9 methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/component_v2.rs`
+- Create: `src/cfs/wrapper/v2/component.rs`
+- Modify: `src/cfs/wrapper/v2/mod.rs` (add `mod component;`)
 - Modify: `src/cfs/component/http_client/v2/types.rs`
 - Modify: `src/cfs/component/http_client/mod.rs` (drop the `pub mod v2;` line for the bits we replace; keep its `pub use` re-exports)
 - Delete: `src/cfs/component/http_client/v2/mod.rs`
@@ -601,7 +651,7 @@ If the file exists and is large (>100 lines), Task 9/10/11 HSM precedent applies
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/component_v2.rs`. Module docstring should document each method's routing decision (progenitor vs raw reqwest). Template (the example shows ONE method routed through `run`; replicate the pattern for each `cfs_component_v2_*` method, looking up the generated name in Section B of the reference doc):
+Create `src/cfs/wrapper/v2/component.rs`. Module docstring should document each method's routing decision (progenitor vs raw reqwest). Template (the example shows ONE method routed through `run`; replicate the pattern for each `cfs_component_v2_*` method, looking up the generated name in Section B of the reference doc):
 
 ```rust
 //! Wrapper for `/cfs/v2/components`. Replaces
@@ -663,9 +713,9 @@ pub use crate::cfs::generated::types::{
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`, add at the bottom:
+In `src/cfs/wrapper/v2/mod.rs`, replace the `// mod component;` placeholder comment with:
 ```rust
-mod component_v2;
+mod component;
 ```
 
 - [ ] **Step 6: Update `src/cfs/component/http_client/mod.rs`**
@@ -690,7 +740,7 @@ Expected: Finished, all baseline tests pass.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/component_v2.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v2/component.rs src/cfs/wrapper/v2/mod.rs \
         src/cfs/component/http_client/v2/types.rs \
         src/cfs/component/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v2/components wrapper from progenitor"
@@ -701,7 +751,8 @@ git commit -m "refactor(cfs): generate /cfs/v2/components wrapper from progenito
 ### Task 4: Migrate `cfs::component` v3 (10 methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/component_v3.rs`
+- Create: `src/cfs/wrapper/v3/component.rs`
+- Modify: `src/cfs/wrapper/v3/mod.rs` (add `mod component;`)
 - Modify: `src/cfs/component/http_client/v3/types.rs`
 - Modify: `src/cfs/component/http_client/mod.rs` (drop the `pub mod v3;` line)
 - Delete: `src/cfs/component/http_client/v3/mod.rs`
@@ -734,7 +785,7 @@ Same decision rule as Task 3 Step 2.
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/component_v3.rs` following the same pattern as Task 3 Step 3. Per-method routing decisions documented in the module docstring. Pay particular attention to `cfs_component_v3_get_query_batch` — its existing implementation in `v3/mod.rs:119` uses the `parallel_batch` chunking helper from `common/http.rs`. Likely candidates to keep on raw reqwest: the parallel/batched methods (they aren't single-endpoint operations) and any method that returns a `reqwest::Response`. The single-endpoint typed methods (`do_v3_component_get`, `do_v3_component_put`, `do_v3_component_patch`, `do_v3_component_delete`) are the cleanest candidates for progenitor routing.
+Create `src/cfs/wrapper/v3/component.rs` following the same pattern as Task 3 Step 3. Per-method routing decisions documented in the module docstring. Pay particular attention to `cfs_component_v3_get_query_batch` — its existing implementation in `v3/mod.rs:119` uses the `parallel_batch` chunking helper from `common/http.rs`. Likely candidates to keep on raw reqwest: the parallel/batched methods (they aren't single-endpoint operations) and any method that returns a `reqwest::Response`. The single-endpoint typed methods (`do_v3_component_get`, `do_v3_component_put`, `do_v3_component_patch`, `do_v3_component_delete`) are the cleanest candidates for progenitor routing.
 
 - [ ] **Step 4: Decide types.rs strategy**
 
@@ -742,9 +793,9 @@ Same rule as Task 3 Step 4. Re-export or keep hand-written based on `v3/dispatch
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`:
+In `src/cfs/wrapper/v3/mod.rs`:
 ```rust
-mod component_v3;
+mod component;
 ```
 
 - [ ] **Step 6: Update `src/cfs/component/http_client/mod.rs`**
@@ -767,7 +818,7 @@ cargo test --lib 2>&1 | tail -5
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/component_v3.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v3/component.rs src/cfs/wrapper/v3/mod.rs \
         src/cfs/component/http_client/v3/types.rs \
         src/cfs/component/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v3/components wrapper from progenitor"
@@ -778,7 +829,8 @@ git commit -m "refactor(cfs): generate /cfs/v3/components wrapper from progenito
 ### Task 5: Migrate `cfs::configuration` v2 (4 methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/configuration_v2.rs`
+- Create: `src/cfs/wrapper/v2/configuration.rs`
+- Modify: `src/cfs/wrapper/v2/mod.rs` (add `mod configuration;`)
 - Modify: `src/cfs/configuration/http_client/v2/types/mod.rs` and its sub-files
 - Modify: `src/cfs/configuration/http_client/mod.rs`
 - Delete: `src/cfs/configuration/http_client/v2/mod.rs`
@@ -808,7 +860,7 @@ The configuration submodule has a more elaborate types structure (separate `_req
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/configuration_v2.rs` following the same pattern. Look up the generated names for `V2ConfigurationUpdateRequest` and whatever the response type is named in Section A.
+Create `src/cfs/wrapper/v2/configuration.rs` following the same pattern. Look up the generated names for `V2ConfigurationUpdateRequest` and whatever the response type is named in Section A.
 
 - [ ] **Step 4: Decide types strategy**
 
@@ -816,9 +868,9 @@ Same rule as Tasks 3 and 4. The configuration v2 module has more hand-rolled typ
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`:
+In `src/cfs/wrapper/v2/mod.rs`:
 ```rust
-mod configuration_v2;
+mod configuration;
 ```
 
 - [ ] **Step 6: Update `src/cfs/configuration/http_client/mod.rs`**
@@ -841,7 +893,7 @@ cargo test --lib 2>&1 | tail -5
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/configuration_v2.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v2/configuration.rs src/cfs/wrapper/v2/mod.rs \
         src/cfs/configuration/http_client/v2/types/ \
         src/cfs/configuration/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v2/configurations wrapper from progenitor"
@@ -852,7 +904,8 @@ git commit -m "refactor(cfs): generate /cfs/v2/configurations wrapper from proge
 ### Task 6: Migrate `cfs::configuration` v3 (3 methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/configuration_v3.rs`
+- Create: `src/cfs/wrapper/v3/configuration.rs`
+- Modify: `src/cfs/wrapper/v3/mod.rs` (add `mod configuration;`)
 - Modify: `src/cfs/configuration/http_client/v3/types/mod.rs` and its sub-files
 - Modify: `src/cfs/configuration/http_client/mod.rs`
 - Delete: `src/cfs/configuration/http_client/v3/mod.rs`
@@ -880,7 +933,7 @@ wc -l src/cfs/configuration/http_client/v3/types/dispatcher_conv.rs
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/configuration_v3.rs` following the established pattern. The v3 surface adds a `/v3/sources` endpoint family that's NOT covered by the existing `cfs_configuration_v3_*` methods — leave those out of scope here; if needed they're a follow-up. The plan covers what exists in `src/cfs/configuration/http_client/v3/mod.rs` today.
+Create `src/cfs/wrapper/v3/configuration.rs` following the established pattern. The v3 surface adds a `/v3/sources` endpoint family that's NOT covered by the existing `cfs_configuration_v3_*` methods — leave those out of scope here; if needed they're a follow-up. The plan covers what exists in `src/cfs/configuration/http_client/v3/mod.rs` today.
 
 - [ ] **Step 4: Decide types strategy**
 
@@ -888,9 +941,9 @@ Same rule. Likely outcome: keep hand-written types because of the request/respon
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`:
+In `src/cfs/wrapper/v3/mod.rs`:
 ```rust
-mod configuration_v3;
+mod configuration;
 ```
 
 - [ ] **Step 6: Update `src/cfs/configuration/http_client/mod.rs`**
@@ -913,7 +966,7 @@ cargo test --lib 2>&1 | tail -5
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/configuration_v3.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v3/configuration.rs src/cfs/wrapper/v3/mod.rs \
         src/cfs/configuration/http_client/v3/types/ \
         src/cfs/configuration/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v3/configurations wrapper from progenitor"
@@ -924,7 +977,8 @@ git commit -m "refactor(cfs): generate /cfs/v3/configurations wrapper from proge
 ### Task 7: Migrate `cfs::session` v2 (5+ methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/session_v2.rs`
+- Create: `src/cfs/wrapper/v2/session.rs`
+- Modify: `src/cfs/wrapper/v2/mod.rs` (add `mod session;`)
 - Modify: `src/cfs/session/http_client/v2/types.rs`
 - Modify: `src/cfs/session/http_client/mod.rs`
 - Delete: `src/cfs/session/http_client/v2/mod.rs`
@@ -944,7 +998,7 @@ wc -l src/cfs/session/http_client/v2/dispatcher_conv.rs
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/session_v2.rs`. Same pattern; per-method docstring rationale.
+Create `src/cfs/wrapper/v2/session.rs`. Same pattern; per-method docstring rationale.
 
 - [ ] **Step 4: Decide types.rs strategy**
 
@@ -952,9 +1006,9 @@ Same rule as Task 3 Step 4.
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`:
+In `src/cfs/wrapper/v2/mod.rs`:
 ```rust
-mod session_v2;
+mod session;
 ```
 
 - [ ] **Step 6: Update `src/cfs/session/http_client/mod.rs`**
@@ -977,7 +1031,7 @@ cargo test --lib 2>&1 | tail -5
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/session_v2.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v2/session.rs src/cfs/wrapper/v2/mod.rs \
         src/cfs/session/http_client/v2/types.rs \
         src/cfs/session/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v2/sessions wrapper from progenitor"
@@ -988,7 +1042,8 @@ git commit -m "refactor(cfs): generate /cfs/v2/sessions wrapper from progenitor"
 ### Task 8: Migrate `cfs::session` v3 (5+ methods)
 
 **Files:**
-- Create: `src/cfs/wrapper/session_v3.rs`
+- Create: `src/cfs/wrapper/v3/session.rs`
+- Modify: `src/cfs/wrapper/v3/mod.rs` (add `mod session;`)
 - Modify: `src/cfs/session/http_client/v3/types.rs`
 - Modify: `src/cfs/session/http_client/mod.rs`
 - Delete: `src/cfs/session/http_client/v3/mod.rs`
@@ -1007,7 +1062,7 @@ wc -l src/cfs/session/http_client/v3/dispatcher_conv.rs
 
 - [ ] **Step 3: Create the wrapper file**
 
-Create `src/cfs/wrapper/session_v3.rs` following the established pattern.
+Create `src/cfs/wrapper/v3/session.rs` following the established pattern.
 
 - [ ] **Step 4: Decide types.rs strategy**
 
@@ -1015,9 +1070,9 @@ Same rule.
 
 - [ ] **Step 5: Register the wrapper file**
 
-In `src/cfs/wrapper/mod.rs`:
+In `src/cfs/wrapper/v3/mod.rs`:
 ```rust
-mod session_v3;
+mod session;
 ```
 
 - [ ] **Step 6: Update `src/cfs/session/http_client/mod.rs`**
@@ -1040,7 +1095,7 @@ cargo test --lib 2>&1 | tail -5
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/cfs/wrapper/session_v3.rs src/cfs/wrapper/mod.rs \
+git add src/cfs/wrapper/v3/session.rs src/cfs/wrapper/v3/mod.rs \
         src/cfs/session/http_client/v3/types.rs \
         src/cfs/session/http_client/mod.rs
 git commit -m "refactor(cfs): generate /cfs/v3/sessions wrapper from progenitor"
