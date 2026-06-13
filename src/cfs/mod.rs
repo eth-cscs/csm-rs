@@ -23,8 +23,10 @@ pub mod cleanup_session;
 pub mod common;
 pub mod component;
 pub mod configuration;
+pub(crate) mod generated;
 pub mod health;
 pub mod session;
+mod wrapper;
 /// Integration-style tests for the CFS namespace.
 #[cfg(test)]
 pub mod tests;
