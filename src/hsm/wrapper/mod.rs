@@ -13,6 +13,8 @@ use crate::{ShastaClient, error::Error, hsm::generated};
 mod component;
 mod component_status;
 mod group;
+mod hw_component;
+pub(crate) mod hw_component_types;
 mod memberships;
 mod service_values;
 
