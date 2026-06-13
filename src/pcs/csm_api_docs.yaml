@@ -89,9 +89,59 @@ servers:
   - url: http://localhost:26970
     description: Localhost access to power-control
 paths:
+  # ============================================================================
+  # PATCH (csm-rs): F.1 — operationId synthesised on all 13 path/verb combos.
+  #
+  # Upstream PCS ships with NO `operationId:` declarations. Progenitor 0.8
+  # panics at codegen time without them:
+  #     UnexpectedFormat("path /transitions is missing operation ID")
+  # We add an operationId to every operation, named to mirror the historical
+  # csm-rs function names in src/pcs/{transitions,power_status,power_cap}/.
+  #
+  # The 13 patched (path, verb, operationId) triples are:
+  #   POST   /transitions                  -> post_transition
+  #   GET    /transitions                  -> get_transitions
+  #   GET    /transitions/{transitionID}   -> get_transition
+  #   DELETE /transitions/{transitionID}   -> abort_transition
+  #   GET    /power-status                 -> get_power_status
+  #   POST   /power-status                 -> post_power_status
+  #   POST   /power-cap/snapshot           -> post_power_cap_snapshot
+  #   PATCH  /power-cap                    -> patch_power_cap
+  #   GET    /power-cap                    -> get_power_cap_tasks
+  #   GET    /power-cap/{taskID}           -> get_power_cap_task
+  #   GET    /liveness                     -> get_liveness
+  #   GET    /readiness                    -> get_readiness
+  #   GET    /health                       -> get_health
+  #
+  # If you re-sync this spec from upstream, RE-APPLY these operationIds.
+  # DO NOT revert.
+  # ============================================================================
+  #
+  # ============================================================================
+  # PATCH (csm-rs): F.2 — `application/error` rewritten to `application/json`
+  # on every 4xx/5xx response body (19 occurrences across the file), plus the
+  # redundant `application/problem+json` entry on /health's 405 response
+  # dropped (both pointed at Problem7807 — alias was a no-op).
+  #
+  # Progenitor's "extract response" step considers ONLY the `application/json`
+  # media type for the typed return path; non-json media types fall through
+  # to `progenitor_client::ByteStream`, which does not implement Debug. With
+  # the original `application/error:` keys in place, the generated file
+  # failed with 11 x `error[E0277]: ByteStream doesn't implement Debug` at
+  # every 4xx/5xx match arm.
+  #
+  # The rewrite is mechanical: every `application/error:` content key under
+  # `responses.<status>.content.*` was renamed to `application/json:`. Look
+  # for `application/json:` paired with `$ref: '#/components/schemas/Problem7807'`
+  # under any 4xx/5xx response below; that pairing is the patched form.
+  #
+  # If you re-sync this spec from upstream, RE-APPLY the rewrite.
+  # DO NOT revert.
+  # ============================================================================
 
   /transitions:
     post:
+      operationId: post_transition
       summary: Start a transition
       description: |
         Request to perform power transitions.
@@ -112,19 +162,20 @@ paths:
         400:
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         500:
           description: Database error prevented starting the transition
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
         - transitions
     get:
-      summary: Retrieve all requested power transitions 
+      operationId: get_transitions
+      summary: Retrieve all requested power transitions
       description: |
         Return a complete list of the requested power transitions,
         with status information. Note that records older than 24 hours
@@ -139,7 +190,7 @@ paths:
         500:
           description: Database error prevented getting the transitions
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
@@ -147,9 +198,10 @@ paths:
 
   /transitions/{transitionID}:
     get:
+      operationId: get_transition
       summary: Retrieve transition status by ID
       description: |
-        Retrieve the transition status information for the specified 
+        Retrieve the transition status information for the specified
         transitionID.
       parameters:
         - name: transitionID
@@ -169,19 +221,20 @@ paths:
         400:
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         500:
           description: Database error prevented getting the transition
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
         - transitions
 
     delete:
+      operationId: abort_transition
       summary: Abort an in-progress transition
       description: Attempt to abort an in-progress transition by transitionID
       parameters:
@@ -202,19 +255,19 @@ paths:
         400:
           description: Specified transition is complete
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         404:
           description: TransitionID not found
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         500:
           description: Database error prevented abort signaling
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
@@ -222,17 +275,40 @@ paths:
 
   /power-status:
     get:
+      operationId: get_power_status
       summary: Retrieve the power state
       description: |
         Retrieve the power state of the components specified by xname.
+      # ========================================================================
+      # PATCH (csm-rs): F.3 — `xname` query parameter inlined as `type: string`
+      # (was `$ref: '#/components/schemas/non_empty_string_list'` with
+      # `style: form, explode: true`, i.e. array newtype `Vec<String>`).
+      #
+      # Progenitor 0.8 cannot serialise array query parameters: it
+      # unconditionally calls `.to_string()` on each query value, and
+      # `Vec<String>` does not implement `Display`. The original spec
+      # produced:
+      #     error[E0599]: the method `to_string` exists for reference
+      #     `&&Vec<String>`, but its trait bounds were not satisfied
+      #
+      # The patch downgrades `xname` to a single string. Callers can either
+      # supply one xname per call, or use `POST /power-status` (which takes a
+      # JSON body with an `xnames` array — unaffected by this patch).
+      #
+      # The `non_empty_string_list` schema is still defined in
+      # `components.schemas` and progenitor still emits it as
+      # `NonEmptyStringList(pub Vec<String>)`, but nothing references it
+      # after this patch. (This is the only callsite that referenced it.)
+      #
+      # If you re-sync this spec from upstream, RE-APPLY this inline.
+      # DO NOT revert.
+      # ========================================================================
       parameters:
         - in: query
           name: xname
           required: false
           schema:
-            $ref: '#/components/schemas/non_empty_string_list'
-          style: form
-          explode: true
+            type: string
 
         - in: query
           name: powerStateFilter
@@ -258,18 +334,19 @@ paths:
         400:
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         500:
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
         - power-status
     post:
+      operationId: post_power_status
       summary: Retrieve the power state
       description: |
         Retrieve the power state of the components specified by xname.
@@ -290,13 +367,13 @@ paths:
         400:
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         500:
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
       tags:
@@ -305,6 +382,7 @@ paths:
 
   /power-cap/snapshot:
     post:
+      operationId: post_power_cap_snapshot
       tags:
         - power-cap
       summary: Take a power cap snapshot for a set of targets
@@ -328,18 +406,19 @@ paths:
         '400':
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         '500':
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
 
   /power-cap:
     patch:
+      operationId: patch_power_cap
       tags:
         - power-cap
       summary: Set power capping parameters on a set of targets
@@ -364,16 +443,17 @@ paths:
         '400':
           description: Bad Request
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         '500':
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
     get:
+      operationId: get_power_cap_tasks
       tags:
         - power-cap
       summary: Get a list of power-cap tasks (snapshots or sets)
@@ -387,12 +467,13 @@ paths:
         '500':
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
 
   /power-cap/{taskID}:
     get:
+      operationId: get_power_cap_task
       tags:
         - power-cap
       summary: Get power cap or snapshot information
@@ -415,18 +496,19 @@ paths:
         '404':
           description: TaskID not found
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
         '500':
           description: Database error
           content:
-            application/error:
+            application/json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
 
   /liveness:
     get:
+      operationId: get_liveness
       tags:
         - cli_ignore
       summary: Get liveness status of the service
@@ -443,6 +525,7 @@ paths:
   
   /readiness:
     get:
+      operationId: get_readiness
       tags:
         - cli_ignore
       summary: Get readiness status of the service
@@ -459,6 +542,7 @@ paths:
 
   /health:
     get:
+      operationId: get_health
       tags:
         - cli_ignore
       summary: Query the health of the service
@@ -490,9 +574,6 @@ paths:
             Operation Not Permitted. For /health, only GET operations are allowed.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Problem7807'
-            application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem7807'
 
