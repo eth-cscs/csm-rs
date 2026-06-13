@@ -1,0 +1,2650 @@
+#
+# MIT License
+#
+# (C) Copyright 2021-2025 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+# Image Management Service API Specification
+openapi: 3.0.2
+
+info:
+  description: >
+    The Image Management Service (IMS) creates and customizes boot images which run on compute
+    nodes. A boot image consists of multiple image artifacts including the root file system
+    (rootfs), kernel, and initrd. There are optionally additional artifacts such as debug symbols,
+    etc.
+
+    IMS uses the open source Kiwi-NG tool to build image roots from compressed Kiwi image
+    descriptions (recipes). Kiwi-NG is able to build images based on a variety of different Linux
+    distributions, specifically SUSE, RHEL, and their derivatives.
+
+    A user may choose to use the provided recipes or customize Kiwi recipes to define the image to
+    be built.
+
+    IMS creates and customizes existing boot images and maintains metadata about the images and
+    related artifacts. IMS accesses and stores the recipes, images, and related artifacts in the
+    artifact repository.
+
+    ## Resources
+
+      ### /images
+
+        Manipulate ImageRecords, which relate multiple image artifact records together.
+
+      ### /jobs
+
+        Initiate image creation or customization.  It creates the image which it uploads to the
+        artifact repository, and maintains associated metadata in IMS for subsequent access. It
+        also customizes a pre-existing image.
+
+      ### /public-keys
+
+        Manage the public keys which enable SSH access. Public-keys are created and uploaded by the
+        administrator to allow access to SSH shells provided by IMS during image creation and
+        customization.
+
+      ### /recipes
+
+        Manipulate the RecipeRecord metadata about the Kiwi-NG recipes which are stored in the
+        artifact repository. Recipes themselves define how an image is to be created, including the
+        RPMs that will be installed, the RPM repositories to use, etc.
+
+      ### /remote-build-nodes
+
+        Manage the set of nodes set up for running remote jobs. These are jobs that are
+        run on nodes outside of the set of Kubernetes worker nodes. They can be used to
+        offload work from the worker nodes, or match the architecture of the images
+        being created or customized.
+
+        The remote node must be fully configured and booted into the 'remote-node-image'
+        by the site-admin prior to registration in IMS. It will be tested prior to job
+        launch and if it is not accessible or correctly configured it will not be used.
+
+    ## Workflows
+
+      There are two main workflows using the IMS - image creation and image customization.
+      The IMS /jobs endpoint directs the creation of a new image, or the customization of an
+      existing image, depending on the POST /jobs request job_type body parameter.
+
+      ### Add a New Recipe
+
+        #### GET /recipes
+
+          Obtain list of existing recipes which are registered with IMS.
+
+        #### Upload recipe using CLI
+
+          Upload a new recipe to the artifact repository using the cray artifacts command, if necessary.
+          Refer to Administrator's Guide for instructions.
+
+        #### POST /recipes
+
+          Register new recipe with IMS.
+
+      ### Manage Public Keys
+
+        #### GET /public-keys
+
+          Obtain list of available public-keys.
+
+        #### POST /public-keys
+
+          Add a new public-key.
+
+      ### Create a New Image
+
+        #### GET /public-keys
+
+          Get a list of available keys.
+
+        #### GET /recipes
+
+          Get recipe ID.
+
+        #### POST /jobs
+
+          Use Kiwi-NG to create a new IMS image and image artifacts from a recipe. Specify job_type
+          "create" in JobRecord. Request body parameters supply the recipe ID and public key ID.
+          Upon success, the artifact repository contains the new image and the image artifacts,
+          IMS contains a new ImageRecord with metadata for the new image. During the creation
+          process, IMS may create an SSH shell for administrator interaction with the image for
+          debugging, if necessary.  (enable_debug = true in JobRecord)
+
+      ### Modify an Image
+
+        #### GET /public-keys
+
+          Get a list of available keys.
+
+        #### GET /images
+
+          Obtain a list of available images registered in IMS.
+
+        #### POST /jobs
+
+          To create a modified version of an existing IMS image, specify job_type "customize".
+          Specify the IMS ID of the existing image, and public key.  This request creates a copy of
+          the existing image, and then an interactive SSH shell in which to modify the copy of the
+          image. Upon success, the artifact repository contains the original image and a modified
+          version of it. IMS contains a new ImageRecord with metadata for the modified image. The
+          original image is still intact.  A user may want to install additional software, install
+          licenses, change the timezone, add mount points, etc.
+
+  version: "0.0.0-imsserv"
+  title: Image Management Service
+  license:
+    name: Hewlett Packard Enterprise Development LP
+    url: http://www.hpe.com/
+servers:
+  - url: 'https://api-gw-service-nmn.local/apis/ims'
+    description: The production IMS API server. Accessed from outside the mesh.
+  - url: 'cray-ims.services.svc.cluster.local'
+    description: Accessed from inside the mesh.
+tags:
+  - name: images
+    description: "Interact with image records"
+  - name: healthz
+    description: "Interact with kubernetes healthz checks"
+  - name: jobs
+    description: "Interact with job records"
+  - name: recipes
+    description: "Interact with recipe records"
+  - name: public keys
+    description: "Interact with public key records"
+  - name: version
+    description: "Get version"
+  - name: v2
+    description: "IMS v2 API"
+  - name: v3
+    description: "IMS v3 API"
+
+paths:
+  /v3/recipes:
+    get:
+      summary: Retrieve RecipeRecords
+      operationId: get_all_v3_recipes
+      tags:
+        - recipes
+        - v3
+      description: Retrieve all RecipeRecords that are registered with the IMS.
+      responses:
+        '200':
+          description: A collection of recipes
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RecipeRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new recipe
+      operationId: post_v3_recipes
+      tags:
+        - recipes
+        - v3
+      description: >-
+        Create a new RecipeRecord in IMS.
+
+        A compressed Kiwi-NG image description is actually stored in the artifact repository.
+        This IMS RecipeRecord contains metadata for the recipe.
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeRecord'
+        description: Recipe record
+        required: true
+      responses:
+        '201':
+          description: New Recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Soft delete all RecipeRecords
+      operationId: delete_all_v3_recipes
+      tags:
+        - recipes
+        - v3
+      description: >-
+        Delete all RecipeRecords. Deleted recipes are soft deleted and added to the /deleted/recipes endpoint.
+        The S3 key for associated artifacts is renamed.
+
+      responses:
+        '204':
+          description: Recipe records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/recipes/{recipe_id}':
+    parameters:
+      - $ref: '#/components/parameters/recipe_id'
+    get:
+      summary: Retrieve RecipeRecord by ID
+      operationId: get_v3_recipe
+      tags:
+        - recipes
+        - v3
+      description: Retrieve a RecipeRecord by ID
+      responses:
+        '200':
+          description: A recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update a recipe
+      operationId: patch_v3_recipe
+      tags:
+        - recipes
+        - v3
+      description: Update a RecipeRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipePatchRecord'
+        description: Recipe Patch record
+        required: true
+      responses:
+        '200':
+          description: Updated Recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Soft delete a RecipeRecord by ID
+      operationId: delete_v3_recipe
+      tags:
+        - recipes
+        - v3
+      description: >-
+        Delete a RecipeRecord by ID. The deleted recipes are soft deleted and added to the /deleted/recipes endpoint.
+        The S3 key for the associated artifact is renamed.
+
+      responses:
+        '204':
+          description: Recipe record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/images:
+    get:
+      summary: List all ImageRecords
+      operationId: get_all_v3_images
+      tags:
+        - images
+        - v3
+      description: >-
+        Retrieve a list of ImageRecords indicating images that are registered
+        with IMS. The ImageRecord ID is used to associate multiple image artifacts
+        together (kernel, initrd, rootfs (squashfs)).
+
+      responses:
+        '200':
+          description: A collection of images
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ImageRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new ImageRecord
+      operationId: post_v3_image
+      tags:
+        - images
+        - v3
+      description: Create a new ImageRecord and register the new image with IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageCreateRecord'
+        description: Image record to create
+        required: true
+      responses:
+        '201':
+          description: New image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Soft delete all ImageRecords
+      operationId: delete_all_v3_images
+      tags:
+        - images
+        - v3
+      description: >-
+        Delete all ImageRecords. Deleted images are soft deleted and added to the /deleted/images endpoint.
+        The S3 key for the associated image manifests are renamed.
+
+      responses:
+        '204':
+          description: Image records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/images/{image_id}':
+    parameters:
+      - $ref: '#/components/parameters/image_id'
+    get:
+      summary: Retrieve image by image_id
+      operationId: get_v3_image
+      tags:
+        - images
+        - v3
+      description: Retrieve an image by image_id.
+      responses:
+        '200':
+          description: An image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update an image
+      operationId: patch_v3_image
+      tags:
+        - images
+        - v3
+      description: Update an ImageRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImagePatchRecord'
+        description: Image Patch record
+        required: true
+      responses:
+        '200':
+          description: Updated Image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      description: >-
+        Delete an ImageRecord by ID. Deleted images are soft deleted and added to the /deleted/images endpoint.
+        The S3 key for the associated image manifest is renamed.
+
+      operationId: delete_v3_image
+      tags:
+        - images
+        - v3
+      responses:
+        '204':
+          description: Image record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Soft delete ImageRecord by image_id
+  /v3/public-keys:
+    get:
+      summary: List public SSH keys
+      operationId: get_all_v3_public_keys
+      tags:
+        - public keys
+        - v3
+      description: Retrieve a list of public SSH keys that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of keypairs
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/PublicKeyRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new public SSH key record
+      operationId: post_v3_public_key
+      tags:
+        - public keys
+        - v3
+      description: Create a new public SSH key record. Uploaded by administrator to allow them to access SSH shells that IMS provides.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicKeyRecord'
+        description: Public key record to create
+        required: true
+      responses:
+        '201':
+          description: New PublicKey
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Soft delete all PublicKeyRecords
+      operationId: delete_all_v3_public_keys
+      tags:
+        - public keys
+        - v3
+      description: Delete all public key-records. Deleted public-keys are soft deleted and added to the /deleted/public-keys endpoint.
+      responses:
+        '204':
+          description: Public key records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/public-keys/{public_key_id}':
+    parameters:
+      - $ref: '#/components/parameters/public_key_id'
+    get:
+      summary: Retrieve a public key by public_key_id
+      operationId: get_v3_public_key
+      tags:
+        - public keys
+        - v3
+      description: Retrieve a public key by public_key_id
+      responses:
+        '200':
+          description: A public key record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Soft delete public key by public_key_id
+      operationId: delete_v3_public_key
+      tags:
+        - public keys
+        - v3
+      description: Delete a PublicKeyRecord by ID. Deleted public-keys are soft deleted and added to the /deleted/public-keys endpoint.
+      responses:
+        '204':
+          description: Public Key record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/remote-build-nodes:
+    get:
+      summary: List remote build nodes
+      operationId: get_all_v3_remote_build_nodes
+      tags:
+        - remote build node
+        - v3
+      description: Retrieve a list of remote build nodes that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of remote build nodes
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RemoteBuildNodeRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new remote built node record
+      operationId: post_v3_remote_build_node
+      tags:
+        - remote build node
+        - v3
+      description: Create a new remote build node record. Updated by administrator to allow them to run jobs on a remote build node.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteBuildNodeRecord'
+        description: Remote build node record to create
+        required: true
+      responses:
+        '201':
+          description: New RemoteBuildNode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteBuildNodeRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all RemoteBuildNodeRecords
+      operationId: delete_all_v3_remote_build_nodes
+      tags:
+        - remote build node
+        - v3
+      description: Delete all remote build node records.
+      responses:
+        '204':
+          description: Remote build node records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/remote-build-nodes/{remote_build_node_xname}':
+    parameters:
+      - $ref: '#/components/parameters/remote_build_node_xname'
+    get:
+      summary: Retrieve a remote build node by remote_build_node_xname
+      operationId: get_v3_remote_build_node
+      tags:
+        - remote build node
+        - v3
+      description: Retrieve a remote build node by remote_build_node_xname
+      responses:
+        '200':
+          description: A remote build node record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteBuildNodeRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete remote build node by remote_build_node_xname
+      operationId: delete_v3_remote_build_node
+      tags:
+        - remote build node
+        - v3
+      description: Delete a RemoteBuildNodeRecord by Xname.
+      responses:
+        '204':
+          description: Remote build node record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/remote-build-nodes/status/{remote_build_node_xname}:
+    parameters:
+      - $ref: '#/components/parameters/remote_build_node_xname'
+    get:
+      summary: List remote build node status objects
+      operationId: get_all_v3_remote_build_status
+      tags:
+        - remote build node status
+        - v3
+      description: Retrieve the status of all remote build nodes that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of the status of each remote build node
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RemoteBuildNodeStatus'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/remote-build-nodes/status:
+    get:
+      summary: List remote build node status objects
+      operationId: get_all_v3_remote_build_status
+      tags:
+        - remote build node status
+        - v3
+      description: Retrieve the status of all remote build nodes that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of the status of each remote build node
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RemoteBuildNodeStatus'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/jobs:
+    get:
+      summary: Retrieve a list of JobRecords that are registered with IMS
+      operationId: get_all_v3_jobs
+      tags:
+        - jobs
+        - v3
+      description: Retrieve a list of JobRecords that are registered with IMS
+      responses:
+        '200':
+          description: A collection of jobs
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/JobRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create JobRecord
+      operationId: post_v3_job
+      tags:
+        - jobs
+        - v3
+      description: |
+        Create a new IMS image or modify an existing IMS image,
+        depending on request body parameter, job_type.
+
+        # Create
+
+        * Fetch recipe from the artifact repository and decompress to temp directory.
+        * Wait for required package repositories to become available
+        * Call kiwi-ng, which builds the image root using
+          the recipe in artifact repository and accesses packages in zypper/yum repositories.
+        * Upload the new image to the artifact repository, and save metadata to IMS - ImageRecord.
+        * If there is a failure, establish debug SSH shell, depending on value of enable_debug.  Admin
+          can inspect image build root.
+          **touch /mnt/image/complete** in a non-jailed environment or
+          **touch /tmp/complete** in a jailed (chroot) environment to exit.
+
+        # Customize
+
+        * The artifact_id in the POST /job request body refers to an IMS ImageRecord. IMS uses
+          the ImageRecord to read the Image's manifest.yaml to find the Image's
+          root file system (rootfs) artifact.  IMS downloads the rootfs from the artifact
+          repository and uncompresses it.
+        * IMS creates an SSH environment so admin can inspect and modify the image.
+          For example, it may be necessary to modify the timezone, or
+          modify the programming environment, etc.
+          **touch /mnt/image/complete** in a non-jailed
+          environment or **touch /tmp/complete** in a jailed (chroot) environment.
+          to exit.
+        * IMS waits for the user to exit the ssh, then creates new IMS image
+          record with the modifications, and adds the root
+          certificate to the image. Note that IMS does not modify the original image
+          but modifies a copy of it.
+        * IMS creates a new IMS ImageRecord, packages the IMS artifacts
+          (kernel, initrd, rootfs), creates a manifest.json manifest file, and uploads
+          all new artifacts to the artifact repository. The metadata is recorded by IMS
+          and ImageRecord is updated.
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRecord'
+        description: Job record to create
+        required: true
+      responses:
+        '201':
+          description: New job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all JobRecords
+      operationId: delete_all_v3_jobs
+      tags:
+        - jobs
+        - v3
+      description: Delete all job records.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/JobStatuses'
+          description: List of job statues. Only jobs with matching statues are considered for deletion.
+        - in: query
+          name: job_type
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/JobTypes'
+          description: Only jobs with matching job type are considered for deletion.
+        - name: age
+          schema:
+            type: string
+          in: query
+          description: Only jobs older than the given age are considered for deletion.  Age is given in the format "1d" or "6h"
+      responses:
+        '204':
+          description: Job records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/jobs/{job_id}':
+    parameters:
+      - $ref: '#/components/parameters/job_id'
+    get:
+      summary: Retrieve a job by job_id
+      operationId: get_v3_job
+      tags:
+        - jobs
+        - v3
+      description: Retrieve JobRecord by job_id
+      responses:
+        '200':
+          description: A job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update a JobRecord by job_id (Internal Use Only)
+      operationId: patch_v3_job
+      x-private: true
+      tags:
+        - jobs
+        - cli_ignore
+        - v3
+      description: Update a job record. Internal use only. Not for API consumers.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobPatchRecord'
+        description: Image Patch record
+        required: true
+      responses:
+        '200':
+          description: Updated job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete JobRecord by job_id
+      operationId: delete_v3_job
+      tags:
+        - jobs
+        - v3
+      description: >-
+        Delete a job record by job_id. This also deletes the underlying
+        Kubernetes resources that were created when the job record was submitted.
+
+      responses:
+        '204':
+          description: Job record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/deleted/recipes:
+    get:
+      summary: Retrieve DeletedRecipeRecords
+      operationId: get_all_v3_deleted_recipes
+      tags:
+        - recipes
+        - v3
+      description: Retrieve all DeletedRecipeRecords that are registered with the IMS.
+      responses:
+        '200':
+          description: A collection of deleted recipes
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DeletedRecipeRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Permanently delete all DeletedRecipeRecords
+      operationId: delete_all_v3_deleted_recipes
+      tags:
+        - recipes
+        - v3
+      description: Permanently delete all DeletedRecipeRecords. Associated artifacts are permanently deleted from S3.
+      responses:
+        '204':
+          description: Recipe records were permanently deleted
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Restore all DeletedRecipeRecords in IMS.
+      operationId: patch_all_v3_deleted_recipes
+      tags:
+        - recipes
+        - v3
+      description: Restore all DeletedRecipeRecords in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedRecipePatchRecord'
+        description: Deleted Recipe Patch record
+        required: true
+      responses:
+        '204':
+          description: Deleted recipe records updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/deleted/recipes/{recipe_id}':
+    parameters:
+      - $ref: '#/components/parameters/deleted_recipe_id'
+    get:
+      summary: Retrieve DeletedRecipeRecord by ID
+      operationId: get_v3_deleted_recipe
+      tags:
+        - recipes
+        - v3
+      description: Retrieve a DeletedRecipeRecord by ID
+      responses:
+        '200':
+          description: A deleted recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletedRecipeRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Permanently delete a DeletedRecipeRecord by ID
+      operationId: delete_v3_deleted_recipe
+      tags:
+        - recipes
+        - v3
+      description: Permanently delete a DeletedRecipeRecord by ID. Associated artifacts are permanently deleted from S3.
+      responses:
+        '204':
+          description: RecipeRecord was permanently deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Restore a DeletedRecipeRecord in IMS.
+      operationId: patch_v3_deleted_recipe
+      tags:
+        - recipes
+        - v3
+      description: Restore a DeletedRecipeRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedRecipePatchRecord'
+        description: Deleted Recipe Patch record
+        required: true
+      responses:
+        '204':
+          description: Deleted recipe records updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/deleted/images:
+    get:
+      summary: List all DeletedImageRecords
+      operationId: get_all_v3_deleted_images
+      tags:
+        - images
+        - v3
+      description: Retrieve a list of DeletedImageRecords indicating images that have been deleted from IMS.
+      responses:
+        '200':
+          description: A collection of deleted image records
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DeletedImageRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Permanently delete all DeletedImageRecords
+      operationId: delete_all_v3_deleted_images
+      tags:
+        - images
+        - v3
+      description: Permanently delete all DeletedImageRecords. Associated artifacts are permanently deleted from S3.
+      responses:
+        '204':
+          description: Image records were permanently deleted
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Restore all DeletedImageRecords in IMS.
+      operationId: patch_all_v3_deleted_images
+      tags:
+        - images
+        - v3
+      description: Restore all DeletedImageRecords in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedImagePatchRecord'
+        description: Deleted Recipe Image record
+        required: true
+      responses:
+        '204':
+          description: Deleted image records updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v3/deleted/images/{deleted_image_id}':
+    parameters:
+      - $ref: '#/components/parameters/deleted_image_id'
+    get:
+      summary: Retrieve deleted image details by using deleted_image_id
+      operationId: get_v3_deleted_image
+      tags:
+        - images
+        - v3
+      description: Retrieve deleted image details by using deleted_image_id.
+      responses:
+        '200':
+          description: A deleted image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletedImageRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      description: >-
+        Permanently delete image record associated with deleted_image_id. Associated artifacts
+        are permanently deleted from S3.
+
+      operationId: delete_v3_deleted_image
+      tags:
+        - images
+        - v3
+      responses:
+        '204':
+          description: ImageRecord was permanently deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Permanently delete image record by deleted_image_id
+    patch:
+      summary: Restore a DeletedImageRecord in IMS.
+      operationId: patch_v3_deleted_image
+      tags:
+        - images
+        - v3
+      description: Restore a DeletedImageRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedImagePatchRecord'
+        description: DeletedImage Patch record
+        required: true
+      responses:
+        '204':
+          description: Deleted image records updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/deleted/public-keys:
+    get:
+      summary: List deleted public SSH keys
+      operationId: get_all_v3_deleted_public_keys
+      tags:
+        - public keys
+        - v3
+      description: Retrieve a list of deleted public SSH keys that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of keypairs
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DeletedPublicKeyRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Permanently delete all DeletedPublicKeyRecords
+      operationId: delete_all_v3_deleted_public_keys
+      tags:
+        - public keys
+        - v3
+      description: Permanently delete all public key-records.
+      responses:
+        '204':
+          description: PublicKey records were permanently deleted
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Restore all DeletedPublicKeyRecord in IMS.
+      operationId: patch_all_v3_deleted_public_keys
+      tags:
+        - public keys
+        - v3
+      description: Restore all DeletedPublicKeyRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedPublicKeyPatchRecord'
+        description: Deleted PublicKey Patch record
+        required: true
+      responses:
+        '204':
+          description: Deleted public key records updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v3/deleted/public-keys/{deleted_public_key_id}:
+    parameters:
+      - $ref: '#/components/parameters/deleted_public_key_id'
+    get:
+      summary: Retrieve a deleted public key by deleted_public_key_id
+      operationId: get_v3_deleted_public_key
+      tags:
+        - public keys
+        - v3
+      description: Retrieve a deleted public key by deleted_public_key_id
+      responses:
+        '200':
+          description: A deleted public key record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletedPublicKeyRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Permanently delete public key by deleted_public_key_id
+      operationId: delete_v3_deleted_public_key
+      tags:
+        - public keys
+        - v3
+      description: Permanently delete a DeletedPublicKeyRecord by ID.
+      responses:
+        '204':
+          description: PublicKeyRecord was permanently deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Restore a DeletedPublicKeyRecord in IMS.
+      operationId: patch_v3_deleted_public_key
+      tags:
+        - public keys
+        - v3
+      description: Restore a DeletedPublicKeyRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletedPublicKeyPatchRecord'
+        description: DeletedPublicKey Patch record
+        required: true
+      responses:
+        '204':
+          description: Deleted public key record updated successfully
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v2/recipes:
+    get:
+      summary: Retrieve RecipeRecords
+      operationId: get_all_v2_recipes
+      tags:
+        - recipes
+        - v2
+      description: Retrieve all RecipeRecords that are registered with the IMS.
+      responses:
+        '200':
+          description: A collection of recipes
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RecipeRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new recipe
+      operationId: post_v3_recipe
+      tags:
+        - recipes
+        - v2
+      description: >-
+        Create a new RecipeRecord in IMS.
+
+        A compressed Kiwi-NG image description is actually stored in the artifact repository.
+        This IMS RecipeRecord contains metadata for the recipe.
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeRecord'
+        description: Recipe record
+        required: true
+      responses:
+        '201':
+          description: New recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all RecipeRecords
+      operationId: delete_all_v2_recipes
+      tags:
+        - recipes
+        - cli_ignore
+        - v2
+      description: Delete all RecipeRecords.
+      parameters:
+        - in: query
+          name: cascade
+          schema:
+            type: boolean
+            default: true
+          description: If cascade is true, IMS also deletes the linked artifacts in S3. If cascade is false, the linked artifacts in S3 are not affected.
+      responses:
+        '204':
+          description: Recipe records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v2/recipes/{recipe_id}':
+    parameters:
+      - $ref: '#/components/parameters/recipe_id'
+    get:
+      summary: Retrieve RecipeRecord by ID
+      operationId: get_v2_recipe
+      tags:
+        - recipes
+        - v2
+      description: Retrieve a RecipeRecord by ID
+      responses:
+        '200':
+          description: A recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update a recipe
+      operationId: patch_v2_recipe
+      tags:
+        - recipes
+        - v2
+      description: Update a RecipeRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipePatchRecord'
+        description: Recipe Patch record
+        required: true
+      responses:
+        '200':
+          description: Updated Recipe record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete a RecipeRecord by ID
+      operationId: delete_v2_recipe
+      tags:
+        - recipes
+        - v2
+      description: Delete a recipe by ID.
+      parameters:
+        - in: query
+          name: cascade
+          schema:
+            type: boolean
+            default: true
+          description: If cascade is true, IMS also deletes the linked artifacts in S3. If cascade is false, the linked artifacts in S3 are not affected.
+      responses:
+        '204':
+          description: Recipe record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v2/images:
+    get:
+      summary: List all ImageRecords
+      operationId: get_all_v2_images
+      tags:
+        - images
+        - v2
+      description: >-
+        Retrieve a list of ImageRecords indicating images that are registered with the IMS.
+        The ImageRecord ID is used to associate multiple image artifacts together (kernel, initrd, rootfs (squashfs)).
+
+      responses:
+        '200':
+          description: A collection of images
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ImageRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new ImageRecord
+      operationId: post_v2_image
+      tags:
+        - images
+        - v2
+      description: Create a new ImageRecord and register the new image with IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageCreateRecord'
+        description: Image record to create
+        required: true
+      responses:
+        '201':
+          description: New image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all ImageRecords
+      operationId: delete_all_v2_images
+      tags:
+        - images
+        - cli_ignore
+        - v2
+      description: Delete all ImageRecords.
+      parameters:
+        - in: query
+          name: cascade
+          schema:
+            type: boolean
+            default: true
+          description: If cascade is true, IMS also deletes the linked artifacts in S3. If cascade is false, the linked artifacts in S3 are not affected.
+      responses:
+        '204':
+          description: Image records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v2/images/{image_id}':
+    parameters:
+      - $ref: '#/components/parameters/image_id'
+    get:
+      summary: Retrieve image by image_id
+      operationId: get_v2_image
+      tags:
+        - images
+        - v2
+      description: Retrieve an image by image_id.
+      responses:
+        '200':
+          description: An image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update an image
+      operationId: patch_v2_image
+      tags:
+        - images
+        - v2
+      description: Update an ImageRecord in IMS.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImagePatchRecord'
+        description: Image Patch record
+        required: true
+      responses:
+        '200':
+          description: Updated Image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      description: Delete an ImageRecord by image_id.
+      operationId: delete_v2_image
+      tags:
+        - images
+        - v2
+      parameters:
+        - in: query
+          name: cascade
+          schema:
+            type: boolean
+            default: true
+          description: If cascade is true, IMS also deletes the linked artifacts in S3. If cascade is false, the linked artifacts in S3 are not affected.
+      responses:
+        '204':
+          description: Image record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      summary: Delete ImageRecord by image_id
+  /v2/public-keys:
+    get:
+      summary: List public SSH keys
+      operationId: get_all_v2_public_keys
+      tags:
+        - public keys
+        - v2
+      description: Retrieve a list of public SSH keys that are registered with IMS.
+      responses:
+        '200':
+          description: A collection of keypairs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicKeyRecord'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new public SSH key record
+      operationId: post_v2_public_key
+      tags:
+        - public keys
+        - v2
+      description: Create a new public SSH key record. Uploaded by administrator to allow them to access SSH shells that IMS provides.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicKeyRecord'
+        description: Public key record to create
+        required: true
+      responses:
+        '201':
+          description: New public key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all PublicKeyRecords
+      operationId: delete_all_v2_public_keys
+      tags:
+        - public keys
+        - cli_ignore
+        - v2
+      description: Delete all public key records.
+      responses:
+        '204':
+          description: Public key records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v2/public-keys/{public_key_id}':
+    parameters:
+      - $ref: '#/components/parameters/public_key_id'
+    get:
+      summary: Retrieve a public key by public_key_id
+      operationId: get_v2_public_key
+      tags:
+        - public keys
+        - v2
+      description: Retrieve a public key by public_key_id
+      responses:
+        '200':
+          description: A public key record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete public key by public_key_id
+      operationId: delete_v2_public_key
+      tags:
+        - public keys
+        - v2
+      description: Delete a public key by public_key_id.
+      responses:
+        '204':
+          description: Public Key record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v2/jobs:
+    get:
+      summary: Retrieve a list of JobRecords that are registered with IMS
+      operationId: get_all_v2_jobs
+      tags:
+        - jobs
+        - v2
+      description: Retrieve a list of JobRecords that are registered with IMS
+      responses:
+        '200':
+          description: A collection of jobs
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/JobRecord'
+                type: array
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create JobRecord
+      operationId: post_v2_job
+      tags:
+        - jobs
+        - v2
+      description: |
+        Create a new IMS image or modify an existing IMS image,
+        depending on request body parameter, job_type.
+
+        # Create
+
+        * Fetch recipe from the artifact repository and decompress to temp directory.
+        * Wait for required package repositories to become available.
+        * Call kiwi-ng, which builds the image root using
+          the recipe in artifact repository and accesses packages in zypper/yum repositories.
+        * Upload the new image to the artifact repository, and save metadata to IMS - ImageRecord.
+        * If there is a failure, establish debug SSH shell, depending on value of enable_debug.  Admin
+          can inspect image build root.
+          **touch /mnt/image/complete** in a non-jailed environment or
+          **touch /tmp/complete** in a jailed (chroot) environment to exit.
+
+        # Customize
+
+        * The artifact_id in the POST /job request body refers to an IMS ImageRecord. IMS uses
+          the ImageRecord to read the Image's manifest.yaml to find the Image's
+          root file system (rootfs) artifact.  IMS downloads the rootfs from the artifact
+          repository and uncompresses it.
+        * IMS creates an SSH environment so admin can inspect and modify the image.
+          For example, it may be necessary to modify the timezone, or
+          modify the programming environment, etc.
+          **touch /mnt/image/complete** in a non-jailed
+          environment or **touch /tmp/complete** in a jailed (chroot) environment.
+          to exit.
+        * IMS waits for the user to exit the ssh, then creates new IMS image
+          record with the modifications, and adds the root
+          certificate to the image. Note that IMS does not modify the original image
+          but modifies a copy of it.
+        * IMS creates a new IMS ImageRecord, packages the IMS artifacts
+          (kernel, initrd, rootfs), creates a manifest.json manifest file, and uploads
+          all new artifacts to the artifact repository. The metadata is recorded by IMS
+          and ImageRecord is updated.
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRecord'
+        description: Job record to create
+        required: true
+      responses:
+        '201':
+          description: New job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete all JobRecords
+      operationId: delete_all_v2_jobs
+      tags:
+        - jobs
+        - cli_ignore
+        - v2
+      description: Delete all job records.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/JobStatuses'
+          description: List of job statues. Only jobs with matching statues are considered for deletion.
+        - in: query
+          name: job_type
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/JobTypes'
+          description: Only jobs with matching job type are considered for deletion.
+        - name: age
+          schema:
+            type: string
+          in: query
+          description: Only jobs older than the given age are considered for deletion.  Age is given in the format "1d" or "6h"
+      responses:
+        '204':
+          description: Job records deleted successfully
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/v2/jobs/{job_id}':
+    parameters:
+      - $ref: '#/components/parameters/job_id'
+    get:
+      summary: Retrieve a job by job_id
+      operationId: get_v2_job
+      tags:
+        - jobs
+        - v2
+      description: Retrieve JobRecord by job_id
+      responses:
+        '200':
+          description: A job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update a JobRecord by job_id (Internal Use Only)
+      operationId: patch_v2_job
+      x-private: true
+      tags:
+        - jobs
+        - cli_ignore
+        - v2
+      description: Update a job record. Internal use only. Not for API consumers.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobPatchRecord'
+        description: Image Patch record
+        required: true
+      responses:
+        '200':
+          description: A job record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRecord'
+        '400':
+          $ref: '#/components/responses/NoInputProvided'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInputData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete JobRecord by job_id
+      operationId: delete_v2_job
+      tags:
+        - jobs
+        - v2
+      description: >-
+        Delete a job record by job_id. This also deletes the underlying
+        Kubernetes resources that were created when the job
+        record was submitted.
+
+      responses:
+        '204':
+          description: Job record deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /recipes:
+    $ref: "#/paths/~1v2~1recipes"
+  /recipes/{recipe_id}:
+    $ref: "#/paths/~1v2~1recipes~1{recipe_id}"
+  /images:
+    $ref: "#/paths/~1v2~1images"
+  /images/{image_id}:
+    $ref: "#/paths/~1v2~1images~1{image_id}"
+  /public-keys:
+    $ref: "#/paths/~1v2~1public-keys"
+  /public-keys/{public_key_id}:
+    $ref: "#/paths/~1v2~1public-keys~1{public_key_id}"
+  /remote-build-nodes:
+    $ref: "#/paths/~1v3~1remote-build-nodes"
+  /remote-build-nodes/{remote_build_node_xname}:
+    $ref: "#/paths/~1v3~1remote-build-nodes~1{remote_build_node_xname}"
+  /jobs:
+    $ref: "#/paths/~1v2~1jobs"
+  /jobs/{job_id}:
+    $ref: "#/paths/~1v2~1jobs~1{job_id}"
+  /healthz/ready:
+    get:
+      summary: Retrieve IMS Readiness Probe
+      operationId: get_healthz_ready
+      tags:
+        - healthz
+        - cli_ignore
+      description: >-
+        Readiness probe for IMS. This is used by Kubernetes to determine if IMS
+        is ready to accept requests.
+
+      responses:
+        200:
+          description: IMS is ready to accept requests
+          content:
+            application/json: {}
+        500:
+          description: IMS is not able to accept requests
+          content:
+            application/json: {}
+  /healthz/live:
+    get:
+      summary: Retrieve IMS Liveness Probe
+      operationId: get_healthz_live
+      tags:
+        - healthz
+        - cli_ignore
+      description: >-
+        Liveness probe for IMS. This is used by Kubernetes to determine if IMS
+        is responsive
+
+      responses:
+        200:
+          description: IMS is responsive
+          content:
+            application/json: {}
+        500:
+          description: IMS is not responsive
+          content:
+            application/json: {}
+  /version:
+    get:
+      summary: Get IMS version
+      tags:
+        - version
+        - cli_hidden
+      description: Retrieve the version of the IMS Service
+      operationId: getVersion
+      responses:
+        '200':
+          description: IMS Version
+          content:
+            application/json:
+              schema:
+                type: string
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+
+
+components:
+  parameters:
+    image_id:
+      description: The unique ID of an image
+      in: path
+      name: image_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 20ad9d0f-3057-4ba8-8c6c-cd31b54c5947
+    deleted_image_id:
+      description: The unique ID of a deleted image
+      in: path
+      name: deleted_image_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: f5d9c785-aef7-4f83-86b0-2f619186c6a6
+    public_key_id:
+      description: The unique ID of a public key
+      in: path
+      name: public_key_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 66db1862-fa14-44c6-ae4b-6a6cc8cdc34a
+    deleted_public_key_id:
+      description: The unique ID of a deleted public key
+      in: path
+      name: deleted_public_key_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: bc6ec895-6ff5-4481-bd98-88ed4cd233e9
+    remote_build_node_xname:
+      description: The unique xname of a remote build node
+      in: path
+      name: remote_build_node_xname
+      required: true
+      schema:
+        type: string
+      example: x3000c1s10b1n0
+    job_id:
+      description: The unique ID of a job
+      in: path
+      name: job_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: d77ef3de-5400-482e-a579-88114b8bf2d2
+    recipe_id:
+      description: The unique ID of a recipe
+      in: path
+      name: recipe_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 127ee397-1a4d-417f-8db5-3816609c6309
+    deleted_recipe_id:
+      description: The unique ID of a deleted recipe
+      in: path
+      name: recipe_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a75b6dd5-bf62-4dc2-b056-d1cc5902ce1f
+  responses:
+    InvalidInputData:
+      description: >-
+        Input data was understood, but failed validation. Re-run request with
+        valid input values for the fields indicated in the response.
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NoInputProvided:
+      description: >-
+        No input provided. Determine the specific information that is missing or
+        invalid and then re-run the request with valid information.
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Requested resource does not exist. Re-run request with valid ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Conflict:
+      description: Requested resource could not be patched due to conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    InternalServerError:
+      description: An internal error occurred. Re-running the request may or may not succeed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  schemas:
+    SSHConnectionInfo:
+      properties:
+        host:
+          type: string
+          description: IP or host name to use, in combination with the port, to connect to the SSH container
+          example: 10.100.20.221
+          readOnly: true
+        port:
+          type: integer
+          description: Port to use, in combination with the host, to connect to the SSH container
+          example: 22
+          readOnly: true
+    SSHConnectionMap:
+      additionalProperties:
+        $ref: "#/components/schemas/SSHConnectionInfo"
+    SshContainer:
+      type: object
+      required:
+        - name
+        - jail
+      properties:
+        name:
+          description: Name of the SSH container
+          type: string
+          example: customize
+          maxLength: 40
+          minLength: 1
+        jail:
+          description: 'If true, establish an SSH jail, or chroot environment.'
+          type: boolean
+          example: true
+        status:
+          description: Status of the SSH container (pending, establishing, active, complete)
+          type: string
+          example: pending
+          readOnly: true
+        connection_info:
+          $ref: "#/components/schemas/SSHConnectionMap"
+    ProblemDetails:
+      description: An error response for RFC 7807 problem details.
+      type: object
+      properties:
+        detail:
+          description: >-
+            A human-readable explanation specific to this occurrence of the
+            problem. Focus on helping correct the problem, rather than giving
+            debugging information.
+
+          type: string
+        errors:
+          description: An object denoting field-specific errors. Only present on error responses when field input is specified for the request.
+          type: object
+        instance:
+          description: A relative URI reference that identifies the specific occurrence of the problem
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          example: 400
+          type: integer
+        title:
+          description: Short, human-readable summary of the problem, should not change by occurrence.
+          type: string
+        type:
+          default: 'about:blank'
+          description: Relative URI reference to the type of problem which includes human-readable documentation.
+          format: uri
+          type: string
+    PublicKeyRecord:
+      description: A Keypair Record
+      type: object
+      required:
+        - name
+        - public_key
+      properties:
+        id:
+          description: Unique ID of the image
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        name:
+          description: Name of the public key
+          example: Eric's public key
+          type: string
+          minLength: 1
+        public_key:
+          description: The raw public key
+          example: >-
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA ...
+            fa6hG9i2SzfY8L6vAVvSE7A2ILAsVruw1Zeiec2IWt
+
+          type: string
+          minLength: 1
+    DeletedPublicKeyRecord:
+      description: A Deleted Keypair Record
+      type: object
+      required:
+        - name
+        - public_key
+      properties:
+        id:
+          description: Unique ID of the image
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        deleted:
+          description: Time the image record was deleted
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        name:
+          description: Name of the public key
+          example: Eric's public key
+          type: string
+          minLength: 1
+        public_key:
+          description: The raw public key
+          example: >-
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA ...
+            fa6hG9i2SzfY8L6vAVvSE7A2ILAsVruw1Zeiec2IWt
+
+          type: string
+          minLength: 1
+    RemoteBuildNodeRecord:
+      description: A Remote Build Node Record
+      type: object
+      required:
+        - xname
+      properties:
+        xname:
+          description: Xname of the remote build node
+          example: x3000c1s10b1n0
+          type: string
+          minLength: 1
+    RemoteBuildNodeStatus:
+      description: A Remote Build Node Status
+      type: object
+      required:
+        - xname
+      properties:
+        xname:
+          description: Xname of the remote build node
+          example: x3000c1s10b1n0
+          type: string
+          minLength: 1
+        nodeArch:
+          description: Architecture of the remote build node
+          example: x86_64
+          type: string
+          minLength: 1
+        numCurrentJobs:
+          description: Number of current jobs running on the remote build node
+          example: 15
+          type: integer
+          minLength: 1
+        podmanStatus:
+          description: Status of the podman executable on the remote build node
+          example: Podman present at /usr/bin/podman
+          type: string
+          minLength: 1
+        sshStatus:
+          description: Status of the ssh connection to the remote build node
+          example: SSH connection established
+          type: string
+          minLength: 1
+        ableToRunJobs:
+          description: If the node is able to run new jobs
+          example: True
+          type: boolean
+          minLength: 1
+    ArtifactLinkRecord:
+      description: An Artifact Link Record
+      type: object
+      required:
+        - path
+        - type
+      properties:
+        path:
+          description: Path or location to the artifact in the artifact repository
+          example: s3://boot-images/1fb58f4e-ad23-489b-89b7-95868fca7ee6/manifest.json
+          type: string
+        etag:
+          description: Opaque identifier used to uniquely identify the artifact in the artifact repository
+          example: f04af5f34635ae7c507322985e60c00c-131
+          type: string
+        type:
+          description: Identifier specifying the artifact repository where the artifact is located
+          example: s3
+          type: string
+    RecipeKeyValuePair:
+      description: Key/value pair used to template an IMS recipe
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          description: Template variable to replace in the IMS recipe
+          example: CSM_RELEASE_VERSION
+          type: string
+        value:
+          description: Value to replace the template variable in the IMS recipe
+          example: 1.0.0
+          type: string
+    RecipeRecord:
+      description: A Recipe Record
+      type: object
+      required:
+        - name
+        - recipe_type
+        - linux_distribution
+      properties:
+        id:
+          description: Unique ID of the recipe
+          # Unique ID of the recipe - same or different from other ID?  Then example should reflect similarity or difference ?
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the recipe record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        recipe_type:
+          description: Type of recipe
+          enum:
+            - kiwi-ng
+            - packer
+          example: kiwi-ng
+          type: string
+        linux_distribution:
+          description: Linux distribution being built
+          enum:
+            - sles12
+            - sles15
+            - centos7
+          example: sles12
+          type: string
+        name:
+          description: Name of the image
+          example: centos7.5_barebones
+          type: string
+        template_dictionary:
+          description: List of key/value pairs to be templated into the recipe when building the image.
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeKeyValuePair'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        require_dkms:
+          description: Whether to enable DKMS for the job
+          type: boolean
+          example: false
+    DeletedRecipeRecord:
+      description: A Deleted Recipe Record
+      type: object
+      required:
+        - name
+        - recipe_type
+        - linux_distribution
+      properties:
+        id:
+          description: Unique ID of the recipe
+          # Unique ID of the recipe - same or different from other ID?  Then example should reflect similarity or difference ?
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the recipe record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        deleted:
+          description: Time the recipe record was deleted
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        recipe_type:
+          description: Type of recipe
+          enum:
+            - kiwi-ng
+            - packer
+          example: kiwi-ng
+          type: string
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        require_dkms:
+          description: Whether to enable DKMS for the job
+          type: boolean
+          example: false
+        linux_distribution:
+          description: Linux distribution being built
+          enum:
+            - sles12
+            - sles15
+            - centos7
+          example: sles12
+          type: string
+        name:
+          description: Name of the image
+          example: centos7.5_barebones
+          type: string
+    RecipePatchRecord:
+      description: Values to update a RecipeRecord with
+      type: object
+      properties:
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        require_dkms:
+          description: Whether enable DKMS for the job
+          type: boolean
+          example: false
+        template_dictionary:
+          description: List of key/value pairs to be templated into the recipe when building the image.
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeKeyValuePair'
+    ImageCreateRecord:
+      description: Values used to create an IMS Image Record
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          description: Unique ID of the image.
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        name:
+          description: Name of the image
+          example: centos7.5_barebones
+          type: string
+          minLength: 1
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        metadata:
+          description: User supplied annotations about an image
+          type: object
+          properties:
+            key:
+              description: Template variable to associate with the IMS image
+              example: includes_additional_packages
+              type: string
+            value:
+              description: Value variable to associate with the IMS image
+              example: "foo,bar,baz"
+              type: string
+    ImagePatchRecord:
+      description: Values used to update an existing IMS Image Record
+      type: object
+      properties:
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        metadata:
+          description: An object which indicates a number of annotation patch operations relating to image tags.
+          type: object
+          required:
+            - operation
+            - key
+          properties:
+            operation:
+              description: How to update a given key within the context of a patch operation
+              type: string
+              enum:
+                - set
+                - remove
+            key:
+              description: The key to update for a given image
+              type: string
+              example: includes_additional_packages
+            value:
+              description: The value to associate with a key during a patch operation
+              type: string
+              example: "vim,emacs,man"
+    ImageRecord:
+      description: An Image Record
+      type: object
+      required:
+        - name
+        - id
+      properties:
+        id:
+          description: Unique ID of the image.
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        name:
+          description: Name of the image
+          example: centos7.5_barebones
+          type: string
+          minLength: 1
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        metadata:
+          description: User supplied annotations about an image, in the form of string key-value pairs
+          type: object
+          additionalProperties:
+            type: string
+    DeletedImageRecord:
+      description: A Deleted Image Record
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          description: >
+            Unique ID of the image.
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        deleted:
+          description: Time the image record was deleted
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        name:
+          description: Name of the image
+          example: centos7.5_barebones
+          type: string
+          minLength: 1
+        link:
+          $ref: '#/components/schemas/ArtifactLinkRecord'
+        arch:
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        metadata:
+          description: User supplied annotations about an image, in the form of string key-value pairs
+          type: object
+          additionalProperties:
+            type: string
+    JobRecord:
+      description: A Job Record
+      type: object
+      required:
+        - job_type
+        - artifact_id
+        - public_key_id
+        - image_root_archive_name
+      properties:
+        id:
+          description: Unique ID of the job
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          readOnly: true
+          type: string
+        created:
+          description: Time the image record was created
+          example: 2018-07-28T03:26:01.234Z
+          format: date-time
+          readOnly: true
+          type: string
+        job_type:
+          $ref: '#/components/schemas/JobTypes'
+        image_root_archive_name:
+          description: Name to be given to the imageroot artifact (do not include .sqshfs or other extensions)
+          example: cray-sles12-sp3-barebones
+          type: string
+          minLength: 1
+        kernel_file_name:
+          description: Name of the kernel file to extract and upload to the artifact repository from the /boot directory of the image root.
+          example: vmlinuz
+          type: string
+          minLength: 1
+        initrd_file_name:
+          description: Name of the initrd image file to extract and upload to the artifact repository from the /boot directory of the image root.
+          default: initrd
+          example: initrd
+          type: string
+          minLength: 1
+        kernel_parameters_file_name:
+          description: Name of the kernel-parameters file to extract and upload to the artifact repository from the /boot directory of the image root.
+          default: kernel-parameters
+          example: kernel-parameters
+          type: string
+          minLength: 1
+        status:
+          readOnly: true
+          allOf:
+            - $ref: '#/components/schemas/JobStatuses'
+        artifact_id:
+          description: IMS artifact_id which specifies the recipe (create job_type) or the image (customize job_type) to fetch from the artifact repository.
+          example: 46a2731e-a1d0-4f98-ba92-4f78c756bb12
+          format: uuid
+          type: string
+        public_key_id:
+          description: Public key to use to enable passwordless SSH shells
+          example: b05c54e3-9fc2-472d-b120-4fd718ff90aa
+          format: uuid
+          type: string
+        kubernetes_job:
+          description: Name of the underlying kubernetes job
+          example: cray-ims-46a2731e-a1d0-4f98-ba92-4f78c756bb12-customize
+          readOnly: true
+          type: string
+        kubernetes_service:
+          description: Name of the underlying kubernetes service
+          example: cray-ims-46a2731e-a1d0-4f98-ba92-4f78c756bb12-service
+          readOnly: true
+          type: string
+        kubernetes_configmap:
+          description: Name of the underlying kubernetes configmap
+          example: cray-ims-46a2731e-a1d0-4f98-ba92-4f78c756bb12-configmap
+          readOnly: true
+          type: string
+        ssh_containers:
+          description: List of SSH containers used to customize images being built or modified
+          type: array
+          items:
+            $ref: '#/components/schemas/SshContainer'
+        enable_debug:
+          description: Whether to enable debugging of the job
+          type: boolean
+          example: true
+        resultant_image_id:
+          description: IMS image ID for the resultant image.
+          example: e564cd0a-f222-4f30-8337-62184e2dd86d
+          format: uuid
+          type: string
+          readOnly: true
+        build_env_size:
+          description: Size (in Gb) to allocate for the image root. Default = 15
+          example: 15
+          type: integer
+          minimum: 1
+        kubernetes_namespace:
+          description: Kubernetes namespace where the IMS job resources were created
+          example: default
+          default: default
+          type: string
+          readOnly: true
+        arch:
+          readOnly: true
+          description: Target architecture for the recipe.
+          example: aarch64
+          enum:
+            - aarch64
+            - x86_64
+          type: string
+        require_dkms:
+          description: Whether enable DKMS for the job
+          type: boolean
+          example: false
+    JobPatchRecord:
+      description: Values to update a JobRecord with
+      type: object
+      properties:
+        resultant_image_id:
+          description: IMS image ID for the resultant image.
+          example: e564cd0a-f222-4f30-8337-62184e2dd86d
+          format: uuid
+          type: string
+        status:
+          $ref: '#/components/schemas/JobStatuses'
+    JobStatuses:
+      description: Status of the job
+      type: string
+      enum:
+        - creating
+        - fetching_image
+        - fetching_recipe
+        - waiting_for_repos
+        - building_image
+        - waiting_on_user
+        - error
+        - success
+      example: creating
+    JobTypes:
+      description: Type of job
+      enum:
+        - create
+        - customize
+      example: customize
+      type: string
+    DeletedObjectPatchOperations:
+      description: Patch operations that can be performed on a deleted IMS object
+      enum:
+        - undelete
+      example: undelete
+      type: string
+    DeletedRecipePatchRecord:
+      description: Values to update a DeletedRecipeRecord with
+      type: object
+      properties:
+        operation:
+          $ref: '#/components/schemas/DeletedObjectPatchOperations'
+    DeletedImagePatchRecord:
+      description: Values to update a DeletedImageRecord with
+      type: object
+      properties:
+        operation:
+          $ref: '#/components/schemas/DeletedObjectPatchOperations'
+    DeletedPublicKeyPatchRecord:
+      description: Values to update a DeletedPublicKeyRecord with
+      type: object
+      properties:
+        operation:
+          $ref: '#/components/schemas/DeletedObjectPatchOperations'
