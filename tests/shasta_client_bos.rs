@@ -183,12 +183,14 @@ async fn bos_health_check_hits_v2_healthz() {
     .and(path("/bos/v2/healthz"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(
-      ResponseTemplate::new(200).set_body_json(json!({"status": "ok"})),
+      ResponseTemplate::new(200)
+        .set_body_json(json!({"apiStatus": "ok", "dbStatus": "ok"})),
     )
     .expect(1).mount(&server)
     .await;
 
   let client = make_client(&server.uri());
   let result = client.bos_health_check(TEST_TOKEN).await.unwrap();
-  assert_eq!(result["status"], "ok");
+  assert_eq!(result["apiStatus"], "ok");
+  assert_eq!(result["dbStatus"], "ok");
 }

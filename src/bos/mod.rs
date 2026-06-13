@@ -9,14 +9,15 @@
 //! - [`template`] — session templates (the reusable definition of "boot
 //!   this image, with this CFS configuration, against these nodes").
 //! - [`session`] — sessions (a single invocation of a template).
-//! - [`health_check`] — helpers for liveness/readiness probes against the
-//!   BOS service itself.
+//!
+//! Liveness/readiness probes against the BOS service itself are exposed
+//! as the [`ShastaClient::bos_health_check`](crate::ShastaClient::bos_health_check)
+//! method, implemented in the internal `wrapper::health_check` module.
 //!
 //! Both v1 and v2 endpoints are wrapped; new code should generally prefer
 //! the v2 variants where available.
 
 pub(crate) mod generated;
-pub mod health_check;
 pub mod session;
 pub mod template;
 mod wrapper;
