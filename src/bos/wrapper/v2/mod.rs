@@ -8,5 +8,4 @@
 //! / `run` helpers.
 
 mod session;
-// Per-resource modules are added by Task 5:
-//   mod template;
+mod template;
