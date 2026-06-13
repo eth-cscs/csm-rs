@@ -210,9 +210,11 @@ impl ShastaClient {
     &self,
     token: &str,
   ) -> Result<Vec<Group>, Error> {
-    run(self, token, |c| async move {
-      c.do_groups_get(None, None).await
-    })
+    run(
+      self,
+      token,
+      |c| async move { c.do_groups_get(None, None).await },
+    )
     .await
   }
 
@@ -294,9 +296,7 @@ impl ShastaClient {
           let status = status.as_u16();
           let url = response.url().to_string();
           let payload: serde_json::Value = response.json().await?;
-          return Err(Error::csm_from_response(
-            "POST", &url, status, payload,
-          ));
+          return Err(Error::csm_from_response("POST", &url, status, payload));
         }
       }
     }
@@ -325,14 +325,13 @@ impl ShastaClient {
     tags: &[String],
   ) -> Result<Group, Error> {
     let myxnames = Members {
-      ids: xnames
-        .iter()
-        .map(|x| XNameRw100(x.clone()))
-        .collect(),
+      ids: xnames.iter().map(|x| XNameRw100(x.clone())).collect(),
     };
 
     let group = Group {
-      label: crate::hsm::group::types::ResourceName(hsm_group_name_opt.to_owned()),
+      label: crate::hsm::group::types::ResourceName(
+        hsm_group_name_opt.to_owned(),
+      ),
       description: Some(description.to_string()),
       tags: tags
         .iter()
@@ -468,8 +467,9 @@ impl ShastaClient {
       let status = response.status().as_u16();
       let url = response.url().to_string();
       let payload = response.text().await.map_err(Error::NetError)?;
-      Err(Error::csm_text_from_response("DELETE", &url, status, payload))
+      Err(Error::csm_text_from_response(
+        "DELETE", &url, status, payload,
+      ))
     }
   }
 }
-
