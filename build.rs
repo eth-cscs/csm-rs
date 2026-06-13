@@ -1,4 +1,4 @@
-//! Build-time codegen of the HSM, CFS, BSS, and BOS HTTP clients from
+//! Build-time codegen of the HSM, CFS, BSS, BOS, and PCS HTTP clients from
 //! their respective OpenAPI specs.
 //!
 //! Each call to `generate_one` reads one spec file, runs progenitor on
@@ -39,6 +39,13 @@ fn main() {
     generate_one(
         &manifest_dir.join("src/bos/csm_api_docs.yaml"),
         &out_dir.join("bos_generated.rs"),
+        SpecFormat::Yaml,
+    );
+
+    // PCS: OpenAPI 3.0.0 YAML (upstream-tracked directly).
+    generate_one(
+        &manifest_dir.join("src/pcs/csm_api_docs.yaml"),
+        &out_dir.join("pcs_generated.rs"),
         SpecFormat::Yaml,
     );
 }
