@@ -173,7 +173,10 @@ impl CfsTrait for ShastaClient {
           .into_iter()
           .map(|group| group.label)
           .collect(),
-        xname_vec.into_iter().map(std::string::ToString::to_string).collect(),
+        xname_vec
+          .into_iter()
+          .map(std::string::ToString::to_string)
+          .collect(),
       )
     } else {
       // all HSM groups available
@@ -255,9 +258,7 @@ impl CfsTrait for ShastaClient {
           let new_image_vec_rslt: Result<
             Vec<crate::ims::image::http_client::types::Image>,
             _,
-          > = self
-            .ims_image_get(shasta_token, image_id)
-            .await;
+          > = self.ims_image_get(shasta_token, image_id).await;
 
           if let Ok(Some(new_image)) = new_image_vec_rslt
             .as_ref()
@@ -365,8 +366,12 @@ impl CfsTrait for ShastaClient {
       .await
       .map_err(Error::from);
 
-    cfs_configuration_vec
-      .map(|config_vec| config_vec.into_iter().map(std::convert::Into::into).collect())
+    cfs_configuration_vec.map(|config_vec| {
+      config_vec
+        .into_iter()
+        .map(std::convert::Into::into)
+        .collect()
+    })
   }
 
   async fn get_and_filter_configuration(
@@ -392,7 +397,12 @@ impl CfsTrait for ShastaClient {
       limit_number_opt,
     )
     .await
-    .map(|config_vec| config_vec.into_iter().map(std::convert::Into::into).collect())
+    .map(|config_vec| {
+      config_vec
+        .into_iter()
+        .map(std::convert::Into::into)
+        .collect()
+    })
     .map_err(Error::from)
   }
 
@@ -601,7 +611,10 @@ impl CfsTrait for ShastaClient {
             .collect()
         }),
         image_vec.map(|image_vec| {
-          image_vec.into_iter().map(std::convert::Into::into).collect()
+          image_vec
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect()
         }),
       )
     })
@@ -618,12 +631,18 @@ impl CfsTrait for ShastaClient {
     Vec<manta_backend_dispatcher::types::cfs::component::Component>,
     Error,
   > {
+    let xname_vec: Vec<String> = if let Some(component_ids) = components_ids {
+      component_ids.split(',').map(|v| v.to_string()).collect()
+    } else {
+      Vec::new()
+    };
+
     self
-      .cfs_component_v3_get_query(
+      .cfs_component_v3_get_query_batch(
         shasta_token,
-        configuration_name,
-        components_ids,
-        status,
+        configuration_name.map(|v| v.to_string()),
+        &xname_vec,
+        status.map(|v| v.to_string()),
       )
       .await
       .map(|component_vec| {

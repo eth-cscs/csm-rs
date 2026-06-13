@@ -116,22 +116,31 @@ impl ShastaClient {
   /// Returns an [`Error`] variant on CSM, transport, or
   /// deserialization failure; see the crate-level `Error` enum
   /// for the full set.
-  pub async fn cfs_component_v3_get_parallel(
+  pub async fn cfs_component_v3_get_query_batch(
     &self,
     token: &str,
+    configuration_name: Option<String>,
     node_vec: &[String],
+    status: Option<String>,
   ) -> Result<Vec<Component>, Error> {
     let start = Instant::now();
 
     let client = self.clone();
     let token = token.to_string();
     let component_vec = http::parallel_batch(node_vec, 60, 15, move |chunk| {
-      let client = client.clone();
-      let token = token.clone();
+      let client_clone = client.clone();
+      let token_clone = token.clone();
+      let config_name_clone = configuration_name.clone();
+      let status_clone = status.clone();
       async move {
         let ids = chunk.join(",");
-        client
-          .cfs_component_v3_get_query(&token, None, Some(&ids), None)
+        client_clone
+          .cfs_component_v3_get_query(
+            &token_clone,
+            config_name_clone.as_deref(),
+            Some(&ids),
+            status_clone.as_deref(),
+          )
           .await
       }
     })
