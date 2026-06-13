@@ -99,7 +99,9 @@ async fn hsm_component_get_all_hits_smd_v2_state_components() {
     .hsm_component_get_all(TEST_TOKEN, None)
     .await
     .unwrap();
-  assert!(arr.components.unwrap_or_default().is_empty());
+  // `ComponentArray.components` is a `Vec` (with `#[serde(default)]`
+  // for an absent `Components` array), not an `Option`.
+  assert!(arr.components.is_empty());
 }
 
 // ---------- hsm/component_status ----------

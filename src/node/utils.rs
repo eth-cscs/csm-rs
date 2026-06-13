@@ -225,25 +225,39 @@ pub async fn get_node_details(
     let enabled = component_details.enabled;
     let error_count = component_details.error_count;
 
-    // Get node HSM details
+    // Get node HSM details. `Component100Component.id` is
+    // `Option<XName100>`; compare via the inner `String` for parity
+    // with the historical `Option<String>` shape.
     let node_hsm_info = node_hsm_info
       .iter()
-      .find(|component| component.id.eq(&Some(xname.clone())))
+      .find(|component| component.id.as_ref().map(|x| &x.0) == Some(&xname))
       .ok_or_else(|| Error::HsmComponentNotFound(xname.clone()))?;
 
-    let node_hsm_id = node_hsm_info
+    // `id` unwraps to an `XName100` reference; `.0` is the inner
+    // `String`, and `.clone()` matches the historical owned-string
+    // path.
+    let node_hsm_id: String = node_hsm_info
       .id
       .as_ref()
-      .ok_or_else(|| Error::HsmComponentIdNotDefined(xname.clone()))?;
+      .ok_or_else(|| Error::HsmComponentIdNotDefined(xname.clone()))?
+      .0
+      .clone();
 
-    // Get power status
+    // Get power status. `state` is now `Option<HmsState100>` (a `Copy`
+    // enum with `Display` showing the wire name); `Display` already
+    // emits the upper/mixed-case wire form (e.g. "Ready") so we keep
+    // the historical uppercasing via `to_string().to_uppercase()`.
     let node_power_status = node_hsm_info
       .state
       .as_ref()
       .ok_or_else(|| Error::HsmComponentPowerStateNotDefined(xname.clone()))?
+      .to_string()
       .to_uppercase();
 
-    // Get NID
+    // Get NID. The OpenAPI schema declares NID as `type: integer`
+    // (no `minimum: 0`), so progenitor picked `i64`; the
+    // `HsmComponentNidNotDefined` error variant takes the xname string,
+    // which is `node_hsm_id` (already an owned `String`).
     let nid = node_hsm_info
       .nid
       .ok_or_else(|| Error::HsmComponentNidNotDefined(node_hsm_id.clone()))?;

@@ -1,186 +1,71 @@
-//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
-//! shapes are dictated by the API.
-#![allow(missing_docs)]
+//! Re-exports of the progenitor-generated `Component`-family schemas.
+//!
+//! Behaviour deltas vs. the previous hand-written types — driven by the
+//! OpenAPI schema being the source of truth:
+//!
+//! - `Component.id`: was `Option<String>`, now `Option<XName100>`
+//!   (newtype around `String` with `Deref<Target = String>` +
+//!   `From<XName100> for String`). Callers comparing to a plain `&str`
+//!   go via `&*component.id` (deref) or `id.0.as_str()`.
+//! - `Component.type`: was `Option<String>`, now
+//!   `Option<HmsType100>` (a `Copy` enum with `Display` showing the wire
+//!   name). The field is renamed `type_` because `type` is a Rust
+//!   keyword (the generated struct uses `#[serde(rename = "Type")]` so
+//!   the wire shape is unchanged).
+//! - `Component.state`: was `Option<String>`, now `Option<HmsState100>`
+//!   (a `Copy` enum with `Display`).
+//! - `Component.flag`: was `Option<String>`, now `Option<HmsFlag100>`.
+//! - `Component.role`: was `Option<String>`, now `Option<HmsRole100>`
+//!   (a newtype around `String` — the upstream schema is open-set, see
+//!   `GET /service/values/role`).
+//! - `Component.sub_role`: was `Option<String>`, now
+//!   `Option<HmsSubRole100>` (a newtype around `String`).
+//! - `Component.arch`: was `Option<String>`, now `Option<HmsArch100>`.
+//! - `Component.class`: was `Option<String>`, now `Option<HmsClass100>`.
+//! - `Component.net_type`: was `Option<String>`, now `Option<NetType100>`.
+//! - `Component.nid`: was `Option<usize>`, now `Option<i64>` — matches the
+//!   OpenAPI `type: integer` (no `minimum: 0`), so the generated `i64`
+//!   is the schema-faithful shape; the previous `usize` was a misread.
+//!
+//! - `ComponentArray.components`: was `Option<Vec<Component>>`, now
+//!   `Vec<Component100Component>` (the spec uses `#[serde(default)]` for
+//!   an absent `Components` array — the wire shape is unchanged because
+//!   both forms serialise to an absent property when empty, but call
+//!   sites doing `.unwrap_or_default()` need to drop the unwrap).
+//!
+//! - `ComponentCreate.id`: was `String` (pub(super) field), now
+//!   `XNameRw100` (the read-write xname newtype required by the upstream
+//!   `Component.1.0.0_ComponentCreate` schema).
+//! - `ComponentCreate.state`: was `String`, now `HmsState100`.
+//! - Other `ComponentCreate` enum-shaped fields are wrapped the same way
+//!   as their `Component` counterparts.
+//!
+//! - `ComponentArrayPostQuery`: was a flat hand-rolled struct with all
+//!   scalar `Option<String>` filter fields. The generated form makes the
+//!   array filters (`arch`, `class`, `enabled`, `flag`, `nid`, `role`,
+//!   `softwarestatus`, `state`, `subrole`, `subtype`, `type_`) into
+//!   `Vec<String>` with `#[serde(default, skip_serializing_if =
+//!   "Vec::is_empty")]`, matching the OpenAPI declaration. The previous
+//!   single-scalar shape silently coerced one value; callers wanting
+//!   multi-value semantics should push to the vec directly. Note the
+//!   `component_ids` field is now `component_i_ds: Vec<XNameForQuery100>`
+//!   because typify mangles `ComponentIDs` field-by-field
+//!   (`I`+`D`+`s`) — wire name unchanged via serde rename.
+//!
+//! - `ComponentArrayPostByNidQuery.nid_ranges`: was `Vec<String>`, now
+//!   `Vec<NidRange100>` (newtype around `String`).
+//!
+//! - `ComponentPut.component`: was `pub(super)` (effectively private to
+//!   the http_client), now a regular public field on
+//!   `Component100Put`.
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentArray {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Components")]
-  pub components: Option<Vec<Component>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Component {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "ID")]
-  pub id: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Type")]
-  pub r#type: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "State")]
-  pub state: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Flag")]
-  pub flag: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Enabled")]
-  pub enabled: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "SoftwareStatus")]
-  pub software_status: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Role")]
-  pub role: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "SubRole")]
-  pub sub_role: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "NID")]
-  pub nid: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Subtype")]
-  pub subtype: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "NetType")]
-  pub net_type: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Arch")]
-  pub arch: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Class")]
-  pub class: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "ReservationDisabled")]
-  pub reservation_disabled: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Locked")]
-  pub locked: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentArrayPostQuery {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "ComponentIDs")]
-  pub component_ids: Option<Vec<String>>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub partition: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub group: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "stateonly")]
-  pub state_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "flagonly")]
-  pub falg_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "roleonly")]
-  pub role_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "nidonly")]
-  pub nid_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub r#type: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub state: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub flag: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub enabled: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "softwarestatus")]
-  pub software_status: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub role: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub subrole: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub subtype: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub arch: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub class: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub nid: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub nid_start: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub nid_end: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentArrayPostByNidQuery {
-  #[serde(rename = "NIDRanges")]
-  pub nid_ranges: Vec<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub partition: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "stateonly")]
-  pub state_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "flagonly")]
-  pub falg_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "roleonly")]
-  pub role_only: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "nidonly")]
-  pub nid_only: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentArrayPostArray {
-  #[serde(rename = "Components")]
-  pub components: Vec<ComponentCreate>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Force")]
-  pub force: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentCreate {
-  #[serde(rename = "ID")]
-  pub(super) id: String,
-  #[serde(rename = "State")]
-  pub(super) state: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Flag")]
-  pub(super) flag: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Enabled")]
-  pub(super) enabled: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "SoftwareStatus")]
-  pub(super) software_status: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Role")]
-  pub(super) role: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "SubRole")]
-  pub(super) sub_role: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "NID")]
-  pub(super) nid: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Subtype")]
-  pub(super) subtype: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "NetType")]
-  pub(super) net_type: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Arch")]
-  pub(super) arch: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Class")]
-  pub(super) class: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ComponentPut {
-  component: ComponentCreate,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "Force")]
-  force: Option<bool>,
-}
+pub use crate::hsm::generated::types::{
+  Component100Component as Component,
+  Component100ComponentCreate as ComponentCreate,
+  Component100Put as ComponentPut,
+  ComponentArrayComponentArray as ComponentArray,
+  ComponentArrayPostArray, ComponentArrayPostByNidQuery,
+  ComponentArrayPostQuery, HmsArch100, HmsClass100, HmsFlag100, HmsRole100,
+  HmsState100, HmsSubRole100, HmsType100, NetType100, NidRange100,
+  XName100, XNameForQuery100, XNamePartition100, XNameRw100,
+};

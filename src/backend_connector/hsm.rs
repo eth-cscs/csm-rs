@@ -213,12 +213,14 @@ impl ComponentTrait for ShastaClient {
         .map_err(|e| Error::Message(e.to_string()))?;
 
       // Get all HSM components (list of xnames + nids)
+      // `Component100Component.components` is a `Vec` (with
+      // `#[serde(default)]` for an absent `Components` array), so it is
+      // already empty by default — no `unwrap_or_default()` needed.
       let hsm_component_vec = self
         .hsm_component_get_all_nodes(shasta_token, Some("true"))
         .await
         .map_err(Error::from)?
-        .components
-        .unwrap_or_default();
+        .components;
 
       let mut xname_vec: Vec<String> = vec![];
 
@@ -240,8 +242,10 @@ impl ComponentTrait for ShastaClient {
             xname_vec.push(
               hsm_component
                 .id
-                .clone()
-                .ok_or(crate::Error::ValidationFailed("No XName found"))?,
+                .as_ref()
+                .ok_or(crate::Error::ValidationFailed("No XName found"))?
+                .0
+                .clone(),
             );
           }
         }
@@ -306,12 +310,14 @@ impl ComponentTrait for ShastaClient {
         .await
         .map_err(Error::from)?;
 
-      // Get list of xnames from HSM components
+      // Get list of xnames from HSM components. `components` is now a
+      // `Vec` (with `#[serde(default)]` for an absent `Components`
+      // array), and `id` is `Option<XName100>` — unwrap the newtype to
+      // recover the inner `String`.
       let xname_vec: Vec<String> = hsm_components
         .components
-        .unwrap_or_default()
         .iter()
-        .filter_map(|component| component.id.clone())
+        .filter_map(|component| component.id.as_ref().map(|x| x.0.clone()))
         .collect();
 
       log::debug!("xname list:\n{xname_vec:#?}");

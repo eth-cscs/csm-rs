@@ -10,6 +10,7 @@
 
 use crate::{ShastaClient, error::Error, hsm::generated};
 
+mod component;
 mod group;
 mod memberships;
 mod service_values;

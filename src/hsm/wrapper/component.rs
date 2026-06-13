@@ -1,4 +1,48 @@
-//! `ShastaClient` methods for `/smd/hsm/v2/State/Components`.
+//! Wrapper for `/State/Components`. Replaces
+//! `src/hsm/component/http_client.rs`.
+//!
+//! **All methods stay on raw `reqwest`.** The generated client cannot
+//! cover any of the public surface here without changing on-wire URLs
+//! or accepting reduced typing. Concrete reasons per method:
+//!
+//! - `hsm_component_get` accepts `Option<&str>` for `type`, `state`,
+//!   `flag`, `role`, `subrole`, `arch`, `class`. The generated
+//!   `do_components_get` types those as `Option<types::DoComponentsGetType>`
+//!   and similar (closed `Copy` enums), so a raw string like "Compute"
+//!   has to round-trip through `FromStr`. More importantly, the
+//!   historical `nid: Option<&str>` is split on `,` and turned into
+//!   repeated `?nid=` query params (CSM accepts repeats); the generated
+//!   binding emits a single `?nid=…` value, dropping the comma-split
+//!   semantics. Keeping the multi-value behaviour is load-bearing for
+//!   callers like `backend_connector::ComponentTrait::nid_to_xname`.
+//! - `hsm_component_get_all`, `hsm_component_get_all_nodes`,
+//!   `hsm_component_get_and_filter` are convenience wrappers built on
+//!   top of `hsm_component_get` (they pre-fill all-`None` filters and
+//!   optionally an in-memory xname filter). Not endpoint bindings of
+//!   their own, so they inherit the same status.
+//! - `hsm_component_get_one`, `hsm_component_post`,
+//!   `hsm_component_post_query`, `hsm_component_post_bynid_query`,
+//!   `hsm_component_put`, `hsm_component_delete_one`,
+//!   `hsm_component_delete` all use the bare `/hsm/v2/...` URL prefix
+//!   (no `/smd/`); the historical csm-rs surface has shipped against
+//!   this URL inconsistency since before this codegen migration. The
+//!   generated client's baseurl is `{base_url}/smd/hsm/v2`, so routing
+//!   any of these through the generated client would prepend `/smd/`
+//!   and break the contract — and break the
+//!   `tests/backend_connector.rs::component_post_nodes_posts_to_state_components`
+//!   test, which asserts `path("/hsm/v2/State/Components")` verbatim.
+//!   Additionally, the delete methods return `HsmActionResponse`, whose
+//!   `code` / `message` fields are `#[serde(default)]` to tolerate
+//!   `{}` bodies from CSM mocks; the generated `Response100` has the
+//!   fields as required and rejects the looser shape. Keeping these on
+//!   `handle_json_response` preserves both contracts in one move.
+//!
+//! The body types passed to these methods (`ComponentArrayPostArray`,
+//! `ComponentArrayPostQuery`, `ComponentArrayPostByNidQuery`,
+//! `ComponentPut`) are still the progenitor-generated structs (now
+//! re-exported from `types.rs`), so the on-wire JSON shape matches the
+//! OpenAPI schema field-for-field. Only the HTTP path + response-parse
+//! tolerance differ from a pure progenitor wrap.
 
 use serde_json::Value;
 
@@ -6,24 +50,17 @@ use crate::{
   ShastaClient,
   common::http,
   error::Error,
-  hsm::{component::types::Component, types::HsmActionResponse},
+  hsm::{
+    component::{
+      filter,
+      types::{
+        Component, ComponentArray, ComponentArrayPostArray,
+        ComponentArrayPostByNidQuery, ComponentArrayPostQuery, ComponentPut,
+      },
+    },
+    types::HsmActionResponse,
+  },
 };
-
-use super::types::{
-  ComponentArray, ComponentArrayPostArray, ComponentArrayPostByNidQuery,
-  ComponentArrayPostQuery, ComponentPut,
-};
-
-/// In-place retain of components whose `id` is in `xname_list`.
-pub fn filter(component_vec: &mut Vec<Component>, xname_list: &[String]) {
-  component_vec.retain(|component| {
-    if let Some(xname) = &component.id {
-      xname_list.contains(xname)
-    } else {
-      false
-    }
-  });
-}
 
 impl ShastaClient {
   /// Fetch all HSM components. `nid_only` toggles the lightweight nid-only response.
@@ -97,11 +134,11 @@ impl ShastaClient {
     token: &str,
     xname_list: &[String],
   ) -> Result<Vec<Component>, Error> {
-    let mut component_vec = self
-      .hsm_component_get_all(token, None)
-      .await?
-      .components
-      .unwrap_or_default();
+    // `Component100Component.components` is `Vec<...>` (with
+    // `#[serde(default)]` for an absent `Components` array), so it is
+    // already empty by default — no `unwrap_or_default()` needed.
+    let mut component_vec =
+      self.hsm_component_get_all(token, None).await?.components;
 
     filter(&mut component_vec, xname_list);
 
@@ -291,9 +328,6 @@ impl ShastaClient {
 
     if !response.status().is_success() {
       if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-        // Mirrors the hsm::group::http_client 401 contract: carry the
-        // url + payload through `Error::RequestError` so callers can
-        // distinguish bad/expired tokens from CSM-side failures.
         let response_err = response
           .error_for_status_ref()
           .expect_err("non-2xx branch implies error_for_status_ref errs");
@@ -346,9 +380,6 @@ impl ShastaClient {
 
     if !response.status().is_success() {
       if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-        // Mirrors the hsm::group::http_client 401 contract: carry the
-        // url + payload through `Error::RequestError` so callers can
-        // distinguish bad/expired tokens from CSM-side failures.
         let response_err = response
           .error_for_status_ref()
           .expect_err("non-2xx branch implies error_for_status_ref errs");
@@ -401,9 +432,6 @@ impl ShastaClient {
 
     if !response.status().is_success() {
       if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-        // Mirrors the hsm::group::http_client 401 contract: carry the
-        // url + payload through `Error::RequestError` so callers can
-        // distinguish bad/expired tokens from CSM-side failures.
         let response_err = response
           .error_for_status_ref()
           .expect_err("non-2xx branch implies error_for_status_ref errs");
@@ -427,6 +455,11 @@ impl ShastaClient {
       }
     }
 
+    // Historical behaviour: attempt to deserialise an empty body or any
+    // 2xx payload. CSM returns 204 No Content on success, in which case
+    // the prior code path would error here. Preserving the historical
+    // behaviour exactly (including the error on a 204 body) keeps the
+    // public contract identical for now.
     response.json().await.map_err(Error::NetError)
   }
 
