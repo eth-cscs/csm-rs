@@ -1,86 +1,57 @@
-//! Wire-format types — mirror the upstream CSM OpenAPI schema; field names and
-//! shapes are dictated by the API.
-#![allow(missing_docs)]
+//! Re-exports of the progenitor-generated PCS `/power-cap` schemas.
+//!
+//! Task 4 (Option A — full type swap). The hand-written types this file
+//! previously contained diverged from the OpenAPI source of truth on
+//! several fronts; the swap takes the generated shapes verbatim and
+//! lets the spec be the single source of truth.
+//!
+//! Behaviour deltas vs. the previous hand-written types:
+//!
+//! - `PowerCapTaskInfo.task_id`: was `Option<String>`, now
+//!   `Option<uuid::Uuid>` (`uuid` is already in the crate dep tree;
+//!   serialisation is unchanged — a UUID string).
+//! - `PowerCapTaskInfo.r#type`: was `Option<String>`, now
+//!   `Option<PowerCapTaskInfoType>` (typed `snapshot`/`patch` enum). On
+//!   the wire the serialisation is identical.
+//! - `PowerCapTaskInfo.automatic_expiration_time`: was `Option<String>`,
+//!   now `Option<chrono::DateTime<Utc>>`. RFC 3339 on the wire.
+//! - `PowerCapTaskInfo.components`: **removed**. The spec keeps the
+//!   list-element type (`PowerCapTaskInfo`) free of components; the
+//!   per-task detail endpoint returns `PowerCapsRetdata`, which adds
+//!   `components: Vec<RspPowerCapComponents>`. The hand-written type
+//!   conflated the two.
+//! - `TaskCounts.{total,new,in_progress,failed,succeeded,un_supported}`:
+//!   were `usize` (non-optional), now `Option<i64>` (matches the spec —
+//!   the response may omit the field if absent on the server side).
+//! - `Limit` -> renamed to `CapabilitiesLimits` and field names
+//!   corrected: hand-written used `hostsLimitMax`/`hostsLimitMin` (typo
+//!   — extra `s`), the spec is `hostLimitMax`/`hostLimitMin`. `usize` →
+//!   `i64`.
+//! - `PowerCapLimit` -> renamed to `RspPowerCapComponentsControl`.
+//!   `name: Option<String>` -> `Option<RspPowerCapComponentsControlName>`
+//!   (typed `Node`/`Accel` enum). The serialised wire shape for the
+//!   field also changes container key: hand-written rename was
+//!   `power_cap_limits` (snake_case) but the spec uses
+//!   `powerCapLimits` (camelCase) — the hand-written code therefore
+//!   silently dropped this field when present in real responses.
+//! - `PowerCapComponent` -> renamed to `RspPowerCapComponents`.
+//!   `power_cap_limits` is now `Vec<RspPowerCapComponentsControl>` (the
+//!   spec returns an array; the hand-written code expected a single
+//!   object).
+//! - `PowerCapsRetdata` (newly exposed) — what
+//!   `GET /power-cap/{taskID}` actually returns: a `PowerCapTaskInfo`
+//!   shape plus a `components: Vec<RspPowerCapComponents>` array.
+//! - `OpTaskStartResponse` (newly exposed) — what the POST snapshot and
+//!   PATCH endpoints actually return (a thin `{ "taskID": <uuid> }`).
+//!   The hand-written code claimed both return `PowerCapTaskInfo`.
+//!
+//! Wrapper file `src/pcs/wrapper/power_cap.rs` documents how each of
+//! the 4 public methods routes onto these types.
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PowerCapTaskList {
-  pub tasks: Vec<PowerCapTaskInfo>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TaskCounts {
-  pub total: usize,
-  pub new: usize,
-  #[serde(rename = "in-progress")]
-  pub in_progress: usize,
-  pub failed: usize,
-  pub succeeded: usize,
-  #[serde(rename = "un-supported")]
-  pub un_supported: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Limit {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "hostsLimitMax")]
-  pub hosts_limit_max: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "hostsLimitMin")]
-  pub hosts_limit_min: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "powerupPower")]
-  pub powerup_power: Option<usize>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PowerCapLimit {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub name: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "currentValue")]
-  pub current_value: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "maximumValue")]
-  pub maximum_value: Option<usize>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "minimumValue")]
-  pub minimum_value: Option<usize>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PowerCapComponent {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub xname: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub error: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub limits: Option<Limit>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "power_cap_limits")]
-  pub power_cap_limits: Option<PowerCapLimit>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PowerCapTaskInfo {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "taskId")]
-  pub task_id: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub r#type: Option<String>, // TODO: convert to enum. Valid values are `snapshot` and `patch`
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "taskCreateTime")]
-  pub task_create_time: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "automaticExpirationTime")]
-  pub automatic_expiration_time: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "taskStatus")]
-  pub task_status: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename = "taskCounts")]
-  pub task_counts: Option<TaskCounts>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub components: Option<Vec<PowerCapComponent>>,
-}
+pub use crate::pcs::generated::types::{
+  CapabilitiesLimits, OpTaskStartResponse, PowerCapPatch,
+  PowerCapPatchComponent, PowerCapPatchComponentControl, PowerCapSnapshotReq,
+  PowerCapTaskInfo, PowerCapTaskInfoType, PowerCapTaskList, PowerCapsRetdata,
+  PowerCapsRetdataType, RspPowerCapComponents, RspPowerCapComponentsControl,
+  RspPowerCapComponentsControlName, TaskCounts, TaskId,
+};
