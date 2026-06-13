@@ -1,7 +1,8 @@
 //! Power Control Service (PCS) bindings.
 //!
 //! PCS is the newer power-control API for Shasta, replacing parts of
-//! CAPMC (see [`crate::capmc`]) on recent CSM releases. It exposes
+//! CAPMC (`csm_rs::capmc`, currently disabled in `lib.rs` pending its
+//! own progenitor migration) on recent CSM releases. It exposes
 //! transitions (power on/off/reset), power status queries, and power
 //! capping.
 //!

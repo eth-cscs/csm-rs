@@ -11,7 +11,8 @@
 //!
 //! The `ShastaClient` methods (`hsm_hw_inventory_get`,
 //! `hsm_hw_inventory_get_query`, `hsm_hw_inventory_post`) now live in
-//! [`crate::hsm::wrapper::hw_component`].
+//! `crate::hsm::wrapper::hw_component` (private module — call them via
+//! the inherent `ShastaClient::hsm_hw_inventory_*` methods).
 
 #[macro_use]
 pub mod types;

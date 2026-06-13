@@ -94,7 +94,7 @@ the environment. Run with `cargo run --example <name>`.
   Removed in 0.107.
 - **0.107.x**: free functions replaced by methods on [`ShastaClient`];
   the token was stored on the client.
-- **0.108 (current)**: the token was removed from [`ShastaClient`] —
+- **0.108**: the token was removed from [`ShastaClient`] —
   it is now passed per call as the method's first argument. One client
   can serve many tokens; the underlying `reqwest::Client` (and its
   connection pool) is reused across all of them.
@@ -108,6 +108,36 @@ client.ims_image_get_all().await?;
 let client = ShastaClient::new(base_url, cert, proxy)?;
 client.ims_image_get_all(token).await?;
 ```
+
+- **1.0.0-beta (current)**: HSM, CFS, BSS, BOS, and PCS are now
+  generated from the upstream OpenAPI specs via
+  [`progenitor`](https://crates.io/crates/progenitor) at build time. A
+  thin wrapper layer at `src/<module>/wrapper/` preserves the historical
+  `<module>_<resource>_<verb>` method names, but a handful of return
+  types tightened where the hand-written shapes had silently diverged
+  from the spec:
+
+  - `pcs_power_cap_get` returns `PowerCapTaskList` (was wrongly typed
+    as a single `PowerCapTaskInfo`; the endpoint always returned a
+    list).
+  - `pcs_power_cap_get_task_id` returns `PowerCapsRetdata`.
+  - `pcs_power_cap_post_snapshot` and `pcs_power_cap_patch` return
+    `OpTaskStartResponse` (the `{taskID: …}` envelope) instead of the
+    full `PowerCapTaskInfo`.
+  - `pcs_power_cap_patch` correctly issues `PATCH /power-cap` (the
+    previous code sent `PUT /power-cap/snapshot`).
+  - Several HSM types adopted spec-conformant casing (`MACAddress`,
+    `IPAddresses`, `RediscoverOnUpdate`); fields like
+    `EthernetInterface.ip_addresses` are now `Vec<IpAddressMapping>`
+    instead of the broken singular `ip_address: Option<String>`.
+  - HSM `Group.label`, `Group.exclusive_group`, and `Members.ids`
+    became newtypes (`ResourceName`, `XNameRw100`); access the inner
+    `String` via `.0` or `Deref`.
+
+  No `ShastaClient::*` method signature changed beyond return-type
+  swaps; per-call signatures are preserved. The CapMC module is
+  currently disabled in `lib.rs` while it waits for its own migration
+  pass.
 
 ## Building & testing
 
