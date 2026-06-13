@@ -17,6 +17,37 @@
 //!
 //! The v3 endpoints are preferred on CSM releases that expose them; the
 //! v2 endpoints are kept for sites still on older CSM.
+//!
+//! ## How this module is built
+//!
+//! Wire-format types and the underlying HTTP client surface are
+//! generated from `src/cfs/csm_api_docs.yaml` (OpenAPI 3.0.2). Mirrors
+//! the HSM pipeline documented in [`crate::hsm`]; the only structural
+//! difference is that the CFS spec is OpenAPI 3.x natively (no
+//! Swagger 2.0 conversion needed), so there is no `make convert-spec`
+//! step for CFS.
+//!
+//! 1. `build.rs` runs `progenitor` on the YAML and writes the
+//!    generated client to `$OUT_DIR/cfs_generated.rs`.
+//! 2. `src/cfs/generated.rs` `include!`s the file as a `pub(crate)`
+//!    module — only the wrapper layer and `types.rs` re-export aliases
+//!    are allowed to touch it.
+//! 3. `src/cfs/wrapper/` glues the generated client (and where the
+//!    spec/contract drifts, raw `reqwest` calls) to the public
+//!    `ShastaClient::cfs_*` API. Per-method routing decisions
+//!    (progenitor vs raw `reqwest`) are documented in each per-resource
+//!    file's module docstring. The wrapper is split into `v2/` and
+//!    `v3/` subfolders so the API-version boundary is visible in the
+//!    directory tree.
+//!
+//! Per-resource `types.rs` files are either pure re-exports of
+//! generated types, or hand-rolled wire types where a full swap to
+//! generated types would cascade through `dispatcher_conv` bridges. As
+//! of the migration commit train ending at session v3, all per-resource
+//! `types.rs` files remain hand-rolled because of the
+//! `manta-backend-dispatcher` coupling; the generated client is wired
+//! up and ready, but per-method progenitor routing is deferred until
+//! the public type swap is coordinated.
 
 pub mod cleanup;
 pub mod cleanup_session;
