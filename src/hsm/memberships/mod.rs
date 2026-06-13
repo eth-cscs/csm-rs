@@ -2,8 +2,10 @@
 //!
 //! Wraps `/smd/hsm/v2/memberships`. Submodules:
 //!
-//! - [`http_client`] — `ShastaClient` methods.
-//! - [`types`] — request/response shapes.
+//! - [`types`] — response shape, re-exported from the progenitor-generated
+//!   client.
+//!
+//! `ShastaClient` methods live in `crate::hsm::wrapper::memberships` and
+//! delegate to the generated client.
 
-pub mod http_client;
 pub mod types;

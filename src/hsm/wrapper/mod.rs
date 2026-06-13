@@ -10,6 +10,7 @@
 
 use crate::{ShastaClient, error::Error, hsm::generated};
 
+mod memberships;
 mod service_values;
 
 /// Build a generated HSM `Client` bound to the caller's token.

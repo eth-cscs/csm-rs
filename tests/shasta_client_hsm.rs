@@ -160,7 +160,7 @@ async fn hsm_memberships_get_xname_hits_singular_endpoint() {
     .hsm_memberships_get_xname(TEST_TOKEN, "x1000c0s0b0n0")
     .await
     .unwrap();
-  assert_eq!(m.id, "x1000c0s0b0n0");
+  assert_eq!(m.id.as_ref().map(|x| x.0.as_str()), Some("x1000c0s0b0n0"));
 }
 
 // ---------- hsm/hw_inventory/redfish_endpoint ----------

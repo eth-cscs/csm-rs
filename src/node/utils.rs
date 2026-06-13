@@ -368,8 +368,13 @@ pub async fn get_node_details(
       kernel_params: String::new(),
     };
 
+    let membership_id = node_membership
+      .id
+      .as_ref()
+      .map(|x| x.0.clone())
+      .unwrap_or_default();
     node_details_map
-      .entry(node_membership.id.clone())
+      .entry(membership_id)
       .and_modify(|node_details: &mut NodeDetails| {
         node_details.hsm = node_membership.group_labels.join(", ");
       })
