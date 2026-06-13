@@ -65,6 +65,14 @@ pub(crate) fn gen_client(
 /// The variant names below are taken verbatim from
 /// `progenitor_client::Error<E>` in progenitor-client 0.8 (see
 /// Section C of the progenitor output reference doc captured in Task 0).
+///
+/// `clippy::enum_glob_use` is allowed because spelling out all eight
+/// variants in the `use` line would defeat the readability gain of the
+/// flat match below. `clippy::match_same_arms` is allowed because the
+/// arms are distinct progenitor variants that happen to map to the
+/// same crate error today; collapsing them would lose the exhaustive
+/// coverage that the comment above describes.
+#[allow(clippy::enum_glob_use, clippy::match_same_arms)]
 pub(crate) async fn map_err<E: std::fmt::Debug>(
   err: progenitor_client::Error<E>,
 ) -> Error {
