@@ -1,18 +1,64 @@
-//! CFS components v2 — `ShastaClient` methods for `/cfs/v2/components`.
-
-pub(crate) mod types;
-
-/// Bidirectional `From` impls between [`types`] and the dispatcher's
-/// CFS v2 component mirror types. Gated behind the `manta-dispatcher`
-/// Cargo feature.
-#[cfg(feature = "manta-dispatcher")]
-mod dispatcher_conv;
+//! Wrapper for `/cfs/v2/components`. Replaces
+//! `src/cfs/component/http_client/v2/mod.rs`.
+//!
+//! Routed through the progenitor-generated client:
+//! - *(none)* — every generated v2 component method returns the
+//!   strict `types::V2ComponentState{,Array}` shape (newtype `id:
+//!   Option<ComponentId>`, enum `configuration_status`, `state:
+//!   Vec<V2ConfigurationStateLayer>`, `error_count: Option<i64>`).
+//!   csm-rs's public `Component` is the looser hand-written shape
+//!   (`id: Option<String>`, `state: Option<Vec<State>>` with the
+//!   `playbook` field, `error_count: Option<u64>`, etc.) and is
+//!   re-exported from `cfs::v2`, consumed by `dispatcher_conv.rs`,
+//!   `cleanup_session.rs`, `backend_connector/cfs.rs`, and the
+//!   `manta-backend-dispatcher` trait impls. Adopting the generated
+//!   types here would force a structural change across all those
+//!   consumers (and the public `cfs::v2::Component` API) so this
+//!   wave keeps everything on raw `reqwest`. A follow-up commit can
+//!   migrate individual methods once a generated->hand-written
+//!   conversion layer (or a swap of `Component` to the generated
+//!   type) lands.
+//!
+//! Stays on raw `reqwest` because the generated surface doesn't
+//! cover what the existing public API needs:
+//!
+//! - `cfs_component_v2_get` accepts comma-joined ids and an
+//!   arbitrary `status` string; the generated `get_components_v2`
+//!   takes `status: Option<GetComponentsV2Status>` (typed enum), so
+//!   passing a free-form status would require a fallible map.
+//! - `cfs_component_v2_get_all` returns the looser hand-written
+//!   `Vec<Component>` shape — see the "routed via progenitor"
+//!   section above for why we don't reach for `get_components_v2`.
+//! - `cfs_component_v2_get_single_component` returns the
+//!   hand-written `Component`; the generated `get_component_v2`
+//!   returns `V2ComponentState` (different field shape, see above).
+//! - `cfs_component_v2_get_multiple` is a chunking convenience
+//!   wrapper over `cfs_component_v2_get`, not an endpoint binding
+//!   of its own.
+//! - `cfs_component_v2_get_parallel` is a chunking convenience
+//!   wrapper over `cfs_component_v2_get_query`, not an endpoint
+//!   binding of its own.
+//! - `cfs_component_v2_get_query` adds a `limit=100000` parameter
+//!   that the spec/generated client doesn't expose.
+//! - `cfs_component_v2_put_component` takes the hand-written
+//!   `Component`; the generated `put_component_v2` takes
+//!   `&V2ComponentState` (different shape).
+//! - `cfs_component_v2_put_component_list` is a sequential
+//!   convenience wrapper over `cfs_component_v2_put_component`, not
+//!   an endpoint binding of its own.
+//! - `cfs_component_v2_delete_single_component` returns a
+//!   `Component` body via the tolerant `handle_json_or_text_response`
+//!   helper; the generated `delete_component_v2` is `Response = ()`
+//!   on 204 only.
 
 use std::time::Instant;
 
-use types::Component;
-
-use crate::{ShastaClient, common::http, error::Error};
+use crate::{
+  ShastaClient,
+  cfs::component::http_client::v2::types::Component,
+  common::http,
+  error::Error,
+};
 
 impl ShastaClient {
   /// Fetch CFS components, optionally filtered by a comma-separated
