@@ -7,7 +7,7 @@
 //! See `crate::cfs::wrapper` for the shared `gen_client` / `map_err`
 //! / `run` helpers — they're version-agnostic and serve both v2 and v3.
 
-// Per-resource modules are added by Tasks 4, 6, 8:
-//   mod component;
+mod component;
+// Per-resource modules added by Tasks 6, 8:
 //   mod configuration;
 //   mod session;
