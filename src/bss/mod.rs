@@ -6,12 +6,12 @@
 //!
 //! Submodules:
 //!
-//! - [`http_client`] — `ShastaClient` methods that issue BSS HTTP calls.
+//! - `wrapper` (private) — `ShastaClient` methods that issue BSS HTTP
+//!   calls. Replaces the historic `http_client` submodule.
 //! - [`types`] — request/response shapes for the BSS API.
 //! - [`utils`] — convenience helpers built on top of the raw client.
 
 pub(crate) mod generated;
-pub mod http_client;
 /// Integration-style tests for the BSS namespace.
 #[cfg(test)]
 pub mod tests;
