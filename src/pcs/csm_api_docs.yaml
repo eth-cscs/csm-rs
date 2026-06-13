@@ -1,0 +1,944 @@
+openapi: "3.0.0"
+info:
+  title: Power Control Service (PCS)
+  license:
+    name: MIT
+  version: "1.1.2"
+  description: >-
+    The Power Control Service (PCS) performs power-related operations on 
+    system components - nodes, blades, and chassis. 
+    PCS refers to system components by their xname, or system identifier. 
+
+
+    This REST API provides the following functions:
+
+    * Turn xnames on or off.
+
+    * Perform hard and soft reset actions.
+
+    * Set and retrieve power capping parameters and capabilities.
+
+    * Get node rules which are various parameters relating to power operations.
+
+
+    ## Resources
+
+    ### /transitions
+
+    Power xname on or off.
+
+    ### /power-status
+
+    Get power status of xnames.
+
+    ### /power-cap
+
+    ### /power-cap-snapshot
+
+    Get and set power capping parameters.
+
+    ## Workflows
+
+    ### Set Power Cap for a list of targets
+
+    #### PATCH /power-cap
+
+    Send a JSON payload with a list of targets and power capping parameters
+    to be applied to the targets.  This is a non-blocking operation. A task
+    ID is returned, used to query the status of the task and get the
+    requested information.
+
+    ### Get Power Cap status and information for a power cap task
+
+    #### GET /power-cap/{taskID}
+
+    Retrieve status of specified power cap PATCH operation and current values.
+
+    ### Get Power Cap parameters and capabilities for a list of targets
+
+    #### POST /power-cap/snapshot
+
+    Send a JSON payload with a list of target xnames.  This will launch a task
+    and return a snapshot ID which can be queried for status.
+
+    ### Get status and current Power Cap settings from recent power cap snapshot
+
+    #### GET /power-cap/{taskID}
+
+    Query the status of a power cap snapshot task.  If completed, contains
+    the current power cap values as read from the hardware.
+
+
+tags:
+  - name: transitions
+    description: Endpoints that perform power operations to a set of xnames
+  - name: power-status
+    description: Endpoints that retrieve power status of xnames
+  - name: power-cap
+    description: Endpoints that retrieve or set power cap parameters
+  - name: cli_ignore
+    description: Endpoints that should not be parsed by the Cray CLI generator
+
+servers:
+  - url: https://api-gw-service-nmn.local/apis/power-control/v1
+    description: Production API service.  Access from outside the service mesh.
+  - url: 'http://cray-power-control/v1'
+    description: Access from inside the service mesh.
+  - url: https://loki-ncn-m001.us.cray.com/apis/power-control/v1
+    description: External API access.
+  - url: http://localhost:26970
+    description: Localhost access to power-control
+paths:
+
+  /transitions:
+    post:
+      summary: Start a transition
+      description: |
+        Request to perform power transitions.
+      requestBody:
+        description: Transition parameters
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/transition_create'
+      responses:
+        200:
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transition_start_output'
+        400:
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        500:
+          description: Database error prevented starting the transition
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - transitions
+    get:
+      summary: Retrieve all requested power transitions 
+      description: |
+        Return a complete list of the requested power transitions,
+        with status information. Note that records older than 24 hours
+        are automatically deleted.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transitions_getAll'
+        500:
+          description: Database error prevented getting the transitions
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - transitions
+
+  /transitions/{transitionID}:
+    get:
+      summary: Retrieve transition status by ID
+      description: |
+        Retrieve the transition status information for the specified 
+        transitionID.
+      parameters:
+        - name: transitionID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transitions_getID'
+        400:
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        500:
+          description: Database error prevented getting the transition
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - transitions
+
+    delete:
+      summary: Abort an in-progress transition
+      description: Attempt to abort an in-progress transition by transitionID
+      parameters:
+        - name: transitionID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+      responses:
+        202:
+          description: Accepted - abort initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transitions_abort'
+        400:
+          description: Specified transition is complete
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        404:
+          description: TransitionID not found
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        500:
+          description: Database error prevented abort signaling
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - transitions
+
+  /power-status:
+    get:
+      summary: Retrieve the power state
+      description: |
+        Retrieve the power state of the components specified by xname.
+      parameters:
+        - in: query
+          name: xname
+          required: false
+          schema:
+            $ref: '#/components/schemas/non_empty_string_list'
+          style: form
+          explode: true
+
+        - in: query
+          name: powerStateFilter
+          required: false
+          schema:
+            $ref: '#/components/schemas/power_state'
+          style: form
+          explode: true
+        - in: query
+          name: managementStateFilter
+          required: false
+          schema:
+            $ref: '#/components/schemas/management_state'
+          style: form
+          explode: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/power_status_all'
+        400:
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        500:
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - power-status
+    post:
+      summary: Retrieve the power state
+      description: |
+        Retrieve the power state of the components specified by xname.
+      requestBody:
+        description: Node filtering parameters
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/power_status_get'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/power_status_all'
+        400:
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        500:
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+      tags:
+        - power-status
+        - cli_ignore
+
+  /power-cap/snapshot:
+    post:
+      tags:
+        - power-cap
+      summary: Take a power cap snapshot for a set of targets
+      description: >-
+        Get power cap snapshot for a set of targets.  This operation
+        returns a taskID to be used for completion status queries, since
+        this can be a long running task. Progress and status for this task
+        can be queried via a `GET /power-cap/{taskID}`
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/power_cap_snapshot_req'
+      responses:
+        '200':
+          description: OK. The data was successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/op_task_start_response'
+        '400':
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        '500':
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+
+  /power-cap:
+    patch:
+      tags:
+        - power-cap
+      summary: Set power capping parameters on a set of targets
+      description: >-
+        Set power cap parameters for a list of targets.  The PATCH payload
+        contains the targets and the parameters to set.  This operation
+        returns a  powercapID to be used for completion status queries, since
+        this can be a long running task. Progress and status for this task
+        can be queried via a `GET /power-cap/{taskID}`.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/power_cap_patch'
+      responses:
+        '200':
+          description: OK. The data was successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/op_task_start_response'
+        '400':
+          description: Bad Request
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        '500':
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+    get:
+      tags:
+        - power-cap
+      summary: Get a list of power-cap tasks (snapshots or sets)
+      responses:
+        '200':
+          description: OK. The data was successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/power_cap_task_list'
+        '500':
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+
+  /power-cap/{taskID}:
+    get:
+      tags:
+        - power-cap
+      summary: Get power cap or snapshot information
+      description: >-
+        Queries the current status for the specified taskID.
+        Use the taskID returned from a `PATCH /power-cap` or `POST /power-cap/snapshot` request.
+      parameters:
+        - name: taskID
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/task_id'
+      responses:
+        '200':
+          description: OK. The data was successfully retrieved.  Task Info is only present for task status operations (PATCH power-cap or POST power-cap/snapshot)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/power_caps_retdata'
+        '404':
+          description: TaskID not found
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+        '500':
+          description: Database error
+          content:
+            application/error:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+
+  /liveness:
+    get:
+      tags:
+        - cli_ignore
+      summary: Get liveness status of the service
+      description: Get liveness status of the service
+      x-private: true
+      responses:
+        '204':
+          description: >-
+            [No
+            Content](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.5)
+            Network API call success
+        '503':
+          description: The service is not taking HTTP requests
+  
+  /readiness:
+    get:
+      tags:
+        - cli_ignore
+      summary: Get readiness status of the service
+      description: Get readiness status of the service
+      x-private: true
+      responses:
+        '204':
+          description: >-
+            [No
+            Content](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.5)
+            Network API call success
+        '503':
+          description: The service is not taking HTTP requests
+
+  /health:
+    get:
+      tags:
+        - cli_ignore
+      summary: Query the health of the service
+      description: >-
+        The `health` resource returns health information about the PCS service
+        and its dependencies. This actively checks the connection between 
+        PCS and the following:
+          * KV store
+          * Distributed locking subsystem
+          * Hardware State Manager
+          * Vault
+          * Task Runner Service status and mode
+
+
+        This is primarily intended as a diagnostic tool to investigate the
+        functioning of the PCS service.
+      x-private: true
+      responses:
+        '200':
+          description: >-
+            [OK](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1)
+            Network API call success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/health_rsp'
+        '405':
+          description: >-
+            Operation Not Permitted. For /health, only GET operations are allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem7807'
+
+components:
+  schemas:
+
+    power_status:
+      type: object
+      properties:
+        xname:
+          $ref: '#/components/schemas/xname'
+        powerState:
+          $ref: '#/components/schemas/power_state'
+        managementState:
+          $ref: '#/components/schemas/management_state'
+        error:
+          type: string
+          nullable: true
+          example: permission denied - system credentials failed
+        supportedPowerTransitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/power_operation'
+        lastUpdated:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2022-08-24T16:45:53.953811137Z'
+
+    power_status_all:
+      type: object
+      properties:
+        status:
+          type: array
+          items:
+            $ref: '#/components/schemas/power_status'
+
+    power_status_get:
+      type: object
+      description: |
+        Filters to limit which nodes have their power status returned.
+      properties:
+        xname:
+          $ref: '#/components/schemas/non_empty_string_list'
+        powerStateFilter:
+          $ref: '#/components/schemas/power_state'
+        managementStateFilter:
+          $ref: '#/components/schemas/management_state'
+      additionalProperties: false
+
+    transitions_getID:
+      type: object
+      properties:
+        transitionID:
+          type: string
+          format: uuid
+        createTime:
+          type: string
+          example: "2020-12-16T19:00:20"
+        automaticExpirationTime:
+          type: string
+          format: date-time
+          description: When the record will be deleted
+        transitionStatus:
+          $ref: '#/components/schemas/transition_status'
+        operation:
+          $ref: '#/components/schemas/power_operation'
+        taskCounts:
+          $ref: '#/components/schemas/task_counts'
+        tasks:
+          type: array
+          description: Present only if transition not yet compressed
+          items:
+            $ref: '#/components/schemas/transition_task_data'
+    transitions_getAll:
+      type: object
+      properties:
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/transitions_get'
+    transitions_get:
+      type: object
+      properties:
+        transitionID:
+          type: string
+          format: uuid
+        createTime:
+          type: string
+          example: "2020-12-16T19:00:20"
+        automaticExpirationTime:
+          type: string
+          format: date-time
+          description: When the record will be deleted
+        transitionStatus:
+          $ref: '#/components/schemas/transition_status'
+        operation:
+          $ref: '#/components/schemas/power_operation'
+        taskCounts:
+          $ref: '#/components/schemas/task_counts'
+    transition_start_output:
+      type: object
+      properties:
+        transitionID:
+          type: string
+          format: uuid
+        operation:
+          $ref: '#/components/schemas/power_operation'
+    transitions_abort:
+      type: object
+      properties:
+        abortStatus:
+          type: string
+          example: "Accepted - abort initiated"
+
+    transition_task_data:
+      type: object
+      properties:
+        xname:
+          $ref: '#/components/schemas/xname'
+        taskStatus:
+          type: string
+          enum:
+            - new
+            - in-progress
+            - failed
+            - succeeded
+            - unsupported
+          example: failed
+        taskStatusDescription:
+          type: string
+          example: "the device did not respond in a timely manner"
+        error:
+          type: string
+          example: "failed to achieve transition"
+
+    reserved_location:
+      type: object
+      required:
+        - xname
+      properties:
+        xname:
+          $ref: '#/components/schemas/xname'
+        deputyKey:
+          type: string
+          format: uuid
+
+    transition_create:
+      type: object
+      properties:
+        operation:
+          type: string
+          enum:
+            - on
+            - off
+            - soft-off
+            - soft-restart
+            - hard-restart
+            - init
+            - force-off
+
+          description: The operation that should be applied to the hardware. The operation parameter is not case sensitive.
+          example: force-off
+        taskDeadlineMinutes:
+          type: integer
+          description: >-
+            The number of minutes to wait for a single transition task 
+            to complete before continuing. 
+            Defaults to 5 minutes, if unspecified.
+            0 disables waiting. -1 waits as long as it takes.
+        location:
+          type: array
+          items:
+            $ref: '#/components/schemas/reserved_location'
+
+    task_counts:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 5
+        new:
+          type: integer
+          example: 2
+        in-progress:
+          type: integer
+          example: 2
+        failed:
+          type: integer
+          example: 0
+        succeeded:
+          type: integer
+          example: 1
+        un-supported:
+          type: integer
+          example: 0
+
+    Problem7807:
+      description: >-
+        RFC 7807 compliant error payload. All fields are optional except the
+        'type' field.
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          example: 'about:blank'
+        detail:
+          type: string
+          example: Detail about this specific problem occurrence. See RFC7807
+        instance:
+          type: string
+          example: ''
+        statusCode:
+          type: number
+          format: integer
+          example: 400
+        title:
+          type: string
+          example: 'Description of HTTP Status code, e.g. 400'
+
+    power_state:
+      type: string
+      example: on
+      enum:
+        - on
+        - off
+        - undefined
+      description: The power state of a component.
+
+    power_operation:
+      type: string
+      description: An operation to be applied to the hardware.
+      enum:
+        - On
+        - Off
+        - Soft-Restart
+        - Hard-Restart
+        - Init
+        - Force-Off
+        - Soft-Off
+      example: Soft-Restart
+      # When responding to API requests, the service always capitalizes the transitions, but in requests,
+      # the transitions are not case sensitive
+      readOnly: true
+
+    transition_status:
+      type: string
+      description: The status of the power transition.
+      example: in-progress
+      enum:
+        - new
+        - in-progress
+        - completed
+        - aborted
+        - abort-signaled
+
+    management_state:
+      type: string
+      example: available
+      enum:
+        - unavailable
+        - available
+      description: Whether the device is currently available for commands via its management controller
+
+    non_empty_string_list:
+      type: array
+      items:
+        type: string
+      minItems: 1
+
+    xname:
+      type: string
+      pattern: >-
+        ^s0$|^d([0-9]+)$|^x([0-9]{1,4})d([0-1])$|^x([0-9]{1,4})m([0-3])$|^x([0-9]{1,4})m([0-3])p([0-7])$|^x([0-9]{1,4})m([0-3])i([0-3])$|^x([0-9]{1,4})m([0-3])p([0-7])j([1-9][0-9]*)$|^x([0-9]{1,4})e([0-1])$|^x([0-9]{1,4})$|^x([0-9]{1,4})b([0])$|^x([0-9]{1,4})c([0-7])$|^x([0-9]{1,4})c([0-7])b([0])$|^x([0-9]{1,4})c([0-7])f([0])$|^x([0-9]{1,4})c([0-7])t([0-2])$|^x([0-9]{1,4})c([0-7])s([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)f([0])$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)i([0-3])$|^x([0-9]{1,4})c([0-7])s([0-9]+)e([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)j([1-2])$|^x([0-9]{1,4})c([0-7])r([0-9]+)e([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)i([0-3])$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)h([0-3])$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)a([0-7])$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)d([0-9]+)$|^x([0-9]{1,4})c([0-7])s([0-9]+)b([0-9]+)n([0-9]+)p([0-3])$|^x([0-9]{1,4})c([0-7])r([0-9]+)$|^x([0-9]{1,4})c([0-7])r([0-9]+)f([01])$|^x([0-9]{1,4})c([0-7])r([0-9]+)t([0-9]+)f([0-1])$|^x([0-9]{1,4})c([0-7])r([0-9]+)b([0-9]+)$|^x([0-9]{1,4})c([0-7])r([0-9]+)b([0-9]+)i([0-3])$|^x([0-9]{1,4})c([0-7])r([0-9]+)a([0-3])$|^x([0-9]{1,4})c([0-7])r([0-9]+)j([1-9][0-9]*)$|^x([0-9]{1,4})c([0-7])r([0-9]+)j([1-9][0-9]*)p([012])$|^x([0-9]{1,4})c([0-7])r([0-9]+)a([0-3])l([0-9]+)$|^x([0-9]{1,4})c([0-7])w([1-9][0-9]*)$|^x([0-9]{1,4})c([0-7])w([0-9]+)j([1-9][0-9]*)$
+      description: The xname of this piece of hardware
+      example: x0c0s0b0n0
+
+    task_id:
+      type: string
+      format: uuid
+      description: Task ID from power-cap, snapshot operation
+
+    power_cap_patch:
+      type: object
+      properties:
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/power_cap_patch_component'
+
+    power_cap_patch_component:
+      type: object
+      properties:
+        xname:
+          $ref: '#/components/schemas/xname'
+        controls:
+          type: array
+          items:
+            $ref: '#/components/schemas/power_cap_patch_component_control'
+
+    power_cap_patch_component_control:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: integer
+          example: 400
+
+    op_task_start_response:
+      type: object
+      properties:
+        taskID:
+          type: string
+          format: uuid
+
+    power_caps_retdata:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/power_cap_task_info'
+        - type: object
+          properties:
+            components:
+              type: array
+              items:
+                $ref: '#/components/schemas/rsp_power_cap_components'
+
+    power_cap_task_list:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/power_cap_task_info'
+
+    power_cap_task_info:
+      type: object
+      properties:
+        taskID:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [snapshot, patch]
+          example: "snapshot"
+          description: The task can either be the result of a snapshot or a patch
+        taskCreateTime:
+          type: string
+          example: "2021-04-01T19:00:00"
+        automaticExpirationTime:
+          type: string
+          format: date-time
+          description: When the record will be deleted
+        taskStatus:
+          type: string
+          example: "Completed"
+        taskCounts:
+          $ref: '#/components/schemas/task_counts'
+
+    power_cap_snapshot_req:
+      type: object
+      properties:
+        xnames:
+          type: array
+          items:
+            $ref: '#/components/schemas/xname'
+
+    rsp_power_cap_components:
+      type: object
+      properties:
+        xname:
+          $ref: '#/components/schemas/xname'
+        error:
+          type: string
+          example: "Optional error message"
+          description: nullable error field
+        limits:
+          $ref: '#/components/schemas/capabilities_limits'
+        powerCapLimits:
+          type: array
+          items:
+            $ref: '#/components/schemas/rsp_power_cap_components_control'
+
+    rsp_power_cap_components_control:
+      type: object
+      properties:
+        name:
+          type: string
+          enum: [Node, Accel]
+        currentValue:
+          type: integer
+          example: 410
+          description: The current power cap limit as reported by the device
+        maximumValue:
+          type: integer
+          example: 900
+          description: The maximum power cap limit the device may be set to
+        minimumValue:
+          type: integer
+          example: 360
+          description: The minimum power cap limit the device may be set to
+
+    capabilities_limits:
+      type: object
+      properties:
+        hostLimitMax:
+          type: integer
+          example: 900
+          description: Node maximum power draw, measured in watts, as reported by underlying Redfish implementation
+        hostLimitMin:
+          type: integer
+          example: 360
+          description: Node minimum power draw, measured in watts, as reported by underlying Redfish implementation
+        powerupPower:
+          type: integer
+          example: 250
+          description: Typical power consumption of each node during hardware initialization, specified in watts
+
+    health_rsp:
+      type: object
+      properties:
+        KvStore:
+          description: Status of the KV Store.
+          type: string
+        DistLocking:
+          description: Status of the distributed locking mechanism
+          type: string
+        StateManager:
+          description: Status of the connection to the Hardware State Manager.
+          type: string
+        Vault:
+          description: Status of the connection to Vault.
+          type: string
+        TaskRunner:
+          description: TRS status and mode (local or remote/worker).
+      example:
+        KvStore: 'connected, responsive'
+        StateManager: 'connected, responsive'
+        BackingStore: 'connected, responsive'
+        Vault: 'connected, responsive'
+        TaskRunnerMode: 'connected, responsive, local mode'
+      required:
+        - KvStore
+        - DistLocking
+        - StateManager
+        - Vault
+        - TaskRunner
