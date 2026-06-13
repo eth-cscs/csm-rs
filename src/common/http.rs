@@ -107,10 +107,35 @@ pub(crate) fn build_client(
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
 ) -> Result<reqwest::Client, Error> {
-  let builder = reqwest::Client::builder()
+  build_client_with_auth(shasta_root_cert, socks5_proxy, None)
+}
+
+/// Build a `reqwest::Client` like [`build_client`], optionally baking in a
+/// bearer-auth default header. The bearer-token variant is used by the
+/// generated HSM client, where progenitor's `Client` newtype owns the
+/// `reqwest::Client` and there's no convenient hook for per-request auth.
+///
+/// Returns `Error::Message` if `bearer_token` contains bytes that are not
+/// valid in an HTTP header value (e.g. control characters, `\n`).
+pub(crate) fn build_client_with_auth(
+  shasta_root_cert: &[u8],
+  socks5_proxy: Option<&str>,
+  bearer_token: Option<&str>,
+) -> Result<reqwest::Client, Error> {
+  let mut builder = reqwest::Client::builder()
     .connect_timeout(HTTP_CONNECT_TIMEOUT)
     .timeout(HTTP_REQUEST_TIMEOUT)
     .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+
+  if let Some(token) = bearer_token {
+    let mut headers = reqwest::header::HeaderMap::new();
+    let auth = format!("Bearer {token}");
+    let mut value = reqwest::header::HeaderValue::from_str(&auth)
+      .map_err(|e| Error::Message(format!("invalid bearer token: {e}")))?;
+    value.set_sensitive(true);
+    headers.insert(reqwest::header::AUTHORIZATION, value);
+    builder = builder.default_headers(headers);
+  }
 
   let client = match socks5_proxy {
     Some(proxy) => builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
@@ -396,6 +421,44 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
   fn build_client_with_invalid_proxy_url_fails() {
     let client = build_client(TEST_PEM.as_bytes(), Some(":::not a url:::"));
     assert!(client.is_err());
+  }
+
+  #[test]
+  fn build_client_with_auth_invalid_token_bytes_returns_error() {
+    // A `\n` byte cannot legally appear in an HTTP header value. Used to
+    // panic in the old gen_client; now surfaces as Error::Message.
+    let result =
+      build_client_with_auth(TEST_PEM.as_bytes(), None, Some("bad\ntoken"));
+    match result {
+      Err(Error::Message(m)) => {
+        assert!(
+          m.contains("invalid bearer token"),
+          "expected 'invalid bearer token' in message, got: {m}"
+        );
+      }
+      other => panic!("expected Err(Error::Message), got {other:?}"),
+    }
+  }
+
+  #[tokio::test]
+  async fn build_client_with_auth_sends_bearer_header() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+      .and(path("/ping"))
+      .and(header("authorization", "Bearer token-x"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!({"ok": 1})))
+      .mount(&server)
+      .await;
+
+    let client =
+      build_client_with_auth(TEST_PEM.as_bytes(), None, Some("token-x"))
+        .expect("should build");
+    let resp = client
+      .get(format!("{}/ping", server.uri()))
+      .send()
+      .await
+      .expect("request should reach mock");
+    assert_eq!(resp.status(), 200);
   }
 
   // ---------- request helpers (use wiremock, plain HTTP) ----------
