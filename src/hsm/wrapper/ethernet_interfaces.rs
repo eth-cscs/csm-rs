@@ -1,11 +1,45 @@
-//! `ShastaClient` methods for `/smd/hsm/v2/Inventory/EthernetInterfaces`.
+//! Wrapper for `/Inventory/EthernetInterfaces`. Replaces
+//! `src/hsm/hw_inventory/ethernet_interfaces/http_client.rs`.
+//!
+//! **All four methods stay on raw `reqwest`.** Routing through the
+//! generated client would change either the on-wire URL or the public
+//! return type — neither is acceptable without a separate breaking-change
+//! PR. Per-method rationale:
+//!
+//! - `hsm_eth_post` and `hsm_eth_post_ip_addresses` hit
+//!   `{base}/hsm/v2/Inventory/EthernetInterfaces[/.../IPAddresses]` —
+//!   note the missing `smd` segment. The generated client's basePath in
+//!   `wrapper::gen_client` is `{base}/smd/hsm/v2`, so routing through it
+//!   would silently rewrite the path to `{base}/smd/hsm/v2/...`. This
+//!   `/hsm/v2/` vs `/smd/hsm/v2/` split is a long-standing csm-rs quirk
+//!   preserved verbatim across the migration (matching the redfish_endpoint
+//!   migration in Task 10).
+//! - `hsm_eth_get` and `hsm_eth_patch` both return `reqwest::Response`
+//!   (the body is handed back to the caller raw). The generated
+//!   `do_comp_eth_interfaces_get_v2` returns `Vec<CompEthInterface100>`
+//!   and `do_comp_eth_interface_patch_v2` returns `()`. Routing through
+//!   either would change the public return type to a typed payload,
+//!   which is a public-API break we are explicitly avoiding here.
+//!
+//! BEHAVIOUR DELTA (from Task 11): the hand-written `EthernetInterface`
+//! and (to a lesser extent) `IpAddressMapping` / `ComponentEthernetInterface`
+//! types in `super::super::hw_inventory::ethernet_interfaces::types` did
+//! not carry the PascalCase `#[serde(rename = "...")]` annotations the
+//! spec requires, and `EthernetInterface` had a singular
+//! `ip_address: Option<String>` instead of the spec's
+//! `IPAddresses: array<IPAddressMapping>`. Those types were fixed
+//! in-place in Task 11; this wrapper accepts/returns the corrected
+//! shapes. Callers that previously serialised the broken snake_case
+//! variants will see their JSON change to spec-conformant PascalCase.
 
 use crate::{
   ShastaClient, error::Error,
   hsm::hw_inventory::ethernet_interfaces::types::EthernetInterface,
 };
 
-use super::types::{ComponentEthernetInterface, IpAddressMapping};
+use super::super::hw_inventory::ethernet_interfaces::types::{
+  ComponentEthernetInterface, IpAddressMapping,
+};
 
 impl ShastaClient {
   /// `POST /hsm/v2/Inventory/EthernetInterfaces` — register a new

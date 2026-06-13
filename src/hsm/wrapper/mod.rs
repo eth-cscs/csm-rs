@@ -12,6 +12,7 @@ use crate::{ShastaClient, error::Error, hsm::generated};
 
 mod component;
 mod component_status;
+mod ethernet_interfaces;
 mod group;
 mod hw_component;
 pub(crate) mod hw_component_types;
