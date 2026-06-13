@@ -108,7 +108,7 @@ info:
      Delete all session history for session_name (as needed).
 
     The default content type for the CFS API is `application/json`. Unsuccessful
-    API calls return a content type of `application/problem+json` as per RFC 7807.
+    API calls return a content type of `application/json` as per RFC 7807.
 
 servers:
 - url: https://api-gw-service-nmn.local/apis/cfs
@@ -116,6 +116,19 @@ servers:
 
 components:
   parameters:
+    # PATCH (csm-rs): the schema below was originally
+    # `$ref: '#/components/schemas/TenantName'` (a constrained string with
+    # maxLength: 127). progenitor emits constrained strings as newtypes
+    # (`pub struct TenantName(String);`) and, for each operation that uses
+    # the header, calls `HeaderValue::try_from(v)` where `v: &TenantName`.
+    # No `HeaderValue: From<&TenantName>` impl exists, producing 15 E0277
+    # errors in generated.rs. Inlining as plain `type: string` (with NO
+    # `maxLength` -- any length constraint still triggers an
+    # operation-specific newtype like `PatchConfigurationV3CrayTenantName`)
+    # avoids the newtype entirely. See
+    # docs/superpowers/plans/2026-06-13-progenitor-cfs-output-reference.md
+    # Section F.3. The TenantName schema in components.schemas is left
+    # intact so other references still resolve. DO NOT revert.
     V3TenantHeaderParam:
       name: Cray-Tenant-Name
       in: header
@@ -127,7 +140,7 @@ components:
         Requests with an empty tenant name, or that omit this parameter, will have no such context restrictions.
       required: false
       schema:
-        $ref: '#/components/schemas/TenantName'
+        type: string
   requestBodies:
     V2SessionCreateRequest:
       description: A JSON object for creating Config Framework Sessions
@@ -362,47 +375,58 @@ components:
             $ref: '#/components/schemas/V3SourceDataCollection'
     ResourceDeleted:
       description: The resource was deleted.
+    # PATCH (csm-rs): the 7 error responses below originally used
+    # `application/problem+json` (RFC 7807) as their content type, and the
+    # description text on line ~111 also referenced `application/problem+json`.
+    # progenitor only routes `application/json` through its typed-response
+    # extractor; non-json media types fall through to
+    # `progenitor_client::ByteStream` which doesn't implement Debug, causing
+    # 51 E0277 compile errors in the generated code. All 8 occurrences
+    # (7 content keys + 1 description text) were replaced with
+    # `application/json` -- see
+    # docs/superpowers/plans/2026-06-13-progenitor-cfs-output-reference.md
+    # Section F.2. DO NOT revert.
     # Errors
     BadRequest:
       description: Bad Request
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     ForbiddenOperation:
       description: The operation being attempted is not permitted.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     ResourceNotFound:
       description: The resource was not found.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     ConflictingSessionName:
       description: A session with the same name already exists.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     ConflictingSourceName:
       description: A source with the same name already exists
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     JobAlreadySet:
       description: The patch cannot be applied because the job field cannot be updated after it is set.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
     KafkaTimeout:
       description: The request could not be completed because of a Kafka-related timeout.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/ProblemDetails'
   schemas:
@@ -448,40 +472,88 @@ components:
       nullable: true
       additionalProperties: true  # This can contain the parameters of any endpoint this is returned from
     ## OPTIONS ENDPOINT ##
+    # PATCH (csm-rs): V2Options properties were originally 12 $refs into
+    # `#/components/schemas/V3Options/properties/*`. progenitor's typify pass
+    # panics on property-level $ref nesting (it only resolves refs to
+    # top-level schemas under components.schemas) -- see
+    # docs/superpowers/plans/2026-06-13-progenitor-cfs-output-reference.md
+    # Section F.1. Each of the 12 refs has been inlined from the V3Options
+    # property it pointed at; the camelCase V2 key names are preserved.
+    # `defaultPlaybook` was already inline upstream and is kept as-is
+    # (V3's `default_playbook` is deprecated/readOnly which would not be
+    # appropriate for V2). DO NOT revert these inlines without also
+    # reworking build.rs -- typify will panic with "$ref ... is missing".
     V2Options:
       description: |
         Configuration options for the configuration service.
       type: object
       properties:
         hardwareSyncInterval:
-          $ref: '#/components/schemas/V3Options/properties/hardware_sync_interval'
+          type: integer
+          description: How frequently the CFS hardware-sync-agent checks with the Hardware State Manager to update its known hardware (in seconds)
+          example: 5
+          minimum: 1
         batcherCheckInterval:
-          $ref: '#/components/schemas/V3Options/properties/batcher_check_interval'
+          type: integer
+          description: How frequently the batcher checks the configuration states to see if work needs to be done (in seconds)
+          example: 5
+          minimum: 1
         batchSize:
-          $ref: '#/components/schemas/V3Options/properties/batch_size'
+          type: integer
+          description: The maximum number of nodes the batcher will run a single CFS session against.
+          example: 120
+          minimum: 1
         batchWindow:
-          $ref: '#/components/schemas/V3Options/properties/batch_window'
+          type: integer
+          description: The maximum number of seconds the batcher will wait to run a CFS session once a node has been detected that needs configuration.
+          example: 120
+          minimum: 0
         defaultBatcherRetryPolicy:
-          $ref: '#/components/schemas/V3Options/properties/default_batcher_retry_policy'
+          type: integer
+          description: The default maximum number retries per node when configuration fails.
+          example: 1
+          minimum: 0
         defaultPlaybook:
           type: string
           description: The default playbook to be used if not specified in a node's desired state.
           example: site.yml
           pattern: '^[^\s;]*$'
         defaultAnsibleConfig:
-          $ref: '#/components/schemas/V3Options/properties/default_ansible_config'
+          type: string
+          description: The Kubernetes ConfigMap which holds the default ansible.cfg for a given CFS session. This ConfigMap must be present in the same Kubernetes namespace as the CFS service.
+          example: cfs-default-ansible-cfg
+          minLength: 0
+          maxLength: 60
         sessionTTL:
-          $ref: '#/components/schemas/V3Options/properties/session_ttl'
+          type: string
+          description: A time-to-live applied to all completed CFS sessions. Specified in minutes, hours, days, or weeks. e.g. 3d or 24h. Set to an empty string to disable.
+          example: 24h
+          pattern: '^(?:[0-9]+[mMhHdDwW]){0,1}$'
+          minLength: 0
+          maxLength: 10
         additionalInventoryUrl:
-          $ref: '#/components/schemas/V3Options/properties/additional_inventory_url'
+          type: string
+          description: The git clone URL of a repo with additional inventory files. All files in the repo will be copied into the hosts directory of CFS. This is mutually exclusive with the additional_inventory_source option and only one can be set.
+          example: https://api-gw-service-nmn.local/vcs/cray/inventory.git
+          pattern: '^[^\s;]*$'
+          minLength: 0
+          maxLength: 240
         batcherMaxBackoff:
-          $ref: '#/components/schemas/V3Options/properties/batcher_max_backoff'
+          type: integer
+          description: The maximum number of seconds that batcher will backoff from session creation if problems are detected.
+          example: 3600
+          minimum: 0
         batcherDisable:
-          $ref: '#/components/schemas/V3Options/properties/batcher_disable'
+          type: boolean
+          description: Disables cfs-batcher's automatic session creation if set to True.
         batcherPendingTimeout:
-          $ref: '#/components/schemas/V3Options/properties/batcher_pending_timeout'
+          type: integer
+          description: How long cfs-batcher will wait on a pending session before deleting and recreating it (in seconds).
+          minimum: 1
         loggingLevel:
-          $ref: '#/components/schemas/V3Options/properties/logging_level'
+          type: string
+          description: The logging level for core CFS services.  This does not affect the Ansible logging level.
+          enum: ['DEBUG', 'INFO', 'WARNING', 'ERROR']
       additionalProperties: false
     V3Options:
       description: |
