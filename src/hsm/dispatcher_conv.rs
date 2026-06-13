@@ -8,8 +8,11 @@ use super::types::HsmActionResponse;
 
 impl From<FrontEndHsmActionResponse> for HsmActionResponse {
   fn from(value: FrontEndHsmActionResponse) -> Self {
+    // Dispatcher mirror keeps `code` as String; csm-rs uses i64 (the
+    // wire form). Parse on the way in, default to 0 if the dispatcher
+    // ever holds a non-numeric value.
     HsmActionResponse {
-      code: value.code,
+      code: value.code.parse().unwrap_or(0),
       message: value.message,
     }
   }
@@ -18,7 +21,7 @@ impl From<FrontEndHsmActionResponse> for HsmActionResponse {
 impl From<HsmActionResponse> for FrontEndHsmActionResponse {
   fn from(val: HsmActionResponse) -> Self {
     FrontEndHsmActionResponse {
-      code: val.code,
+      code: val.code.to_string(),
       message: val.message,
     }
   }

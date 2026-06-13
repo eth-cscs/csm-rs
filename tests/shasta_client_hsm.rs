@@ -239,7 +239,7 @@ async fn hsm_group_post_member_sends_id_body_to_members_endpoint() {
     .and(body_json(json!({"id": "x1000c0s0b0n0"})))
     .respond_with(
       ResponseTemplate::new(200)
-        .set_body_json(json!({"code": "0", "message": "ok"})),
+        .set_body_json(json!({"code": 0, "message": "ok"})),
     )
     .expect(1).mount(&server)
     .await;

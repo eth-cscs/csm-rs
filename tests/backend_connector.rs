@@ -242,12 +242,11 @@ async fn group_delete_group_hits_singular_endpoint() {
   Mock::given(method("DELETE"))
     .and(path("/smd/hsm/v2/groups/zinal"))
     .and(bearer_token(TEST_TOKEN))
-    // NOTE: `HsmActionResponse.code` deserialises as a *String*, not
-    // an integer. Returning `"code": 0` would fail with `expected a
-    // string` even though every real CSM response uses a numeric
-    // string like "0".
+    // `HsmActionResponse.code` deserialises as i64 (matches real CSM
+    // wire format — the swagger says String but the server sends an
+    // integer).
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-      "code": "0", "message": "deleted"
+      "code": 0, "message": "deleted"
     })))
     .expect(1)
     .mount(&server)
@@ -265,7 +264,7 @@ async fn group_post_member_hits_members_endpoint() {
     .and(bearer_token(TEST_TOKEN))
     .and(body_partial_json(json!({"id": "x1000c0s0b0n0"})))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-      "code": "0", "message": "added"
+      "code": 0, "message": "added"
     })))
     .expect(1)
     .mount(&server)
@@ -404,7 +403,7 @@ async fn group_add_group_posts_to_groups_endpoint() {
     .and(bearer_token(TEST_TOKEN))
     .and(body_partial_json(json!({"label": "zinal"})))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-      "code": "0", "message": "added"
+      "code": 0, "message": "added"
     })))
     .expect(1)
     .mount(&server)
@@ -768,7 +767,7 @@ async fn group_add_members_to_group_does_get_then_post() {
     .and(bearer_token(TEST_TOKEN))
     .and(body_partial_json(json!({"id": "x1000c0s0b0n0"})))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-      "code": "0", "message": "added"
+      "code": 0, "message": "added"
     })))
     .expect(1)
     .mount(&server)
