@@ -25,6 +25,8 @@ pub mod group;
 pub mod hw_inventory;
 pub mod memberships;
 pub mod service;
+pub(crate) mod generated;
+mod wrapper;
 /// Shared HSM response types (`HsmActionResponse`, `ResourceURI`) used
 /// across the submodules above.
 pub mod types;
