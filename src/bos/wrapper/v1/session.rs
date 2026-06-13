@@ -1,4 +1,12 @@
-//! BOS sessions v1 — `ShastaClient` methods for `/bos/v1/session`.
+//! Wrapper for `/bos/v1/session`. Replaces
+//! `src/bos/session/http_client/v1/mod.rs`.
+//!
+//! The upstream BOS spec is v2-only — there is no progenitor coverage
+//! for v1, so this is a pure file relocation. All methods stay on raw
+//! `reqwest`.
+//!
+//! Methods present:
+//! - `bos_session_v1_post`
 
 use serde_json::{Value, json};
 

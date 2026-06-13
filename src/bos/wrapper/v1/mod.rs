@@ -8,6 +8,5 @@
 //! / `run` helpers — they're version-agnostic but v1 methods do not
 //! use them (no spec to drive progenitor against).
 
-// Per-resource modules are added by Task 3:
-//   mod session;
-//   mod template;
+mod session;
+mod template;

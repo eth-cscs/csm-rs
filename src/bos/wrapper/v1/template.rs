@@ -1,7 +1,17 @@
-//! BOS session templates v1 — `ShastaClient` methods for
-//! `/bos/v1/sessiontemplate`.
-
-pub(crate) mod types;
+//! Wrapper for `/bos/v1/sessiontemplate`. Replaces
+//! `src/bos/template/http_client/v1/mod.rs`.
+//!
+//! The upstream BOS spec is v2-only — there is no progenitor coverage
+//! for v1, so this is a pure file relocation. All methods stay on raw
+//! `reqwest`.
+//!
+//! Methods present:
+//! - `bos_template_v1_get`
+//! - `bos_template_v1_post`
+//!
+//! The hand-written wire-format types still live at
+//! `crate::bos::template::http_client::v1::types` (kept where they
+//! were to avoid churning consumers).
 
 use crate::{
   ShastaClient, bos::template::http_client::v1::types::BosSessionTemplate,
