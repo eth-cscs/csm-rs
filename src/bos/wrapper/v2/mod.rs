@@ -7,6 +7,6 @@
 //! See `crate::bos::wrapper` for the shared `gen_client` / `map_err`
 //! / `run` helpers.
 
-// Per-resource modules are added by Tasks 4-5:
-//   mod session;
+mod session;
+// Per-resource modules are added by Task 5:
 //   mod template;
