@@ -32,16 +32,14 @@ use crate::error::Error;
 /// TCP connect deadline for `reqwest::Client`s built by csm-rs. A
 /// long-running Manta server inheriting reqwest's default (no
 /// `connect_timeout`) would stall indefinitely on a hung upstream.
-pub(crate) const HTTP_CONNECT_TIMEOUT: Duration =
-  Duration::from_mins(45);
+pub(crate) const HTTP_CONNECT_TIMEOUT: Duration = Duration::from_mins(45);
 
 /// Per-request deadline (response must arrive within this). Without
 /// it, a CSM endpoint that accepts the connection and then hangs
 /// mid-response would block the caller indefinitely. Sized to be
 /// liberal enough for slow CSM dumps (`hsm_*_get_all`, full-cluster
 /// inventory queries) but short enough to surface a hung peer.
-pub(crate) const HTTP_REQUEST_TIMEOUT: Duration =
-  Duration::from_mins(15);
+pub(crate) const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_mins(15);
 
 /// Total number of attempts (including the first) made by
 /// [`retry_on_5xx`] before propagating the last 5xx error to the
@@ -288,11 +286,8 @@ pub(crate) async fn handle_json_or_request_error<T: DeserializeOwned>(
     } else {
       let status = response.status().as_u16();
       let url = response.url().to_string();
-      let payload =
-        response.json::<Value>().await.map_err(Error::NetError)?;
-      return Err(Error::csm_from_response(
-        method, &url, status, payload,
-      ));
+      let payload = response.json::<Value>().await.map_err(Error::NetError)?;
+      return Err(Error::csm_from_response(method, &url, status, payload));
     }
   }
 
