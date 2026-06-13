@@ -114,7 +114,7 @@
 pub mod backend_connector;
 pub mod bos;
 pub mod bss;
-pub mod capmc;
+// pub mod capmc;
 pub mod cfs;
 // `client` and `error` are not `pub mod` — the canonical paths are
 // `csm_rs::ShastaClient` and `csm_rs::Error` (re-exports below). The
