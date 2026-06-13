@@ -8,6 +8,6 @@
 //! / `run` helpers — they're version-agnostic and serve both v2 and v3.
 
 mod component;
-// Per-resource modules added by Tasks 6, 8:
-//   mod configuration;
+mod configuration;
+// Per-resource modules added by Task 8:
 //   mod session;
