@@ -1353,7 +1353,7 @@ components:
     AlreadyExists:
       description: The resource to be created already exists
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1361,7 +1361,7 @@ components:
     BadRequest:
       description: Bad Request
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1369,7 +1369,7 @@ components:
     ResourceNotFound:
       description: The resource was not found.
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1377,7 +1377,7 @@ components:
     UpdateConflict:
       description: The update was not allowed due to a conflict.
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1385,7 +1385,7 @@ components:
     ServiceUnavailable:
       description: Service Unavailable
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1393,7 +1393,7 @@ components:
     InternalError:
       description: An Internal Server Error occurred handling the request.
       content:
-        application/problem+json:
+        application/json:
           schema:
             allOf:
               - $ref: '#/components/schemas/ProblemDetails'
@@ -1453,7 +1453,7 @@ components:
         Requests with an empty tenant name, or that omit this parameter, will have no such context restrictions.
       required: false
       schema:
-        $ref: '#/components/schemas/TenantName'
+        type: string
 
 paths:
   /:
