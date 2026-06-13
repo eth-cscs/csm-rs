@@ -323,12 +323,31 @@ where
   Fut: std::future::Future<Output = Result<Vec<U>, Error>> + Send + 'static,
 {
   use std::sync::Arc;
+  use std::sync::atomic::{AtomicUsize, Ordering};
+  use std::time::Instant;
   use tokio::sync::Semaphore;
 
+  // Compute the batch count up front so per-batch logs can show
+  // "batch X/Y" and a meaningful "pending" remainder. `div_ceil`
+  // avoids an off-by-one when `items.len() % chunk_size != 0`.
+  let total_batches = items.len().div_ceil(chunk_size.max(1));
+  let start = Instant::now();
+  log::info!(
+    "parallel_batch: starting {total_batches} batches (chunk_size={chunk_size}, window={max_in_flight})"
+  );
+
   let sem = Arc::new(Semaphore::new(max_in_flight));
+  // `in_flight` is our own accounting — the Semaphore's available
+  // count isn't easily queryable, and we want a value we can log on
+  // both enter and exit. Increment happens inside the spawned task
+  // (after the permit is owned), decrement happens just before the
+  // task returns. SeqCst is overkill for what's effectively a
+  // monotonic counter but matches the existing project convention
+  // of "use the strongest ordering unless profiling says otherwise."
+  let in_flight = Arc::new(AtomicUsize::new(0));
   let mut tasks = tokio::task::JoinSet::new();
 
-  for chunk in items.chunks(chunk_size) {
+  for (idx, chunk) in items.chunks(chunk_size).enumerate() {
     let chunk = chunk.to_vec();
     let f = f.clone();
     let permit = sem
@@ -337,9 +356,21 @@ where
       .await
       .expect("semaphore should not be closed");
 
+    let batch_id = idx + 1;
+    let in_flight = in_flight.clone();
     tasks.spawn(async move {
       let _permit = permit;
-      f(chunk).await
+      let now = in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+      let pending = total_batches.saturating_sub(batch_id);
+      log::debug!(
+        "parallel_batch: batch {batch_id}/{total_batches} started (in_flight={now}/{max_in_flight}, pending={pending})"
+      );
+      let result = f(chunk).await;
+      let after = in_flight.fetch_sub(1, Ordering::SeqCst).saturating_sub(1);
+      log::debug!(
+        "parallel_batch: batch {batch_id}/{total_batches} done (in_flight={after}/{max_in_flight})"
+      );
+      result
     });
   }
 
@@ -347,6 +378,10 @@ where
   while let Some(message) = tasks.join_next().await {
     out.append(&mut message??);
   }
+  log::info!(
+    "parallel_batch: completed {total_batches} batches in {:?}",
+    start.elapsed()
+  );
   Ok(out)
 }
 
