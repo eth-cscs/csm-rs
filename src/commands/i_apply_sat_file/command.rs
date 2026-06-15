@@ -490,3 +490,95 @@ async fn process_configurations_section(
 
   Ok(cfs_configurations_created)
 }
+
+/// Parameters for [`validate_sat_file`].
+///
+/// Subset of the inputs `apply_sat_file::exec` accepts — only the
+/// fields the gather + validate pipeline actually reads. The fields
+/// the `process_*` phases need (gitea_*, ansible_*, reboot,
+/// watch_logs, timestamps, debug_on_failure, overwrite, dry_run) are
+/// filled with defaults inside the wrapper so callers don't have to
+/// supply junk values.
+pub struct ValidateSatFileParams<'a> {
+  /// Shasta API authentication token.
+  pub shasta_token: &'a str,
+  /// Shasta API base URL.
+  pub shasta_base_url: &'a str,
+  /// Root CA certificate for validating Shasta TLS connections.
+  pub shasta_root_cert: &'a [u8],
+  /// Optional SOCKS5 proxy URL for routing Shasta API requests.
+  pub socks5_proxy: Option<&'a str>,
+  /// Vault base URL for secret retrieval.
+  pub vault_base_url: &'a str,
+  /// Site name (used for logging and context).
+  pub site_name: &'a str,
+  /// Kubernetes API URL for in-cluster ConfigMap access.
+  pub k8s_api_url: &'a str,
+  /// HSM groups the caller is allowed to target.
+  pub hsm_group_available_vec: &'a [String],
+  /// Parsed SAT template file as YAML.
+  pub sat_template_file_yaml: serde_yaml::Value,
+}
+
+/// Validate a SAT file against the live CSM state without mutating
+/// anything.
+///
+/// Public entry point that wraps the private `gather_sat_apply_data`
+/// + `validate_sat_file_sections` pair: fetches the k8s
+/// `cray-product-catalog` ConfigMap and the current CFS / IMS /
+/// recipe lists, parses the SAT YAML, and runs the same per-section
+/// validators the apply pipeline runs.
+///
+/// Returns `Ok(())` if the SAT file would apply cleanly given the
+/// current CSM state; returns the first validation [`Error`]
+/// encountered otherwise (fail-fast — see the design doc).
+///
+/// `shasta_k8s_secrets` is the Vault-fetched k8s credential blob;
+/// taken as a separate argument to mirror `apply_sat_file::exec`'s
+/// signature and avoid coupling csm-rs to a Vault client.
+pub async fn validate_sat_file(
+  params: ValidateSatFileParams<'_>,
+  shasta_k8s_secrets: serde_json::Value,
+) -> Result<(), Error> {
+  // Reuse the existing context struct. Fields not read by the
+  // gather + validate path get empty defaults; the validator never
+  // reaches the apply phase so these stay inert.
+  let ctx = SatApplyContext {
+    shasta_token: params.shasta_token,
+    shasta_base_url: params.shasta_base_url,
+    shasta_root_cert: params.shasta_root_cert,
+    socks5_proxy: params.socks5_proxy,
+    vault_base_url: params.vault_base_url,
+    site_name: params.site_name,
+    k8s_api_url: params.k8s_api_url,
+    gitea_base_url: "",
+    gitea_token: "",
+    hsm_group_available_vec: params.hsm_group_available_vec,
+    ansible_verbosity: None,
+    ansible_passthrough: None,
+    reboot: false,
+    watch_logs: false,
+    timestamps: false,
+    debug_on_failure: false,
+    overwrite: false,
+    dry_run: true,
+  };
+
+  let (sat_file, cray_product_catalog, configuration_vec, image_vec, ims_recipe_vec) =
+    gather_sat_apply_data(
+      &ctx,
+      shasta_k8s_secrets,
+      &params.sat_template_file_yaml,
+    )
+    .await?;
+
+  validate_sat_file_sections(
+    &ctx,
+    &sat_file,
+    &cray_product_catalog,
+    image_vec,
+    configuration_vec,
+    ims_recipe_vec,
+  )
+  .await
+}
