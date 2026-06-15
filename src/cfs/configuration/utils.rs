@@ -1,3 +1,5 @@
+//! Helpers built on top of `ShastaClient::cfs_configuration_*` methods.
+
 use crate::{
   bos::{self, template::http_client::v2::types::BosSessionTemplate},
   cfs::{
@@ -8,7 +10,7 @@ use crate::{
   common::{self, gitea},
   error::Error,
   hsm,
-  ims::{self, image::http_client::types::Image},
+  ims::image::http_client::types::Image,
 };
 
 use chrono::NaiveDateTime;
@@ -22,6 +24,14 @@ use super::http_client::{
   },
 };
 
+/// Create (or replace, when `overwrite=true`) a CFS v2 configuration
+/// by name.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn create_new_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -32,30 +42,28 @@ pub async fn create_new_configuration(
   overwrite: bool,
 ) -> Result<CfsConfigurationResponse, Error> {
   // Check if CFS configuration already exists
-  log::info!("Check CFS configuration '{}' exists", configuration_name);
+  log::debug!("Check CFS configuration '{configuration_name}' exists");
 
-  let cfs_configuration_vec = crate::cfs::configuration::http_client::v2::get(
-    shasta_token,
+  let shasta_client = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(configuration_name),
-  )
-  .await
-  .map_err(|e| Error::Message(e.to_string()))
-  .unwrap_or_default();
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
+  let cfs_configuration_vec = shasta_client
+    .cfs_configuration_v2_get(shasta_token, Some(configuration_name))
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
+    .unwrap_or_default();
 
   // Check if CFS configuration already exists and throw an error is that is the case
   if !cfs_configuration_vec.is_empty() {
     if overwrite {
-      log::info!(
-        "CFS configuration '{}' already exists but 'overwrite' has been enabled",
-        configuration_name
+      log::debug!(
+        "CFS configuration '{configuration_name}' already exists but 'overwrite' has been enabled"
       );
     } else {
       log::warn!(
-        "CFS configuration '{}' already exists, cancel the process",
-        configuration_name
+        "CFS configuration '{configuration_name}' already exists, cancel the process"
       );
       return Err(Error::ConfigurationAlreadyExists(
         configuration_name.to_string(),
@@ -63,22 +71,18 @@ pub async fn create_new_configuration(
     }
   }
 
-  log::info!(
-    "CFS configuration '{}' does not exists, creating new CFS configuration",
-    configuration_name
+  log::debug!(
+    "CFS configuration '{configuration_name}' does not exists, creating new CFS configuration"
   );
 
-  crate::cfs::configuration::http_client::v2::put(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &configuration.clone().into(),
-    configuration_name,
-  )
-  .await
-  .map(|config| config.into())
-  .map_err(|e| Error::Message(e.to_string()))
+  shasta_client
+    .cfs_configuration_v2_put(
+      shasta_token,
+      &configuration.clone(),
+      configuration_name,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
 }
 
 /// Filter the list of CFS configurations provided. This operation is very expensive since it is
@@ -86,12 +90,19 @@ pub async fn create_new_configuration(
 /// BOS sessiontemplate. Aditionally, it will also fetch CFS components to find CFS sessions and
 /// BOS sessiontemplates linked to specific xnames that also belongs to the HSM group the user is
 /// filtering from.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
+#[allow(clippy::too_many_arguments)]
 pub fn filter(
   cfs_configuration_vec: &mut Vec<CfsConfigurationResponse>,
   xname_from_groups_vec: &[String],
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   bos_sessiontemplate_vec: &mut Vec<BosSessionTemplate>,
-  cfs_component_vec: &Vec<Component>,
+  cfs_component_vec: &[Component],
   configuration_name_pattern_opt: Option<&str>,
   hsm_group_name_vec: &[String],
   since_opt: Option<NaiveDateTime>,
@@ -99,14 +110,14 @@ pub fn filter(
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<Vec<CfsConfigurationResponse>, Error> {
-  log::info!("Filter CFS configurations");
+  log::debug!("Filter CFS configurations");
 
   // Filter BOS sessiontemplates based on HSM groups
   let _ = bos::template::utils::filter(
     bos_sessiontemplate_vec,
     configuration_name_pattern_opt,
     hsm_group_name_vec,
-    &xname_from_groups_vec,
+    xname_from_groups_vec,
     None,
   );
 
@@ -171,15 +182,27 @@ pub fn filter(
         .contains(&cfs_configuration.name)
   });
 
-  // Filter CFS configurations based on user input (date range or configuration name)
+  // Filter CFS configurations based on user input (date range or configuration name).
+  // CFS configurations whose `last_updated` is missing or malformed can't be
+  // confirmed in-range, so they're filtered out of the date-range view.
   if let (Some(since), Some(until)) = (since_opt, until_opt) {
     cfs_configuration_vec.retain(|cfs_configuration| {
-      let date =
-        chrono::DateTime::parse_from_rfc3339(&cfs_configuration.last_updated)
-          .unwrap()
-          .naive_utc();
-
-      since <= date && date < until
+      match chrono::DateTime::parse_from_rfc3339(
+        &cfs_configuration.last_updated,
+      ) {
+        Ok(date) => {
+          let date = date.naive_utc();
+          since <= date && date < until
+        }
+        Err(e) => {
+          log::warn!(
+            "Skipping CFS configuration with unparseable last_updated '{}': {}",
+            cfs_configuration.last_updated,
+            e
+          );
+          false
+        }
+      }
     });
   }
 
@@ -206,12 +229,19 @@ pub fn filter(
       .to_vec();
   }
 
-  Ok(cfs_configuration_vec.to_vec())
+  Ok(cfs_configuration_vec.clone())
 }
 
 /// If filtering by HSM group, then configuration name must include HSM group name (It assumms each configuration
 /// is built for a specific cluster based on ansible vars used by the CFS session). The reason
 /// for this is because CSCS staff deletes all CFS sessions every now and then...
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
+#[allow(clippy::too_many_arguments)]
 pub async fn get_and_filter(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -239,38 +269,22 @@ pub async fn get_and_filter(
     )
     .await?;
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   let (
     mut cfs_configuration_vec,
     mut cfs_session_vec,
     mut bos_sessiontemplate_vec,
     cfs_component_vec,
   ) = tokio::try_join!(
-    cfs::configuration::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      configuration_name,
-    ),
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
-    cfs::component::http_client::v2::get_parallel(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_from_groups_vec,
-    ),
+    shasta_client.cfs_configuration_v2_get(shasta_token, configuration_name),
+    shasta_client.cfs_session_v2_get_all(shasta_token),
+    shasta_client.bos_template_v2_get_all(shasta_token),
+    shasta_client
+      .cfs_component_v2_get_parallel(shasta_token, &xname_from_groups_vec),
   )?;
 
   let keep_generic_sessions = common::jwt_ops::is_user_admin(shasta_token);
@@ -293,7 +307,15 @@ pub async fn get_and_filter(
   Ok(cfs_configuration_vec)
 }
 
-// Get all CFS sessions, IMS images and BOS sessiontemplates related to a CFS configuration
+/// Collect everything that references a CFS configuration: the CFS
+/// sessions that ran against it, the IMS images it produced, and the
+/// BOS session templates that consume those images.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_derivatives(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -311,25 +333,15 @@ pub async fn get_derivatives(
   // List of image ids from CFS sessions and BOS sessiontemplates related to CFS configuration
   let mut image_id_vec: Vec<&str> = Vec::new();
 
+  let shasta_client = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?;
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
-    cfs::session::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
-    bos::template::http_client::v2::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    ),
-    ims::image::http_client::get_all(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-    )
+    shasta_client.cfs_session_v2_get_all(shasta_token),
+    shasta_client.bos_template_v2_get_all(shasta_token),
+    shasta_client.ims_image_get_all(shasta_token),
   )?;
 
   // Filter CFS sessions
@@ -351,14 +363,14 @@ pub async fn get_derivatives(
   image_id_vec.extend(
     cfs_session_vec
       .iter()
-      .flat_map(|cfs_session| cfs_session.results_id()),
+      .flat_map(super::super::session::http_client::v2::types::CfsSessionGetResponse::results_id),
   );
 
   // Add boot images from BOS sessiontemplate to image_id_vec
   image_id_vec.extend(
     bos_sessiontemplate_vec
       .iter()
-      .flat_map(|bos_sessiontemplate| bos_sessiontemplate.images_id()),
+      .flat_map(crate::bos::template::http_client::v2::types::BosSessionTemplate::images_id),
   );
 
   // Filter images
@@ -373,6 +385,14 @@ pub async fn get_derivatives(
   ))
 }
 
+/// Resolve a CFS configuration layer to its detailed view by calling
+/// Gitea for the layer's repo metadata (commit message, author, etc.).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_configuration_layer_details(
   shasta_root_cert: &[u8],
   gitea_base_url: &str,
@@ -425,21 +445,21 @@ pub async fn get_configuration_layer_details(
 
   if let [ref_value] = ref_value_vec.as_slice() {
     // Potentially an annotated tag
-    log::debug!("Found ref in remote git repo:\n{:#?}", ref_value);
+    log::debug!("Found ref in remote git repo:\n{ref_value:#?}");
 
     let ref_type: &str = ref_value
       .pointer("/object/type")
       .and_then(Value::as_str)
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref type".to_string())
+        Error::GitRepoShape("ref type".to_string())
       })?;
 
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
-      .map(|v| v.split("/").skip(1))
+      .map(|v| v.split('/').skip(1))
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref".to_string())
+        Error::GitRepoShape("ref".to_string())
       })?;
 
     let ref_2 = ref_iter.nth(1);
@@ -447,19 +467,19 @@ pub async fn get_configuration_layer_details(
     if ref_type == "tag" {
       // Yes, we are processing an annotated tag
       let tag_name = ref_2.ok_or_else(|| {
-        Error::Message("Could not get git repo tag name".to_string())
+        Error::GitRepoShape("tag name".to_string())
       })?;
 
       let git_repo_tag_url = ref_value
         .get("url")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::Message("Could not get git repo tag url".to_string())
+          Error::GitRepoShape("tag url".to_string())
         })?;
 
       let commit_sha_value = gitea::http_client::get_commit_from_tag(
         git_repo_tag_url,
-        &tag_name,
+        tag_name,
         gitea_token,
         shasta_root_cert,
         socks5_proxy,
@@ -471,8 +491,8 @@ pub async fn get_configuration_layer_details(
         .pointer("/commit/sha")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::Message(
-            "Could not get commit sha from git repo tag".to_string(),
+          Error::GitRepoShape(
+            "commit sha from git repo tag".to_string(),
           )
         })?;
 
@@ -482,32 +502,32 @@ pub async fn get_configuration_layer_details(
       ref_value_vec = repo_ref_vec
         .iter()
         .filter(|repo_ref| {
-          let ref_sha: String = repo_ref
+          repo_ref
             .pointer("/object/sha")
             .and_then(Value::as_str)
             .map(str::to_string)
-            .unwrap();
-
-          annotated_tag_commit_sha.contains(&ref_sha)
+            .is_some_and(|ref_sha| {
+              annotated_tag_commit_sha.contains(&ref_sha)
+            })
         })
         .collect();
     }
   }
 
   for ref_value in ref_value_vec {
-    log::debug!("Found ref in remote git repo:\n{:#?}", ref_value);
+    log::debug!("Found ref in remote git repo:\n{ref_value:#?}");
     let ref_type: &str = ref_value
       .pointer("/object/type")
       .and_then(Value::as_str)
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref type".to_string())
+        Error::GitRepoShape("ref type".to_string())
       })?;
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
-      .map(|v| v.split("/").skip(1))
+      .map(|v| v.split('/').skip(1))
       .ok_or_else(|| {
-        Error::Message("Could not get git repo ref".to_string())
+        Error::GitRepoShape("ref".to_string())
       })?;
 
     let ref_1 = ref_iter.next();
@@ -529,7 +549,7 @@ pub async fn get_configuration_layer_details(
   }
 
   if let Some(cfs_config_layer_branch) = &layer.branch {
-    branch_name_vec.push(cfs_config_layer_branch.to_string());
+    branch_name_vec.push(cfs_config_layer_branch.clone());
   }
 
   let commit_id_opt = layer.commit.as_ref();
@@ -559,7 +579,7 @@ pub async fn get_configuration_layer_details(
     layer
       .clone_url
       .trim_start_matches(
-        format!("https://api.cmn.{}.cscs.ch", site_name).as_str(),
+        format!("https://api.cmn.{site_name}.cscs.ch").as_str(),
       )
       .trim_end_matches(".git"),
     &commit_id,

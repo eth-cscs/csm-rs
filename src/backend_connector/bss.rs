@@ -1,24 +1,25 @@
+//! `BootParametersTrait` impl for [`crate::ShastaClient`].
+
 use manta_backend_dispatcher::{
   error::Error, interfaces::bss::BootParametersTrait,
   types::bss::BootParameters as FrontEndBootParameters,
 };
 
-use super::Csm;
-use crate::bss;
+use crate::ShastaClient;
 
-impl BootParametersTrait for Csm {
+impl BootParametersTrait for ShastaClient {
   async fn get_all_bootparameters(
     &self,
     auth_token: &str,
   ) -> Result<Vec<FrontEndBootParameters>, Error> {
-    let boot_parameter_vec =
-      bss::http_client::get_all(auth_token, &self.base_url, &self.root_cert, self.socks5_proxy.as_deref())
-        .await
-        .map_err(|e| Error::Message(e.to_string()))?;
+    let boot_parameter_vec = self
+      .bss_bootparameters_get_all(auth_token)
+      .await
+      .map_err(Error::from)?;
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
-      .map(|boot_parameter| boot_parameter.into())
+      .map(std::convert::Into::into)
       .collect();
 
     Ok(boot_parameter_infra_vec)
@@ -29,19 +30,14 @@ impl BootParametersTrait for Csm {
     auth_token: &str,
     nodes: &[String],
   ) -> Result<Vec<FrontEndBootParameters>, Error> {
-    let boot_parameter_vec = bss::http_client::get_multiple(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      nodes,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    let boot_parameter_vec = self
+      .bss_bootparameters_get_multiple(auth_token, nodes)
+      .await
+      .map_err(Error::from)?;
 
     let boot_parameter_infra_vec = boot_parameter_vec
       .into_iter()
-      .map(|boot_parameter| boot_parameter.into())
+      .map(std::convert::Into::into)
       .collect();
 
     Ok(boot_parameter_infra_vec)
@@ -52,14 +48,10 @@ impl BootParametersTrait for Csm {
     auth_token: &str,
     boot_parameters: &FrontEndBootParameters,
   ) -> Result<(), Error> {
-    bss::http_client::post(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      boot_parameters.clone().into(),
-    )
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .bss_bootparameters_post(auth_token, boot_parameters.clone().into())
+      .await
+      .map_err(Error::from)
   }
 
   async fn update_bootparameters(
@@ -67,15 +59,10 @@ impl BootParametersTrait for Csm {
     auth_token: &str,
     boot_parameter: &FrontEndBootParameters,
   ) -> Result<(), Error> {
-    bss::http_client::patch(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      &boot_parameter.clone().into(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .bss_bootparameters_patch(auth_token, &boot_parameter.clone().into())
+      .await
+      .map_err(Error::from)
   }
 
   async fn delete_bootparameters(

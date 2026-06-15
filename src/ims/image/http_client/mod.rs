@@ -1,205 +1,196 @@
-pub mod types;
+//! `ShastaClient` methods for `/ims/v3/images`.
+
+pub(crate) mod types;
+
+/// Bidirectional `From` impls between [`types`] and the dispatcher's
+/// IMS image mirror types. Gated behind the `manta-dispatcher`
+/// Cargo feature.
+#[cfg(feature = "manta-dispatcher")]
+mod dispatcher_conv;
 
 use serde_json::Value;
 
 use types::{Image, PatchImage};
 
-use crate::error::Error;
+use crate::{ShastaClient, error::Error};
 
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  image_id_opt: Option<&str>,
-) -> Result<Vec<Image>, Error> {
-  log::info!(
-    "Get IMS images '{}'",
-    image_id_opt.unwrap_or("all available")
-  );
+impl ShastaClient {
+  /// `GET /ims/v3/images` (or `/ims/v3/images/{id}` if `image_id_opt`
+  /// is supplied) — list IMS images or fetch one by ID.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_image_get(
+    &self,
+    token: &str,
+    image_id_opt: Option<&str>,
+  ) -> Result<Vec<Image>, Error> {
+    log::debug!(
+      "Get IMS images '{}'",
+      image_id_opt.unwrap_or("all available")
+    );
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+    let api_url = if let Some(image_id) = image_id_opt {
+      format!("{}/ims/v3/images/{}", self.base_url(), image_id)
+    } else {
+      format!("{}/ims/v3/images", self.base_url())
+    };
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(token)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(|e| match e.status() {
+        Some(reqwest::StatusCode::NOT_FOUND) => Error::ImageNotFound(
+          image_id_opt.map(str::to_string).unwrap_or_default(),
+        ),
+        Some(_) => Error::NetError(e),
+        None => Error::Message(format!(
+          "ERROR - Http response with no status code?.\nReason:\n{e}"
+        )),
+      })?;
 
-  let api_url = if let Some(image_id) = image_id_opt {
-    shasta_base_url.to_owned() + "/ims/v3/images/" + image_id
-  } else {
-    shasta_base_url.to_owned() + "/ims/v3/images"
-  };
+    let image_vec: Vec<Image> = if image_id_opt.is_none() {
+      response
+        .json::<Vec<Image>>()
+        .await
+        .map_err(Error::NetError)?
+    } else {
+      vec![response.json::<Image>().await.map_err(Error::NetError)?]
+    };
 
-  let response_rslt = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id_opt.map(str::to_string).unwrap())
-      }
-      Some(_) => Error::NetError(e),
-      None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
-      )),
-    });
+    Ok(image_vec)
+  }
 
-  let image_vec: Vec<Image> = match response_rslt {
-    Ok(response) => {
-      if image_id_opt.is_none() {
-        response.json::<Vec<Image>>().await.unwrap()
-      } else {
-        vec![response.json::<Image>().await.unwrap()]
-      }
-    }
-    Err(error) => return Err(error),
-  };
+  /// `GET /ims/v3/images` — every IMS image.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_image_get_all(
+    &self,
+    token: &str,
+  ) -> Result<Vec<Image>, Error> {
+    self.ims_image_get(token, None).await
+  }
 
-  Ok(image_vec)
-}
+  /// Register a new image in IMS.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_image_post(
+    &self,
+    token: &str,
+    ims_image: &Image,
+  ) -> Result<Value, Error> {
+    let api_url = format!("{}/ims/v3/images", self.base_url());
 
-pub async fn get_all(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-) -> Result<Vec<Image>, Error> {
-  get(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, None).await
-}
+    self
+      .http()
+      .post(api_url)
+      .bearer_auth(token)
+      .json(&ims_image)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?
+      .json()
+      .await
+      .map_err(Error::NetError)
+  }
 
-/// Register a new image in IMS --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
-pub async fn post(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_image: &Image,
-) -> Result<Value, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images";
-
-  client
-    .post(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .json(&ims_image)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?
-    .json()
-    .await
-    .map_err(Error::NetError)
-}
-
-// Delete IMS image using CSM API. First does a "soft delete", then a "permanent deletion"
-// soft delete --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/delete_v3_image/
-// permanent deletion --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/delete_v3_deleted_image/
-pub async fn delete(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  image_id: &str,
-) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  // SOFT DELETION
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + image_id;
-
-  client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map(|_| ())
-    .map_err(|e| match e.status() {
+  /// Delete an IMS image (soft delete + permanent deletion in sequence).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_image_delete(
+    &self,
+    token: &str,
+    image_id: &str,
+  ) -> Result<(), Error> {
+    let map_delete_err = |e: reqwest::Error| match e.status() {
       Some(reqwest::StatusCode::NOT_FOUND) => {
         Error::ImageNotFound(image_id.to_string())
       }
       Some(_) => Error::NetError(e),
       None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
+        "ERROR - Http response with no status code?.\nReason:\n{e}"
       )),
-    })?;
+    };
 
-  // PERMANENT DELETION
-  let api_url =
-    shasta_base_url.to_owned() + "/ims/v3/deleted/images/" + image_id;
+    // SOFT DELETION
+    let api_url = format!("{}/ims/v3/images/{}", self.base_url(), image_id);
+    self
+      .http()
+      .delete(api_url)
+      .bearer_auth(token)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map(|_| ())
+      .map_err(map_delete_err)?;
 
-  client
-    .delete(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map(|_| ())
-    .map_err(|e| match e.status() {
-      Some(reqwest::StatusCode::NOT_FOUND) => {
-        Error::ImageNotFound(image_id.to_string())
-      }
-      Some(_) => Error::NetError(e),
-      None => Error::Message(format!(
-        "ERROR - Http response with no status code?.\nReason:\n{}",
-        e.to_string()
-      )),
-    })
-}
+    // PERMANENT DELETION
+    let api_url =
+      format!("{}/ims/v3/deleted/images/{}", self.base_url(), image_id);
+    self
+      .http()
+      .delete(api_url)
+      .bearer_auth(token)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map(|_| ())
+      .map_err(map_delete_err)
+  }
 
-/// update an IMS image record --> https://github.com/Cray-HPE/docs-csm/blob/release/1.5/api/ims.md#post_v2_image
-pub async fn patch(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_image_id: &String,
-  ims_link: &PatchImage,
-) -> Result<(), Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  /// Patch an IMS image record (link to S3 manifest, metadata, etc).
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_image_patch(
+    &self,
+    token: &str,
+    ims_image_id: &str,
+    ims_link: &PatchImage,
+  ) -> Result<(), Error> {
+    let api_url = format!("{}/ims/v3/images/{}", self.base_url(), ims_image_id);
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+    self
+      .http()
+      .patch(api_url)
+      .bearer_auth(token)
+      .json(&ims_link)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?
+      .json::<Value>()
+      .await
+      .map_err(Error::NetError)?;
 
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/images/" + &ims_image_id;
-
-  client
-    .patch(api_url)
-    .header("Authorization", format!("Bearer {}", shasta_token))
-    .json(&ims_link)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?
-    .json::<Value>()
-    .await
-    .map_err(Error::NetError)?;
-
-  Ok(())
+    Ok(())
+  }
 }

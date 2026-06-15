@@ -1,11 +1,9 @@
 use crate::cfs::{
-  component::http_client::v2::types::{Component, State},
-  session::http_client::v3::types::{
-    CfsSessionGetResponse, Configuration, Session, Status, Target,
-  },
+  v2::{Component, State},
+  v3::{CfsSessionGetResponse, Configuration, Session, Status, Target},
 };
 
-/// Test is_cfs_configuration_a_desired_configuration returns TRUE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns TRUE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_true() {
@@ -17,8 +15,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_true() {
     // last_updated: None,
   };
 
-  let mut state_vec = Vec::new();
-  state_vec.push(cfs_component_state_1);
+  let state_vec = vec![cfs_component_state_1];
 
   let cfs_component_1 = Component {
     id: Some("1".to_string()),
@@ -59,7 +56,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_true() {
   assert!(sol.eq(&vec!["1".to_string()]));
 }
 
-/// Test is_cfs_configuration_a_desired_configuration returns TRUE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns TRUE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
@@ -71,8 +68,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
     // last_updated: None,
   };
 
-  let mut state_vec = Vec::new();
-  state_vec.push(cfs_component_state_1);
+  let state_vec = vec![cfs_component_state_1];
 
   let cfs_component_1 = Component {
     id: Some("1".to_string()),
@@ -86,9 +82,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
     tags: None,
   };
 
-  let mut cfs_component_vec = Vec::new();
-
-  cfs_component_vec.push(cfs_component_1);
+  let cfs_component_vec = vec![cfs_component_1];
 
   let cfs_configuration_name_in_cfs_session = "cfs_config_1";
 
@@ -103,7 +97,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false() {
   assert!(sol.is_empty());
 }
 
-/// Test is_cfs_configuration_a_desired_configuration returns FALSE when a CFS configuration
+/// Test `is_cfs_configuration_a_desired_configuration` returns FALSE when a CFS configuration
 /// name appears as desired configuration in a list of CFS components
 #[test]
 fn test_is_cfs_configuration_a_desired_configuration_of_other_false_2() {
@@ -115,8 +109,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false_2() {
     // last_updated: None,
   };
 
-  let mut state_vec = Vec::new();
-  state_vec.push(cfs_component_state_1);
+  let state_vec = vec![cfs_component_state_1];
 
   let cfs_component_1 = Component {
     id: Some("1".to_string()),
@@ -130,9 +123,7 @@ fn test_is_cfs_configuration_a_desired_configuration_of_other_false_2() {
     tags: None,
   };
 
-  let mut cfs_component_vec = Vec::new();
-
-  cfs_component_vec.push(cfs_component_1);
+  let cfs_component_vec = vec![cfs_component_1];
 
   let cfs_configuration_name_in_cfs_session = "cfs_config_2";
 
@@ -185,8 +176,7 @@ fn test_is_cfs_configuration_used_to_build_image_true() {
     logs: None,
   };
 
-  let mut cfs_session_vec = Vec::new();
-  cfs_session_vec.push(cfs_session);
+  let cfs_session_vec = vec![cfs_session];
 
   let cfs_configuration_name = "cfs_config_1";
   let cfs_session_name = "cfs_session_1";
@@ -219,8 +209,7 @@ fn test_is_cfs_configuration_used_to_build_image_false() {
     logs: None,
   };
 
-  let mut cfs_session_vec = Vec::new();
-  cfs_session_vec.push(cfs_session);
+  let cfs_session_vec = vec![cfs_session];
 
   let cfs_configuration_name = "cfs_config_2";
   let cfs_session_name = "cfs_session_1";
@@ -260,8 +249,7 @@ fn test_is_cfs_configuration_used_to_build_image_false_2() {
     logs: None,
   };
 
-  let mut cfs_session_vec = Vec::new();
-  cfs_session_vec.push(cfs_session);
+  let cfs_session_vec = vec![cfs_session];
 
   let cfs_configuration_name = "cfs_config_2";
   let cfs_session_name = "cfs_session_1";
@@ -283,7 +271,7 @@ fn test_is_cfs_configuration_used_to_build_image_false_2() {
 /// We need this validation because, when deleting a CFS session, we need to make sure it is not
 /// used by a node that belongs to the HSM
 pub fn is_cfs_configuration_a_desired_configuration_of_other(
-  cfs_component_vec: &Vec<Component>,
+  cfs_component_vec: &[Component],
   cfs_configuration_name: &str,
   xname_vec: Vec<&str>,
 ) -> Vec<String> {
@@ -294,8 +282,7 @@ pub fn is_cfs_configuration_a_desired_configuration_of_other(
       cfs_component
         .desired_config
         .eq(&Some(cfs_configuration_name.to_string()))
-        && !xname_vec
-          .contains(&cfs_component.id.as_ref().map(String::as_str).unwrap())
+        && !xname_vec.contains(&cfs_component.id.as_deref().unwrap())
     })
     .map(|cfs_component| cfs_component.id.clone().unwrap())
     .collect()
@@ -304,7 +291,7 @@ pub fn is_cfs_configuration_a_desired_configuration_of_other(
 /// Validate CFS session type image:
 /// - check CFS configuration related to CFS session is not used to build any other image
 pub fn is_cfs_configuration_used_to_build_image(
-  cfs_session_vec: &Vec<CfsSessionGetResponse>,
+  cfs_session_vec: &[CfsSessionGetResponse],
   cfs_session_name: &str,
   cfs_configuration_name: &str,
 ) -> Vec<String> {
@@ -318,6 +305,6 @@ pub fn is_cfs_configuration_used_to_build_image(
         && cfs_session.is_target_def_image()
         && cfs_session.is_success()
     })
-    .flat_map(|cfs_session| cfs_session.get_result_id_vec())
+    .flat_map(crate::cfs::session::http_client::v3::types::CfsSessionGetResponse::get_result_id_vec)
     .collect()
 }

@@ -4,3 +4,7 @@
 .vscode
 .idea
 .DS_Store
+/claude/
+.claude/
+.cargo/
+.worktrees/

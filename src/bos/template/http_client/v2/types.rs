@@ -1,7 +1,7 @@
-use manta_backend_dispatcher::types::bos::session_template::{
-  BootSet as FrontEndBootSet, BosSessionTemplate as FrontEndBosSessionTemplate,
-  Cfs as FrontEndCfs, Link as FrontEndLink,
-};
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -14,44 +14,10 @@ pub struct Link {
   pub href: Option<String>,
 }
 
-impl From<FrontEndLink> for Link {
-  fn from(frontend_link: FrontEndLink) -> Self {
-    Self {
-      rel: frontend_link.rel,
-      href: frontend_link.href,
-    }
-  }
-}
-
-impl Into<FrontEndLink> for Link {
-  fn into(self) -> FrontEndLink {
-    FrontEndLink {
-      rel: self.rel,
-      href: self.href,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cfs {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub configuration: Option<String>,
-}
-
-impl From<FrontEndCfs> for Cfs {
-  fn from(frontend_cfs: FrontEndCfs) -> Self {
-    Self {
-      configuration: frontend_cfs.configuration,
-    }
-  }
-}
-
-impl Into<FrontEndCfs> for Cfs {
-  fn into(self) -> FrontEndCfs {
-    FrontEndCfs {
-      configuration: self.configuration,
-    }
-  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -82,53 +48,6 @@ pub struct BootSet {
   pub rootfs_provider_passthrough: Option<String>,
 }
 
-impl From<FrontEndBootSet> for BootSet {
-  fn from(frontend_boot_set: FrontEndBootSet) -> Self {
-    Self {
-      name: frontend_boot_set.name,
-      path: frontend_boot_set.path,
-      cfs: frontend_boot_set.cfs.map(|cfs| cfs.into()),
-      r#type: frontend_boot_set.r#type,
-      etag: frontend_boot_set.etag,
-      kernel_parameters: frontend_boot_set.kernel_parameters,
-      node_list: frontend_boot_set.node_list,
-      node_roles_groups: frontend_boot_set.node_roles_groups,
-      node_groups: frontend_boot_set.node_groups,
-      arch: frontend_boot_set.arch,
-      rootfs_provider: frontend_boot_set.rootfs_provider,
-      rootfs_provider_passthrough: frontend_boot_set
-        .rootfs_provider_passthrough,
-    }
-  }
-}
-
-impl Into<FrontEndBootSet> for BootSet {
-  fn into(self) -> FrontEndBootSet {
-    FrontEndBootSet {
-      name: self.name,
-      path: self.path,
-      cfs: self.cfs.map(|cfs| cfs.into()),
-      r#type: self.r#type,
-      etag: self.etag,
-      kernel_parameters: self.kernel_parameters,
-      node_list: self.node_list,
-      node_roles_groups: self.node_roles_groups,
-      node_groups: self.node_groups,
-      arch: self.arch,
-      rootfs_provider: self.rootfs_provider,
-      rootfs_provider_passthrough: self.rootfs_provider_passthrough,
-    }
-  }
-}
-
-// TODO: use strum crate to implement functions to convert to/from String
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum Arch {
-  X86,
-  ARM,
-  Other,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BosSessionTemplate {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -147,43 +66,8 @@ pub struct BosSessionTemplate {
   pub links: Option<Vec<Link>>,
 }
 
-impl From<FrontEndBosSessionTemplate> for BosSessionTemplate {
-  fn from(frontend_bos_session_template: FrontEndBosSessionTemplate) -> Self {
-    Self {
-      name: frontend_bos_session_template.name,
-      tenant: frontend_bos_session_template.tenant,
-      description: frontend_bos_session_template.description,
-      enable_cfs: frontend_bos_session_template.enable_cfs,
-      cfs: frontend_bos_session_template.cfs.map(|cfs| cfs.into()),
-      boot_sets: frontend_bos_session_template.boot_sets.map(|boot_sets| {
-        boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
-      }),
-      links: frontend_bos_session_template
-        .links
-        .map(|links| links.into_iter().map(|link| link.into()).collect()),
-    }
-  }
-}
-
-impl Into<FrontEndBosSessionTemplate> for BosSessionTemplate {
-  fn into(self) -> FrontEndBosSessionTemplate {
-    FrontEndBosSessionTemplate {
-      name: self.name,
-      tenant: self.tenant,
-      description: self.description,
-      enable_cfs: self.enable_cfs,
-      cfs: self.cfs.map(|cfs| cfs.into()),
-      boot_sets: self.boot_sets.map(|boot_sets| {
-        boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
-      }),
-      links: self
-        .links
-        .map(|links| links.into_iter().map(|link| link.into()).collect()),
-    }
-  }
-}
-
 impl BosSessionTemplate {
+  #[must_use]
   pub fn configuration_name(&self) -> Option<&str> {
     self
       .cfs
@@ -191,6 +75,7 @@ impl BosSessionTemplate {
       .and_then(|cfs| cfs.configuration.as_deref())
   }
 
+  #[must_use]
   pub fn get_target(&self) -> Vec<String> {
     let target_hsm = self.get_target_hsm();
     let target_xname = self.get_target_xname();
@@ -199,14 +84,15 @@ impl BosSessionTemplate {
   }
 
   /// Returns HSM group names related to the BOS sessiontemplate
+  #[must_use]
   pub fn get_target_hsm(&self) -> Vec<String> {
     self
       .boot_sets
       .as_ref()
       .map(|boot_sets| {
         boot_sets
-          .iter()
-          .flat_map(|(_, boot_param)| {
+          .values()
+          .flat_map(|boot_param| {
             boot_param.node_groups.clone().unwrap_or_default()
           })
           .collect()
@@ -214,14 +100,15 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[must_use]
   pub fn get_target_xname(&self) -> Vec<String> {
     self
       .boot_sets
       .as_ref()
       .map(|boot_set| {
         boot_set
-          .iter()
-          .flat_map(|(_, boot_param)| {
+          .values()
+          .flat_map(|boot_param| {
             boot_param.node_list.clone().unwrap_or_default()
           })
           .collect()
@@ -229,6 +116,7 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[must_use]
   pub fn get_configuration(&self) -> Option<&str> {
     self
       .cfs
@@ -236,14 +124,15 @@ impl BosSessionTemplate {
       .and_then(|cfs| cfs.configuration.as_deref())
   }
 
+  #[must_use]
   pub fn get_path_vec(&self) -> Vec<String> {
     self
       .boot_sets
       .as_ref()
       .map(|boot_set| {
         boot_set
-          .iter()
-          .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
+          .values()
+          .map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()
@@ -267,6 +156,8 @@ impl BosSessionTemplate {
     })
   }
 
+  #[allow(clippy::too_many_arguments)]
+  #[must_use]
   pub fn new_for_hsm_group(
     tenant_opt: Option<String>,
     cfs_configuration_name: String,
@@ -311,5 +202,99 @@ impl BosSessionTemplate {
       links: None,
       tenant: tenant_opt,
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn bos_template_with_boot_sets(
+    boot_sets: HashMap<String, BootSet>,
+  ) -> BosSessionTemplate {
+    BosSessionTemplate {
+      name: Some("test-template".to_string()),
+      description: None,
+      enable_cfs: None,
+      cfs: None,
+      boot_sets: Some(boot_sets),
+      links: None,
+      tenant: None,
+    }
+  }
+
+  fn boot_set_with_path(path: Option<&str>) -> BootSet {
+    BootSet {
+      name: None,
+      path: path.map(str::to_string),
+      r#type: None,
+      etag: None,
+      kernel_parameters: None,
+      cfs: None,
+      node_list: None,
+      node_roles_groups: None,
+      node_groups: None,
+      rootfs_provider: None,
+      rootfs_provider_passthrough: None,
+      arch: None,
+    }
+  }
+
+  #[test]
+  fn images_path_returns_empty_when_no_boot_sets() {
+    let template = BosSessionTemplate {
+      name: None,
+      description: None,
+      enable_cfs: None,
+      cfs: None,
+      boot_sets: None,
+      links: None,
+      tenant: None,
+    };
+    assert_eq!(template.images_path().count(), 0);
+  }
+
+  #[test]
+  fn images_path_skips_boot_sets_with_no_path() {
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert("compute".into(), boot_set_with_path(None));
+    boot_sets.insert(
+      "uan".into(),
+      boot_set_with_path(Some("s3://boot-images/abc/manifest.json")),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let paths: Vec<&str> = template.images_path().collect();
+    assert_eq!(paths, vec!["s3://boot-images/abc/manifest.json"]);
+  }
+
+  #[test]
+  fn images_id_strips_s3_prefix_and_manifest_suffix() {
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert(
+      "compute".into(),
+      boot_set_with_path(Some(
+        "s3://boot-images/59e0180a-3fdd-4936-bba7-14ba914ffd34/manifest.json",
+      )),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let ids: Vec<&str> = template.images_id().collect();
+    assert_eq!(ids, vec!["59e0180a-3fdd-4936-bba7-14ba914ffd34"]);
+  }
+
+  #[test]
+  fn images_id_passes_through_path_without_known_affixes() {
+    // Behavior contract: trim_*_matches only removes when present;
+    // foreign paths come through unchanged.
+    let mut boot_sets = HashMap::new();
+    boot_sets.insert(
+      "compute".into(),
+      boot_set_with_path(Some("https://example.com/blob")),
+    );
+
+    let template = bos_template_with_boot_sets(boot_sets);
+    let ids: Vec<&str> = template.images_id().collect();
+    assert_eq!(ids, vec!["https://example.com/blob"]);
   }
 }

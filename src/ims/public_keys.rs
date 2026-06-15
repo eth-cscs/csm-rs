@@ -1,81 +1,66 @@
-pub mod http_client {
+//! IMS `/v3/public-keys` endpoint bindings.
 
-  pub mod v3 {
-    use serde_json::Value;
+use serde::{Deserialize, Serialize};
 
-    use crate::error::Error;
+use crate::{ShastaClient, common::http, error::Error};
 
-    /// Get one user public key in IMS is can find
-    /// Returns None if public key not found or multiple fould
-    pub async fn get_single(
-      shasta_token: &str,
-      shasta_base_url: &str,
-      shasta_root_cert: &[u8],
-      socks5_proxy: Option<&str>,
-      username_opt: &str,
-    ) -> Result<Option<Value>, Error> {
-      let public_key_value_list = get(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        socks5_proxy,
-        Some(username_opt),
-      )
-      .await?;
+/// IMS SSH public-key record. Mirrors the `/ims/v3/public-keys` response.
+/// `id` and `created` are server-generated, so they are optional on POST.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[allow(missing_docs)]
+pub struct PublicKey {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub id: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub created: Option<String>,
+  pub name: String,
+  pub public_key: String,
+}
 
-      if public_key_value_list.len() == 1 {
-        Ok(public_key_value_list.first().cloned())
-      } else {
-        Ok(None)
+impl ShastaClient {
+  /// Get one user public key in IMS. Returns `None` if no key matches the
+  /// username or more than one matches.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_public_keys_v3_get_single(
+    &self,
+    token: &str,
+    username_opt: &str,
+  ) -> Result<Option<PublicKey>, Error> {
+    let mut keys =
+      self.ims_public_keys_v3_get(token, Some(username_opt)).await?;
+    if keys.len() == 1 {
+      Ok(Some(keys.remove(0)))
+    } else {
+      Ok(None)
+    }
+  }
+
+  /// Fetch IMS public keys, optionally filtered by `username`. Ref:
+  /// <https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/>.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_public_keys_v3_get(
+    &self,
+    token: &str,
+    username_opt: Option<&str>,
+  ) -> Result<Vec<PublicKey>, Error> {
+    let api_url = format!("{}/ims/v3/public-keys", self.base_url());
+    let keys: Vec<PublicKey> =
+      http::get_json(self.http(), &api_url, token).await?;
+    Ok(match username_opt {
+      Some(username) => {
+        keys.into_iter().filter(|k| k.name == username).collect()
       }
-    }
-
-    /// Fetch IMS image ref --> https://apidocs.svc.cscs.ch/paas/ims/operation/get_v3_image/
-    pub async fn get(
-      shasta_token: &str,
-      shasta_base_url: &str,
-      shasta_root_cert: &[u8],
-      socks5_proxy: Option<&str>,
-      username_opt: Option<&str>,
-    ) -> Result<Vec<Value>, Error> {
-      let client_builder = reqwest::Client::builder().add_root_certificate(
-        reqwest::Certificate::from_pem(shasta_root_cert)?,
-      );
-
-      let client = match socks5_proxy {
-        Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-        None => client_builder.build()?,
-      };
-
-      let api_url = shasta_base_url.to_owned() + "/ims/v3/public-keys";
-
-      let json_response: Value = client
-        .get(api_url)
-        .bearer_auth(shasta_token)
-        .send()
-        .await
-        .map_err(Error::NetError)?
-        .json()
-        .await
-        .map_err(Error::NetError)?;
-
-      let mut public_key_value_list: Vec<Value> =
-        json_response.as_array().unwrap().to_vec();
-
-      public_key_value_list = if let Some(username) = username_opt {
-        public_key_value_list.retain(|ssh_key_value| {
-          ssh_key_value
-            .get("name")
-            .and_then(Value::as_str)
-            .is_some_and(|v| v.eq(username))
-        });
-
-        public_key_value_list
-      } else {
-        json_response.as_array().unwrap().to_vec()
-      };
-
-      Ok(public_key_value_list.to_vec())
-    }
+      None => keys,
+    })
   }
 }

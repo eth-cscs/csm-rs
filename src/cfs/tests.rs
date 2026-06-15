@@ -36,5 +36,5 @@ async fn test_cfs_session_serde_json_to_struct_conversion() {
   let cfs_session =
     serde_json::from_value::<CfsSessionGetResponse>(cfs_session_value);
 
-  println!("{:#?}", cfs_session);
+  println!("{cfs_session:#?}");
 }

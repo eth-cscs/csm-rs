@@ -1,37 +1,42 @@
-use crate::error::Error;
+//! `ShastaClient` methods for `/ims/v3/recipes`.
+
+use crate::{ShastaClient, error::Error};
 
 use super::types::RecipeGetResponse;
 
-/// Create IMS job ref --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/post_v3_job/
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  recipe_id_opt: Option<&str>,
-) -> Result<Vec<RecipeGetResponse>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+impl ShastaClient {
+  /// Fetch IMS recipes. If `recipe_id_opt` is `Some`, only that recipe is
+  /// returned (wrapped in a single-element Vec); otherwise all recipes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_recipe_get(
+    &self,
+    token: &str,
+    recipe_id_opt: Option<&str>,
+  ) -> Result<Vec<RecipeGetResponse>, Error> {
+    let api_url = if let Some(recipe_id) = recipe_id_opt {
+      format!("{}/ims/v2/recipes/{}", self.base_url(), recipe_id)
+    } else {
+      format!("{}/ims/v2/recipes", self.base_url())
+    };
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(token)
+      .send()
+      .await?
+      .error_for_status()?;
 
-  let api_url = if let Some(recipe_id) = recipe_id_opt {
-    shasta_base_url.to_owned() + "/ims/v2/recipes" + recipe_id
-  } else {
-    shasta_base_url.to_owned() + "/ims/v2/recipes"
-  };
-
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await?
-    .error_for_status()?
-    .json::<Vec<RecipeGetResponse>>()
-    .await?;
-
-  Ok(response)
+    if recipe_id_opt.is_some() {
+      // Single-recipe responses are not wrapped in an array.
+      Ok(vec![response.json::<RecipeGetResponse>().await?])
+    } else {
+      Ok(response.json::<Vec<RecipeGetResponse>>().await?)
+    }
+  }
 }

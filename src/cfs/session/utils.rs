@@ -1,25 +1,32 @@
+//! Helpers built on top of `ShastaClient::cfs_session_*` methods.
+
 use crate::{
   cfs,
   error::Error,
   hsm::group::{
+    GroupExt,
     hacks::{filter_roles_and_subroles, filter_system_hsm_group_names},
     types::Group,
   },
 };
-use std::io::{self, Write};
 
 use super::http_client::v2::types::CfsSessionGetResponse;
 use globset::Glob;
 
-// Check if a session is related to a group the user has access to
+/// `true` if the CFS session's target HSM groups overlap with any HSM
+/// group in `group_available` (used to enforce per-user visibility).
+#[must_use]
 pub fn check_cfs_session_against_groups_available(
   cfs_session: &CfsSessionGetResponse,
   group_available: Vec<Group>,
 ) -> bool {
   group_available.iter().any(|group| {
+    // `Group.label` is now `ResourceName(pub String)`; compare against
+    // the inner `String` so the `Vec<String>` returned by
+    // `get_target_hsm` lines up.
     cfs_session
       .get_target_hsm()
-      .is_some_and(|group_vec| group_vec.contains(&group.label))
+      .is_some_and(|group_vec| group_vec.contains(&group.label.0))
       || cfs_session
         .get_target_xname()
         .is_some_and(|session_xname_vec| {
@@ -39,7 +46,7 @@ pub fn check_cfs_session_against_groups_available(
 /// - Application
 /// - Compute
 /// - UAN
-/// - UserDefined
+/// - `UserDefined`
 /// - etc
 /// How to calculate.
 /// 1) We extract the HSM groups the CFS session is linked to
@@ -74,6 +81,16 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
   }
 }
 
+/// Filter CFS sessions in place by configuration-name glob, HSM groups
+/// the caller has access to, optional xname allow-list, session type,
+/// row limit, and a flag controlling whether "generic" (non-targeted)
+/// sessions are retained.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn filter(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   configuration_name_pattern_opt: Option<&str>,
@@ -83,12 +100,11 @@ pub fn filter(
   limit_number_opt: Option<&u8>,
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
-  log::info!("Filter CFS sessions by groups");
-  log::info!(
-    "HSM groups to filter from: {:?}",
-    hsm_group_name_available_vec
+  log::debug!("Filter CFS sessions by groups");
+  log::debug!(
+    "HSM groups to filter from: {hsm_group_name_available_vec:?}"
   );
-  log::debug!("Xnames to filter from: {:?}", xname_available_vec);
+  log::debug!("Xnames to filter from: {xname_available_vec:?}");
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
     let glob = Glob::new(configuration_name_pattern)?.compile_matcher();
@@ -98,7 +114,7 @@ pub fn filter(
         .configuration_name()
         .is_some_and(|configuration_name| glob.is_match(configuration_name))
     });
-  };
+  }
 
   // Checks either target.groups contains hsm_group_name or ansible.limit is a subset of
   // hsm_group.members.ids
@@ -115,7 +131,7 @@ pub fn filter(
       .is_some_and(|target_xname_vec| {
         target_xname_vec
           .iter()
-          .any(|target_xname| xname_available_vec.contains(&target_xname))
+          .any(|target_xname| xname_available_vec.contains(target_xname))
       })
   });
 
@@ -146,13 +162,12 @@ pub fn filter_by_cofiguration(
   cfs_session_vec: &mut Vec<CfsSessionGetResponse>,
   cfs_configuration_name: &str,
 ) {
-  log::info!(
-    "Filter CFS sessions by configuration name '{}'",
-    cfs_configuration_name
+  log::debug!(
+    "Filter CFS sessions by configuration name '{cfs_configuration_name}'"
   );
 
   cfs_session_vec.retain(|cfs_session| {
-    cfs_session.configuration_name().as_deref() == Some(cfs_configuration_name)
+    cfs_session.configuration_name() == Some(cfs_configuration_name)
   });
 }
 
@@ -160,6 +175,7 @@ pub fn filter_by_cofiguration(
 /// all CFS sessions in the system using either the HSM group names or nodes as target.
 /// NOTE: Please make sure the user has access to the HSM groups and nodes he is asking for before
 /// calling this function
+#[must_use]
 pub fn find_cfs_session_related_to_image_id(
   cfs_session_vec: &[CfsSessionGetResponse],
   image_id: &str,
@@ -174,10 +190,11 @@ pub fn find_cfs_session_related_to_image_id(
     .cloned()
 }
 
-/// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
+/// Returns a tuple like (`image_id`, `cfs_configuration_name`, target) from a list of CFS
 /// sessions
+#[must_use]
 pub fn get_image_id_cfs_configuration_target_tuple_vec(
-  cfs_session_vec: &Vec<CfsSessionGetResponse>,
+  cfs_session_vec: &[CfsSessionGetResponse],
 ) -> Vec<(String, String, Vec<String>)> {
   let mut image_id_cfs_configuration_target_from_cfs_session: Vec<(
     String,
@@ -185,7 +202,7 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
     Vec<String>,
   )> = Vec::new();
 
-  cfs_session_vec.iter().for_each(|cfs_session| {
+  for cfs_session in cfs_session_vec {
     let result_id: &str = cfs_session.first_result_id().unwrap_or_default();
 
     let target: Vec<String> = cfs_session
@@ -205,14 +222,20 @@ pub fn get_image_id_cfs_configuration_target_tuple_vec(
       cfs_configuration.to_string(),
       target,
     ));
-  });
+  }
 
   image_id_cfs_configuration_target_from_cfs_session
 }
 
-/// Returns a tuple like (image_id, cfs_configuration_name, target) from a list of CFS
-/// sessions. Only returns values from CFS sessions with an artifact.result_id value
+/// Returns a tuple like (`image_id`, `cfs_configuration_name`, target) from a list of CFS
+/// sessions. Only returns values from CFS sessions with an `artifact.result_id` value
 /// (meaning CFS sessions completed and successful of type image)
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
   cfs_session_vec: &[CfsSessionGetResponse],
 ) -> Result<Vec<(String, String, Vec<String>)>, Error> {
@@ -241,8 +264,8 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
       ));
     } else {
       image_id_cfs_configuration_target_from_cfs_session.push((
-        "".to_string(),
-        "".to_string(),
+        String::new(),
+        String::new(),
         vec![],
       ));
     }
@@ -254,42 +277,30 @@ pub fn get_image_id_cfs_configuration_target_for_existing_images_tuple_vec(
 /// Return a list of the images ids related with a list of CFS sessions. The result list if
 /// filtered to CFS session completed and target def 'image' therefore the length of the
 /// resulting list may be smaller than the list of CFS sessions
-#[deprecated(note = "Use `images_id_from_cfs_session` instead")]
-pub fn get_image_id_from_cfs_session_vec(
-  cfs_session_vec: &[CfsSessionGetResponse],
-) -> Vec<String> {
-  let mut image_id_vec: Vec<String> = cfs_session_vec
-    .iter()
-    .flat_map(|cfs_session| cfs_session.results_id())
-    .map(str::to_string)
-    .collect();
-
-  image_id_vec.sort();
-  image_id_vec.dedup();
-
-  image_id_vec
-}
-
-/// Return a list of the images ids related with a list of CFS sessions. The result list if
-/// filtered to CFS session completed and target def 'image' therefore the length of the
-/// resulting list may be smaller than the list of CFS sessions
 pub fn images_id_from_cfs_session(
   cfs_session_vec: &[CfsSessionGetResponse],
 ) -> impl Iterator<Item = &str> {
   let mut image_id_vec: Vec<&str> = cfs_session_vec
     .iter()
-    .flat_map(|cfs_session| cfs_session.results_id())
+    .flat_map(super::http_client::v2::types::CfsSessionGetResponse::results_id)
     .collect();
 
-  image_id_vec.sort();
+  image_id_vec.sort_unstable();
   image_id_vec.dedup();
 
   image_id_vec.into_iter()
 }
 
-/// Wait a CFS session to finish
-// FIXME: This function prints CFS session logs to stdout which is not a good idea because the
-// client may run outside this machine
+/// Wait for a CFS session to finish. Polls with exponential backoff
+/// (2 s → 30 s, max 200 attempts ≈ 100 min wall-clock cap, matching
+/// the prior constant-delay budget) until the session's
+/// `status.session.status` reaches `"complete"`.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_cfs_session_to_finish(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -297,69 +308,66 @@ pub async fn wait_cfs_session_to_finish(
   socks5_proxy: Option<&str>,
   cfs_session_id: &str,
 ) -> Result<(), Error> {
-  let mut i = 0;
-  let max = 3000; // Max ammount of attempts to check if CFS session has ended
-  loop {
-    let cfs_session_vec = cfs::session::get_and_sort(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      None,
-      None,
-      None,
-      Some(&cfs_session_id.to_string()),
-      None,
-    )
-    .await?;
+  let backoff = crate::common::poll::PollBackoff {
+    initial_delay: std::time::Duration::from_secs(2),
+    max_delay: std::time::Duration::from_secs(30),
+    max_attempts: 200,
+  };
 
-    let cfs_session = if cfs_session_vec.is_empty() {
-      return Err(Error::Message(format!(
-        "ERROR - CFS session '{}' missing. Exit",
-        cfs_session_id
-      )));
-    } else {
-      cfs_session_vec
+  let status = crate::common::poll::poll_until_with_backoff(
+    backoff,
+    || async {
+      let cfs_session_vec = cfs::session::get_and_sort(
+        shasta_token,
+        shasta_base_url,
+        shasta_root_cert,
+        socks5_proxy,
+        None,
+        None,
+        None,
+        Some(&cfs_session_id.to_string()),
+        None,
+      )
+      .await?;
+
+      let session = cfs_session_vec
         .first()
-        .ok_or_else(|| Error::SessionNotFound(cfs_session_id.to_string()))?
-    };
+        .ok_or_else(|| Error::SessionNotFound(cfs_session_id.to_string()))?;
 
-    log::debug!("CFS session details:\n{:#?}", cfs_session);
+      log::debug!("CFS session details:\n{session:#?}");
 
-    let cfs_session_status = cfs_session
-      .status
-      .as_ref()
-      .and_then(|status| status.session.as_ref())
-      .and_then(|session| session.status.as_deref())
-      .ok_or_else(|| {
-        Error::Message(format!(
-          "ERROR - CFS session '{}' has no status. Exit",
-          cfs_session_id
-        ))
-      })?;
+      let session_status = session
+        .status
+        .as_ref()
+        .and_then(|status| status.session.as_ref())
+        .and_then(|session| session.status.as_deref())
+        .ok_or_else(|| {
+          Error::Message(format!(
+            "CFS session '{cfs_session_id}' has no status"
+          ))
+        })?
+        .to_string();
 
-    if cfs_session_status != "complete" && i < max {
-      print!("\x1B[2K"); // Clear current line
-      io::stdout().flush()?;
-      println!(
-        "Waiting CFS session '{}' with status '{}'. Checking again in 2 secs. Attempt {} of {}.",
-        cfs_session_id, cfs_session_status, i, max
-      );
-      io::stdout().flush()?;
+      Ok(session_status)
+    },
+    |s| s == "complete",
+  )
+  .await?;
 
-      tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-      i += 1;
-    } else {
-      println!(
-        "CFS session '{}' finished with status '{}'",
-        cfs_session_id, cfs_session_status
-      );
-      break Ok(());
-    }
-  }
+  log::debug!(
+    "CFS session '{cfs_session_id}' finished with status '{status}'"
+  );
+  Ok(())
 }
 
+/// Expand a CFS session's target (xnames + HSM groups) into a flat
+/// xname list, restricted to groups the caller can see.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_list_xnames_related_to_session(
   group_available_vec: Vec<Group>,
   cfs_session: CfsSessionGetResponse,
@@ -369,19 +377,432 @@ pub async fn get_list_xnames_related_to_session(
   {
     group_available_vec
       .into_iter()
-      .filter(|group_available| target_hsm_vec.contains(&group_available.label))
+      // `Group.label` is `ResourceName(pub String)` post-progenitor.
+      .filter(|group_available| target_hsm_vec.contains(&group_available.label.0))
       .flat_map(|group_available| group_available.get_members())
       .collect()
   } else {
     vec![]
   };
 
-  let target_xname_vec =
-    if let Some(target_xname) = cfs_session.get_target_xname() {
-      target_xname
-    } else {
-      vec![]
-    };
+  let target_xname_vec = cfs_session.get_target_xname().unwrap_or_default();
 
   Ok([target_xname_vec, target_group_xname_vec].concat())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::cfs::session::http_client::v2::types::{
+    Ansible, Artifact, Configuration, Group as SessionGroup, Session, Status,
+    Target,
+  };
+
+  fn session(name: &str) -> CfsSessionGetResponse {
+    CfsSessionGetResponse {
+      name: name.to_string(),
+      configuration: None,
+      ansible: None,
+      target: None,
+      status: None,
+      tags: None,
+    }
+  }
+
+  fn session_with_target_hsm(
+    name: &str,
+    defn: &str,
+    hsm_groups: Vec<&str>,
+  ) -> CfsSessionGetResponse {
+    let mut s = session(name);
+    s.target = Some(Target {
+      definition: Some(defn.to_string()),
+      groups: Some(
+        hsm_groups
+          .into_iter()
+          .map(|g| SessionGroup {
+            name: g.to_string(),
+            members: vec![],
+          })
+          .collect(),
+      ),
+    });
+    s
+  }
+
+  fn session_with_ansible_limit(
+    name: &str,
+    limit: &str,
+  ) -> CfsSessionGetResponse {
+    let mut s = session(name);
+    s.ansible = Some(Ansible {
+      config: None,
+      limit: Some(limit.to_string()),
+      verbosity: None,
+      passthrough: None,
+    });
+    s
+  }
+
+  fn session_with_config(name: &str, config: &str) -> CfsSessionGetResponse {
+    let mut s = session(name);
+    s.configuration = Some(Configuration {
+      name: Some(config.to_string()),
+      limit: None,
+    });
+    s
+  }
+
+  fn session_with_result(name: &str, result_id: &str) -> CfsSessionGetResponse {
+    let mut s = session(name);
+    s.status = Some(Status {
+      artifacts: Some(vec![Artifact {
+        image_id: None,
+        result_id: Some(result_id.to_string()),
+        r#type: None,
+      }]),
+      session: None,
+    });
+    s
+  }
+
+  fn session_with_start(name: &str, start_time: &str) -> CfsSessionGetResponse {
+    let mut s = session(name);
+    s.status = Some(Status {
+      artifacts: None,
+      session: Some(Session {
+        job: None,
+        completion_time: None,
+        start_time: Some(start_time.to_string()),
+        status: None,
+        succeeded: None,
+      }),
+    });
+    s
+  }
+
+  // ---------- is_session_image_generic ----------
+
+  #[test]
+  fn is_generic_false_when_target_def_is_dynamic() {
+    let s = session_with_target_hsm("s", "dynamic", vec!["Compute"]);
+    assert!(!is_session_image_generic(&s));
+  }
+
+  #[test]
+  fn is_generic_false_when_no_target() {
+    let s = session("s");
+    assert!(!is_session_image_generic(&s));
+  }
+
+  #[test]
+  fn is_generic_true_when_image_session_with_only_roles() {
+    let s = session_with_target_hsm("s", "image", vec!["Compute", "Worker"]);
+    assert!(is_session_image_generic(&s));
+  }
+
+  #[test]
+  fn is_generic_true_when_image_session_with_only_system_wide_groups() {
+    let s = session_with_target_hsm("s", "image", vec!["alps", "alpsb"]);
+    assert!(is_session_image_generic(&s));
+  }
+
+  #[test]
+  fn is_generic_false_when_image_session_targets_real_group() {
+    let s = session_with_target_hsm("s", "image", vec!["zinal", "Compute"]);
+    assert!(!is_session_image_generic(&s));
+  }
+
+  // ---------- filter_by_cofiguration ----------
+
+  #[test]
+  fn filter_by_configuration_keeps_only_matching_config_name() {
+    let mut sessions = vec![
+      session_with_config("s1", "zinal-config"),
+      session_with_config("s2", "daint-config"),
+      session_with_config("s3", "zinal-config"),
+    ];
+    filter_by_cofiguration(&mut sessions, "zinal-config");
+    let names: Vec<&str> = sessions.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, vec!["s1", "s3"]);
+  }
+
+  #[test]
+  fn filter_by_configuration_drops_sessions_without_configuration() {
+    let mut sessions = vec![
+      session_with_config("with-config", "zinal"),
+      session("without-config"),
+    ];
+    filter_by_cofiguration(&mut sessions, "zinal");
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, "with-config");
+  }
+
+  // ---------- find_cfs_session_related_to_image_id ----------
+
+  #[test]
+  fn find_by_image_id_returns_first_match() {
+    let sessions = vec![
+      session_with_result("s1", "image-A"),
+      session_with_result("s2", "image-B"),
+      session_with_result("s3", "image-A"),
+    ];
+    let found =
+      find_cfs_session_related_to_image_id(&sessions, "image-A").unwrap();
+    assert_eq!(found.name, "s1");
+  }
+
+  #[test]
+  fn find_by_image_id_returns_none_when_no_match() {
+    let sessions = vec![session_with_result("s1", "image-A")];
+    assert!(
+      find_cfs_session_related_to_image_id(&sessions, "image-X").is_none()
+    );
+  }
+
+  #[test]
+  fn find_by_image_id_skips_sessions_with_no_results() {
+    let sessions = vec![session("no-results"), session_with_result("ok", "X")];
+    let found = find_cfs_session_related_to_image_id(&sessions, "X").unwrap();
+    assert_eq!(found.name, "ok");
+  }
+
+  // ---------- filter ----------
+
+  #[test]
+  fn filter_drops_sessions_with_no_target() {
+    let mut sessions = vec![
+      session("orphan"),
+      session_with_target_hsm("s1", "dynamic", vec!["zinal"]),
+    ];
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, "s1");
+  }
+
+  #[test]
+  fn filter_keeps_sessions_matching_hsm_group() {
+    let mut sessions = vec![
+      session_with_target_hsm("zinal-s", "dynamic", vec!["zinal"]),
+      session_with_target_hsm("daint-s", "dynamic", vec!["daint"]),
+    ];
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, "zinal-s");
+  }
+
+  #[test]
+  fn filter_keeps_sessions_with_ansible_limit_xname_match() {
+    let mut sessions = vec![
+      session_with_ansible_limit("s1", "x1000c0s0b0n0,x1000c0s0b0n1"),
+      session_with_ansible_limit("s2", "x9999c0s0b0n0"),
+    ];
+    filter(
+      &mut sessions,
+      None,
+      &[],
+      &["x1000c0s0b0n0".to_string()],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, "s1");
+  }
+
+  #[test]
+  fn filter_with_keep_generic_keeps_image_sessions_targeting_roles() {
+    let generic = session_with_target_hsm("img-s", "image", vec!["Compute"]);
+    let group_specific =
+      session_with_target_hsm("zinal-s", "image", vec!["zinal"]);
+    let mut sessions = vec![generic, group_specific];
+
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      true,
+    )
+    .unwrap();
+    let names: Vec<&str> = sessions.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names.len(), 2);
+    assert!(names.contains(&"img-s"));
+    assert!(names.contains(&"zinal-s"));
+  }
+
+  #[test]
+  fn filter_without_keep_generic_drops_image_sessions_targeting_only_roles() {
+    let generic = session_with_target_hsm("img-s", "image", vec!["Compute"]);
+    let mut sessions = vec![generic];
+
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    assert!(sessions.is_empty());
+  }
+
+  #[test]
+  fn filter_glob_matches_configuration_name() {
+    let mut sessions = vec![
+      {
+        let mut s = session_with_config("s1", "zinal-1.2");
+        s.target = Some(Target {
+          definition: Some("dynamic".to_string()),
+          groups: Some(vec![SessionGroup {
+            name: "zinal".to_string(),
+            members: vec![],
+          }]),
+        });
+        s
+      },
+      {
+        let mut s = session_with_config("s2", "daint-1.2");
+        s.target = Some(Target {
+          definition: Some("dynamic".to_string()),
+          groups: Some(vec![SessionGroup {
+            name: "zinal".to_string(),
+            members: vec![],
+          }]),
+        });
+        s
+      },
+    ];
+    filter(
+      &mut sessions,
+      Some("zinal-*"),
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, "s1");
+  }
+
+  #[test]
+  fn filter_sorts_by_start_time_ascending() {
+    let mut sessions = vec![
+      {
+        let mut s = session_with_start("c", "2024-03-01T00:00:00Z");
+        s.target = Some(Target {
+          definition: Some("dynamic".to_string()),
+          groups: Some(vec![SessionGroup {
+            name: "zinal".to_string(),
+            members: vec![],
+          }]),
+        });
+        s
+      },
+      {
+        let mut s = session_with_start("a", "2024-01-01T00:00:00Z");
+        s.target = Some(Target {
+          definition: Some("dynamic".to_string()),
+          groups: Some(vec![SessionGroup {
+            name: "zinal".to_string(),
+            members: vec![],
+          }]),
+        });
+        s
+      },
+    ];
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      None,
+      false,
+    )
+    .unwrap();
+    let names: Vec<&str> = sessions.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, vec!["a", "c"]);
+  }
+
+  #[test]
+  fn filter_limit_keeps_last_n_after_sorting() {
+    let mut sessions: Vec<CfsSessionGetResponse> = (0..5)
+      .map(|i| {
+        let mut s = session_with_start(
+          &format!("s{i}"),
+          &format!("2024-01-0{}T00:00:00Z", i + 1),
+        );
+        s.target = Some(Target {
+          definition: Some("dynamic".to_string()),
+          groups: Some(vec![SessionGroup {
+            name: "zinal".to_string(),
+            members: vec![],
+          }]),
+        });
+        s
+      })
+      .collect();
+
+    let limit: u8 = 2;
+    filter(
+      &mut sessions,
+      None,
+      &["zinal".to_string()],
+      &[],
+      None,
+      Some(&limit),
+      false,
+    )
+    .unwrap();
+    let names: Vec<&str> = sessions.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, vec!["s3", "s4"]);
+  }
+
+  // ---------- images_id_from_cfs_session ----------
+
+  #[test]
+  fn images_id_collects_dedupes_and_sorts_result_ids() {
+    let sessions = vec![
+      session_with_result("s1", "img-c"),
+      session_with_result("s2", "img-a"),
+      session_with_result("s3", "img-a"), // duplicate
+      session_with_result("s4", "img-b"),
+    ];
+    let ids: Vec<&str> = images_id_from_cfs_session(&sessions).collect();
+    assert_eq!(ids, vec!["img-a", "img-b", "img-c"]);
+  }
+
+  #[test]
+  fn images_id_skips_sessions_with_no_result() {
+    let sessions =
+      vec![session("no-result"), session_with_result("s", "img-x")];
+    let ids: Vec<&str> = images_id_from_cfs_session(&sessions).collect();
+    assert_eq!(ids, vec!["img-x"]);
+  }
 }

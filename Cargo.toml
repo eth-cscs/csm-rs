@@ -1,70 +1,133 @@
 [package]
 edition = "2024"
+rust-version = "1.91.1"
 authors = ["Manuel Sopena Ballesteros <msopena@cscs.ch>"]
 name = "csm-rs"
-description = "A library for Shasta"
-version = "0.106.0"
+description = "Async Rust client for the HPE Cray Shasta CSM (Cray System Management) API."
+version = "1.0.0-beta.16"
 license-file = "LICENSE"
-documentation = "https://github.com/eth-cscs/mesa/blob/main/README.md"
-homepage = "https://github.com/eth-cscs/mesa/blob/main/README.md"
-repository = "https://github.com/eth-cscs/mesa"
+readme = "README.md"
+documentation = "https://docs.rs/csm-rs"
+homepage = "https://github.com/eth-cscs/csm-rs"
+repository = "https://github.com/eth-cscs/csm-rs"
+keywords = ["hpc", "shasta", "csm", "cray", "hpe"]
+categories = ["api-bindings", "asynchronous"]
 publish = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-machete]
+# `strum` is the runtime crate that the `strum_macros` proc macros
+# expand to reference (`::strum::IntoEnumIterator`, etc.). Even though
+# nothing under `src/` writes `use strum::*`, the macro-generated code
+# resolves through it. Removing the dep breaks `EnumIter` and friends.
+ignored = ["strum"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-manta-backend-dispatcher = "0.26.0"
+[features]
+default = ["manta-dispatcher", "k8s-console", "ims-s3", "commands-admin"]
+# Enables the `backend_connector` adapter, the `From<csm_rs::Error> for
+# manta_backend_dispatcher::Error` impl, and the PCS/HSM type
+# conversions to/from the dispatcher. Users who only want csm-rs as a
+# direct CSM client (not behind Manta) can disable this with
+# `default-features = false` to skip pulling the dispatcher dep and its
+# transitive deps.
+manta-dispatcher = ["dep:manta-backend-dispatcher"]
+# Opt-in admin-CLI orchestration workflows: `i_apply_sat_file`,
+# `migrate_backup`, `migrate_restore`. These are higher-level than the
+# rest of `commands/` — they parse YAML, touch the filesystem, and drive
+# reboot timing / progress bars — so they belong in an admin binary
+# rather than the default library surface. They transitively need
+# Kubernetes (console attach) and S3 (IMS image transport).
+commands-admin = ["k8s-console", "ims-s3"]
+# Kubernetes-backed node console attach (`node::console`,
+# `common::kubernetes`, dispatcher `ConsoleTrait`). Pulls in `kube`,
+# `k8s-openapi`, `tokio-util`. Default-on for backwards compatibility;
+# disable if you only need HTTP CSM access.
+k8s-console = ["dep:kube", "dep:k8s-openapi", "dep:tokio-util"]
+# IMS S3 image transport (`ims::s3_client`, the SOCKS5/hyper-0.14 glue
+# the AWS SDK still requires). Pulls in `aws-sdk-s3`, `aws-config`,
+# `aws-smithy-*`, `hyper`, `hyper-socks2`, `indicatif`. Default-on for
+# backwards compatibility.
+ims-s3 = [
+    "dep:aws-sdk-s3", "dep:aws-config", "dep:aws-smithy-runtime",
+    "dep:aws-smithy-types", "dep:hyper",
+    "dep:hyper-socks2", "dep:indicatif",
+]
 
-# manta-backend-dispatcher = { path = "../manta-backend-dispatcher" } # Only for development purposes
+[dependencies]
+manta-backend-dispatcher = { version = "1.0.0-beta.12", optional = true }
+
+# manta-backend-dispatcher = { path = "../manta-backend-dispatcher", optional = true } # Only for development purposes
 # manta-backend-dispatcher = { git = "https://github.com/eth-cscs/manta-backend-dispatcher", branch="feature/power-status" } # Only for development purposes
 
+# `strum_macros::{EnumIter, EnumString, …}` expand to code that resolves
+# the corresponding traits through the `strum` crate at the call site;
+# even though we never write `use strum::*` directly, the runtime crate
+# has to be in scope for the macros to compile.
 strum = { version = "0.27.1", default-features = false }
 strum_macros = "0.27.1"
-chrono = { version = "0.4.41", default-features = false }
-anyhow = { version = "1.0.44", default-features = false }
-reqwest = { version = "0.12.15", default-features = false, features = ["blocking", "json", "rustls-tls", "socks"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
+# reqwest stays on 0.12 because `kube 2.0.1` (gated by `k8s-console`)
+# transitively pins reqwest 0.12; mixing 0.12 and 0.13 breaks the
+# `reqwest::Error` types csm-rs flows through `Error::NetError`. Bump
+# both together when kube migrates to reqwest 0.13.
+reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls", "socks"] }
+progenitor-client = "0.8"
+# progenitor's typify-emitted format validators reference `regress::Regex`
+# in the generated HSM client (see Section H of the progenitor output
+# reference doc). Required to compile `include!`-ed generated.rs.
+regress = "0.10"
 http = "1.3.1"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
 serde_yaml = "0.9.34"
-log = "0.4.27"
-log4rs = { version = "1.2.0" }
-tokio = { version = "1.45", features = ["full"] }
-tokio-util = "0.7.4" # used by manta_console to create a read stream from container stdout
-tokio-rustls = { version = "0.24.0", default-features = false }
-tokio-stream = { version = "0.1.11", default-features = false }
-kube = { version = "2.0.1", features = ["ws", "socks5", "runtime"] }
-k8s-openapi = { version = "0.26.0", features = ["v1_33"] }
+log = "0.4.32"
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "sync", "time", "io-util"] }
+tokio-util = { version = "0.7.4", optional = true } # k8s-console: read stream from container stdout
+tokio-stream = { version = "0.1.18", default-features = false }
+kube = { version = "2.0.1", features = ["ws", "socks5", "runtime"], optional = true }
+k8s-openapi = { version = "0.26", features = ["v1_33"], optional = true }
 md5 = { version = "0.7.0", default-features = false }
-uuid = { version = "1.16.0", features = ["fast-rng", "v4"] }
+uuid = { version = "1.16.0", features = ["fast-rng", "serde", "v4"] }
 # git2 = { version = "0.18.1", default-features = false, features = ["vendored-openssl"] }
-dialoguer = { version = "0.10.2", features = ["password"], default-features = false }
-indicatif = { version = "0.17.7", default-features = false }
-# https://github.com/kube-rs/kube-rs/discussions/1012 and https://crates.io/crates/hyper-socks2
-hyper-socks2 = { version = "0.8.0", default-features = false } # needed by kube-rs (to operate with kube api) 
-hyper = { version = "0.14" } # needed by kube-rs (to operate with kube api)
-hyper-rustls = { version = "0.24.0", default-features = false }
-hyper-util = "0.1.16"
-tower = { version = "0.4.13", default-features = false }
-futures = { version = "0.3.31", default-features = false }
+indicatif = { version = "0.18", default-features = false, optional = true }
+# Needed by `ims::s3_client::setup_client`: the AWS SDK (aws-sdk-s3,
+# aws-sdk-sts) still uses hyper 0.14 transitively via aws-smithy-http-client,
+# and we glue SOCKS5 into the S3 transport using hyper_socks2::SocksConnector
+# + hyper::client::HttpConnector + the AWS SDK's hyper_014::HyperClientBuilder.
+# Drop these when aws-smithy-http-client upgrades to hyper 1.x (it will then
+# also satisfy hyper-rustls 0.27+). kube-rs is unrelated -- kube 2.0.1 is
+# already on hyper 1.x.
+hyper-socks2 = { version = "0.8.0", default-features = false, optional = true }
+hyper = { version = "0.14", optional = true }
+futures = { version = "0.3.31", default-features = false, features = ["std"] }
 futures-channel = "0.3.31"
 regex = "1.6.0"
-directories = "4.0.1" # XDG Base Directory Specification
-config = { version = "0.13.2", features = ["ron"], default-features = false }
-secrecy = { version = "0.10.0", default-features = false }
-termion = "2.0.1" # used by manta_console to enable terminal raw
-base64 = { version = "0.13.1", default-features = false }
-aws-sdk-s3 = { version = "1.12.0", features = ["rustls"], default-features = false }
-aws-config = { version = "1.1.2", default-features = false }
-aws-smithy-runtime = { version = "1.0.1" }
-aws-smithy-types = { version = "1.1.2", features = ["rt-tokio"] }
-globset = { version = "0.4.14", default-features = false }
-humansize = "2.0.0"
-comfy-table = "6.1.1"
-substring = "1.4.5"
-thiserror = "1.0.56"
+secrecy = { version = "0.10.3", default-features = false }
+base64 = { version = "0.22", default-features = false, features = ["std"] }
+aws-sdk-s3 = { version = "1.135", features = ["rustls"], default-features = false, optional = true }
+aws-config = { version = "1.8", default-features = false, features = ["behavior-version-latest"], optional = true }
+aws-smithy-runtime = { version = "1.11", optional = true }
+aws-smithy-types = { version = "1.4", features = ["rt-tokio"], optional = true }
+globset = { version = "0.4.18", default-features = false }
+humansize = "2.1.3"
+thiserror = "2.0.18"
 hostlist-parser = "0.1.6"
-rustls-pemfile = "1.0.3"
+
+[dev-dependencies]
+wiremock = "0.6"
+
+[build-dependencies]
+progenitor = "0.8"
+openapiv3 = "2"
+serde_json = "1"
+serde_yaml = "0.9"
+prettyplease = "0.2"
+syn = "2"
 
 [profile.release]
 opt-level = "s" # Tell `rustc` to optimize for small code size.

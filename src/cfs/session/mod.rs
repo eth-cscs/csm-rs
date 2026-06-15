@@ -1,17 +1,31 @@
+//! CFS sessions — invocations that run an Ansible configuration against
+//! a set of components.
+//!
+//! Submodules:
+//!
+//! - [`http_client`] — `ShastaClient` methods for the v2 and v3 endpoints.
+//! - [`utils`] — orchestration helpers that compose multiple calls.
+
 pub mod http_client;
 pub mod utils;
 
-use crate::cfs;
 use http_client::v2::types::{CfsSessionGetResponse, CfsSessionPostRequest};
 
-use crate::{
-  common::{
-    kubernetes::{self, i_print_cfs_session_logs},
-    vault::http_client::fetch_shasta_k8s_secrets_from_vault,
-  },
-  error::Error,
+use crate::error::Error;
+
+#[cfg(feature = "k8s-console")]
+use crate::common::{
+  kubernetes::{self, i_print_cfs_session_logs},
+  vault::http_client::fetch_shasta_k8s_secrets_from_vault,
 };
 
+/// Fetch a single CFS session by name (errors if none or many match).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_one(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -19,28 +33,32 @@ pub async fn get_one(
   socks5_proxy: Option<&str>,
   session_name: &String,
 ) -> Result<CfsSessionGetResponse, Error> {
-  let cfs_session_vec = cfs::session::http_client::v2::get(
-    shasta_token,
+  let cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-    None,
-    None,
-    Some(session_name),
-    None,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_get(shasta_token, None, None, None, Some(session_name), None)
   .await?;
 
-  if cfs_session_vec.len() == 1 {
-    Ok(cfs_session_vec.first().unwrap().clone()) // FIX: remove this clone?
-  } else {
-    Err(Error::SessionNotFound(session_name.to_string()))
+  let mut iter = cfs_session_vec.into_iter();
+  match (iter.next(), iter.next()) {
+    (Some(session), None) => Ok(session),
+    _ => Err(Error::SessionNotFound(session_name.clone())),
   }
 }
-/// Fetch CFS sessions ref --> https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/
-/// Returns list of CFS sessions ordered by start time.
-/// This methods filter by either HSM group name or HSM group members or both
+
+/// Fetch CFS sessions. Ref: <https://apidocs.svc.cscs.ch/paas/cfs/operation/get_sessions/>.
+///
+/// Returns list of CFS sessions ordered by start time. Filters by either
+/// HSM group name or HSM group members or both.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
+#[allow(clippy::too_many_arguments)]
 pub async fn get_and_sort(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -52,11 +70,13 @@ pub async fn get_and_sort(
   session_name_opt: Option<&String>,
   is_succeded_opt: Option<bool>,
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-  let mut cfs_session_vec = cfs::session::http_client::v2::get(
-    shasta_token,
+  let mut cfs_session_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_get(
+    shasta_token,
     min_age_opt,
     max_age_opt,
     status_opt,
@@ -66,11 +86,19 @@ pub async fn get_and_sort(
   .await?;
 
   // Sort CFS sessions by start time order ASC
-  cfs_session_vec.sort_by(|a, b| a.get_start_time().cmp(&b.get_start_time()));
+  cfs_session_vec.sort_by_key(http_client::v2::types::CfsSessionGetResponse::get_start_time);
 
   Ok(cfs_session_vec)
 }
 
+/// Convenience: build a transient `ShastaClient`, POST the CFS session
+/// request, and return the created session.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn post(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -79,24 +107,32 @@ pub async fn post(
   session: &CfsSessionPostRequest,
 ) -> Result<CfsSessionGetResponse, Error> {
   log::info!("Create CFS session '{}'", session.name);
-  log::debug!("Create CFS session request payload:\n{:#?}", session);
+  log::debug!("Create CFS session request payload:\n{session:#?}");
 
-  cfs::session::http_client::v2::post(
-    shasta_token,
+  crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    session,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_session_v2_post(shasta_token, session)
   .await
 }
 
-/// Creates a CFS session and waits for it to finish.
-/// Optionally, it can also print the CFS session logs if `watch_logs` is set to true.
-#[deprecated(
-  since = "v0.42.3-beta.71",
-  note = "this function prints CFS logs to stdout"
-)]
+/// Creates a CFS session and waits for it to finish. When `watch_logs`
+/// is true the session's container logs are streamed line-by-line
+/// through `log::info!` (no direct stdout writes).
+///
+/// Requires the `k8s-console` Cargo feature because the watch-logs
+/// path attaches to the in-cluster CFS session pod via the Kubernetes
+/// client.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
+#[cfg(feature = "k8s-console")]
+#[allow(clippy::too_many_arguments)]
 pub async fn i_post_sync(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -111,7 +147,7 @@ pub async fn i_post_sync(
 ) -> Result<CfsSessionGetResponse, Error> {
   // Create CFS session
   log::info!("Create CFS session '{}'", session.name);
-  let cfs_session: CfsSessionGetResponse = cfs::session::post(
+  let cfs_session: CfsSessionGetResponse = crate::cfs::session::post(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
@@ -122,8 +158,10 @@ pub async fn i_post_sync(
 
   let cfs_session_name: String = cfs_session.name;
 
-  // FIXME: refactor becase this code is duplicated in command `manta apply sat-file` and also in
-  // `manta logs`
+  // NOTE: the watch-logs block below mirrors the downstream
+  // `manta apply sat-file` and `manta logs` flows; if you change the
+  // shape here check that those still match (they live in the manta
+  // CLI repo, not in csm-rs).
   if watch_logs {
     log::info!("Fetching logs form CFS session {} ...", session.name);
     let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
@@ -135,14 +173,14 @@ pub async fn i_post_sync(
     .await?;
 
     let client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+        .await?;
 
-    let _ =
-      i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
+    i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
 
-  // User does not want the CFS logs but we still need to wayt the CFS session to
-  // finis. Wait till the CFS session finishes
+  // User does not want the CFS logs but we still need to wait for the CFS session to
+  // finish. Wait till the CFS session finishes
   utils::wait_cfs_session_to_finish(
     shasta_token,
     shasta_base_url,

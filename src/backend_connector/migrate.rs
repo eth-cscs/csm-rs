@@ -1,3 +1,5 @@
+//! `MigrateRestoreTrait`, `MigrateBackupTrait` impls for [`crate::ShastaClient`].
+
 use manta_backend_dispatcher::{
   error::Error,
   interfaces::{
@@ -5,14 +7,12 @@ use manta_backend_dispatcher::{
   },
 };
 
-use super::Csm;
+use crate::ShastaClient;
 
-impl MigrateRestoreTrait for Csm {
+impl MigrateRestoreTrait for ShastaClient {
   async fn migrate_restore(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos_file: Option<&str>,
     cfs_file: Option<&str>,
     hsm_file: Option<&str>,
@@ -25,8 +25,8 @@ impl MigrateRestoreTrait for Csm {
   ) -> Result<(), Error> {
     crate::commands::migrate_restore::exec(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       bos_file,
       cfs_file,
@@ -39,28 +39,26 @@ impl MigrateRestoreTrait for Csm {
       overwrite_template,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }
 
-impl MigrateBackupTrait for Csm {
+impl MigrateBackupTrait for ShastaClient {
   async fn migrate_backup(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     bos: Option<&str>,
     destination: Option<&str>,
   ) -> Result<(), Error> {
     crate::commands::migrate_backup::exec(
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
+      &self.base_url,
+      &self.root_cert,
       self.socks5_proxy.as_deref(),
       bos,
       destination,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

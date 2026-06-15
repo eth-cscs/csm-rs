@@ -1,6 +1,7 @@
 use crate::hsm::{
   self,
   group::{
+    GroupExt,
     hacks::{KEYCLOAK_ROLES_TO_IGNORE, PA_ADMIN},
     types::Group,
   },
@@ -10,11 +11,17 @@ use super::hacks::ROLES;
 
 #[test]
 fn test_add_xnames() {
-  let mut group = Group::new("label", Some(vec!["xname1", "xname2"]));
+  // Was `Group::new(...)` before progenitor migration; the renamed
+  // associated function on the trait is `new_with_members` (the trait
+  // syntax `Group::new` would collide with any inherent `new` on the
+  // generated type, of which there happens to be none today but the
+  // forward-compatible move is to keep our addition off the bare name).
+  let mut group =
+    Group::new_with_members("label", Some(vec!["xname1", "xname2"]));
 
-  let mut new_xnames = vec!["xname3".to_string(), "xname4".to_string()];
+  let new_xnames = vec!["xname3".to_string(), "xname4".to_string()];
 
-  group.add_xnames(&mut new_xnames);
+  group.add_xnames(&new_xnames);
 
   assert_eq!(
     group.get_members(),
@@ -24,7 +31,7 @@ fn test_add_xnames() {
       "xname3".to_string(),
       "xname4".to_string()
     ]
-  )
+  );
 }
 
 #[test]

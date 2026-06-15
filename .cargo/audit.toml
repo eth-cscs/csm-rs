@@ -1,0 +1,27 @@
+# Cargo-audit configuration.
+#
+# Run via `cargo audit`. See README.md "Security advisories" for the
+# full context and the workaround for users who need a vulnerability-free
+# build today.
+
+[advisories]
+# All three of the ignored IDs trace to the same transitive chain:
+#
+#   csm-rs
+#     -> aws-smithy-runtime
+#     -> aws-smithy-http-client 1.1.12
+#     -> hyper-rustls 0.24.2
+#     -> rustls 0.21.12
+#     -> rustls-webpki 0.101.7    (vulnerable)
+#
+# Fixed releases of rustls-webpki (0.103.12 / 0.103.13) require the
+# whole stack to migrate to hyper 1.x; the AWS Rust SDK has not yet
+# done so. When `aws-smithy-http-client-reqwest` stabilises and we
+# migrate `src/ims/s3_client.rs` to it, the hyper-0.14/socks2 deps
+# disappear and these advisories clear together — at that point delete
+# the three IDs below.
+ignore = [
+  "RUSTSEC-2026-0098", # name constraints for URI names incorrectly accepted
+  "RUSTSEC-2026-0099", # name constraints accepted for wildcard certs
+  "RUSTSEC-2026-0104", # reachable panic in CRL parsing
+]

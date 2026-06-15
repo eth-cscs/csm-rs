@@ -1,43 +1,54 @@
+//! Small client for the embedded CSM Gitea instance used by CFS configuration layers.
+
+/// In-cluster API gateway host. Repo URLs that point at the embedded
+/// CSM Gitea use this host when reached from inside the cluster; the
+/// SAT-file parser rewrites external `vcs.cmn.<site>.cscs.ch` URLs to
+/// it so subsequent Gitea calls hit the in-cluster service.
+pub(crate) const INTERNAL_API_HOST: &str = "api-gw-service-nmn.local";
+
+/// HTTP helpers for the embedded CSM Gitea instance.
 pub mod http_client {
 
-  use crate::error::Error;
+  use crate::{common::http, error::Error};
   use serde_json::Value;
 
+  /// Extract the repo name (the path after `vcs/cray/`) from a Gitea
+  /// URL, trimming the trailing `.git` if present.
   pub fn get_repo_name_from_url(repo_url: &str) -> Result<String, Error> {
     if repo_url.starts_with("https://api-gw-service-nmn.local") {
       let gitea_internal_base_url =
         "https://api-gw-service-nmn.local/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_internal_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else if repo_url.starts_with("https://vcs.cmn.alps.cscs.ch") {
       let gitea_external_base_url = "https://vcs.cmn.alps.cscs.ch/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_external_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else if repo_url.starts_with("https://api.cmn.alps.cscs.ch") {
       let gitea_external_base_url = "https://api.cmn.alps.cscs.ch/vcs/cray/";
 
-      return Ok(
+      Ok(
         repo_url
           .trim_start_matches(gitea_external_base_url)
           .trim_end_matches(".git")
           .to_string(),
-      );
+      )
     } else {
-      return Err(Error::Message(
+      Err(Error::Message(
         "repo url provided does not match gitea internal or external URL"
           .to_string(),
-      ));
-    };
+      ))
+    }
   }
 
   /// Get all refs for a repository
@@ -51,8 +62,14 @@ pub mod http_client {
   ) -> Result<Vec<Value>, Error> {
     let repo_name = get_repo_name_from_url(repo_url)?;
 
-    get_all_refs(gitea_base_url, gitea_token, &repo_name, shasta_root_cert, socks5_proxy)
-      .await
+    get_all_refs(
+      gitea_base_url,
+      gitea_token,
+      &repo_name,
+      shasta_root_cert,
+      socks5_proxy,
+    )
+    .await
   }
 
   /// Get all refs for a repository
@@ -64,33 +81,21 @@ pub mod http_client {
     shasta_root_cert: &[u8],
     socks5_proxy: Option<&str>,
   ) -> Result<Vec<Value>, Error> {
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
-      "{}/api/v1/repos/cray/{}/git/refs",
-      gitea_base_url, repo_name
+      "{gitea_base_url}/api/v1/repos/cray/{repo_name}/git/refs"
     );
 
-    log::debug!("Get refs in gitea using through API call: {}", api_url);
+    log::debug!("Get refs in gitea using through API call: {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await
-      .map_err(|error| Error::NetError(error))?;
+      .map_err(Error::NetError)?;
 
-    if response.status().is_success() {
-      response.json().await.map_err(|e| Error::NetError(e))
-    } else {
-      Err(Error::Message(response.text().await?))
-    }
+    http::handle_json_or_text_response(response).await
   }
 
   /// Get most commit id (sha) pointed by a branch
@@ -111,20 +116,25 @@ pub mod http_client {
     )
     .await?;
 
+    let want = format!("refs/heads/{branch_name}");
     let ref_details_opt = all_ref_vec.into_iter().find(|ref_details| {
-      ref_details.get("ref").and_then(Value::as_str).unwrap()
-        == format!("refs/heads/{}", branch_name)
+      ref_details
+        .get("ref")
+        .and_then(Value::as_str)
+        .is_some_and(|r| r == want)
     });
 
     match ref_details_opt {
-      Some(ref_details) => Ok(
-        ref_details
-          .get("object")
-          .and_then(|object| object.get("sha"))
-          .and_then(Value::as_str)
-          .map(str::to_string)
-          .unwrap(),
-      ),
+      Some(ref_details) => ref_details
+        .get("object")
+        .and_then(|object| object.get("sha"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+          Error::Message(
+            "Gitea response: ref object is missing 'sha'".to_string(),
+          )
+        }),
       None => Err(Error::Message("SHA for branch not found".to_string())),
     }
   }
@@ -142,7 +152,7 @@ pub mod http_client {
   ) -> Result<Value, Error> {
     let gitea_internal_base_url = "https://api-gw-service-nmn.local/vcs/";
     let gitea_external_base_url =
-      format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
+      format!("https://api.cmn.{site_name}.cscs.ch/vcs/");
 
     let gitea_api_base_url = gitea_internal_base_url.to_owned() + "api/v1";
 
@@ -153,28 +163,20 @@ pub mod http_client {
       .trim_start_matches(&gitea_external_base_url)
       .trim_end_matches(".git");
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url =
-      format!("{}/repos/{}/tags/{}", gitea_api_base_url, repo_name, tag);
+      format!("{gitea_api_base_url}/repos/{repo_name}/tags/{tag}");
 
-    log::debug!("Request to {}", api_url);
+    log::debug!("Request to {api_url}");
 
-    Ok(
-      client
-        .get(api_url)
-        .header("Authorization", format!("token {}", gitea_token))
-        .send()
-        .await?
-        .json()
-        .await?,
-    )
+    let response = client
+      .get(api_url)
+      .header("Authorization", format!("token {gitea_token}"))
+      .send()
+      .await
+      .map_err(Error::NetError)?;
+
+    http::handle_json_or_text_response(response).await
   }
 
   /// Returns the commit id (sha) related to a tag name
@@ -189,8 +191,7 @@ pub mod http_client {
     site_name: &str,
   ) -> Result<Value, Error> {
     let external_vcs_base_url = format!(
-      "https://vcs.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/",
-      site_name
+      "https://vcs.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/"
     );
     let repo_name: &str = gitea_api_tag_url
       .trim_start_matches(&external_vcs_base_url)
@@ -199,35 +200,29 @@ pub mod http_client {
       .ok_or_else(|| Error::Message("Invalid repo URL".to_string()))?;
 
     let api_url = format!(
-      "https://api.cmn.{}.cscs.ch/vcs/api/v1/repos/cray/{}/tags/{}",
-      site_name, repo_name, tag
+      "https://api.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/{repo_name}/tags/{tag}"
     );
 
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
 
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
+    log::debug!("Request to {api_url}");
 
-    log::debug!("Request to {}", api_url);
-
-    let response_rslt = client
-      .get(api_url.clone())
-      .header("Authorization", format!("token {}", gitea_token))
+    let response = client
+      .get(api_url)
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
-      .await;
+      .await
+      .map_err(Error::NetError)?;
 
-    match response_rslt {
-      Ok(response) => Ok(response.json::<Value>().await?),
-      Err(error) => Err(Error::NetError(error)),
-    }
+    http::handle_json_or_text_response(response).await
   }
 
-  // Get commit details.
-  // NOTE: repo_name value must not contain the group (eg in CSCS gitlab we have
-  // alps/csm-config/template-management and in gitea is vcs/api/v1/repos/template-management
+  /// Fetch commit details for `commitid` from the site's external Gitea
+  /// URL (`api.cmn.<site>.cscs.ch/vcs/`).
+  ///
+  /// Note: `repo_name` must NOT contain the group prefix (e.g. CSCS
+  /// gitlab has `alps/csm-config/template-management` whereas Gitea
+  /// expects just `template-management`).
   pub async fn get_commit_details_from_external_url(
     // repo_url: &str,
     repo_name: &str,
@@ -238,7 +233,7 @@ pub mod http_client {
     site_name: &str,
   ) -> Result<Value, crate::error::Error> {
     let gitea_external_base_url =
-      format!("https://api.cmn.{}.cscs.ch/vcs/", site_name);
+      format!("https://api.cmn.{site_name}.cscs.ch/vcs/");
 
     get_commit_details(
       &gitea_external_base_url,
@@ -251,6 +246,9 @@ pub mod http_client {
     .await
   }
 
+  /// Fetch commit details for `commitid` from an arbitrary Gitea base
+  /// URL. Lower-level companion to
+  /// [`get_commit_details_from_external_url`].
   pub async fn get_commit_details(
     gitea_base_url: &str,
     repo_name: &str,
@@ -259,96 +257,35 @@ pub mod http_client {
     shasta_root_cert: &[u8],
     socks5_proxy: Option<&str>,
   ) -> Result<Value, crate::error::Error> {
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
+    let client = http::build_client(shasta_root_cert, socks5_proxy)?;
     let api_url = format!(
-      "{}api/v1/repos/{}/git/commits/{}",
-      gitea_base_url, repo_name, commitid
+      "{gitea_base_url}api/v1/repos/{repo_name}/git/commits/{commitid}"
     );
 
-    log::info!("url to get commit details: {}", api_url);
+    log::debug!("url to get commit details: {api_url}");
 
     let response = client
       .get(api_url)
-      .header("Authorization", format!("token {}", gitea_token))
+      .header("Authorization", format!("token {gitea_token}"))
       .send()
       .await?;
 
     if response.status().is_success() {
-      // Make sure we return a vec if user requesting a single value
-      response
-        .json()
-        .await
-        .map_err(|error| Error::NetError(error))
+      response.json().await.map_err(Error::NetError)
     } else {
+      // Bespoke: wraps the text body in a synthetic JSON object so callers
+      // can match on `CsmError`. status=0 marks "no real HTTP status from
+      // CSM" — this is a gitea error smuggled through CsmError; a future
+      // cleanup should introduce a proper GiteaError variant.
+      let status = response.status().as_u16();
+      let url = response.url().to_string();
       let payload = response.text().await?;
-      Err(Error::CsmError(serde_json::json!({ "message": payload })))
+      Err(Error::csm_from_response(
+        "GET",
+        &url,
+        status,
+        serde_json::json!({ "detail": payload }),
+      ))
     }
-  }
-
-  pub async fn get_last_commit_from_repo_name(
-    gitea_api_base_url: &str,
-    repo_name: &str,
-    gitea_token: &str,
-    shasta_root_cert: &[u8],
-    socks5_proxy: Option<&str>,
-  ) -> core::result::Result<Value, Error> {
-    let repo_url =
-      gitea_api_base_url.to_owned() + "/api/v1/repos" + repo_name + "/commits";
-
-    let client_builder = reqwest::Client::builder()
-      .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-    let client = match socks5_proxy {
-      Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-      None => client_builder.build()?,
-    };
-
-    let mut resp: Vec<Value> = client
-      .get(repo_url)
-      .header("Authorization", format!("token {}", gitea_token))
-      .send()
-      .await?
-      .error_for_status()?
-      .json()
-      .await?;
-
-    resp.sort_by(|a, b| {
-      a["commit"]["committer"]["date"]
-        .to_string()
-        .cmp(&b["commit"]["committer"]["date"].to_string())
-    });
-
-    resp
-      .last()
-      .ok_or_else(|| Error::Message("No commits found".to_string()))
-      .cloned()
-  }
-
-  pub async fn get_last_commit_from_url(
-    gitea_api_base_url: &str,
-    repo_url: &str,
-    gitea_token: &str,
-    shasta_root_cert: &[u8],
-    socks5_proxy: Option<&str>,
-  ) -> core::result::Result<Value, Error> {
-    let repo_name = repo_url
-      .trim_start_matches("https://api-gw-service-nmn.local/vcs/")
-      .trim_end_matches(".git");
-
-    get_last_commit_from_repo_name(
-      gitea_api_base_url,
-      repo_name,
-      gitea_token,
-      shasta_root_cert,
-      socks5_proxy,
-    )
-    .await
   }
 }

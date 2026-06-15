@@ -1,17 +1,23 @@
+//! Helpers built on top of `ShastaClient::ims_image_*` methods.
+
 use crate::{
-  bos,
-  bss::http_client::get_multiple,
-  common,
+  bos, common,
   error::Error,
   hsm::group::utils::get_member_vec_from_hsm_name_vec,
   ims::{self, image::http_client::types::Image},
 };
 
-// Get Image using fuzzy finder, meaning returns any image which name contains a specific
-// string.
-// Used to find an image created through a CFS session and has not been renamed because manta
-// does not rename the images as SAT tool does for the sake of keeping the original image ID in
-// the CFS session which created the image.
+/// Fuzzy lookup: return every image whose name *contains*
+/// `image_name_opt`, restricted to the caller's available HSM groups.
+///
+/// Used to find images created by a CFS session that manta deliberately
+/// leaves un-renamed (so the CFS session retains its original image ID).
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_fuzzy(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -44,9 +50,17 @@ pub async fn get_fuzzy(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
+/// Return images whose name *exactly equals* `image_name`, restricted
+/// to the caller's available HSM groups.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -77,12 +91,18 @@ pub async fn get_by_name(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
 /// Get Image using exact name match among the images available to the user based on the HSM groups
 /// the user has access to. If no image is found with the exact name match, then, an error will be
 /// returned.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn try_get_by_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -119,27 +139,77 @@ pub async fn try_get_by_name(
       .to_vec();
   }
 
-  Ok(image_available_vec.to_vec())
+  Ok(image_available_vec.clone())
 }
 
-/// Just sorts images by creation time in ascendent order
+/// Just sorts images by creation time in ascendent order. Images with no
+/// `created` timestamp sort before any with one (treated as empty string).
 pub fn filter(image_vec: &mut [Image]) {
-  // Sort images by creation time order ASC
   image_vec.sort_by(|a, b| {
-    a.created.as_ref().unwrap().cmp(b.created.as_ref().unwrap())
+    a.created
+      .as_deref()
+      .unwrap_or("")
+      .cmp(b.created.as_deref().unwrap_or(""))
   });
 }
 
-/// Returns a tuple like(Image sruct, cfs configuration name, list of target - either hsm group name
-/// or xnames, bool - indicates if image is used to boot a node or not)
-/// This method tries to filter by HSM group which means it will make use of:
-///  - CFS sessions to find which image id was created against which HSM group
-///  - BOS sessiontemplates to find the HSM group related to nodes being rebooted in the past
-///  - Image ids in boot params for nodes in HSM groups we are looking for (This is needed to not miss
-/// images currenly used which name may not have HSM group we are looking for included not CFS
-/// session nor BOS sessiontemplate)
-///  - Image names with HSM group name included (This is a bad practice because this is a free text
-/// prone to human errors)
+/// Fetch IMS images plus the CFS configurations, BOS session
+/// templates, and boot-status they relate to, filtered by HSM group.
+///
+/// Returns a list of tuples
+/// `(Image, cfs_configuration_name, targets, is_boot_image)` where
+/// `targets` is either a list of HSM group names or xnames, and
+/// `is_boot_image` indicates whether the image is currently used to
+/// boot a node.
+///
+/// Filtering is performed against multiple sources to avoid missing
+/// images: CFS sessions, BOS session templates, BSS boot parameters,
+/// and a name-substring fallback. The CSM lookup is done once and the
+/// `&ShastaClient`'s connection pool is reused for every
+/// downstream call.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
+pub async fn get_with_details(
+  client: &crate::ShastaClient,
+  shasta_token: &str,
+  hsm_group_name_vec: &[String],
+  id_opt: Option<&str>,
+  limit_number: Option<&u8>,
+) -> Result<Vec<(Image, String, String, bool)>, Error> {
+  let mut image_vec: Vec<Image> =
+    client.ims_image_get(shasta_token, id_opt).await?;
+
+  get_image_cfs_config_name_hsm_group_name(
+    shasta_token,
+    client.base_url(),
+    client.root_cert(),
+    client.socks5_proxy(),
+    &mut image_vec,
+    hsm_group_name_vec,
+    limit_number,
+  )
+  .await
+  .map_err(|e| {
+    Error::Message(format!("ERROR - Failed to get image details: {e}"))
+  })
+}
+
+/// Resolve each IMS image to its CFS configuration, the HSM groups (or
+/// xnames) it targets, and whether it is currently a boot image.
+///
+/// Returns a list of `(Image, cfs_configuration_name, targets,
+/// is_boot_image)`. See [`get_with_details`] for the high-level
+/// description of the matching strategy.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_image_cfs_config_name_hsm_group_name(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -167,15 +237,13 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_value_vec =
-    crate::bos::template::http_client::v2::get(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      None,
-    )
-    .await?;
+  let mut bos_sessiontemplate_value_vec = crate::ShastaClient::new(
+    shasta_base_url,
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_template_v2_get(shasta_token, None)
+  .await?;
 
   let _ = bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
@@ -231,19 +299,18 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   )
   .await?;
 
-  let boot_param_vec = get_multiple(
-    shasta_token,
+  let boot_param_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &hsm_member_vec,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bss_bootparameters_get_multiple(shasta_token, &hsm_member_vec)
   .await
   .unwrap_or_default();
 
   let image_id_from_boot_params: Vec<String> = boot_param_vec
     .iter()
-    .map(|boot_param| boot_param.get_boot_image())
+    .map(crate::bss::types::BootParameters::get_boot_image)
     .collect();
 
   // Get Image details from IMS images API endpoint
@@ -255,7 +322,6 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
     let target_group_name_vec: Vec<String>;
     let cfs_configuration: String;
     let target_groups: String;
-    let boot_image: bool;
 
     if let Some(tuple) = image_id_cfs_configuration_from_cfs_session
       .iter()
@@ -290,15 +356,11 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
     // NOTE: 'boot_image' needs to be processed outside the 'if' statement. Otherwise we may
     // miss images used to boot nodes filtered by a different branch in the 'if' statement
-    boot_image = if image_id_from_boot_params.contains(image_id) {
-      true
-    } else {
-      false
-    };
+    let boot_image: bool = image_id_from_boot_params.contains(image_id);
 
     image_detail_vec.push((
       image.clone(),
-      cfs_configuration.to_string(),
+      cfs_configuration.clone(),
       target_groups.clone(),
       boot_image,
     ));
@@ -316,6 +378,12 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 ///  but we are extending the rules that defines if a user has access to an image because CSCS
 ///  staff deletes CFS sessions and BOS sessiontemplates so we may miss images related to the user
 ///  if we don't extend the rules)
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_image_available_vec(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -324,25 +392,23 @@ pub async fn get_image_available_vec(
   hsm_name_available_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
-  let mut image_vec: Vec<Image> = super::http_client::get(
-    shasta_token,
+  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_image_get_all(shasta_token)
   .await?;
 
   ims::image::utils::filter(&mut image_vec);
 
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_vec = bos::template::http_client::v2::get(
-    shasta_token,
+  let mut bos_sessiontemplate_vec = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    None,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .bos_template_v2_get(shasta_token, None)
   .await?;
 
   let xname_from_group_vec =
@@ -394,7 +460,7 @@ pub async fn get_image_available_vec(
         String,
         Vec<String>,
     )> = crate::bos::template::utils::get_image_id_cfs_configuration_target_tuple_vec(
-        &mut bos_sessiontemplate_vec,
+        &bos_sessiontemplate_vec,
     );
 
   image_id_cfs_configuration_from_bos_sessiontemplate
@@ -446,9 +512,7 @@ pub async fn get_image_available_vec(
       // not limited to anything, a tenant may create an image which name contains "generic"
       // but they don't want to share it with other tenants meaning the scope of generic here
       // does not moves across tenants boundaries
-      image_available_vec.push(image.clone())
-    } else {
-      continue;
+      image_available_vec.push(image.clone());
     }
 
     // let target_groups = target_group_name_vec.join(", ");
@@ -463,4 +527,75 @@ pub async fn get_image_available_vec(
   }
 
   Ok(image_available_vec)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn image(name: &str, created: Option<&str>) -> Image {
+    Image {
+      id: Some(format!("id-{name}")),
+      created: created.map(str::to_string),
+      name: name.to_string(),
+      link: None,
+      arch: None,
+      metadata: None,
+    }
+  }
+
+  // ---------- filter (sorts by created ASC) ----------
+
+  #[test]
+  fn filter_sorts_by_created_ascending() {
+    let mut images = vec![
+      image("c", Some("2024-03-01T00:00:00Z")),
+      image("a", Some("2024-01-01T00:00:00Z")),
+      image("b", Some("2024-02-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, vec!["a", "b", "c"]);
+  }
+
+  #[test]
+  fn filter_is_stable_for_equal_timestamps() {
+    let mut images = vec![
+      image("first", Some("2024-01-01T00:00:00Z")),
+      image("second", Some("2024-01-01T00:00:00Z")),
+      image("third", Some("2024-01-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    // Rust's sort_by is stable, so equal keys preserve insertion order.
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, vec!["first", "second", "third"]);
+  }
+
+  #[test]
+  fn filter_empty_input_does_not_panic() {
+    let mut images: Vec<Image> = vec![];
+    filter(&mut images);
+    assert!(images.is_empty());
+  }
+
+  #[test]
+  fn filter_single_element_is_idempotent() {
+    let mut images = vec![image("only", Some("2024-01-01T00:00:00Z"))];
+    filter(&mut images);
+    assert_eq!(images.len(), 1);
+    assert_eq!(images[0].name, "only");
+  }
+
+  #[test]
+  fn filter_treats_missing_created_as_empty_and_sorts_first() {
+    let mut images = vec![
+      image("b", Some("2024-01-01T00:00:00Z")),
+      image("missing", None),
+      image("a", Some("2024-02-01T00:00:00Z")),
+    ];
+    filter(&mut images);
+    let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+    // "" < any non-empty timestamp, so the missing-created image sorts first.
+    assert_eq!(names, vec!["missing", "b", "a"]);
+  }
 }

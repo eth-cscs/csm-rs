@@ -1,3 +1,5 @@
+//! `HardwareInventory`, `ComponentTrait`, `ComponentEthernetInterfaceTrait`, `RedfishEndpointTrait` impls for [`crate::ShastaClient`].
+
 use hostlist_parser::parse;
 use manta_backend_dispatcher::{
   error::Error,
@@ -9,8 +11,9 @@ use manta_backend_dispatcher::{
   },
   types::{
     Component, ComponentArrayPostArray as FrontEndComponentArrayPostArray,
+    HWInventory as FrontEndHWInventory,
     HWInventoryByLocationList as FrontEndHWInventoryByLocationList,
-    NodeMetadataArray,
+    HsmActionResponse, NodeMetadataArray, NodeSummary as FrontEndNodeSummary,
     hsm::inventory::{
       ComponentEthernetInterface,
       RedfishEndpointArray as FrontEndRedfishEndpointArray,
@@ -20,28 +23,20 @@ use manta_backend_dispatcher::{
 use regex::Regex;
 use serde_json::Value;
 
-use super::Csm;
-use crate::hsm::{self, component::types::ComponentArrayPostArray};
+use crate::ShastaClient;
+use crate::hsm::component::types::ComponentArrayPostArray;
 
-impl HardwareInventory for Csm {
+impl HardwareInventory for ShastaClient {
   async fn get_inventory_hardware(
     &self,
     auth_token: &str,
     xname: &str,
-  ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      xname,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
-    .and_then(|hw_inventory| {
-      serde_json::to_value(hw_inventory)
-        .map_err(|e| Error::Message(e.to_string()))
-    })
+  ) -> Result<FrontEndNodeSummary, Error> {
+    self
+      .hsm_hw_inventory_get(auth_token, xname)
+      .await
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn get_inventory_hardware_query(
@@ -53,70 +48,38 @@ impl HardwareInventory for Csm {
     _parents: Option<bool>,
     _partition: Option<&str>,
     _format: Option<&str>,
-  ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::get_query(
-      &auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      xname,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+  ) -> Result<FrontEndHWInventory, Error> {
+    self
+      .hsm_hw_inventory_get_query(auth_token, xname)
+      .await
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   async fn post_inventory_hardware(
     &self,
     auth_token: &str,
     hw_inventory: FrontEndHWInventoryByLocationList,
-  ) -> Result<Value, Error> {
-    hsm::hw_inventory::hw_component::http_client::post(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      hw_inventory.into(),
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+  ) -> Result<HsmActionResponse, Error> {
+    self
+      .hsm_hw_inventory_post(auth_token, hw_inventory.into())
+      .await
+      .map(Into::into)
+      .map_err(Error::from)
   }
 }
 
-impl ComponentTrait for Csm {
+impl ComponentTrait for ShastaClient {
   async fn get_all_nodes(
     &self,
     auth_token: &str,
     nid_only: Option<&str>,
   ) -> Result<NodeMetadataArray, Error> {
-    hsm::component::http_client::get(
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      auth_token,
-      None,
-      Some("Node"),
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None,
-      nid_only,
-    )
-    .await
-    .map(|c| c.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .hsm_component_get_all_nodes(auth_token, nid_only)
+      .await
+      .map(std::convert::Into::into)
+      .map_err(Error::from)
   }
 
   async fn get_node_metadata_available(
@@ -125,21 +88,22 @@ impl ComponentTrait for Csm {
   ) -> Result<Vec<Component>, Error> {
     let xname_available_vec: Vec<String> = self
       .get_group_available(auth_token)
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?
+      .await?
       .iter()
-      .flat_map(|group| group.get_members())
+      .flat_map(manta_backend_dispatcher::types::Group::get_members)
       .collect();
 
     let node_metadata_vec_rslt = self
-      .get_all_nodes(auth_token, Some("true"))
-      .await
-      .unwrap()
+      .get_all_nodes(auth_token, Some("false"))
+      .await?
       .components
       .unwrap_or_default()
       .iter()
       .filter(|&node_metadata| {
-        xname_available_vec.contains(&node_metadata.id.as_ref().unwrap())
+        node_metadata
+          .id
+          .as_ref()
+          .is_some_and(|id| xname_available_vec.contains(id))
       })
       .cloned()
       .collect();
@@ -173,35 +137,33 @@ impl ComponentTrait for Csm {
     role_only: Option<&str>,
     nid_only: Option<&str>,
   ) -> Result<NodeMetadataArray, Error> {
-    hsm::component::http_client::get(
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      auth_token,
-      id,
-      r#type,
-      state,
-      flag,
-      role,
-      subrole,
-      enabled,
-      software_status,
-      subtype,
-      arch,
-      class,
-      nid,
-      nid_start,
-      nid_end,
-      partition,
-      group,
-      state_only,
-      flag_only,
-      role_only,
-      nid_only,
-    )
-    .await
-    .map(|c| c.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    let _ = role_only;
+    self
+      .hsm_component_get(
+        auth_token,
+        id,
+        r#type,
+        state,
+        flag,
+        role,
+        subrole,
+        enabled,
+        software_status,
+        subtype,
+        arch,
+        class,
+        nid,
+        nid_start,
+        nid_end,
+        partition,
+        group,
+        state_only,
+        flag_only,
+        nid_only,
+      )
+      .await
+      .map(std::convert::Into::into)
+      .map_err(Error::from)
   }
 
   async fn post_nodes(
@@ -211,31 +173,22 @@ impl ComponentTrait for Csm {
   ) -> Result<(), Error> {
     let component_backend: ComponentArrayPostArray = component.into();
 
-    hsm::component::http_client::post(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      component_backend,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .hsm_component_post(auth_token, component_backend)
+      .await
+      .map_err(Error::from)
   }
 
   async fn delete_node(
     &self,
     auth_token: &str,
     id: &str,
-  ) -> Result<Value, Error> {
-    hsm::component::http_client::delete_one(
-      &self.base_url,
-      auth_token,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      id,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string()))
+  ) -> Result<HsmActionResponse, Error> {
+    self
+      .hsm_component_delete_one(auth_token, id)
+      .await
+      .map(Into::into)
+      .map_err(Error::from)
   }
 
   /// Get list of xnames from NIDs
@@ -253,23 +206,20 @@ impl ComponentTrait for Csm {
       log::debug!("Regex found, getting xnames from NIDs");
       // Get list of regex
       let regex_vec: Vec<Regex> = user_input_nid
-        .split(",")
+        .split(',')
         .map(|regex_str| Regex::new(regex_str.trim()))
         .collect::<Result<Vec<Regex>, regex::Error>>()
         .map_err(|e| Error::Message(e.to_string()))?;
 
       // Get all HSM components (list of xnames + nids)
-      let hsm_component_vec = hsm::component::http_client::get_all_nodes(
-        &self.base_url,
-        &self.root_cert,
-        self.socks5_proxy.as_deref(),
-        shasta_token,
-        Some("true"),
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?
-      .components
-      .unwrap_or_default();
+      // `Component100Component.components` is a `Vec` (with
+      // `#[serde(default)]` for an absent `Components` array), so it is
+      // already empty by default — no `unwrap_or_default()` needed.
+      let hsm_component_vec = self
+        .hsm_component_get_all_nodes(shasta_token, Some("true"))
+        .await
+        .map_err(Error::from)?
+        .components;
 
       let mut xname_vec: Vec<String> = vec![];
 
@@ -279,7 +229,7 @@ impl ComponentTrait for Csm {
           "nid{:06}",
           &hsm_component
             .nid
-            .ok_or_else(|| Error::Message("No NID found".to_string()))?
+            .ok_or(crate::Error::ValidationFailed("No NID found"))?
         );
         for regex in &regex_vec {
           if regex.is_match(&nid_long) {
@@ -291,27 +241,28 @@ impl ComponentTrait for Csm {
             xname_vec.push(
               hsm_component
                 .id
-                .clone()
-                .ok_or_else(|| Error::Message("No XName found".to_string()))?,
+                .as_ref()
+                .ok_or(crate::Error::ValidationFailed("No XName found"))?
+                .0
+                .clone(),
             );
           }
         }
       }
 
-      return Ok(xname_vec);
+      Ok(xname_vec)
     } else {
       log::debug!(
         "No regex found, getting xnames from list of NIDs or NIDs hostlist"
       );
       let nid_hostlist_expanded_vec = parse(user_input_nid).map_err(|e| {
         Error::Message(format!(
-          "Could not parse list of nodes as a hostlist. Reason:\n{}Exit",
-          e
+          "Could not parse list of nodes as a hostlist. Reason:\n{e}Exit"
         ))
       })?;
 
-      log::debug!("hostlist: {}", user_input_nid);
-      log::debug!("hostlist expanded: {:?}", nid_hostlist_expanded_vec);
+      log::debug!("hostlist: {user_input_nid}");
+      log::debug!("hostlist expanded: {nid_hostlist_expanded_vec:?}");
 
       let mut nid_short_vec = Vec::new();
 
@@ -320,64 +271,62 @@ impl ComponentTrait for Csm {
           .strip_prefix("nid")
           .ok_or_else(|| {
             Error::Message(format!(
-              "Nid '{}' not valid, 'nid' prefix missing",
-              nid_long
+              "Nid '{nid_long}' not valid, 'nid' prefix missing"
             ))
           })?
-          .trim_start_matches("0");
+          .trim_start_matches('0');
 
         nid_short_vec.push(nid_short_elem.to_string());
       }
 
       let nid_short = nid_short_vec.join(",");
 
-      log::debug!("short NID list: {}", nid_short);
+      log::debug!("short NID list: {nid_short}");
 
-      let hsm_components = hsm::component::http_client::get(
-        &self.base_url,
-        &self.root_cert,
-        self.socks5_proxy.as_deref(),
-        shasta_token,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(&nid_short),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some("true"),
-      )
-      .await
-      .map_err(|e| Error::Message(e.to_string()))?;
+      let hsm_components = self
+        .hsm_component_get(
+          shasta_token,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some(&nid_short),
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          Some("true"),
+        )
+        .await
+        .map_err(Error::from)?;
 
-      // Get list of xnames from HSM components
+      // Get list of xnames from HSM components. `components` is now a
+      // `Vec` (with `#[serde(default)]` for an absent `Components`
+      // array), and `id` is `Option<XName100>` — unwrap the newtype to
+      // recover the inner `String`.
       let xname_vec: Vec<String> = hsm_components
         .components
-        .unwrap_or_default()
         .iter()
-        .map(|component| component.id.clone().unwrap())
+        .filter_map(|component| component.id.as_ref().map(|x| x.0.clone()))
         .collect();
 
-      log::debug!("xname list:\n{:#?}", xname_vec);
+      log::debug!("xname list:\n{xname_vec:#?}");
 
-      return Ok(xname_vec);
-    };
+      Ok(xname_vec)
+    }
   }
 }
 
-impl ComponentEthernetInterfaceTrait for Csm {
+impl ComponentEthernetInterfaceTrait for ShastaClient {
   async fn get_all_component_ethernet_interfaces(
     &self,
     _auth_token: &str,
@@ -432,31 +381,9 @@ impl ComponentEthernetInterfaceTrait for Csm {
         .to_string(),
     ))
   }
-
-  /* async fn get_ip_addresses(
-    &self,
-    _auth_token: &str,
-    _eth_interface_id: &str,
-  ) -> Result<Vec<IpAddressMapping>, Error> {
-    Err(Error::Message(
-      "Get IP addresses command not implemented for this backend".to_string(),
-    ))
-  }
-
-  async fn delete_ip_address(
-    &self,
-    _auth_token: &str,
-    _group_label: &str,
-    _eth_interface_id: &str,
-    _ip_address: &str,
-  ) -> Result<Value, Error> {
-    Err(Error::Message(
-      "Delete IP address command not implemented for this backend".to_string(),
-    ))
-  } */
 }
 
-impl RedfishEndpointTrait for Csm {
+impl RedfishEndpointTrait for ShastaClient {
   async fn get_all_redfish_endpoints(
     &self,
     _auth_token: &str,
@@ -477,22 +404,20 @@ impl RedfishEndpointTrait for Csm {
     ip_address: Option<&str>,
     last_status: Option<&str>,
   ) -> Result<FrontEndRedfishEndpointArray, Error> {
-    hsm::hw_inventory::redfish_endpoint::http_client::get(
-      auth_token,
-      &self.base_url,
-      &self.root_cert,
-      self.socks5_proxy.as_deref(),
-      id,
-      fqdn,
-      r#type,
-      uuid,
-      macaddr,
-      ip_address,
-      last_status,
-    )
-    .await
-    .map(|arr| arr.into())
-    .map_err(|e| Error::Message(e.to_string()))
+    self
+      .hsm_redfish_get(
+        auth_token,
+        id,
+        fqdn,
+        r#type,
+        uuid,
+        macaddr,
+        ip_address,
+        last_status,
+      )
+      .await
+      .map(std::convert::Into::into)
+      .map_err(Error::from)
   }
 
   async fn add_redfish_endpoint(

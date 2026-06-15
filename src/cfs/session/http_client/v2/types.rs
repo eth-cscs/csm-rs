@@ -1,14 +1,10 @@
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-
-use manta_backend_dispatcher::types::cfs::session::{
-  Ansible as FrontEndAnsible, Artifact as FrontEndArtifact,
-  CfsSessionGetResponse as FrontEndCfsSessionGetResponse,
-  Configuration as FrontEndConfiguration, Group as FrontEndGroup,
-  Session as FrontEndSession, Status as FrontEndStatus,
-  Target as FrontEndTarget,
-};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CfsSessionGetResponse {
@@ -26,47 +22,20 @@ pub struct CfsSessionGetResponse {
 }
 
 impl CfsSessionGetResponse {
+  #[must_use]
   pub fn configuration(&self) -> Option<&Configuration> {
     self.configuration.as_ref()
   }
 
+  #[must_use]
   pub fn tags(&self) -> Option<&HashMap<String, String>> {
     self.tags.as_ref()
   }
 }
 
-impl From<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
-  fn from(value: FrontEndCfsSessionGetResponse) -> Self {
-    CfsSessionGetResponse {
-      name: value.name,
-      configuration: value.configuration.map(Configuration::from),
-      ansible: value.ansible.map(Ansible::from),
-      target: value.target.map(Target::from),
-      status: value.status.map(Status::from),
-      tags: value.tags,
-    }
-  }
-}
-
-impl Into<FrontEndCfsSessionGetResponse> for CfsSessionGetResponse {
-  fn into(self) -> FrontEndCfsSessionGetResponse {
-    FrontEndCfsSessionGetResponse {
-      name: self.name,
-      configuration: self
-        .configuration
-        .map(|configuration| configuration.into()),
-      ansible: self.ansible.map(|ansible| ansible.into()),
-      target: self.target.map(|target| target.into()),
-      status: self.status.map(|status| status.into()),
-      tags: self.tags,
-      debug_on_failure: true,
-      logs: None,
-    }
-  }
-}
-
 impl CfsSessionGetResponse {
   /// Get start time
+  #[must_use]
   pub fn get_start_time(&self) -> Option<String> {
     self.status.as_ref().and_then(|status| {
       status
@@ -76,7 +45,7 @@ impl CfsSessionGetResponse {
     })
   }
 
-  /// Returns list of result_ids
+  /// Returns list of `result_ids`
   pub fn results_id(&self) -> impl Iterator<Item = &str> {
     self.status.iter().flat_map(|status| {
       status
@@ -88,12 +57,14 @@ impl CfsSessionGetResponse {
     })
   }
 
-  /// Returns list of result_ids
+  /// Returns list of `result_ids`
+  #[must_use]
   pub fn first_result_id(&self) -> Option<&str> {
-    CfsSessionGetResponse::results_id(&self).next()
+    CfsSessionGetResponse::results_id(self).next()
   }
 
   /// Returns list of HSM groups targeted
+  #[must_use]
   pub fn get_target_hsm(&self) -> Option<Vec<String>> {
     self.target.as_ref().and_then(|target| {
       target.groups.as_ref().map(|group_vec| {
@@ -103,6 +74,7 @@ impl CfsSessionGetResponse {
   }
 
   /// Returns list of xnames targeted
+  #[must_use]
   pub fn get_target_xname(&self) -> Option<Vec<String>> {
     self.ansible.as_ref().and_then(|ansible| {
       ansible.limit.as_ref().map(|limit| {
@@ -116,6 +88,7 @@ impl CfsSessionGetResponse {
 
   /// Returns 'true' if the CFS session target definition is 'image'. Otherwise (target
   /// definiton dynamic) will return 'false'
+  #[must_use]
   pub fn is_target_def_image(&self) -> bool {
     self
       .get_target_def()
@@ -125,6 +98,7 @@ impl CfsSessionGetResponse {
   /// Returns target definition of the CFS session:
   /// image --> CFS session to build an image
   /// dynamic --> CFS session to configure a node
+  #[must_use]
   pub fn get_target_def(&self) -> Option<String> {
     self
       .target
@@ -132,6 +106,7 @@ impl CfsSessionGetResponse {
       .and_then(|target| target.definition.clone())
   }
 
+  #[must_use]
   pub fn configuration_name(&self) -> Option<&str> {
     self
       .configuration
@@ -139,6 +114,7 @@ impl CfsSessionGetResponse {
       .and_then(|configuration| configuration.name.as_deref())
   }
 
+  #[must_use]
   pub fn is_success(&self) -> bool {
     self.status.as_ref().is_some_and(|status| {
       status
@@ -157,24 +133,6 @@ pub struct Configuration {
   pub limit: Option<String>,
 }
 
-impl From<FrontEndConfiguration> for Configuration {
-  fn from(value: FrontEndConfiguration) -> Self {
-    Configuration {
-      name: value.name,
-      limit: value.limit,
-    }
-  }
-}
-
-impl Into<FrontEndConfiguration> for Configuration {
-  fn into(self) -> FrontEndConfiguration {
-    FrontEndConfiguration {
-      name: self.name,
-      limit: self.limit,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Ansible {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -182,31 +140,9 @@ pub struct Ansible {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub limit: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub verbosity: Option<u64>,
+  pub verbosity: Option<u8>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub passthrough: Option<String>,
-}
-
-impl From<FrontEndAnsible> for Ansible {
-  fn from(value: FrontEndAnsible) -> Self {
-    Ansible {
-      config: value.config,
-      limit: value.limit,
-      verbosity: value.verbosity,
-      passthrough: value.passthrough,
-    }
-  }
-}
-
-impl Into<FrontEndAnsible> for Ansible {
-  fn into(self) -> FrontEndAnsible {
-    FrontEndAnsible {
-      config: self.config,
-      limit: self.limit,
-      verbosity: self.verbosity,
-      passthrough: self.passthrough,
-    }
-  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -217,28 +153,6 @@ pub struct Status {
   pub session: Option<Session>, // FIXME: make it none Optional
 }
 
-impl From<FrontEndStatus> for Status {
-  fn from(value: FrontEndStatus) -> Self {
-    Status {
-      artifacts: value
-        .artifacts
-        .map(|artifacts| artifacts.into_iter().map(Artifact::from).collect()),
-      session: value.session.map(Session::from),
-    }
-  }
-}
-
-impl Into<FrontEndStatus> for Status {
-  fn into(self) -> FrontEndStatus {
-    FrontEndStatus {
-      artifacts: self
-        .artifacts
-        .map(|artifacts| artifacts.into_iter().map(Artifact::into).collect()),
-      session: self.session.map(Session::into),
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Artifact {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -247,26 +161,6 @@ pub struct Artifact {
   pub result_id: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub r#type: Option<String>,
-}
-
-impl From<FrontEndArtifact> for Artifact {
-  fn from(value: FrontEndArtifact) -> Self {
-    Artifact {
-      image_id: value.image_id,
-      result_id: value.result_id,
-      r#type: value.r#type,
-    }
-  }
-}
-
-impl Into<FrontEndArtifact> for Artifact {
-  fn into(self) -> FrontEndArtifact {
-    FrontEndArtifact {
-      image_id: self.image_id,
-      result_id: self.result_id,
-      r#type: self.r#type,
-    }
-  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -283,31 +177,6 @@ pub struct Session {
   pub status: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub succeeded: Option<String>,
-}
-
-impl From<FrontEndSession> for Session {
-  fn from(value: FrontEndSession) -> Self {
-    Session {
-      job: value.job,
-      completion_time: value.completion_time,
-      start_time: value.start_time,
-      status: value.status,
-      succeeded: value.succeeded,
-    }
-  }
-}
-
-impl Into<FrontEndSession> for Session {
-  fn into(self) -> FrontEndSession {
-    FrontEndSession {
-      job: self.job,
-      ims_job: None,
-      completion_time: self.completion_time,
-      start_time: self.start_time,
-      status: self.status,
-      succeeded: self.succeeded,
-    }
-  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -342,24 +211,6 @@ pub struct Group {
   pub members: Vec<String>,
 }
 
-impl From<FrontEndGroup> for Group {
-  fn from(value: FrontEndGroup) -> Self {
-    Group {
-      name: value.name,
-      members: value.members,
-    }
-  }
-}
-
-impl Into<FrontEndGroup> for Group {
-  fn into(self) -> FrontEndGroup {
-    FrontEndGroup {
-      name: self.name,
-      members: self.members,
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Target {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -368,30 +219,8 @@ pub struct Target {
   pub groups: Option<Vec<Group>>,
 }
 
-impl From<FrontEndTarget> for Target {
-  fn from(value: FrontEndTarget) -> Self {
-    Target {
-      definition: value.definition,
-      groups: value
-        .groups
-        .map(|groups| groups.into_iter().map(Group::from).collect()),
-    }
-  }
-}
-
-impl Into<FrontEndTarget> for Target {
-  fn into(self) -> FrontEndTarget {
-    FrontEndTarget {
-      definition: self.definition,
-      groups: self
-        .groups
-        .map(|groups| groups.into_iter().map(Group::into).collect()),
-      image_map: None,
-    }
-  }
-}
-
 impl CfsSessionPostRequest {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     name: String,
     configuration_name: &str,
@@ -418,7 +247,7 @@ impl CfsSessionPostRequest {
       // CFS session to build an image
       let target_groups: Vec<Group> = groups_name
         .unwrap_or_default()
-        .into_iter()
+        .iter()
         .map(|group_name| Group {
           name: group_name.to_string(),
           members: vec![base_image_id.unwrap_or_default().to_string()],
@@ -430,5 +259,50 @@ impl CfsSessionPostRequest {
     }
 
     cfs_session
+  }
+
+  /// Returns all target.groups[].members[]. Most probably will return duplicated values.
+  ///
+  /// Example wire shape:
+  /// ```json
+  /// {
+  ///  "name": "gallina-mc-compute-test-manuel-0.0",
+  ///  "configurationName": "tmp-gallina-mc-compute-cfg-test-manuel-0.0",
+  ///  "ansibleVerbosity": 2,
+  ///  "target": {
+  ///    "definition": "image",
+  ///    "groups": [
+  ///      {
+  ///        "name": "Compute",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      },
+  ///      {
+  ///        "name": "prealps",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      },
+  ///      {
+  ///        "name": "gallina",
+  ///        "members": [
+  ///          "fd73dd9f-21c3-4328-bdc3-5fac65275d49"
+  ///        ]
+  ///      }
+  ///    ]
+  ///  }
+  /// }
+  /// ```
+  #[must_use]
+  pub fn get_base_image_ids(&self) -> Vec<String> {
+    self
+      .target
+      .groups
+      .as_ref()
+      .unwrap_or(&Vec::new())
+      .iter()
+      .flat_map(|group| group.members.clone())
+      .collect()
   }
 }

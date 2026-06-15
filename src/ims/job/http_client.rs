@@ -1,199 +1,168 @@
+//! `ShastaClient` methods for `/ims/v3/jobs`.
+
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::{ShastaClient, common::http, error::Error};
 
 use super::{
   types::{Job, SshContainer},
   utils::wait_ims_job_to_finish,
 };
 
-/// Get IMS job ref --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/post_v3_job/
-/// Creates an IMS job of type 'customize'. Used to create 'ephemeral-environments'
-pub async fn post_customize(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  image_root_archive_name: &str,
-  artifact_id: &str,
-  public_key_id: &str,
-) -> Result<Value, Error> {
-  let ssh_container = SshContainer {
-    name: "jail".to_string(),
-    jail: true,
-  };
+impl ShastaClient {
+  /// Creates an IMS job of type 'customize'. Used to create
+  /// 'ephemeral-environments'.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_job_post_customize(
+    &self,
+    token: &str,
+    image_root_archive_name: &str,
+    artifact_id: &str,
+    public_key_id: &str,
+  ) -> Result<Value, Error> {
+    let ssh_container_list = vec![SshContainer {
+      name: "jail".to_string(),
+      jail: true,
+    }];
 
-  let ssh_container_list = vec![ssh_container];
+    let ims_job = Job {
+      job_type: "customize".to_string(),
+      image_root_archive_name: image_root_archive_name.to_string(),
+      kernel_file_name: Some("kernel".to_string()),
+      initrd_file_name: Some("initrd".to_string()),
+      kernel_parameters_file_name: None,
+      artifact_id: artifact_id.to_string(),
+      public_key_id: public_key_id.to_string(),
+      ssh_containers: Some(ssh_container_list),
+      enable_debug: Some(false),
+      build_env_size: None,
+      require_dkms: None, // FIXME: check if SAT file uses this value
+      id: None,
+      created: None,
+      status: None,
+      kubernetes_job: None,
+      kubernetes_service: None,
+      kubernetes_configmap: None,
+      resultant_image_id: None,
+      kubernetes_namespace: None,
+      arch: None,
+    };
 
-  let ims_job = Job {
-    job_type: "customize".to_string(),
-    image_root_archive_name: image_root_archive_name.to_string(),
-    kernel_file_name: Some("kernel".to_string()),
-    initrd_file_name: Some("initrd".to_string()),
-    kernel_parameters_file_name: None,
-    artifact_id: artifact_id.to_string(),
-    public_key_id: public_key_id.to_string(),
-    ssh_containers: Some(ssh_container_list),
-    enable_debug: Some(false),
-    build_env_size: None,
-    require_dkms: None, // FIXME: check if SAT file uses this value
-    id: None,
-    created: None,
-    status: None,
-    kubernetes_job: None,
-    kubernetes_service: None,
-    kubernetes_configmap: None,
-    resultant_image_id: None,
-    kubernetes_namespace: None,
-    arch: None,
-  };
+    let url = format!("{}/ims/v3/jobs", self.base_url());
+    http::post_json(self.http(), &url, token, &ims_job).await
+  }
 
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  /// Creates an IMS job. Returns immediately after the create call.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_job_post(
+    &self,
+    token: &str,
+    ims_job: &Job,
+  ) -> Result<Job, Error> {
+    let api_url = format!("{}/ims/v3/jobs", self.base_url());
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
-
-  let response = client
-    .post(api_url)
-    .bearer_auth(shasta_token)
-    .json(&ims_job)
-    .send()
-    .await
-    .map_err(|error| Error::NetError(error))?;
-
-  if response.status().is_success() {
-    // Make sure we return a vec if user requesting a single value
-    response
+    self
+      .http()
+      .post(api_url)
+      .bearer_auth(token)
+      .json(&ims_job)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?
       .json()
       .await
-      .map_err(|error| Error::NetError(error))
-  } else {
-    let payload = response
-      .json::<Value>()
-      .await
-      .map_err(|error| Error::NetError(error))?;
-
-    Err(Error::CsmError(payload))
+      .map_err(Error::NetError)
   }
-}
 
-/// Creates an IMS job, this method is asynchronous, meaning, it will returns when the server
-/// returns the job creation call
-pub async fn post(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_job: &Job,
-) -> Result<Job, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
+  /// Like `ims_job_post`, but waits for the job to finish before returning.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_job_post_sync(
+    &self,
+    token: &str,
+    ims_job: &Job,
+  ) -> Result<Job, Error> {
+    log::debug!("Create IMS job");
+    log::debug!(
+      "Create IMS job request payload:\n{}",
+      serde_json::to_string_pretty(&ims_job)?
+    );
 
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
+    let created = self.ims_job_post(token, ims_job).await?;
 
-  let api_url = shasta_base_url.to_owned() + "/ims/v3/jobs";
+    let ims_job_id = created.id.clone().ok_or_else(|| {
+      Error::Message("IMS job creation response is missing 'id'".to_string())
+    })?;
 
-  client
-    .post(api_url)
-    .bearer_auth(shasta_token)
-    .json(&ims_job)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?
-    .json()
-    .await
-    .map_err(Error::NetError)
-}
+    // Wait till the IMS job finishes
+    wait_ims_job_to_finish(
+      token,
+      self.base_url(),
+      self.root_cert(),
+      self.socks5_proxy(),
+      &ims_job_id,
+    )
+    .await?;
 
-/// Synchronous version of the post method, used if want to wait till the IMS job is finished
-pub async fn post_sync(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  ims_job: &Job,
-) -> Result<Job, Error> {
-  log::info!("Create IMS job");
-  log::debug!(
-    "Create IMS job request payload:\n{}",
-    serde_json::to_string_pretty(&ims_job)?
-  );
+    self
+      .ims_job_get(token, Some(&ims_job_id))
+      .await?
+      .first()
+      .cloned()
+      .ok_or_else(|| {
+        Error::Message(format!("ERROR - IMS job '{ims_job_id}' not found"))
+      })
+  }
 
-  let ims_job: Job =
-    post(shasta_token, shasta_base_url, shasta_root_cert, socks5_proxy, ims_job).await?;
+  /// `GET /ims/v3/jobs` (or `/ims/v3/jobs/{id}` if `job_id_opt` is
+  /// supplied) — list IMS jobs or fetch one by ID.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
+  pub async fn ims_job_get(
+    &self,
+    token: &str,
+    job_id_opt: Option<&str>,
+  ) -> Result<Vec<Job>, Error> {
+    let api_url = if let Some(job_id) = job_id_opt {
+      format!("{}/ims/v3/jobs/{}", self.base_url(), job_id)
+    } else {
+      format!("{}/ims/v3/jobs", self.base_url())
+    };
 
-  let ims_job_id = ims_job.id.unwrap();
+    let response = self
+      .http()
+      .get(api_url)
+      .bearer_auth(token)
+      .send()
+      .await
+      .map_err(Error::NetError)?
+      .error_for_status()
+      .map_err(Error::NetError)?;
 
-  // Wait till the IMS job finishes
-  wait_ims_job_to_finish(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &ims_job_id,
-  )
-  .await?;
-
-  // Get IMS job status
-  get(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    Some(&ims_job_id),
-  )
-  .await?
-  .first()
-  .cloned()
-  .ok_or_else(|| {
-    Error::Message(format!("ERROR - IMS job '{}' not found", ims_job_id))
-  })
-}
-
-/// Create IMS job ref --> https://csm12-apidocs.svc.cscs.ch/paas/ims/operation/post_v3_job/
-pub async fn get(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
-  job_id_opt: Option<&str>,
-) -> Result<Vec<Job>, Error> {
-  let client_builder = reqwest::Client::builder()
-    .add_root_certificate(reqwest::Certificate::from_pem(shasta_root_cert)?);
-
-  let client = match socks5_proxy {
-    Some(proxy) => client_builder.proxy(reqwest::Proxy::all(proxy)?).build()?,
-    None => client_builder.build()?,
-  };
-
-  let api_url = if let Some(job_id) = job_id_opt {
-    shasta_base_url.to_owned() + "/ims/v3/jobs/" + job_id
-  } else {
-    shasta_base_url.to_owned() + "/ims/v3/jobs"
-  };
-
-  let response = client
-    .get(api_url)
-    .bearer_auth(shasta_token)
-    .send()
-    .await
-    .map_err(Error::NetError)?
-    .error_for_status()
-    .map_err(Error::NetError)?;
-
-  if job_id_opt.is_some() {
-    Ok(vec![response.json::<Job>().await.map_err(Error::NetError)?])
-  } else {
-    response.json().await.map_err(Error::NetError)
+    if job_id_opt.is_some() {
+      Ok(vec![response.json::<Job>().await.map_err(Error::NetError)?])
+    } else {
+      response.json().await.map_err(Error::NetError)
+    }
   }
 }

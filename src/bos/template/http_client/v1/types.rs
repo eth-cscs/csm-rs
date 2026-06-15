@@ -1,3 +1,7 @@
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
+
 // pub mod response_payload {
 use std::collections::HashMap;
 
@@ -89,10 +93,8 @@ impl BosSessionTemplate {
       .clone()
       .boot_sets
       .unwrap_or_default()
-      .iter()
-      .flat_map(|(_, boot_param)| {
-        boot_param.node_groups.clone().unwrap_or(Vec::new())
-      })
+      .into_values()
+      .flat_map(|boot_param| boot_param.node_groups.unwrap_or_default())
       .collect()
   }
 
@@ -101,10 +103,8 @@ impl BosSessionTemplate {
       .clone()
       .boot_sets
       .unwrap_or_default()
-      .iter()
-      .flat_map(|(_, boot_param)| {
-        boot_param.node_list.clone().unwrap_or(Vec::new())
-      })
+      .into_values()
+      .flat_map(|boot_param| boot_param.node_list.unwrap_or_default())
       .collect()
   }
 
@@ -119,8 +119,8 @@ impl BosSessionTemplate {
       .as_ref()
       .map(|boot_sets| {
         boot_sets
-          .iter()
-          .map(|(_, boot_param)| boot_param.path.clone().unwrap_or_default())
+          .values()
+          .map(|boot_param| boot_param.path.clone().unwrap_or_default())
           .collect()
       })
       .unwrap_or_default()
@@ -134,8 +134,8 @@ impl BosSessionTemplate {
       .as_ref()
       .map(|boot_sets| {
         boot_sets
-          .iter()
-          .map(|(_, boot_param)| {
+          .values()
+          .map(|boot_param| {
             boot_param
               .path
               .clone()
@@ -149,6 +149,7 @@ impl BosSessionTemplate {
       .unwrap_or_default()
   }
 
+  #[allow(clippy::too_many_arguments)]
   pub fn new_for_hsm_group(
     cfs_configuration_name: String,
     bos_session_template_name: String,

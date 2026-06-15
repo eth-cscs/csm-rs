@@ -1,6 +1,8 @@
-use std::collections::HashMap;
+//! Wire-format types — mirror the upstream CSM `OpenAPI` schema; field names and
+//! shapes are dictated by the API.
+#![allow(missing_docs)]
 
-use manta_backend_dispatcher::types::bss::BootParameters as FrontEndBootParameters;
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -29,48 +31,44 @@ pub struct BootParameters {
   pub cloud_init: Option<Value>,
 }
 
-impl From<FrontEndBootParameters> for BootParameters {
-  fn from(value: FrontEndBootParameters) -> Self {
-    BootParameters {
-      hosts: value.hosts,
-      macs: value.macs,
-      nids: value.nids,
-      params: value.params,
-      kernel: value.kernel,
-      initrd: value.initrd,
-      cloud_init: value.cloud_init,
-    }
-  }
+/// Parse a whitespace-separated kernel command line into `(key, value)`
+/// pairs. Values containing `=` keep everything after the first `=`
+/// (e.g. `path=s3://bucket/key=etag` → `("path", "s3://bucket/key=etag")`).
+/// Flags with no `=` map to an empty value (e.g. `quiet` → `("quiet", "")`).
+fn parse_kernel_params(kernel_params: &str) -> impl Iterator<Item = (&str, &str)> {
+  kernel_params.split_whitespace().map(|kernel_param| {
+    kernel_param
+      .split_once('=')
+      .map_or((kernel_param, ""), |(k, v)| (k.trim(), v.trim()))
+  })
 }
 
-impl Into<FrontEndBootParameters> for BootParameters {
-  fn into(self) -> FrontEndBootParameters {
-    FrontEndBootParameters {
-      hosts: self.hosts,
-      macs: self.macs,
-      nids: self.nids,
-      params: self.params,
-      kernel: self.kernel,
-      initrd: self.initrd,
-      cloud_init: self.cloud_init,
-    }
-  }
+/// Re-serialise a sequence of `(key, value)` pairs back into a
+/// space-separated kernel command line. Empty-value pairs become bare
+/// flags with no trailing `=` (the inverse of [`parse_kernel_params`]).
+fn format_kernel_params<'a, I>(pairs: I) -> String
+where
+  I: IntoIterator<Item = (&'a str, &'a str)>,
+{
+  pairs
+    .into_iter()
+    .map(|(key, value)| {
+      if value.is_empty() {
+        key.to_string()
+      } else {
+        format!("{key}={value}")
+      }
+    })
+    .collect::<Vec<String>>()
+    .join(" ")
 }
 
 impl BootParameters {
   /// Returns the image id. This function may fail since it assumes kernel path has the following
   // FIXME: Change function signature so it returns a Result<String, Error> instead of String
+  #[must_use]
   pub fn get_boot_image(&self) -> String {
-    let params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param
-          .split_once('=')
-          .map(|(key, value)| (key.trim(), value.trim()))
-          .unwrap_or((kernel_param, ""))
-      })
-      .collect();
+    let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
 
     // NOTE: CN nodes have UIID image id in 'root' kernel parameter
     // Get `root` kernel parameter and split it by '/'
@@ -99,6 +97,12 @@ impl BootParameters {
   /// Returns a boolean that indicates if kernel parameters have change:
   /// - kernel parameter value changed
   ///  - number of kernel parameters have changed
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub fn update_boot_image(
     &mut self,
     new_image_id: &str,
@@ -107,13 +111,8 @@ impl BootParameters {
     // replace image id in 'root' kernel param
 
     // convert kernel params to a hashmap
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     // NOTE: CN nodes have UIID image id in 'root' kernel parameter
     // Get `root` kernel parameter and split it by '/'
@@ -121,7 +120,7 @@ impl BootParameters {
 
     let mut root_kernel_param: Vec<&str> = match root_kernel_param_rslt {
       Some(root_kernel_param) => {
-        root_kernel_param.split("/").collect::<Vec<&str>>()
+        root_kernel_param.split('/').collect::<Vec<&str>>()
       }
       None => {
         return Err(Error::Message(
@@ -157,19 +156,13 @@ impl BootParameters {
     // replace image id in 'nmd_data' kernel param
 
     // convert kernel params to a hashmap
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     // NOTE: NCN nodes have UUID image id in 'metal.server' kernel parameter
     let mut metal_server_kernel_param: Vec<&str>;
     if let Some(metal_server_data) = params.get("metal.server") {
-      metal_server_kernel_param = metal_server_data.split("/").collect();
+      metal_server_kernel_param = metal_server_data.split('/').collect();
 
       for substring in &mut metal_server_kernel_param {
         if uuid::Uuid::try_parse(substring).is_ok() {
@@ -183,26 +176,19 @@ impl BootParameters {
       params
         .entry("metal.server")
         .and_modify(|metal_server_param| {
-          *metal_server_param = &new_metal_server_kernel_param
+          *metal_server_param = &new_metal_server_kernel_param;
         });
 
       self.update_kernel_param("metal.server", &new_metal_server_kernel_param);
 
       // convert kernel params to a hashmap
-      params = self
-        .params
-        .split_whitespace()
-        .map(|kernel_param| {
-          kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-        })
-        .collect();
-    } else {
-    };
+      params = parse_kernel_params(&self.params).collect();
+    }
 
     // NOTE: NCN nodes have UUID image id 'nmd_data' kernel parameter
     let mut nmd_kernel_param: Vec<&str>;
     if let Some(nmd_data) = params.get("nmd_data") {
-      nmd_kernel_param = nmd_data.split("/").collect();
+      nmd_kernel_param = nmd_data.split('/').collect();
 
       for substring in &mut nmd_kernel_param {
         if uuid::Uuid::try_parse(substring).is_ok() {
@@ -218,40 +204,23 @@ impl BootParameters {
         .and_modify(|nmd_param| *nmd_param = &new_nmd_kernel_param);
 
       self.update_kernel_param("nmd_data", &new_nmd_kernel_param);
-    } else {
-    };
+    }
 
-    self.kernel = format!("s3://boot-images/{}/kernel", new_image_id);
+    self.kernel = format!("s3://boot-images/{new_image_id}/kernel");
 
-    self.initrd = format!("s3://boot-images/{}/initrd", new_image_id);
+    self.initrd = format!("s3://boot-images/{new_image_id}/initrd");
 
     Ok(changed)
   }
 
   pub fn get_kernel_param_value(&self, key: &str) -> Option<String> {
-    let params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
-
-    params.get(key).cloned().map(str::to_string)
+    let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
+    params.get(key).copied().map(str::to_string)
   }
 
+  #[must_use]
   pub fn get_num_kernel_params(&self) -> usize {
-    let params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
-
-    params.len()
+    parse_kernel_params(&self.params).count()
   }
 
   /// Apply a str of kernel parameters:
@@ -261,53 +230,37 @@ impl BootParameters {
   pub fn apply_kernel_params(&mut self, new_params: &str) -> bool {
     let mut change = false;
 
-    let new_params: Vec<(&str, &str)> = new_params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let new_params: Vec<(&str, &str)> = parse_kernel_params(new_params).collect();
 
     let mut params: HashMap<&str, &str> = HashMap::new();
 
     for (new_key, new_value) in &new_params {
-      for (key, value) in params.iter_mut() {
+      for (key, value) in &mut params {
         if *key == *new_key {
-          log::debug!("key '{}' found", key);
-          if value != new_value {
-            log::info!("changing key {} from {} to {}", key, value, new_value);
+          log::debug!("key '{key}' found");
+          if value == new_value {
+            log::debug!("key '{key}' value does not change ({value})");
+          } else {
+            log::debug!("changing key {key} from {value} to {new_value}");
 
             *value = new_value;
-            change = true
-          } else {
-            log::debug!("key '{}' value does not change ({})", key, value);
+            change = true;
           }
         }
       }
     }
 
-    if change == false {
+    if !change {
       log::debug!(
         "No value change in kernel params. Checking is either new params have been added or removed"
       );
       if new_params.len() != params.len() {
-        log::info!("num kernel parameters have changed");
+        log::debug!("num kernel parameters have changed");
         change = true;
       }
     }
 
-    self.params = new_params
-      .iter()
-      .map(|(key, value)| {
-        if !value.is_empty() {
-          format!("{key}={value}")
-        } else {
-          key.to_string()
-        }
-      })
-      .collect::<Vec<String>>()
-      .join(" ");
+    self.params = format_kernel_params(new_params.iter().copied());
 
     change
   }
@@ -319,59 +272,38 @@ impl BootParameters {
   pub fn update_kernel_params(&mut self, new_params: &str) -> bool {
     let mut change = false;
 
-    let new_params: Vec<(&str, &str)> = new_params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let new_params: Vec<(&str, &str)> = parse_kernel_params(new_params).collect();
 
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     for (new_key, new_value) in &new_params {
-      for (key, value) in params.iter_mut() {
+      for (key, value) in &mut params {
         if *key == *new_key {
-          log::debug!("key '{}' found", key);
-          if value != new_value {
-            log::info!("changing key {} from {} to {}", key, value, new_value);
+          log::debug!("key '{key}' found");
+          if value == new_value {
+            log::debug!("key '{key}' value does not change ({value})");
+          } else {
+            log::debug!("changing key {key} from {value} to {new_value}");
 
             *value = new_value;
-            change = true
-          } else {
-            log::debug!("key '{}' value does not change ({})", key, value);
+            change = true;
           }
         }
       }
     }
 
-    if change == false {
+    if !change {
       log::debug!(
         "No value change in kernel params. Checking is either new params have been added or removed"
       );
       if new_params.len() != params.len() {
-        log::info!("num kernel parameters have changed");
+        log::debug!("num kernel parameters have changed");
         change = true;
       }
     }
 
-    self.params = params
-      .iter()
-      .map(|(key, value)| {
-        if !value.is_empty() {
-          format!("{key}={value}")
-        } else {
-          key.to_string()
-        }
-      })
-      .collect::<Vec<String>>()
-      .join(" ");
+    self.params = format_kernel_params(params);
 
     change
   }
@@ -387,52 +319,31 @@ impl BootParameters {
   ) -> bool {
     let mut changed = false;
     // convert kernel params to a hashmap
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     // Update kernel param with new value
     // params.entry(key).and_modify(|value| *value = new_value);
-    for (current_key, current_value) in params.iter_mut() {
+    for (current_key, current_value) in &mut params {
       if *current_key == new_key {
-        log::debug!("key '{}' found", new_key);
-        if *current_value != new_value {
-          log::info!(
-            "changing key {} from {} to {}",
-            new_key,
-            current_value,
-            new_value
+        log::debug!("key '{new_key}' found");
+        if *current_value == new_value {
+          log::debug!(
+            "key '{new_key}' value does not change ({current_value})"
+          );
+        } else {
+          log::debug!(
+            "changing key {new_key} from {current_value} to {new_value}"
           );
 
           *current_value = new_value;
-          changed = true
-        } else {
-          log::debug!(
-            "key '{}' value does not change ({})",
-            new_key,
-            current_value
-          );
+          changed = true;
         }
       }
     }
 
     // Create new kernel params as a string
-    self.params = params
-      .iter()
-      .map(|(key, value)| {
-        if !value.is_empty() {
-          format!("{key}={value}")
-        } else {
-          key.to_string()
-        }
-      })
-      .collect::<Vec<String>>()
-      .join(" ");
+    self.params = format_kernel_params(params);
 
     changed
   }
@@ -443,52 +354,29 @@ impl BootParameters {
   /// Returns true if kernel params have change
   pub fn add_kernel_params(&mut self, new_kernel_params: &str) -> bool {
     let mut changed = false;
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
-    let new_kernel_params_tuple: HashMap<&str, &str> = new_kernel_params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .collect();
+    let new_kernel_params_tuple: HashMap<&str, &str> =
+      parse_kernel_params(new_kernel_params).collect();
 
     for (key, new_value) in new_kernel_params_tuple {
       // NOTE: do not use --> `params.entry(key).or_insert(new_value);` otherwise, I don't know
       // how do we know if the key already exists or not
       if params.contains_key(key) {
-        log::info!(
-          "key '{}' already exists, the new kernel parameter won't be added since it already exists",
-          key
+        log::debug!(
+          "key '{key}' already exists, the new kernel parameter won't be added since it already exists"
         );
       } else {
-        log::info!(
-          "key '{}' not found, adding new kernel param with value '{}'",
-          key,
-          new_value
+        log::debug!(
+          "key '{key}' not found, adding new kernel param with value '{new_value}'"
         );
         params.insert(key, new_value);
-        changed = true
+        changed = true;
       }
     }
 
-    self.params = params
-      .iter()
-      .map(|(key, value)| {
-        if !value.is_empty() {
-          format!("{key}={value}")
-        } else {
-          key.to_string()
-        }
-      })
-      .collect::<Vec<String>>()
-      .join(" ");
+    self.params = format_kernel_params(params);
 
     changed
   }
@@ -502,38 +390,17 @@ impl BootParameters {
     kernel_params_to_delete: &str,
   ) -> bool {
     let mut changed = false;
-    let mut params: HashMap<&str, &str> = self
-      .params
-      .split_whitespace()
-      .map(|kernel_param| {
-        kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-      })
-      .map(|(key, value)| (key.trim(), value.trim()))
-      .collect();
+    let mut params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     let kernel_params_to_delete_tuple: HashMap<&str, &str> =
-      kernel_params_to_delete
-        .split_whitespace()
-        .map(|kernel_param| {
-          kernel_param.split_once('=').unwrap_or((kernel_param, ""))
-        })
-        .collect();
+      parse_kernel_params(kernel_params_to_delete).collect();
 
     for (key, _value) in kernel_params_to_delete_tuple {
-      changed = changed | params.remove(key).is_some();
+      changed |= params.remove(key).is_some();
     }
 
-    self.params = params
-      .iter()
-      .map(|(key, value)| {
-        if !value.is_empty() {
-          format!("{key}={value}")
-        } else {
-          key.to_string()
-        }
-      })
-      .collect::<Vec<String>>()
-      .join(" ");
+    self.params = format_kernel_params(params);
 
     changed
   }

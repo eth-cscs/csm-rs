@@ -1,50 +1,33 @@
-use crate::{
-  error::Error,
-  ims::image::{self, http_client::types::Image},
-};
+//! Fetch IMS images plus the CFS configurations and BOS templates that reference them.
+//!
+//! Thin facade over [`crate::ims::image::utils::get_with_details`].
+//! The orchestration logic lives in the IMS namespace; this module
+//! exists so the `commands::get_images_and_details::exec` entry point
+//! is reachable for embedders that walk the `commands` surface.
 
-/// Returns a tuple like(Image sruct, cfs configuration name, list of target - either hsm group name
-/// or xnames, bool - indicates if image is used to boot a node or not)
-/// This method tries to filter by HSM group which means it will make use of:
-///  - CFS sessions to find which image id was created against which HSM group
-///  - BOS sessiontemplates to find the HSM group related to nodes being rebooted in the past
-///  - Image ids in boot params for nodes in HSM groups we are looking for (This is needed to not miss
-/// images currenly used which name may not have HSM group we are looking for included not CFS
-/// session nor BOS sessiontemplate)
-///  - Image names with HSM group name included (This is a bad practice because this is a free text
-/// prone to human errors)
+use crate::{error::Error, ims::image::http_client::types::Image};
+
+/// See [`crate::ims::image::utils::get_with_details`] for the full
+/// description.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_images_and_details(
+  client: &crate::ShastaClient,
   shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
   hsm_group_name_vec: &[String],
   id_opt: Option<&str>,
   limit_number: Option<&u8>,
 ) -> Result<Vec<(Image, String, String, bool)>, Error> {
-  let mut image_vec: Vec<Image> = image::http_client::get(
+  crate::ims::image::utils::get_with_details(
+    client,
     shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
+    hsm_group_name_vec,
     id_opt,
+    limit_number,
   )
-  .await?;
-
-  let image_detail_vec_rslt: Result<Vec<(Image, String, String, bool)>, Error> =
-    image::utils::get_image_cfs_config_name_hsm_group_name(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &mut image_vec,
-      hsm_group_name_vec,
-      limit_number,
-    )
-    .await
-    .map_err(|e| {
-      Error::Message(format!("ERROR - Failed to get image details: {}", e))
-    });
-
-  image_detail_vec_rslt
+  .await
 }

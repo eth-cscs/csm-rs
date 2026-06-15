@@ -1,5 +1,10 @@
+//! Helpers built on top of `ShastaClient::cfs_component_*` methods.
+
 use crate::{cfs::component::http_client::v3::types::Component, error::Error};
 
+/// PATCH a single CFS component to set its desired configuration and
+/// enabled flag. Best-effort: failures are logged via the underlying
+/// client but not returned.
 pub async fn update_component_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -21,16 +26,27 @@ pub async fn update_component_desired_configuration(
     logs: None,
   };
 
-  let _ = crate::cfs::component::http_client::v3::patch_component(
-    shasta_token,
+  let Ok(client) = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    component,
-  )
-  .await;
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  ) else {
+    return;
+  };
+
+  let _ = client
+    .cfs_component_v3_patch_component(shasta_token, component)
+    .await;
 }
 
+/// PATCH the desired configuration and enabled flag on a list of CFS
+/// components in one batch.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn update_component_list_desired_configuration(
   shasta_token: &str,
   shasta_base_url: &str,
@@ -44,7 +60,7 @@ pub async fn update_component_list_desired_configuration(
 
   for xname in xnames {
     let component = Component {
-      id: Some(xname.to_string()),
+      id: Some(xname.clone()),
       desired_config: Some(desired_configuration.to_string()),
       state: None,
       error_count: None,
@@ -58,13 +74,12 @@ pub async fn update_component_list_desired_configuration(
     component_list.push(component);
   }
 
-  crate::cfs::component::http_client::v3::patch_component_list(
-    shasta_token,
+  crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    component_list,
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .cfs_component_v3_patch_component_list(shasta_token, component_list)
   .await?;
 
   Ok(())

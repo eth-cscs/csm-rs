@@ -1,48 +1,42 @@
 use core::time;
+#[cfg(feature = "commands-admin")]
 use std::collections::BTreeMap;
 
 use futures::{AsyncBufRead, AsyncBufReadExt, StreamExt, TryStreamExt};
 
-use k8s_openapi::api::core::v1::{ConfigMap, Container, ContainerStatus, Pod};
-use kube::api::DeleteParams;
+#[cfg(feature = "commands-admin")]
+use k8s_openapi::api::core::v1::ConfigMap;
+use k8s_openapi::api::core::v1::{Container, ContainerStatus, Pod};
 use kube::runtime::reflector::Lookup;
 use kube::{
   Api,
-  api::{AttachParams, AttachedProcess},
+  api::AttachedProcess,
   config::{
     AuthInfo, Cluster, Context, KubeConfigOptions, Kubeconfig, NamedAuthInfo,
     NamedCluster, NamedContext,
   },
 };
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault;
 use crate::error::Error;
 use http::Uri;
 use secrecy::SecretBox;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum K8sAuth {
-  Native {
-    certificate_authority_data: String,
-    client_certificate_data: String,
-    client_key_data: String,
-  },
-  Vault {
-    base_url: String,
-    secret_path: String,
-    role_id: String,
-  },
-}
+/// Name of the `services`-namespace `ConfigMap` that CSM exposes the
+/// product catalog through. CFS layers and SAT workflows read it to
+/// resolve product versions to git URLs and commit ids.
+#[cfg(feature = "commands-admin")]
+pub(crate) const CRAY_PRODUCT_CATALOG_CONFIGMAP: &str = "cray-product-catalog";
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct K8sDetails {
-  pub api_url: String,
-  pub authentication: K8sAuth,
-}
-
+/// Build a `kube::Client` from a CSM-side Vault secret bundle.
+///
+/// `shasta_k8s_secrets` is the JSON object returned by
+/// [`crate::common::vault::http_client::fetch_shasta_k8s_secrets_from_vault`];
+/// it must contain
+/// `certificate-authority-data`, `client-certificate-data`, and
+/// `client-key-data`. `socks5_proxy` is forwarded to the underlying
+/// HTTPS connector when set.
 pub async fn get_client(
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
@@ -109,7 +103,7 @@ pub async fn get_client(
     client_certificate: None,
     client_certificate_data: Some(String::from(client_certificate_data)),
     client_key: None,
-    client_key_data: Some(SecretBox::try_from(client_key_data).unwrap()),
+    client_key_data: Some(SecretBox::from(client_key_data)),
     impersonate: None,
     impersonate_groups: None,
     auth_provider: None,
@@ -167,10 +161,18 @@ pub async fn get_client(
   Ok(client)
 }
 
-#[deprecated(
-  since = "v0.42.3-beta.71",
-  note = "this function prints CFS logs to stdout"
-)]
+/// Stream the full set of CFS-session container logs to stdout.
+///
+/// Tails the `git-clone`, `inventory`, `ansible`, and `teardown`
+/// containers of the pod backing `cfs_session_name` in order, retrying
+/// the pod-lookup up to three times.
+///
+/// Emits each line through `log::debug!`, so output is routed by the
+/// caller's `log` backend (no direct stdout writes). Callers wanting
+/// to consume the lines themselves should compose
+/// [`get_cfs_session_init_container_git_clone_logs_stream`],
+/// [`get_cfs_session_container_inventory_logs_stream`], and
+/// [`get_cfs_session_container_ansible_logs_stream`] instead.
 pub async fn i_print_cfs_session_logs(
   client: kube::Client,
   cfs_session_name: &str,
@@ -196,7 +198,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    println!(
+    log::debug!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -228,7 +230,7 @@ pub async fn i_print_cfs_session_logs(
   while result.is_err() && attempt < max_attempts {
     attempt += 1;
 
-    println!(
+    log::debug!(
       "Could not get logs for init container '{}'. Trying again. Attempt {} of {}",
       container_name,
       attempt + 1,
@@ -258,9 +260,8 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    println!(
-      "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
-      container_name, attempt, max_attempts
+    log::debug!(
+      "Could not get logs from container '{container_name}'. Trying again. Attempt {attempt} of {max_attempts}"
     );
 
     attempt += 1;
@@ -289,9 +290,8 @@ pub async fn i_print_cfs_session_logs(
   .await;
 
   while result.is_err() && attempt < max_attempts {
-    println!(
-      "Could not get logs from container '{}'. Trying again. Attempt {} of {}",
-      container_name, attempt, max_attempts
+    log::debug!(
+      "Could not get logs from container '{container_name}'. Trying again. Attempt {attempt} of {max_attempts}"
     );
 
     attempt += 1;
@@ -309,6 +309,16 @@ pub async fn i_print_cfs_session_logs(
   Ok(())
 }
 
+/// Fetch the `.data` of a `ConfigMap` in the `services` namespace.
+///
+/// Used by callers that need CSM-side state surfaced through `ConfigMaps`
+/// (e.g. the `cray-product-catalog`).
+///
+/// # Errors
+///
+/// Returns [`Error::K8sError`] if the `ConfigMap` is missing or has no
+/// `data` field.
+#[cfg(feature = "commands-admin")]
 pub async fn try_get_configmap(
   client: kube::Client,
   configmap_name: &str,
@@ -337,7 +347,7 @@ pub async fn try_get_configmap(
   })
 }
 
-pub async fn i_print_init_container_logs(
+pub(crate) async fn i_print_init_container_logs(
   client: kube::Client,
   cfs_session_name: &str,
   init_container_name: &str,
@@ -349,7 +359,7 @@ pub async fn i_print_init_container_logs(
     cfs_session_name.to_string(),
     init_container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await?
@@ -357,12 +367,27 @@ pub async fn i_print_init_container_logs(
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    println!("{}", line);
+    log::debug!("{line}");
   }
 
   Ok(())
 }
 
+/// Stream the `git-clone` init-container logs for a CFS session.
+///
+/// Returns an [`AsyncBufRead`] over the tail of the container's stdout
+/// along with the container exit code captured at attach time. Pairs
+/// with the other `get_cfs_session_*_logs_stream` helpers so callers
+/// can consume CFS-session output without involving stdout.
+///
+/// # Cancellation
+///
+/// The returned reader is a thin wrapper around the hyper response
+/// body that `kube_client::Client::request_stream` produces. There is
+/// no background watcher task — dropping the reader drops the hyper
+/// `Response`, which closes the connection to the Kubernetes API
+/// server. The API server then stops shipping log lines. No watcher
+/// leak.
 pub async fn get_cfs_session_init_container_git_clone_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
@@ -370,16 +395,16 @@ pub async fn get_cfs_session_init_container_git_clone_logs_stream(
 ) -> Result<(impl AsyncBufRead, i32), Error> {
   get_init_container_logs_stream(
     client,
-    cfs_session_name.to_string(),
+    cfs_session_name.clone(),
     "git-clone",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
 }
 
-pub async fn i_print_container_logs(
+pub(crate) async fn i_print_container_logs(
   client: kube::Client,
   cfs_session_name: &str,
   container_name: &str,
@@ -391,19 +416,23 @@ pub async fn i_print_container_logs(
     cfs_session_name.to_string(),
     container_name,
     namespace,
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await?
   .lines();
 
   while let Some(line) = log_stream.try_next().await? {
-    println!("{}", line);
+    log::debug!("{line}");
   }
 
   Ok(())
 }
 
+/// Stream the `inventory` container logs for a CFS session.
+///
+/// See [`get_cfs_session_init_container_git_clone_logs_stream`] for the
+/// shared pattern.
 pub async fn get_cfs_session_container_inventory_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
@@ -414,12 +443,16 @@ pub async fn get_cfs_session_container_inventory_logs_stream(
     cfs_session_name.clone(),
     "inventory",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
 }
 
+/// Stream the `ansible` container logs for a CFS session.
+///
+/// See [`get_cfs_session_init_container_git_clone_logs_stream`] for the
+/// shared pattern.
 pub async fn get_cfs_session_container_ansible_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
@@ -427,32 +460,16 @@ pub async fn get_cfs_session_container_ansible_logs_stream(
 ) -> Result<impl AsyncBufRead, Error> {
   get_container_logs_stream(
     client,
-    cfs_session_name.to_string(),
+    cfs_session_name.clone(),
     "ansible",
     "services",
-    format!("cfsession={}", cfs_session_name),
+    format!("cfsession={cfs_session_name}"),
     timestamps,
   )
   .await
 }
 
-pub async fn get_cfs_session_container_teardown_logs_stream(
-  client: kube::Client,
-  cfs_session_name: &str,
-  timestamps: bool,
-) -> Result<impl AsyncBufRead, Error> {
-  get_container_logs_stream(
-    client,
-    cfs_session_name.to_string(),
-    "teardown",
-    "services",
-    format!("cfsession={}", cfs_session_name),
-    timestamps,
-  )
-  .await
-}
-
-pub fn get_init_container<'a>(
+pub(crate) fn get_init_container<'a>(
   pod: &'a Pod,
   name: &str,
 ) -> Option<&'a Container> {
@@ -467,7 +484,7 @@ pub fn get_init_container<'a>(
     })
 }
 
-pub fn init_container_status<'a>(
+pub(crate) fn init_container_status<'a>(
   pod: &'a Pod,
   container_name: &str,
 ) -> Option<&'a ContainerStatus> {
@@ -482,7 +499,7 @@ pub fn init_container_status<'a>(
     })
 }
 
-pub fn init_container_exit_code(
+pub(crate) fn init_container_exit_code(
   pod: &Pod,
   container_name: &str,
 ) -> Option<i32> {
@@ -492,12 +509,15 @@ pub fn init_container_exit_code(
     .map(|terminated_state| terminated_state.exit_code)
 }
 
-pub fn is_init_container_state_unkown(pod: &Pod, container_name: &str) -> bool {
+pub(crate) fn is_init_container_state_unknown(
+  pod: &Pod,
+  container_name: &str,
+) -> bool {
   init_container_status(pod, container_name)
     .is_some_and(|container_status| container_status.state.as_ref().is_none())
 }
 
-pub fn is_init_container_state_waiting(
+pub(crate) fn is_init_container_state_waiting(
   pod: &Pod,
   container_name: &str,
 ) -> bool {
@@ -509,7 +529,10 @@ pub fn is_init_container_state_waiting(
   })
 }
 
-pub fn get_container<'a>(pod: &'a Pod, name: &str) -> Option<&'a Container> {
+pub(crate) fn get_container<'a>(
+  pod: &'a Pod,
+  name: &str,
+) -> Option<&'a Container> {
   pod.spec.as_ref().and_then(|pod_spec| {
     pod_spec
       .containers
@@ -518,7 +541,7 @@ pub fn get_container<'a>(pod: &'a Pod, name: &str) -> Option<&'a Container> {
   })
 }
 
-pub fn container_status<'a>(
+pub(crate) fn container_status<'a>(
   pod: &'a Pod,
   container_name: &str,
 ) -> Option<&'a ContainerStatus> {
@@ -533,12 +556,18 @@ pub fn container_status<'a>(
     })
 }
 
-pub fn is_container_state_unkown(pod: &Pod, container_name: &str) -> bool {
+pub(crate) fn is_container_state_unknown(
+  pod: &Pod,
+  container_name: &str,
+) -> bool {
   container_status(pod, container_name)
     .is_some_and(|container_status| container_status.state.as_ref().is_none())
 }
 
-pub fn is_container_state_waiting(pod: &Pod, container_name: &str) -> bool {
+pub(crate) fn is_container_state_waiting(
+  pod: &Pod,
+  container_name: &str,
+) -> bool {
   container_status(pod, container_name).is_some_and(|container_status| {
     container_status
       .state
@@ -547,7 +576,7 @@ pub fn is_container_state_waiting(pod: &Pod, container_name: &str) -> bool {
   })
 }
 
-pub async fn get_pod_and_wait_items(
+pub(crate) async fn get_pod_and_wait_items(
   pods_api: &Api<Pod>,
   cfs_session_name: &str,
   label_selector: &str,
@@ -567,7 +596,7 @@ pub async fn get_pod_and_wait_items(
 
   // Waiting for pod to start
   while cfs_session_pods.items.is_empty() && i <= max {
-    println!(
+    log::debug!(
       "Waiting k8s to create pod for cfs session '{}'. Trying again in {} secs. Attempt {} of {}",
       cfs_session_name,
       delay_secs,
@@ -587,29 +616,26 @@ pub async fn get_pod_and_wait_items(
 
   if cfs_session_pods.items.is_empty() {
     return Err(Error::K8sError(format!(
-      "Pod for cfs session {} missing. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} missing. Aborting operation"
     )));
   }
 
   if cfs_session_pods.items.len() > 1 {
     return Err(Error::K8sError(format!(
-      "Multiple pods found for cfs session '{}'. Using the first one.",
-      cfs_session_name
+      "Multiple pods found for cfs session '{cfs_session_name}'. Using the first one."
     )));
   }
 
   let cfs_session_pod = cfs_session_pods.items.first().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' not found",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' not found"
     ))
   })?;
 
   Ok(cfs_session_pod.clone())
 }
 
-pub async fn get_init_container_and_wait_to_ready(
+pub(crate) async fn get_init_container_and_wait_to_ready(
   cfs_session_pod: &Pod,
   init_container_name: &str,
 ) -> Result<Container, Error> {
@@ -622,22 +648,20 @@ pub async fn get_init_container_and_wait_to_ready(
 
   if init_container_opt.is_none() {
     return Err(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
+      "Init container '{init_container_name}' not found in pod '{cfs_session_pod_name}'",
     )));
   }
 
   // Waiting for init container to start
   let init_container = get_init_container(cfs_session_pod, init_container_name)
     .ok_or(Error::K8sError(format!(
-      "Init container '{}' not found in pod '{}'",
-      init_container_name, cfs_session_pod_name,
+      "Init container '{init_container_name}' not found in pod '{cfs_session_pod_name}'",
     )))?;
 
   let mut i = 0;
   let max = 60;
 
-  while (is_init_container_state_unkown(cfs_session_pod, &init_container.name)
+  while (is_init_container_state_unknown(cfs_session_pod, &init_container.name)
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name))
     && i <= max
   {
@@ -646,7 +670,7 @@ pub async fn get_init_container_and_wait_to_ready(
       init_container.name,
       init_container_status(cfs_session_pod, &init_container.name)
     );
-    println!(
+    log::debug!(
       "Waiting for init container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       init_container.name,
       i + 1,
@@ -660,7 +684,7 @@ pub async fn get_init_container_and_wait_to_ready(
   Ok(init_container.clone())
 }
 
-pub async fn get_init_container_logs_stream(
+pub(crate) async fn get_init_container_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
   init_container_name: &str,
@@ -676,43 +700,32 @@ pub async fn get_init_container_logs_stream(
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' has no name",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' has no name"
     ))
   })?;
 
-  log::info!(
-    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
-    init_container_name,
-    namespace,
-    cfs_session_pod_name,
+  log::debug!(
+    "Fetching logs from init container '{init_container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let init_container =
     get_init_container_and_wait_to_ready(cfs_session_pod, init_container_name)
       .await?;
 
-  if is_init_container_state_unkown(cfs_session_pod, &init_container.name)
+  if is_init_container_state_unknown(cfs_session_pod, &init_container.name)
     || is_init_container_state_waiting(cfs_session_pod, &init_container.name)
   {
-    return Err(
-      Error::K8sError(format!(
-        "Init container '{}' not in 'running' state. Aborting operation",
-        init_container_name
-      ))
-      .into(),
-    );
+    return Err(Error::K8sError(format!(
+      "Init container '{init_container_name}' not in 'running' state. Aborting operation"
+    )));
   }
 
   let exit_code =
     init_container_exit_code(cfs_session_pod, &init_container.name)
       .unwrap_or(-1);
 
-  log::info!(
-    "Fetching logs from init container '{}' in namespace/pod '{}/{}'",
-    init_container_name,
-    namespace,
-    cfs_session_pod_name,
+  log::debug!(
+    "Fetching logs from init container '{init_container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let container_log_stream = pods_api
@@ -736,7 +749,7 @@ pub async fn get_init_container_logs_stream(
   Ok((container_log_stream, exit_code))
 }
 
-pub async fn get_container_logs_stream(
+pub(crate) async fn get_container_logs_stream(
   client: kube::Client,
   cfs_session_name: String,
   container_name: &str,
@@ -752,39 +765,33 @@ pub async fn get_container_logs_stream(
 
   let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
     Error::K8sError(format!(
-      "Pod related to CFS session '{}' has no name",
-      cfs_session_name
+      "Pod related to CFS session '{cfs_session_name}' has no name"
     ))
   })?;
 
-  log::info!(
-    "Fetching logs from container '{}' in namespace/pod '{}/{}'",
-    container_name,
-    namespace,
-    cfs_session_pod_name,
+  log::debug!(
+    "Fetching logs from container '{container_name}' in namespace/pod '{namespace}/{cfs_session_pod_name}'",
   );
 
   let container_opt = get_container(&cfs_session_pod, container_name);
 
   if container_opt.is_none() {
     return Err(Error::K8sError(format!(
-      "Container '{}' not found in pod '{}'",
-      container_name, cfs_session_pod_name,
+      "Container '{container_name}' not found in pod '{cfs_session_pod_name}'",
     )));
   }
 
   // Waiting for container to start
   let container = get_container(&cfs_session_pod, container_name).ok_or(
     Error::K8sError(format!(
-      "Container '{}' not found in pod '{}'",
-      container_name, cfs_session_pod_name,
+      "Container '{container_name}' not found in pod '{cfs_session_pod_name}'",
     )),
   )?;
 
   let mut i = 0;
   let max = 600;
 
-  while (is_container_state_unkown(&cfs_session_pod, &container.name)
+  while (is_container_state_unknown(&cfs_session_pod, &container.name)
     || is_container_state_waiting(&cfs_session_pod, &container.name))
     && i <= max
   {
@@ -793,7 +800,7 @@ pub async fn get_container_logs_stream(
       container.name,
       container_status(&cfs_session_pod, &container.name)
     );
-    println!(
+    log::debug!(
       "Waiting for container '{}' to be ready. Checking again in 2 secs. Attempt {} of {}",
       container.name,
       i + 1,
@@ -804,16 +811,12 @@ pub async fn get_container_logs_stream(
     tokio::time::sleep(time::Duration::from_secs(2)).await;
   }
 
-  if is_container_state_unkown(&cfs_session_pod, &container.name)
+  if is_container_state_unknown(&cfs_session_pod, &container.name)
     || is_container_state_waiting(&cfs_session_pod, &container.name)
   {
-    return Err(
-      Error::K8sError(format!(
-        "Container '{}' not ready. Aborting operation",
-        container_name
-      ))
-      .into(),
-    );
+    return Err(Error::K8sError(format!(
+      "Container '{container_name}' not ready. Aborting operation"
+    )));
   }
 
   pods_api
@@ -835,175 +838,24 @@ pub async fn get_container_logs_stream(
     .map_err(|e| Error::K8sError(format!("{e}")))
 }
 
-pub fn get_container_status(
-  pod: &k8s_openapi::api::core::v1::Pod,
-  container_name: &String,
-) -> Option<ContainerStatus> {
-  pod
-    .status
-    .as_ref()
-    .and_then(|status| status.container_statuses.as_ref())
-    .and_then(|status_vec| {
-      status_vec
-        .iter()
-        .find(|container_status| container_status.name.eq(container_name))
-    })
-    .cloned()
-}
-
-pub async fn attach_cfs_session_container_target_k8s_service_name(
-  client: kube::Client,
-  cfs_session_name: &str,
-) -> Result<AttachedProcess, Error> {
-  let pods_fabric: Api<Pod> = Api::namespaced(client.clone(), "services");
-
-  let params = kube::api::ListParams::default()
-    .limit(1)
-    .labels(format!("cfsession={}", cfs_session_name).as_str());
-
-  let mut pods = pods_fabric.list(&params).await.map_err(|e| {
-    Error::K8sError(format!("ERROR - kubernetes: Reason:\n{e}"))
-  })?;
-
-  let mut i = 0;
-  let max = 30;
-
-  // Waiting for pod to start
-  while pods.items.is_empty() && i <= max {
-    println!(
-      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-      cfs_session_name,
-      i + 1,
-      max
-    );
-    i += 1;
-    tokio::time::sleep(time::Duration::from_secs(2)).await;
-    pods = pods_fabric
-      .list(&params)
-      .await
-      .map_err(|e| Error::K8sError(format!("ERROR - Kubernetes: {}", e)))?;
-  }
-
-  if pods.items.is_empty() {
-    return Err(Error::K8sError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
-    )));
-  }
-
-  let console_operator_pod = &pods.items[0].clone();
-
-  let console_operator_pod_name =
-    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
-      Error::K8sError(
-        "Pod related to console operation has no name".to_string(),
-      )
-    })?;
-
-  let attached = pods_fabric
-        .exec(
-            &console_operator_pod_name,
-            vec![
-                "sh",
-                "-c",
-                "cat /inventory/hosts/01-cfs-generated.yaml | grep cray-ims- | head -n 1",
-            ],
-            &AttachParams::default()
-                .container("cray-console-operator")
-                .stderr(false),
-        )
-        .await?;
-
-  let mut output = get_output(attached).await;
-  log::info!("{output}");
-
-  output = output.trim().to_string();
-
-  println!("{output}");
-
-  output
-    .strip_prefix("ansible_host: ")
-    .and_then(|v| v.strip_suffix("-service.ims.svc.cluster.local"))
-    .unwrap();
-
-  println!("{output}");
-
-  let ansible_target_container_label = output + "-customize";
-
-  println!("{ansible_target_container_label}");
-
-  // Find ansible target container
-
-  let pods_fabric: Api<Pod> = Api::namespaced(client, "ims");
-
-  let params = kube::api::ListParams::default()
-    .limit(1)
-    .labels(format!("job-name={}", ansible_target_container_label).as_str());
-
-  let mut pods = pods_fabric.list(&params).await.map_err(|e| {
-    Error::K8sError(format!("ERROR - kubernetes: Reason:\n{e}"))
-  })?;
-
-  let mut i = 0;
-  let max = 30;
-
-  // Waiting for pod to start
-  while pods.items.is_empty() && i <= max {
-    println!(
-      "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
-      cfs_session_name,
-      i + 1,
-      max
-    );
-    i += 1;
-    tokio::time::sleep(time::Duration::from_secs(2)).await;
-    pods = pods_fabric.list(&params).await?;
-  }
-
-  if pods.items.is_empty() {
-    return Err(Error::K8sError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
-    )));
-  }
-
-  let console_operator_pod = &pods.items[0].clone();
-
-  log::info!("Connecting to console ansible target container");
-
-  let console_operator_pod_name =
-    console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
-      Error::K8sError(
-        "Pod related to console operation has no name".to_string(),
-      )
-    })?;
-
-  let command = vec!["bash"]; // Enter the container and open conman to access node's console
-  // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
-  // terminal session
-
-  pods_fabric
-    .exec(
-      &console_operator_pod_name,
-      command,
-      &AttachParams::default()
-        .container("sshd")
-        .stdin(true)
-        .stdout(true)
-        .stderr(false) // Note to self: tty and stderr cannot both be true
-        .tty(true),
-    )
-    .await
-    .map_err(|e| {
-      Error::K8sError(format!(
-        "Error attaching to container 'sshd' in pod {}.\nReason:\n{}\n. Exit",
-        console_operator_pod_name, e
-      ))
-    })
-}
-
+/// Collect the stdout of a `kube::exec` [`AttachedProcess`] into a
+/// String, then join the process.
+///
+/// # Panics
+///
+/// Panics if the exec was started without a stdout stream (i.e. with
+/// `AttachParams::default().stdout(false)`); the function is documented
+/// to require stdout. Errors during `attached.join()` are logged but
+/// not surfaced — the function is infallible by signature.
 pub async fn get_output(mut attached: AttachedProcess) -> String {
-  let stdout = tokio_util::io::ReaderStream::new(attached.stdout().unwrap());
+  // `attached` is created by kube exec; in our callers the attach params
+  // always request stdout, so `stdout()` should be `Some`. If kube ever
+  // returns None we want a clear panic rather than a silent empty string.
+  let stdout = tokio_util::io::ReaderStream::new(
+    attached
+      .stdout()
+      .expect("kube exec was started without a stdout stream"),
+  );
   let out = stdout
     .filter_map(|r| async {
       r.ok().and_then(|v| String::from_utf8(v.to_vec()).ok())
@@ -1012,52 +864,11 @@ pub async fn get_output(mut attached: AttachedProcess) -> String {
     .await
     .join("");
 
-  attached.join().await.unwrap();
+  // join() returns the process exit status; failures are logged rather than
+  // surfaced because get_output is infallible by signature.
+  if let Err(e) = attached.join().await {
+    log::warn!("kube exec join failed: {e}");
+  }
 
   out
-}
-
-pub async fn delete_session_pod(
-  shasta_token: &str,
-  vault_base_url: &str,
-  site_name: &str,
-  // vault_role_id: &str,
-  k8s_api_url: &str,
-  cfs_session_name: &str,
-  socks5_proxy: Option<&str>,
-) -> Result<(), Error> {
-  let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
-    vault_base_url,
-    shasta_token,
-    site_name,
-    // vault_role_id,
-    socks5_proxy,
-  )
-  .await?;
-
-  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
-
-  let pods_api: kube::Api<Pod> = kube::Api::namespaced(client, "services");
-
-  let params = kube::api::ListParams::default()
-    .limit(1)
-    .labels(format!("cfsession={}", cfs_session_name).as_str());
-
-  let pods = pods_api
-    .list(&params)
-    .await
-    .map_err(|e| Error::K8sError(e.to_string()))?;
-  let cfs_session_pod = &pods.items[0].clone();
-
-  let cfs_session_pod_name = cfs_session_pod.name().ok_or_else(|| {
-    Error::K8sError("Pod related to CFS session has no name".to_string())
-  })?;
-
-  log::info!("Pod to delete: {}", cfs_session_pod_name);
-
-  // Delete Pod
-  let dp = DeleteParams::default();
-  let _ = pods_api.delete(&cfs_session_pod_name, &dp).await;
-
-  Ok(())
 }

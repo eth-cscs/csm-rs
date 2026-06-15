@@ -1,81 +1,59 @@
 use std::collections::BTreeMap;
 
 use crate::{
-  cfs::configuration::http_client::v2::types::cfs_configuration_response::{
+  cfs::v2::{
     CfsConfigurationResponse, Layer,
   },
   commands::i_apply_sat_file::utils::{
-    configuration, get_image_name_or_ref_name_to_process,
-    get_next_image_in_sat_file_to_process, image, sat_file_image_old::Ims,
+    configuration, image,
+    images::{
+      get_image_name_or_ref_name_to_process_struct,
+      get_next_image_in_sat_file_to_process_struct,
+    },
     validate_sat_file_images_section,
   },
   error::Error,
-  ims::{
-    self, image::http_client::types::Image, recipe::types::RecipeGetResponse,
-  },
+  ims::{image::http_client::types::Image, recipe::types::RecipeGetResponse},
 };
 
-/// Test function "get_ref_name" so it falls back to "name" field if "ref_name" is missing
+/// Test function "`get_ref_name`" so it falls back to "name" field if "`ref_name`" is missing
 #[test]
 fn test_get_ref_name() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
+  let ref_name_processed_vec: Vec<String> = Vec::new();
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
-  let ref_name_processed_vec: Vec<String> = Vec::new();
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let image_ref = get_image_name_or_ref_name_to_process_struct(
+    &next_image_to_process.unwrap(),
+  );
 
-  let image_ref =
-    get_image_name_or_ref_name_to_process(&next_image_to_process.unwrap());
-
-  assert!(image_ref == "base_image");
+  assert_eq!(image_ref, "base_image");
 }
 
-/// Test function "get_next_image_to_process" in an images section is SAT file with one image with ref_name
+/// Test function "`get_next_image_to_process`" in an images section is SAT file with one image with `ref_name`
 #[test]
 fn test_get_next_image_to_process_1() {
-  let image_yaml_vec: serde_yaml::Value =
-    serde_yaml::from_str(r#"images: []"#).unwrap();
-
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
+  let image_vec: Vec<image::Image> = Vec::new();
 
   let ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  println!(
-    "next image to process:\n{}",
-    serde_yaml::to_string(&next_image_to_process).unwrap()
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
   assert!(next_image_to_process.is_none());
@@ -83,309 +61,112 @@ fn test_get_next_image_to_process_1() {
 
 #[test]
 fn test_get_next_image_to_process_2() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
-
   let ref_name_processed_vec: Vec<String> = Vec::new();
-  let next_image_to_process: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  println!(
-    "next image to process:\n{}",
-    serde_yaml::to_string(&next_image_to_process).unwrap()
+  let next_image_to_process = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
 
-  assert!(
-    next_image_to_process.unwrap()["name"].as_str().unwrap() == "base_image"
-  );
+  assert_eq!(next_image_to_process.unwrap().name, "base_image");
 }
 
-/// Test function "get_next_image_to_process" in an images section in SAT file with 2 images.
+/// Test function "`get_next_image_to_process`" in an images section in SAT file with 2 images.
 /// The test should pass if the first image to process is the one with no dependencies and the
 /// second is the one which depends on the first one
 #[test]
 fn test_get_next_image_to_process_3() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-               - name: final_image
-                 ref_name: compute_image
-                 base:
-                    image_ref: base_cos_image
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    - name: final_image
+      ref_name: compute_image
+      base:
+        image_ref: base_cos_image
+    "#,
   )
   .unwrap();
 
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
-
   let mut ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process_1: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_1 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("base_cos_image".to_string());
 
-  let next_image_to_process_2: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  assert!(
-    next_image_to_process_1.unwrap()["name"].as_str().unwrap() == "base_image"
-      && next_image_to_process_2.unwrap()["name"].as_str().unwrap()
-        == "final_image"
+  let next_image_to_process_2 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
+
+  assert_eq!(next_image_to_process_1.unwrap().name, "base_image");
+  assert_eq!(next_image_to_process_2.unwrap().name, "final_image");
 }
 
 #[test]
 fn test_get_next_image_to_process_4() {
-  let image_yaml_vec: serde_yaml::Value = serde_yaml::from_str(
-    r#"images:
-               - name: base_image
-                 ref_name: base_cos_image
-                 base:
-                   product: 
-                     name: cos
-                     type: recipe
-                     version: "2.4.139"
-               - name: final_image
-                 ref_name: compute_image
-                 base:
-                    image_ref: base_cos_image
-            "#,
+  let image_vec: Vec<image::Image> = serde_yaml::from_str(
+    r#"
+    - name: base_image
+      ref_name: base_cos_image
+      base:
+        product:
+          name: cos
+          type: recipe
+          version: "2.4.139"
+    - name: final_image
+      ref_name: compute_image
+      base:
+        image_ref: base_cos_image
+    "#,
   )
   .unwrap();
-
-  println!(
-    "image yaml vec:\n{}",
-    serde_yaml::to_string(&image_yaml_vec).unwrap()
-  );
 
   let mut ref_name_processed_vec: Vec<String> = Vec::new();
 
-  let next_image_to_process_1: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_1 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("base_cos_image".to_string());
 
-  let next_image_to_process_2: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
+  let next_image_to_process_2 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
+  );
 
   ref_name_processed_vec.push("compute_image".to_string());
 
-  let next_image_to_process_3: Option<serde_yaml::Value> =
-    get_next_image_in_sat_file_to_process(
-      image_yaml_vec
-        .get("images")
-        .and_then(serde_yaml::Value::as_sequence)
-        .unwrap(),
-      &ref_name_processed_vec,
-    );
-
-  assert!(
-    next_image_to_process_1.unwrap()["name"].as_str().unwrap() == "base_image"
-      && next_image_to_process_2.unwrap()["name"].as_str().unwrap()
-        == "final_image"
-      && next_image_to_process_3.is_none()
+  let next_image_to_process_3 = get_next_image_in_sat_file_to_process_struct(
+    &image_vec,
+    &ref_name_processed_vec,
   );
+
+  assert_eq!(next_image_to_process_1.unwrap().name, "base_image");
+  assert_eq!(next_image_to_process_2.unwrap().name, "final_image");
+  assert!(next_image_to_process_3.is_none());
 }
-
-/* /// Test rendering a SAT template file with the values file
-#[test]
-fn test_render_sat_file_yaml_template_with_yaml_values_file() {
-    let sat_file_content = r#"
-        name: "{{ config.name }}"
-        configurations:
-        - name: "{{ config.name }}-{{ config.version }}"
-          layers:
-          - name: ss11
-            playbook: shs_cassini_install.yml
-            git:
-              url: https://api-gw-service-nmn.local/vcs/cray/slingshot-host-software-config-management.git
-              branch: integration
-          - name: cos
-            playbook: site.yml
-            product:
-              name: cos
-              version: 2.3.101
-              branch: integration
-          - name: cscs
-            playbook: site.yml
-            git:
-              url: https://api-gw-service-nmn.local/vcs/cray/cscs-config-management.git
-              branch: cscs-23.06.0
-          - name: nomad-orchestrator
-            playbook: site-client.yml
-            git:
-              url: https://api-gw-service-nmn.local/vcs/cray/nomad_orchestrator.git
-              branch: main
-        images:
-        - name: zinal-nomad-{{ image.version }}
-          ims:
-            is_recipe: false
-            id: 4bf91021-8d99-4adf-945f-46de2ff50a3d
-          configuration: "{{ config.name }}-{{ config.version }}"
-          configuration_group_names:
-          - Compute
-          - "{{ hsm.group_name }}"
-
-        session_templates:
-        - name: "{{ bos_st.name }}"
-          image: zinal-image-v0.5
-          configuration: "{{ config.name }}-{{ config.version }}"
-          bos_parameters:
-            boot_sets:
-              compute:
-                kernel_parameters: ip=dhcp quiet spire_join_token=${SPIRE_JOIN_TOKEN}
-                node_groups:
-                - "{{ hsm.group_name }}"
-        "#;
-
-    let values_file_content = r#"
-        hsm:
-          group_name: "zinal_cta"
-        config:
-          name: "test-config"
-          version: "v1.0.0"
-        image:
-          version: "v1.0.5"
-        bos_st:
-          name: "deploy-cluster-action"
-          version: "v1.0"
-        "#;
-
-    let var_content: Vec<String> = vec!["config.name = new-value".to_string()];
-
-    render_jinja2_sat_file_yaml(
-        &sat_file_content.to_string(),
-        Some(&values_file_content.to_string()),
-        Some(var_content),
-    );
-} */
-
-/* /// Test SAT file
-/// Test image section in OLD format in SAT file
-/// Result: FAIL
-/// Reason: Configuration assigned to an image could not be found
-#[test]
-fn test_sat_file_image_section_fails_because_configuration_could_not_be_found_in_old_image_format()
- {
-  let cray_product_catalog = &BTreeMap::<String, String>::new();
-
-  let image_vec_in_sat_file: &Vec<serde_yaml::Value> = &serde_yaml::from_str(
-    r#"
-            - name: my-image-name
-              ims:
-                id: my-image-id
-                is_recipe: false
-              configuration: my-configuration-name
-              configuration_group_names:
-                - Compute
-                - tenant-a
-            "#,
-  )
-  .unwrap();
-
-  let image_vec_in_sat_file: &[image::Image] = &[image::Image {
-    name: "my-image-name".to_string(),
-    base_or_ims: image::BaseOrIms::Ims {
-      ims: image::ImageIms::IdIsRecipe {
-        is_recipe: false,
-        id: "my-image-id".to_string(),
-      },
-    },
-    configuration: "my-configuration-name",
-    configuration_group_names: Some(vec![
-      "Compute".to_string(),
-      "tenant-a".to_string(),
-    ]),
-    ref_name: None,
-    description: None,
-  }];
-
-  let configuration_vec_in_sat_file: &Vec<configuration::Configuration> =
-    &vec![];
-
-  let hsm_group_available_vec = &["tenant-a".to_string()];
-
-  let image_vec_in_csm = vec![ims::image::http_client::types::Image {
-    id: Some("my-image-id".to_string()),
-    created: None,
-    name: "my-image-name".to_string(),
-    link: None,
-    arch: None,
-    metadata: None,
-  }];
-
-  let configuration_vec_in_csm = vec![];
-
-  let ims_recipes = vec![];
-
-  assert!(
-    validate_sat_file_images_section(
-      image_vec_in_sat_file,
-      configuration_vec_in_sat_file,
-      hsm_group_available_vec,
-      cray_product_catalog,
-      image_vec_in_csm,
-      configuration_vec_in_csm,
-      ims_recipes
-    )
-    .is_err()
-  );
-} */
 
 /// Test SAT file
 /// Test image section in OLD format in SAT file
@@ -396,7 +177,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-base-image-id
@@ -405,15 +186,16 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_sat() {
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -455,7 +237,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-base-image-id
@@ -464,7 +246,7 @@ fn test_old_image_format_in_sat_file_pass_because_configuration_found_in_csm() {
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
@@ -520,7 +302,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
   let cray_product_catalog = &BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               ims:
                 id: my-image-id
@@ -529,7 +311,7 @@ fn test_sat_file_image_section_fails_because_base_image_id_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
@@ -592,9 +374,10 @@ fn test_sat_file_image_section_fails_because_base_image_receipe_could_not_be_fou
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -629,7 +412,7 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -639,15 +422,16 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -661,8 +445,8 @@ fn test_sat_file_image_section_fails_because_base_image_recipe_name_could_not_be
     id: None,
     created: None,
     link: None,
-    recipe_type: "".to_string(),
-    linux_distribution: "".to_string(),
+    recipe_type: String::new(),
+    linux_distribution: String::new(),
     name: "fake-my-ims-recipe".to_string(),
   }];
 
@@ -689,7 +473,7 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -699,15 +483,16 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -721,8 +506,8 @@ fn test_sat_file_image_section_pass_because_base_image_recipe_name_could_not_be_
     id: None,
     created: None,
     link: None,
-    recipe_type: "".to_string(),
-    linux_distribution: "".to_string(),
+    recipe_type: String::new(),
+    linux_distribution: String::new(),
     name: "my-ims-recipe-name".to_string(),
   }];
 
@@ -749,7 +534,7 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -759,15 +544,16 @@ fn test_sat_file_image_section_fail_because_base_image_name_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -809,7 +595,7 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -819,15 +605,16 @@ fn test_sat_file_image_section_pass_because_base_image_name_could_not_be_found()
               configuration_group_names:
                 - Compute
                 - tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -868,7 +655,7 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
@@ -878,15 +665,16 @@ fn test_sat_file_image_section_fail_because_hsm_groups_are_wrong() {
               configuration_group_names:
                 - Compute
                 - fake-tenant-a
-            "#,
+            ",
   )
   .unwrap();
 
   let configuration_vec_in_sat_file: Vec<configuration::Configuration> =
     serde_yaml::from_str(
-      r#"
+      r"
             - name: my-configuration-name
-            "#,
+              layers: []
+            ",
     )
     .unwrap();
 
@@ -927,13 +715,13 @@ fn test_sat_file_image_section_pass_if_configuration_missing() {
   let cray_product_catalog = BTreeMap::<String, String>::new();
 
   let image_vec_in_sat_file: Vec<image::Image> = serde_yaml::from_str(
-    r#"
+    r"
             - name: my-image-name
               base:
                 ims:
                   name: my-ims-image-name
                   type: image
-            "#,
+            ",
   )
   .unwrap();
 

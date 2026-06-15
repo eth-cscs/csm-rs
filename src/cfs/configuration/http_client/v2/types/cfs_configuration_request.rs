@@ -1,15 +1,14 @@
-use manta_backend_dispatcher::types::cfs::cfs_configuration_request::{
-  CfsConfigurationRequest as FrontEndCfsConfigurationRequest,
-  Layer as FrontEndLayer, SpecialParameter as FrontEndSpecialParameter,
-};
-
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use crate::{
-  commands::i_apply_sat_file::utils::configuration, common::gitea, error::Error,
+  common::{
+    gitea,
+    yaml::{as_yaml_str, yaml_seq, yaml_str},
+  },
+  error::Error,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -20,7 +19,7 @@ pub struct Layer {
   #[serde(skip_serializing_if = "Option::is_none")]
   // Either commit or branch is passed
   pub commit: Option<String>,
-  playbook: String,
+  pub(super) playbook: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   // Either commit or branch is passed
   pub branch: Option<String>,
@@ -31,100 +30,24 @@ pub struct Layer {
   pub special_parameters: Option<Vec<SpecialParameter>>,
 }
 
-impl From<FrontEndLayer> for Layer {
-  fn from(front_end_layer: FrontEndLayer) -> Self {
-    Self {
-      name: front_end_layer.name.unwrap_or_default(),
-      clone_url: front_end_layer.clone_url.unwrap_or_default(),
-      playbook: front_end_layer.playbook,
-      commit: front_end_layer.commit,
-      branch: front_end_layer.branch,
-      // tag: front_end_layer.tag,
-      special_parameters: front_end_layer.special_parameters.map(
-        |special_parameters| {
-          special_parameters
-            .into_iter()
-            .map(|special_parameter| special_parameter.into())
-            .collect()
-        },
-      ),
-    }
-  }
-}
-
-impl Into<FrontEndLayer> for Layer {
-  fn into(self) -> FrontEndLayer {
-    FrontEndLayer {
-      name: Some(self.name),
-      clone_url: Some(self.clone_url),
-      playbook: self.playbook,
-      commit: self.commit,
-      branch: self.branch,
-      source: None, // This field is not used in the backend
-      special_parameters: self.special_parameters.map(|special_parameters| {
-        special_parameters
-          .into_iter()
-          .map(|special_parameter| special_parameter.into())
-          .collect()
-      }),
-    }
-  }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SpecialParameter {
   #[serde(rename = "imsRequiredDkms")]
   #[serde(skip_serializing_if = "Option::is_none")]
-  ims_required_dkms: Option<bool>,
+  pub(super) ims_required_dkms: Option<bool>,
 }
 
-impl From<FrontEndSpecialParameter> for SpecialParameter {
-  fn from(front_end_special_parameter: FrontEndSpecialParameter) -> Self {
-    Self {
-      ims_required_dkms: front_end_special_parameter.ims_required_dkms,
-    }
-  }
-}
-
-impl Into<FrontEndSpecialParameter> for SpecialParameter {
-  fn into(self) -> FrontEndSpecialParameter {
-    FrontEndSpecialParameter {
-      ims_required_dkms: self.ims_required_dkms,
-    }
-  }
-}
-
+/// CFS v2 configuration request body.
+///
+/// The configuration name is **not** part of this body: CFS v2 uses
+/// `PUT /cfs/v2/configurations/{name}` and takes only `{ "layers": ... }`
+/// in the body. Callsites that need a name pass it as a separate
+/// `configuration_name: &str` parameter (see `cfs_configuration_v2_put`,
+/// `put_configuration`, and the SAT parser, which returns
+/// `(String, CfsConfigurationRequest)`).
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CfsConfigurationRequest {
-  pub name: String,
   pub layers: Vec<Layer>,
-}
-
-impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
-  fn from(
-    front_end_cfs_configuration_request: FrontEndCfsConfigurationRequest,
-  ) -> Self {
-    Self {
-      name: "".to_string(), // FIXME: add 'name' field to the frontend request and change
-      // this code to `name: front_end_cfs_configuration_response.name,`
-      layers: front_end_cfs_configuration_request
-        .layers
-        .unwrap_or_default()
-        .into_iter()
-        .map(Layer::from)
-        .collect(),
-    }
-  }
-}
-
-impl Into<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
-  fn into(self) -> FrontEndCfsConfigurationRequest {
-    FrontEndCfsConfigurationRequest {
-      description: None,
-      layers: Some(self.layers.into_iter().map(Layer::into).collect()),
-      additional_inventory: None,
-    }
-  }
 }
 
 impl Layer {
@@ -138,9 +61,9 @@ impl Layer {
     special_parameters: Option<Vec<SpecialParameter>>,
   ) -> Self {
     Self {
+      name,
       clone_url,
       commit,
-      name,
       playbook,
       branch,
       // tag,
@@ -156,9 +79,9 @@ impl Default for CfsConfigurationRequest {
 }
 
 impl CfsConfigurationRequest {
+  #[must_use]
   pub fn new() -> Self {
     Self {
-      name: String::default(),
       layers: Vec::default(),
     }
   }
@@ -167,16 +90,22 @@ impl CfsConfigurationRequest {
     self.layers.push(layer);
   }
 
-  /// Converts a CFS configuration in the SAT file represented as a serde_yaml::Value into a
-  /// CfsConfigurationRequest struct that we can use to create CFS configuration in CSM through its
+  /// Converts a CFS configuration in the SAT file represented as a `serde_yaml::Value` into a
+  /// `CfsConfigurationRequest` struct that we can use to create CFS configuration in CSM through its
   /// APIs. This function also resolves the git commit id for git layers in the SAT file if the
   /// user provides a git tag or a branch name instead of a commit id and it also resolves the git
   /// commit id for product layers in the SAT file if the user provides a branch name instead of a
   /// commit id. To resolve the git commit id, this function calls Gitea APIs and for that it needs
   /// Gitea base URL, token and Shasta root certificate to be able to call Gitea APIs in a secure
   /// way from Manta which may run outside the CSM local network.
-  /// Returns the CFS configuration name and the CfsConfigurationRequest struct created from the
+  /// Returns the CFS configuration name and the `CfsConfigurationRequest` struct created from the
   /// SAT file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`Error`] variant on CSM, transport, or
+  /// deserialization failure; see the crate-level `Error` enum
+  /// for the full set.
   pub async fn from_sat_file_serde_yaml(
     shasta_root_cert: &[u8],
     gitea_base_url: &str,
@@ -188,36 +117,18 @@ impl CfsConfigurationRequest {
   ) -> Result<(String, Self), Error> {
     let mut cfs_configuration = Self::new();
 
-    let cfs_configuration_name = configuration_yaml
-      .get("name")
-      .and_then(Value::as_str)
-      .map(str::to_string)
-      .unwrap();
+    let cfs_configuration_name =
+      yaml_str(configuration_yaml, "name")?.to_string();
 
-    cfs_configuration.name = cfs_configuration_name.clone();
+    for layer_yaml in yaml_seq(configuration_yaml, "layers")? {
+      // log::debug!("\n\n### Layer:\n{:#?}\n", layer_json);
 
-    for layer_yaml in configuration_yaml
-      .get("layers")
-      .and_then(Value::as_sequence)
-      .unwrap()
-    {
-      // println!("\n\n### Layer:\n{:#?}\n", layer_json);
-
-      if layer_yaml.get("git").is_some() {
+      if let Some(git_yaml) = layer_yaml.get("git") {
         // Git layer
 
-        let layer_name = layer_yaml
-          .get("name")
-          .and_then(Value::as_str)
-          .map(str::to_string)
-          .unwrap();
+        let layer_name = yaml_str(layer_yaml, "name")?.to_string();
 
-        let repo_url = layer_yaml
-          .get("git")
-          .and_then(|git| git.get("url"))
-          .and_then(Value::as_str)
-          .map(str::to_string)
-          .unwrap();
+        let repo_url = yaml_str(git_yaml, "url")?.to_string();
 
         let commit_id_value_opt =
           layer_yaml.get("git").and_then(|git| git.get("commit"));
@@ -235,9 +146,9 @@ impl CfsConfigurationRequest {
             .map(str::to_string)
         } else if let Some(git_tag_value) = tag_value_opt {
           // Git tag
-          let git_tag = git_tag_value.as_str().unwrap();
+          let git_tag = as_yaml_str(git_tag_value)?;
 
-          log::info!("git tag: {}", git_tag_value.as_str().unwrap());
+          log::debug!("git tag: {git_tag}");
 
           let tag_details_rslt = gitea::http_client::get_tag_details(
             &repo_url,
@@ -250,22 +161,21 @@ impl CfsConfigurationRequest {
           .await;
 
           let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
+            log::debug!("tag details:\n{tag_details:#?}");
             tag_details
           } else {
             return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              git_tag, cfs_configuration_name, tag_details_rslt
+              "ERROR - Could not get details for git tag '{git_tag}' in CFS configuration '{cfs_configuration_name}'. Reason:\n{tag_details_rslt:#?}"
             )));
           };
 
-          // Assumming user sets an existing tag name. It could be an annotated tag
+          // Assuming user sets an existing tag name. It could be an annotated tag
           // (different object than the commit id with its own sha value) or a
           // lightweight tag (pointer to commit id, therefore the tag will have the
           // same sha as the commit id it points to), either way CFS session will
           // do a `git checkout` to the sha we found here, if an annotated tag, then,
           // git is clever enough to take us to the final commit id, if it is a
-          // lighweight tag, then there is no problem because the sha is the same
+          // lightweight tag, then there is no problem because the sha is the same
           // as the commit id
           // NOTE: the `id` field is the tag's sha, note we are not taking the commit id
           // the tag points to and we should not use sha because otherwise we won't be
@@ -274,8 +184,9 @@ impl CfsConfigurationRequest {
             .get("id")
             .and_then(serde_json::Value::as_str)
             .map(str::to_string)
-        } else if branch_value_opt.is_some() {
+        } else if let Some(branch_value) = branch_value_opt {
           // Branch name
+          let branch_name = as_yaml_str(branch_value)?;
           Some(
             gitea::http_client::get_commit_pointed_by_branch(
               gitea_base_url,
@@ -283,7 +194,7 @@ impl CfsConfigurationRequest {
               shasta_root_cert,
               socks5_proxy,
               &repo_url,
-              branch_value_opt.and_then(Value::as_str).unwrap(),
+              branch_name,
             )
             .await?,
           )
@@ -315,85 +226,58 @@ impl CfsConfigurationRequest {
           None,
         );
         cfs_configuration.add_layer(layer);
-      } else if layer_yaml.get("product").is_some() {
+      } else if let Some(product_yaml) = layer_yaml.get("product") {
         // Product layer
 
-        let product_name = layer_yaml
-          .get("product")
-          .and_then(|product| product.get("name"))
-          .and_then(Value::as_str)
-          .unwrap();
-        let product_version = layer_yaml
-          .get("product")
-          .and_then(|product| product.get("version"))
-          .and_then(Value::as_str)
-          .unwrap();
-        let product_branch_value_opt = layer_yaml
-          .get("product")
-          .and_then(|product| product.get("branch"));
+        let product_name = yaml_str(product_yaml, "name")?;
+        let product_version = yaml_str(product_yaml, "version")?;
+        let product_branch_value_opt = product_yaml.get("branch");
 
-        let product = cray_product_catalog.get(product_name);
+        let product =
+          cray_product_catalog.get(product_name).ok_or_else(|| {
+            Error::CrayProductCatalog(format!(
+              "Product {product_name} not found in cray product catalog"
+            ))
+          })?;
 
-        if product.is_none() {
-          return Err(Error::Message(format!(
-            "Product {} not found in cray product catalog",
-            product_name
-          )));
-        }
+        let cos_cray_product_catalog = serde_yaml::from_str::<Value>(product)?;
 
-        let cos_cray_product_catalog =
-          serde_yaml::from_str::<Value>(product.unwrap()).unwrap();
-
-        let product_details_opt = cos_cray_product_catalog
+        let product_details = cos_cray_product_catalog
           .get(product_version)
-          .and_then(|product| product.get("configuration"));
-
-        if product_details_opt.is_none() {
-          return Err(Error::Message(format!(
-            "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-            product_name, product_version
-          )));
-        }
-
-        let product_details = product_details_opt.cloned().unwrap();
+          .and_then(|product| product.get("configuration"))
+          .cloned()
+          .ok_or_else(|| {
+            Error::CrayProductCatalog(format!(
+              "Product details for product name '{product_name}', product_version '{product_version}' and 'configuration' not found in cray product catalog"
+            ))
+          })?;
 
         log::debug!(
-          "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-          product_name,
-          product_version,
-          product_details
+          "CRAY product catalog details for product: {product_name}, version: {product_version}:\n{product_details:#?}"
         );
 
         // Manta may run outside the CSM local network therefore we have to change the
         // internal URLs for the external one
-        let repo_url = product_details
-          .get("clone_url")
-          .and_then(Value::as_str)
-          .map(str::to_string)
-          .map(|url| {
-            url.replace(
-              format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
-              "api-gw-service-nmn.local",
-            )
-          })
-          .unwrap();
+        let repo_url = yaml_str(&product_details, "clone_url")?.replace(
+          format!("vcs.cmn.{site_name}.cscs.ch").as_str(),
+          crate::common::gitea::INTERNAL_API_HOST,
+        );
 
-        let commit_id_opt = if product_branch_value_opt.is_some() {
+        let commit_id_opt = if let Some(branch_value) = product_branch_value_opt
+        {
           // If branch is provided, then ignore the commit id in the CRAY products table
-
-          let commit = Some(
+          let branch_name = as_yaml_str(branch_value)?;
+          Some(
             gitea::http_client::get_commit_pointed_by_branch(
               gitea_base_url,
               gitea_token,
               shasta_root_cert,
               socks5_proxy,
               &repo_url,
-              product_branch_value_opt.and_then(Value::as_str).unwrap(),
+              branch_name,
             )
             .await?,
-          );
-
-          commit
+          )
         } else {
           product_details
             .get("commit")
@@ -417,370 +301,17 @@ impl CfsConfigurationRequest {
           repo_url,
           commit_id_opt,
           product_name.to_string(),
-          layer_yaml
-            .get("playbook")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .unwrap(),
+          yaml_str(layer_yaml, "playbook")?.to_string(),
           branch_name,
           None,
           None,
         );
         cfs_configuration.add_layer(layer);
       } else {
-        return Err(Error::Message(format!(
-          "ERROR - configurations section in SAT file error - CFS configuration layer error"
-        )));
+        return Err(Error::Message("configurations section in SAT file error - CFS configuration layer error".to_string()));
       }
     }
 
     Ok((cfs_configuration_name, cfs_configuration))
-  }
-
-  pub async fn from_sat_file_struct_serde_yaml(
-    shasta_root_cert: &[u8],
-    gitea_base_url: &str,
-    gitea_token: &str,
-    configuration_yaml: &configuration::Configuration,
-    cray_product_catalog: &BTreeMap<String, String>,
-    site_name: &str,
-    socks5_proxy: Option<&str>,
-  ) -> Result<(String, Self), Error> {
-    let mut cfs_configuration = Self::new();
-
-    let cfs_configuration_name = &configuration_yaml.name;
-
-    cfs_configuration.name = cfs_configuration_name.clone();
-
-    for layer_yaml in &configuration_yaml.layers {
-      let playbook = &layer_yaml.playbook;
-
-      if let configuration::LayerType::Git { git } = &layer_yaml.layer_type {
-        let layer = if let configuration::Git::GitCommit { url, commit } = git {
-          Layer::new(
-            url.to_string(),
-            Some(commit.to_string()),
-            layer_yaml.name.clone().unwrap_or_default(),
-            layer_yaml.playbook.clone(),
-            None,
-            None,
-            None,
-          )
-        } else if let configuration::Git::GitTag { url, tag } = git {
-          let tag_details_rslt = gitea::http_client::get_tag_details(
-            &url,
-            &tag,
-            gitea_token,
-            shasta_root_cert,
-            socks5_proxy,
-            site_name,
-          )
-          .await;
-
-          let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
-            tag_details
-          } else {
-            return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              tag, cfs_configuration_name, tag_details_rslt
-            )));
-          };
-
-          // Assumming user sets an existing tag name. It could be an annotated tag
-          // (different object than the commit id with its own sha value) or a
-          // lightweight tag (pointer to commit id, therefore the tag will have the
-          // same sha as the commit id it points to), either way CFS session will
-          // do a `git checkout` to the sha we found here, if an annotated tag, then,
-          // git is clever enough to take us to the final commit id, if it is a
-          // lighweight tag, then there is no problem because the sha is the same
-          // as the commit id
-          // NOTE: the `id` field is the tag's sha, note we are not taking the commit id
-          // the tag points to and we should not use sha because otherwise we won't be
-          // able to fetch the annotated tag using a commit sha through the Gitea APIs
-          let commit_id_opt = tag_details
-            .get("id")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string);
-
-          Layer::new(
-            url.to_string(),
-            commit_id_opt,
-            layer_yaml.name.clone().unwrap_or_default(),
-            playbook.to_string(),
-            None,
-            None,
-            None,
-          )
-        } else if let configuration::Git::GitBranch { url, branch } = git {
-          Layer::new(
-            url.to_string(),
-            None,
-            layer_yaml.name.clone().unwrap_or_default(),
-            playbook.to_string(),
-            Some(branch.to_string()),
-            None,
-            None,
-          )
-        } else if let configuration::Git::GitTag { url, tag } = git {
-          let tag_details_rslt = gitea::http_client::get_tag_details(
-            &url,
-            &tag,
-            gitea_token,
-            shasta_root_cert,
-            socks5_proxy,
-            site_name,
-          )
-          .await;
-
-          let tag_details = if let Ok(tag_details) = tag_details_rslt {
-            log::debug!("tag details:\n{:#?}", tag_details);
-            tag_details
-          } else {
-            return Err(Error::Message(format!(
-              "ERROR - Could not get details for git tag '{}' in CFS configuration '{}'. Reason:\n{:#?}",
-              tag, cfs_configuration_name, tag_details_rslt
-            )));
-          };
-
-          // Assumming user sets an existing tag name. It could be an annotated tag
-          // (different object than the commit id with its own sha value) or a
-          // lightweight tag (pointer to commit id, therefore the tag will have the
-          // same sha as the commit id it points to), either way CFS session will
-          // do a `git checkout` to the sha we found here, if an annotated tag, then,
-          // git is clever enough to take us to the final commit id, if it is a
-          // lighweight tag, then there is no problem because the sha is the same
-          // as the commit id
-          // NOTE: the `id` field is the tag's sha, note we are not taking the commit id
-          // the tag points to and we should not use sha because otherwise we won't be
-          // able to fetch the annotated tag using a commit sha through the Gitea APIs
-          let commit = tag_details
-            .get("id")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string)
-            .unwrap_or_default();
-
-          Layer::new(
-            url.to_string(),
-            Some(commit),
-            layer_yaml.name.clone().unwrap_or_default(),
-            playbook.to_string(),
-            None,
-            None,
-            None,
-          )
-        } else {
-          return Err(Error::Message(format!(
-            "ERROR - configurations section in SAT file error - CFS configuration layer error - Git layer error - 'git' field should have 'url' field"
-          )));
-        };
-
-        cfs_configuration.add_layer(layer);
-      } else if let configuration::LayerType::Product { product } =
-        &layer_yaml.layer_type
-      {
-        let layer = if let configuration::Product::ProductVersion {
-          name,
-          version,
-        } = product
-        {
-          let product = cray_product_catalog.get(name).ok_or_else(|| {
-            Error::Message(format!(
-              "Product {} not found in cray product catalog",
-              name
-            ))
-          })?;
-
-          let cos_cray_product_catalog =
-            serde_yaml::from_str::<Value>(product).unwrap();
-
-          let product_details= cos_cray_product_catalog
-            .get(&version)
-            .and_then(|product| product.get("configuration")).ok_or_else(|| Error::Message(format!(
-              "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-              name, version.clone()
-            )))?;
-
-          log::debug!(
-            "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-            name,
-            version,
-            product_details
-          );
-
-          // Manta may run outside the CSM local network therefore we have to change the
-          // internal URLs for the external one
-          let repo_url = product_details
-            .get("clone_url")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .map(|url| {
-              url.replace(
-                format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
-                "api-gw-service-nmn.local",
-              )
-            })
-            .unwrap();
-
-          let commit_id_opt = product_details
-            .get("commit")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-
-          // Create CFS configuration layer struct
-          let layer = Layer::new(
-            repo_url,
-            commit_id_opt,
-            name.to_string(),
-            layer_yaml.playbook.to_string(),
-            None,
-            None,
-            None,
-          );
-
-          layer
-        } else if let configuration::Product::ProductVersionBranch {
-          name,
-          version,
-          branch,
-        } = product
-        {
-          let version = version.clone().unwrap();
-
-          let product = cray_product_catalog.get(name).ok_or_else(|| {
-            Error::Message(format!(
-              "Product {} not found in cray product catalog",
-              name
-            ))
-          })?;
-
-          let cos_cray_product_catalog =
-            serde_yaml::from_str::<Value>(product).unwrap();
-
-          let product_details= cos_cray_product_catalog
-            .get(&version)
-            .and_then(|product| product.get("configuration")).ok_or_else(|| Error::Message(format!(
-              "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-              name, version.clone()
-            )))?;
-
-          log::debug!(
-            "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-            name,
-            version,
-            product_details
-          );
-
-          // Manta may run outside the CSM local network therefore we have to change the
-          // internal URLs for the external one
-          let repo_url = product_details
-            .get("clone_url")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .map(|url| {
-              url.replace(
-                format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
-                "api-gw-service-nmn.local",
-              )
-            })
-            .unwrap();
-
-          let commit_id_opt = Some(
-            gitea::http_client::get_commit_pointed_by_branch(
-              gitea_base_url,
-              gitea_token,
-              shasta_root_cert,
-              socks5_proxy,
-              &repo_url,
-              &branch,
-            )
-            .await?,
-          );
-
-          // Create CFS configuration layer struct
-          let layer = Layer::new(
-            repo_url,
-            commit_id_opt,
-            name.to_string(),
-            layer_yaml.playbook.to_string(),
-            None,
-            None,
-            None,
-          );
-
-          layer
-        } else if let configuration::Product::ProductVersionCommit {
-          name,
-          version,
-          commit,
-        } = product
-        {
-          let version = version.clone().unwrap();
-
-          let product = cray_product_catalog.get(name).ok_or_else(|| {
-            Error::Message(format!(
-              "Product {} not found in cray product catalog",
-              name
-            ))
-          })?;
-
-          let cos_cray_product_catalog =
-            serde_yaml::from_str::<Value>(product).unwrap();
-
-          let product_details= cos_cray_product_catalog
-            .get(&version)
-            .and_then(|product| product.get("configuration")).ok_or_else(|| Error::Message(format!(
-              "Product details for product name '{}', product_version '{}' and 'configuration' not found in cray product catalog",
-              name, version
-            )))?;
-
-          log::debug!(
-            "CRAY product catalog details for product: {}, version: {}:\n{:#?}",
-            name,
-            version,
-            product_details
-          );
-
-          // Manta may run outside the CSM local network therefore we have to change the
-          // internal URLs for the external one
-          let repo_url = product_details
-            .get("clone_url")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .map(|url| {
-              url.replace(
-                format!("vcs.cmn.{}.cscs.ch", site_name).as_str(),
-                "api-gw-service-nmn.local",
-              )
-            })
-            .unwrap();
-
-          // Create CFS configuration layer struct
-          let layer = Layer::new(
-            repo_url,
-            Some(commit.to_string()),
-            name.to_string(),
-            layer_yaml.playbook.to_string(),
-            None,
-            None,
-            None,
-          );
-
-          layer
-        } else {
-          return Err(Error::Message(format!(
-            "ERROR - configurations section in SAT file error - CFS configuration layer error - Product layer error - 'product' field should have 'name' and 'version' fields"
-          )));
-        };
-
-        cfs_configuration.add_layer(layer);
-      } else {
-        return Err(Error::Message(format!(
-          "ERROR - configurations section in SAT file error - CFS configuration layer error"
-        )));
-      }
-    }
-
-    Ok((cfs_configuration_name.to_string(), cfs_configuration))
   }
 }

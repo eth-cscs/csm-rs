@@ -1,152 +1,90 @@
-use core::time;
-use serde_json::Value;
-use std::io::Write;
+//! Helpers built on top of the CAPMC `ShastaClient` methods.
+
+use std::time::Duration;
 
 use crate::{
-  capmc::http_client::{node_power_off, node_power_on, node_power_status},
+  ShastaClient,
+  capmc::types::XnameStatusResponse,
+  common::poll::{PollBackoff, poll_until_with_backoff},
   error::Error,
 };
 
+const POWER_TRANSITION_BACKOFF: PollBackoff = PollBackoff {
+  initial_delay: Duration::from_secs(3),
+  max_delay: Duration::from_secs(10),
+  max_attempts: 40,
+};
+
+/// Issue repeated CAPMC power-on requests, polling status with
+/// exponential backoff until every xname reports as "on" or the
+/// attempt cap is reached.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_nodes_to_power_on(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
+  client: &ShastaClient,
+  token: &str,
   xname_vec: Vec<String>,
   reason: Option<String>,
-) -> Result<Value, Error> {
-  let mut node_status_value: Value = node_power_status::post(
-    shasta_token,
-    shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    &xname_vec,
+) -> Result<XnameStatusResponse, Error> {
+  poll_until_with_backoff(
+    POWER_TRANSITION_BACKOFF,
+    || async {
+      if let Err(e) = client
+        .capmc_node_power_on_post(token, xname_vec.clone(), reason.clone())
+        .await
+      {
+        log::warn!(
+          "CAPMC power-on returned an error (continuing to poll status): {e}"
+        );
+      }
+      client
+        .capmc_node_power_status_post(token, &xname_vec)
+        .await
+    },
+    |status| status.off.as_ref().is_none_or(std::vec::Vec::is_empty),
   )
-  .await?;
-
-  let mut node_off_vec: Vec<String> = node_status_value
-    .get("off")
-    .and_then(Value::as_array)
-    .map(|node_status_off| {
-      node_status_off
-        .iter()
-        .filter_map(|xname: &Value| xname.as_str().map(str::to_string))
-        .collect()
-    })
-    .unwrap_or_default();
-
-  // Check all nodes are OFF
-  let mut i = 0;
-  let max = 60;
-  let delay_secs = 3;
-  while i <= max && !node_off_vec.is_empty() {
-    let _ = node_power_on::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      xname_vec.clone(),
-      reason.clone(),
-    )
-    .await;
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    node_status_value = node_power_status::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_vec,
-    )
-    .await?;
-
-    node_off_vec = node_status_value
-      .get("off")
-      .and_then(Value::as_array)
-      .map(|node_status_off| {
-        node_status_off
-          .iter()
-          .filter_map(|xname: &Value| xname.as_str().map(str::to_string))
-          .collect()
-      })
-      .unwrap_or_default();
-
-    print!(
-      "\rWaiting nodes to power on. Trying again in {} seconds. Attempt {} of {}.",
-      delay_secs,
-      i + 1,
-      max
-    );
-    std::io::stdout().flush().unwrap();
-
-    i += 1;
-  }
-
-  Ok(node_status_value)
+  .await
 }
 
+/// Issue repeated CAPMC power-off requests (graceful unless `force`),
+/// polling status with exponential backoff until every xname reports
+/// "off" or the attempt cap is reached.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn wait_nodes_to_power_off(
-  shasta_token: &str,
-  shasta_base_url: &str,
-  shasta_root_cert: &[u8],
-  socks5_proxy: Option<&str>,
+  client: &ShastaClient,
+  token: &str,
   xname_vec: Vec<String>,
   reason_opt: Option<String>,
   force: bool,
-) -> Result<Value, Error> {
-  let mut node_off_vec: Vec<String> = Vec::new();
-  let mut node_status_value: Value = serde_json::Value::Null;
-
-  // Check all nodes are OFF
-  let mut i = 0;
-  let max = 60;
-  let delay_secs = 3;
-  while i <= max && xname_vec.iter().any(|xname| !node_off_vec.contains(xname))
-  {
-    let _ = node_power_off::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      xname_vec.clone(),
-      reason_opt.clone(),
-      force,
-    )
-    .await?;
-
-    tokio::time::sleep(time::Duration::from_secs(delay_secs)).await;
-
-    node_status_value = node_power_status::post(
-      shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      socks5_proxy,
-      &xname_vec,
-    )
-    .await?;
-
-    node_off_vec = node_status_value
-      .get("off")
-      .and_then(Value::as_array)
-      .map(|node_status_off| {
-        node_status_off
-          .iter()
-          .map(|xname: &Value| xname.as_str().map(str::to_string).unwrap())
-          .collect()
-      })
-      .unwrap_or_default();
-
-    print!(
-      "\rWaiting nodes to power off. Trying again in {} seconds. Attempt {} of {}.",
-      delay_secs,
-      i + 1,
-      max
-    );
-    std::io::stdout().flush().unwrap();
-
-    i += 1;
-  }
-
-  Ok(node_status_value)
+) -> Result<XnameStatusResponse, Error> {
+  poll_until_with_backoff(
+    POWER_TRANSITION_BACKOFF,
+    || async {
+      let _ = client
+        .capmc_node_power_off_post(
+          token,
+          xname_vec.clone(),
+          reason_opt.clone(),
+          force,
+        )
+        .await?;
+      client
+        .capmc_node_power_status_post(token, &xname_vec)
+        .await
+    },
+    |status| {
+      let off = status.off.clone().unwrap_or_default();
+      xname_vec.iter().all(|xname| off.contains(xname))
+    },
+  )
+  .await
 }

@@ -1,11 +1,13 @@
+//! `AuthenticationTrait` impl for [`crate::ShastaClient`].
+
 use manta_backend_dispatcher::{
   error::Error, interfaces::authentication::AuthenticationTrait,
 };
 
-use super::Csm;
+use crate::ShastaClient;
 use crate::common::authentication::{self, get_token_from_shasta_endpoint};
 
-impl AuthenticationTrait for Csm {
+impl AuthenticationTrait for ShastaClient {
   async fn get_api_token(
     &self,
     username: &str,
@@ -20,15 +22,6 @@ impl AuthenticationTrait for Csm {
 
     let keycloak_base_url = base_url.to_string() + "/keycloak";
 
-    /* authentication::get_api_token(
-      &self.base_url,
-      &self.root_cert,
-      &keycloak_base_url,
-      site_name,
-    )
-    .await
-    .map_err(|e| Error::Message(e.to_string())) */
-
     let token = get_token_from_shasta_endpoint(
       &keycloak_base_url,
       &self.root_cert,
@@ -37,7 +30,7 @@ impl AuthenticationTrait for Csm {
       self.socks5_proxy.as_deref(),
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))?;
+    .map_err(Error::from)?;
 
     self.validate_api_token(&token).await?;
 
@@ -45,8 +38,13 @@ impl AuthenticationTrait for Csm {
   }
 
   async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
-    authentication::validate_api_token(&self.base_url, token, &self.root_cert, self.socks5_proxy.as_deref())
-      .await
-      .map_err(|e| Error::Message(e.to_string()))
+    authentication::validate_api_token(
+      &self.base_url,
+      token,
+      &self.root_cert,
+      self.socks5_proxy.as_deref(),
+    )
+    .await
+    .map_err(Error::from)
   }
 }

@@ -1,3 +1,5 @@
+//! `DeleteConfigurationsAndDataRelatedTrait` impl for [`crate::ShastaClient`].
+
 use chrono::NaiveDateTime;
 use manta_backend_dispatcher::{
   error::Error,
@@ -8,14 +10,12 @@ use manta_backend_dispatcher::{
   },
 };
 
-use super::Csm;
+use crate::ShastaClient;
 
-impl DeleteConfigurationsAndDataRelatedTrait for Csm {
+impl DeleteConfigurationsAndDataRelatedTrait for ShastaClient {
   async fn get_data_to_delete(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     hsm_name_available_vec: &[String],
     configuration_name_pattern_opt: Option<&str>,
     since_opt: Option<NaiveDateTime>,
@@ -31,12 +31,10 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
     ),
     Error,
   > {
-    crate::commands::delete_configurations_and_data_related::get_data_to_delete(
+    crate::cfs::cleanup::get_data_to_delete(
+      self,
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
-      &hsm_name_available_vec,
+      hsm_name_available_vec,
       configuration_name_pattern_opt,
       since_opt,
       until_opt,
@@ -52,39 +50,35 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
         configurations,
       )| {
         (
-          cfs_sessions.into_iter().map(|s| s.into()).collect(),
+          cfs_sessions.into_iter().map(std::convert::Into::into).collect(),
           images,
           bos_templates,
           hsm_groups,
           boot_params,
-          configurations.into_iter().map(|c| c.into()).collect(),
+          configurations.into_iter().map(std::convert::Into::into).collect(),
         )
       },
     )
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 
   async fn delete(
     &self,
     shasta_token: &str,
-    shasta_base_url: &str,
-    shasta_root_cert: &[u8],
     cfs_configuration_name_vec: &[String],
     image_id_vec: &[String],
     cfs_session_name_vec: &[String],
     bos_sessiontemplate_name_vec: &[String],
   ) -> Result<(), Error> {
-    crate::commands::delete_configurations_and_data_related::delete(
+    crate::cfs::cleanup::delete(
+      self,
       shasta_token,
-      shasta_base_url,
-      shasta_root_cert,
-      self.socks5_proxy.as_deref(),
       cfs_configuration_name_vec,
       image_id_vec,
       cfs_session_name_vec,
       bos_sessiontemplate_name_vec,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(Error::from)
   }
 }

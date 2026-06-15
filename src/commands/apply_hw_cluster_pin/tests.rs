@@ -237,35 +237,32 @@ pub async fn test_hsm_hw_management_1() {
     .unwrap();
 
   println!(
-    "DEBUG - target HSM group:\n{:#?}",
-    target_hsm_node_hw_component_count_vec
+    "DEBUG - target HSM group:\n{target_hsm_node_hw_component_count_vec:#?}"
   );
 
   let target_hsm_hw_summary: HashMap<String, usize> =
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
   println!(
-    "DEBUG - target HSM group hw summary:\n{:#?}",
-    target_hsm_hw_summary
+    "DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}"
   );
 
   // Check if user request is fulfilled
   let mut success = true;
   for (hw_component, qty) in user_request_hw_summary {
-    if target_hsm_hw_summary.get(&hw_component).is_none()
+    if !target_hsm_hw_summary.contains_key(&hw_component)
       || qty > *target_hsm_hw_summary.get(&hw_component).unwrap()
     {
       println!(
-        "DEBUG - hw component '{}' with quantity '{}' in user request does not comply with solution {:#?}",
-        hw_component, qty, target_hsm_hw_summary
+        "DEBUG - hw component '{hw_component}' with quantity '{qty}' in user request does not comply with solution {target_hsm_hw_summary:#?}"
       );
       success = false;
     }
   }
 
-  println!("DEBUG - success? {}", success);
+  println!("DEBUG - success? {success}");
 
-  assert!(success)
+  assert!(success);
 }
 
 /// Test pinning
@@ -428,28 +425,25 @@ pub async fn test_hsm_hw_management_2() {
     .unwrap();
 
   println!(
-    "DEBUG - target HSM group:\n{:#?}",
-    target_hsm_node_hw_component_count_vec
+    "DEBUG - target HSM group:\n{target_hsm_node_hw_component_count_vec:#?}"
   );
 
   let target_hsm_hw_summary: HashMap<String, usize> =
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
   println!(
-    "DEBUG - target HSM group hw summary:\n{:#?}",
-    target_hsm_hw_summary
+    "DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}"
   );
 
   // Check if user request is fulfilled
   // Check new target HSM group hw summary fulfills the user request
   let mut success = true;
   for (hw_component, qty) in user_request_hw_summary {
-    if target_hsm_hw_summary.get(&hw_component).is_none()
+    if !target_hsm_hw_summary.contains_key(&hw_component)
       || qty > *target_hsm_hw_summary.get(&hw_component).unwrap()
     {
       println!(
-        "DEBUG - hw component '{}' with quantity '{}' in user request does not comply with solution {:#?}",
-        hw_component, qty, target_hsm_hw_summary
+        "DEBUG - hw component '{hw_component}' with quantity '{qty}' in user request does not comply with solution {target_hsm_hw_summary:#?}"
       );
       success = false;
     }
@@ -466,7 +460,7 @@ pub async fn test_hsm_hw_management_2() {
       },
     );
 
-  println!("DEBUG - success? {}", success);
+  println!("DEBUG - success? {success}");
 
-  assert!(success)
+  assert!(success);
 }

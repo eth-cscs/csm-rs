@@ -1,129 +1,42 @@
-use manta_backend_dispatcher::types::{
-  Group as FrontEndGroup, Member as FrontEndMember,
-};
+//! Re-exports of the progenitor-generated `Group`/`Members` schemas, plus
+//! the hand-rolled `Member` body type used by `hsm_group_post_member`.
+//!
+//! Behaviour deltas vs. the previous hand-written types — driven by the
+//! OpenAPI schema being the source of truth:
+//!
+//! - `Group.label`: was `String`, now `ResourceName` (newtype around
+//!   `String` with `Deref<Target = String>` + `From<String>`). Callers
+//!   that need `&str` go via `&*group.label` (deref) or `group.label.as_str()`.
+//! - `Group.exclusive_group`: was `Option<String>`, now
+//!   `Option<ResourceName>`. Same newtype as `label`.
+//! - `Group.tags`: was `Option<Vec<String>>`, now `Vec<ResourceName>`
+//!   (the spec uses `#[serde(default)]` for an absent array — there is
+//!   no longer a way to distinguish "no tags field" from "empty tags",
+//!   but the on-wire shape is unchanged since both serialise as an
+//!   absent property when empty).
+//! - `Members.ids`: was `Option<Vec<String>>`, now `Vec<XNameRw100>`.
+//!   Same `#[serde(default)]` treatment as `tags`.
+//!
+//! The hand-rolled `Member` (singular) type is kept because the public
+//! `hsm_group_post_member(label, Member)` signature accepts it; on the
+//! wire it serialises to `{"id": "..."}` which is also what the generated
+//! `MemberId` produces. The wrapper translates between them.
+
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Group {
-  pub label: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tags: Option<Vec<String>>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub members: Option<Members>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[serde(rename(serialize = "exclusiveGroup"))]
-  pub exclusive_group: Option<String>,
-}
+pub use crate::hsm::generated::types::Group100 as Group;
+pub use crate::hsm::generated::types::Members100 as Members;
+pub use crate::hsm::generated::types::ResourceName;
+pub use crate::hsm::generated::types::XNameRw100;
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-pub struct Members {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub ids: Option<Vec<String>>,
-}
-
+/// Single-member request body for `POST /groups/{label}/members`.
+/// On the wire this is `{"id": "<xname>"}`; the wrapper converts to the
+/// generated `MemberId` shape before delegating.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Member {
+  /// Component xname id of the new/existing member; serialises as
+  /// `{"id": "<xname>"}`. Optional so callers can build a default
+  /// struct without specifying an id.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
-}
-
-impl Group {
-  pub fn new(label: &str, member_vec_opt: Option<Vec<&str>>) -> Self {
-    let members_opt = if let Some(member_vec) = member_vec_opt {
-      Some(Members {
-        ids: Some(member_vec.iter().map(|&id| id.to_string()).collect()),
-      })
-    } else {
-      None
-    };
-
-    let group = Self {
-      label: label.to_string(),
-      description: None,
-      tags: None,
-      members: members_opt,
-      exclusive_group: None,
-    };
-
-    group
-  }
-
-  /// Get HSM group members
-  pub fn get_members(&self) -> Vec<String> {
-    // FIXME: try to improve this logic by introducing "smart pointers" or "lifetimes"
-    self
-      .members
-      .as_ref()
-      .and_then(|members| members.ids.clone())
-      .unwrap_or_default()
-  }
-
-  /// Get HSM group members
-  pub fn get_members_opt(&self) -> Option<Vec<String>> {
-    // FIXME: try to improve this logic by introducing "smart pointers" or "lifetimes"
-    self
-      .members
-      .as_ref()
-      .and_then(|members| members.ids.clone())
-  }
-
-  /// Add list of xnames to HSM group members
-  pub fn add_xnames(&mut self, xnames: &[String]) -> Vec<String> {
-    self.members.as_mut().and_then(|members| {
-      members
-        .ids
-        .as_mut()
-        .map(|ids| ids.extend_from_slice(xnames))
-    });
-
-    self.get_members()
-  }
-}
-
-impl From<FrontEndGroup> for Group {
-  fn from(value: FrontEndGroup) -> Self {
-    let mut member_vec = Vec::new();
-    let member_vec_backend = value.get_members();
-
-    for member in member_vec_backend {
-      member_vec.push(member);
-    }
-
-    let members = Members {
-      ids: Some(member_vec),
-    };
-
-    Group {
-      label: value.label,
-      description: value.description,
-      tags: value.tags,
-      members: Some(members),
-      exclusive_group: value.exclusive_group,
-    }
-  }
-}
-
-impl Into<FrontEndGroup> for Group {
-  fn into(self) -> FrontEndGroup {
-    let mut member_vec = Vec::new();
-    let member_vec_backend = self.get_members();
-
-    for member in member_vec_backend {
-      member_vec.push(member);
-    }
-
-    let members = FrontEndMember {
-      ids: Some(member_vec),
-    };
-
-    FrontEndGroup {
-      label: self.label,
-      description: self.description,
-      tags: self.tags,
-      members: Some(members),
-      exclusive_group: self.exclusive_group,
-    }
-  }
 }

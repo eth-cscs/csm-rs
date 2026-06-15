@@ -1,3 +1,5 @@
+//! Open and interact with a node serial console via the CSM `cray-console-*` services.
+
 use core::time;
 
 use k8s_openapi::api::core::v1::Pod;
@@ -14,15 +16,24 @@ use crate::{
   error::Error,
 };
 
+/// Attach to the `cray-console-node` pod that owns the given xname's
+/// serial console (via conman) and return the open process handle.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_container_attachment_to_conman(
-  xname: &String,
+  xname: &str,
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
   socks5_proxy: Option<&str>,
 ) -> Result<AttachedProcess, Error> {
-  log::info!("xname: {}", xname);
+  log::info!("xname: {xname}");
 
-  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+  let client =
+    get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   let pods_fabric: Api<Pod> = Api::namespaced(client, "services");
 
@@ -32,39 +43,61 @@ pub async fn get_container_attachment_to_conman(
 
   let pods_objects = pods_fabric.list(&params).await?;
 
-  let console_operator_pod = &pods_objects.items[0];
+  let console_operator_pod = pods_objects.items.first().ok_or_else(|| {
+    Error::K8sError(
+      "No 'cray-console-operator' pod found in namespace 'services'"
+        .to_string(),
+    )
+  })?;
   let console_operator_pod_name =
     console_operator_pod.metadata.name.as_ref().ok_or_else(|| {
       Error::K8sError("Pod related to console has no name".to_string())
     })?;
 
-  log::info!("Console operator pod name '{}'", console_operator_pod_name);
+  log::info!("Console operator pod name '{console_operator_pod_name}'");
 
   let mut attached = pods_fabric
     .exec(
-      &console_operator_pod_name,
-      vec!["sh", "-c", &format!("/app/get-node {}", xname)],
+      console_operator_pod_name,
+      vec!["sh", "-c", &format!("/app/get-node {xname}")],
       &AttachParams::default()
         .container("cray-console-operator")
         .stderr(false),
     )
     .await?;
 
-  let mut stdout_stream = ReaderStream::new(attached.stdout().unwrap());
-  let next_stdout = stdout_stream.next().await.unwrap()?;
+  let stdout = attached.stdout().ok_or_else(|| {
+    Error::K8sError(
+      "attached console-operator process has no stdout".to_string(),
+    )
+  })?;
+  let mut stdout_stream = ReaderStream::new(stdout);
+  let Some(next_stdout_frame) = stdout_stream.next().await else {
+    return Err(Error::K8sError(
+      "console-operator stdout stream ended without yielding any frame"
+        .to_string(),
+    ));
+  };
+  let next_stdout = next_stdout_frame?;
   let stdout_str = std::str::from_utf8(&next_stdout)?;
   let output_json: Value = serde_json::from_str(stdout_str)?;
 
-  let console_pod_name =
-    output_json.get("podname").and_then(Value::as_str).unwrap();
+  let console_pod_name = output_json
+    .get("podname")
+    .and_then(Value::as_str)
+    .ok_or_else(|| {
+      Error::ConsoleError(format!(
+        "console-operator response missing string field 'podname' (got: {output_json})"
+      ))
+    })?;
 
   let command = vec!["conman", "-j", xname]; // Enter the container and open conman to access node's console
   // let command = vec!["bash"]; // Enter the container and open bash to start an interactive
   // terminal session
 
-  log::info!("Console pod name: {}", console_pod_name,);
+  log::info!("Console pod name: {console_pod_name}");
 
-  log::info!("Connecting to console {}", xname);
+  log::info!("Connecting to console {xname}");
 
   pods_fabric
         .exec(
@@ -80,25 +113,33 @@ pub async fn get_container_attachment_to_conman(
         .await
         .map_err(|e| {
             Error::ConsoleError(format!(
-                "Error attaching to container 'cray-console-node' in pod '{}'. Reason:\n{}. Exit",
-                console_pod_name, e
+                "Error attaching to container 'cray-console-node' in pod '{console_pod_name}'. Reason:\n{e}. Exit"
             ))
         })
 }
 
+/// Attach to the Ansible container of a CFS session's image-build pod
+/// so the caller can stream its logs / shell.
+///
+/// # Errors
+///
+/// Returns an [`Error`] variant on CSM, transport, or
+/// deserialization failure; see the crate-level `Error` enum
+/// for the full set.
 pub async fn get_container_attachment_to_cfs_session_image_target(
   cfs_session_name: &str,
   k8s_api_url: &str,
   shasta_k8s_secrets: Value,
   socks5_proxy: Option<&str>,
 ) -> Result<AttachedProcess, Error> {
-  let client = get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+  let client =
+    get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
 
   let pods_fabric: Api<Pod> = Api::namespaced(client.clone(), "services");
 
   let params = kube::api::ListParams::default()
     .limit(1)
-    .labels(format!("cfsession={}", cfs_session_name).as_str());
+    .labels(format!("cfsession={cfs_session_name}").as_str());
 
   let mut pods = pods_fabric.list(&params).await?;
 
@@ -107,7 +148,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
-    println!(
+    log::info!(
       "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
       cfs_session_name,
       i + 1,
@@ -120,8 +161,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   if pods.items.is_empty() {
     return Err(Error::ConsoleError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} not ready. Aborting operation"
     )));
   }
 
@@ -133,11 +173,11 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
       Error::K8sError("Pod related to console has no name".to_string())
     })?;
 
-  log::info!("Ansible pod name: {}", console_operator_pod_name);
+  log::info!("Ansible pod name: {console_operator_pod_name}");
 
   let attached = pods_fabric
         .exec(
-            &console_operator_pod_name,
+            console_operator_pod_name,
             vec![
                 "sh",
                 "-c",
@@ -172,7 +212,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   let params = kube::api::ListParams::default()
     .limit(1)
-    .labels(format!("job-name={}", ansible_target_container_label).as_str());
+    .labels(format!("job-name={ansible_target_container_label}").as_str());
 
   let mut pods = pods_fabric.list(&params).await?;
 
@@ -181,7 +221,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   // Waiting for pod to start
   while pods.items.is_empty() && i <= max {
-    println!(
+    log::info!(
       "Pod for cfs session {} not ready. Trying again in 2 secs. Attempt {} of {}",
       cfs_session_name,
       i + 1,
@@ -194,8 +234,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   if pods.items.is_empty() {
     return Err(Error::ConsoleError(format!(
-      "Pod for cfs session {} not ready. Aborting operation",
-      cfs_session_name
+      "Pod for cfs session {cfs_session_name} not ready. Aborting operation"
     )));
   }
 
@@ -214,7 +253,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
 
   pods_fabric
     .exec(
-      &console_operator_pod_name,
+      console_operator_pod_name,
       command,
       &AttachParams::default()
         .container("sshd")
@@ -226,8 +265,7 @@ pub async fn get_container_attachment_to_cfs_session_image_target(
     .await
     .map_err(|e| {
       Error::ConsoleError(format!(
-        "Error attaching to container 'sshd' in pod '{}'. Reason\n{}\n. Exit",
-        console_operator_pod_name, e
+        "Error attaching to container 'sshd' in pod '{console_operator_pod_name}'. Reason\n{e}\n. Exit"
       ))
     })
 }
