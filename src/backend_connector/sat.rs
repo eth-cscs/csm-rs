@@ -195,7 +195,7 @@ impl SatTrait for ShastaClient {
       shasta_k8s_secrets,
     )
     .await
-    .map_err(|e| Error::Message(e.to_string()))
+    .map_err(|e| Error::BadRequest(e.to_string()))
   }
 
   async fn apply_configuration(
