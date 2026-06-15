@@ -1,0 +1,8 @@
+# Personal path overrides for sibling-repo development.
+# Delete/rename this file to fall back to crates.io.
+# Do NOT commit — see .gitignore.
+paths = [
+    "../manta-backend-dispatcher",
+    "../csm-rs",
+    "../ochami-rs",
+]

@@ -93,14 +93,22 @@ pub async fn try_get_by_name(
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
   // Get images available to the user
-  let mut image_available_vec: Vec<Image> = get_image_available_vec(
+  // let mut image_available_vec: Vec<Image> = get_image_available_vec(
+  //   shasta_token,
+  //   shasta_base_url,
+  //   shasta_root_cert,
+  //   socks5_proxy,
+  //   hsm_name_available_vec,
+  //   None, // NOTE: don't put any limit here since we may be looking in a large number of
+  //         // HSM groups and we will filter the results by image name below
+  // )
+  // .await?;
+  let mut image_available_vec: Vec<Image> = super::http_client::get(
     shasta_token,
     shasta_base_url,
     shasta_root_cert,
     socks5_proxy,
-    hsm_name_available_vec,
-    None, // NOTE: don't put any limit here since we may be looking in a large number of
-          // HSM groups and we will filter the results by image name below
+    None,
   )
   .await?;
 

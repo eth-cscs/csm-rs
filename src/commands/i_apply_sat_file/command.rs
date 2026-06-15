@@ -71,7 +71,8 @@ pub async fn exec(
 
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
   let kube_client =
-    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy).await?;
+    kubernetes::get_client(k8s_api_url, shasta_k8s_secrets, socks5_proxy)
+      .await?;
 
   // Get HPE product catalog from k8s
   let cray_product_catalog =
