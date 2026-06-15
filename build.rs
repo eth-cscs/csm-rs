@@ -61,12 +61,22 @@ fn generate_one(spec_path: &PathBuf, out_path: &PathBuf, format: SpecFormat) {
     let src = fs::read_to_string(spec_path)
         .unwrap_or_else(|e| panic!("read {}: {e}", spec_path.display()));
 
-    let spec: openapiv3::OpenAPI = match format {
+    let mut spec: openapiv3::OpenAPI = match format {
         SpecFormat::Json => serde_json::from_str(&src)
             .unwrap_or_else(|e| panic!("parse {} as JSON: {e}", spec_path.display())),
         SpecFormat::Yaml => serde_yaml::from_str(&src)
             .unwrap_or_else(|e| panic!("parse {} as YAML: {e}", spec_path.display())),
     };
+
+    // Progenitor emits `info.description` verbatim into the generated module's
+    // top-level rustdoc. Real CSM specs contain markdown with indented blocks
+    // ("    GET /v2/...") and unannotated ``` fences, which rustdoc otherwise
+    // tries to compile as Rust doctests. Wrap the whole description in a single
+    // ```text fence so it renders as preformatted text and is never extracted.
+    if let Some(desc) = spec.info.description.as_mut() {
+        let escaped = desc.replace("```", "``\u{200B}`");
+        *desc = format!("```text\n{escaped}\n```");
+    }
 
     let mut generator = progenitor::Generator::default();
     let tokens = generator
