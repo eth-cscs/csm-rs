@@ -39,7 +39,7 @@ use manta_backend_dispatcher::{
     apply_sat_file::{
       ApplyConfigurationParams, ApplyImageCreateSessionParams,
       ApplyImageParams, ApplyImageStampParams, ApplySatFileParams,
-      ApplySessionTemplateParams, SatTrait,
+      ApplySessionTemplateParams, SatTrait, ValidateSatFileParams,
     },
   },
   types::{
@@ -145,6 +145,57 @@ impl SatTrait for ShastaClient {
       session_templates.into_iter().map(Into::into).collect(),
       sessions.into_iter().map(Into::into).collect(),
     ))
+  }
+
+  async fn validate_sat_file(
+    &self,
+    params: ValidateSatFileParams<'_>,
+  ) -> Result<(), Error> {
+    let ValidateSatFileParams {
+      shasta_token,
+      vault_base_url,
+      site_name,
+      k8s_api_url,
+      sat_file,
+      hsm_group_available_vec,
+    } = params;
+
+    // Same shape-transcode the apply path uses: trait carries the
+    // SAT file as serde_json::Value; csm-rs's command takes
+    // serde_yaml::Value. JSON ⊂ YAML, so this is lossless.
+    let sat_template_file_yaml: serde_yaml::Value =
+      serde_json::from_value(sat_file).map_err(|e| {
+        Error::Message(format!(
+          "SAT file value is not a valid YAML mapping: {e}"
+        ))
+      })?;
+
+    let socks5_proxy = self.socks5_proxy.as_deref();
+    let shasta_k8s_secrets = fetch_shasta_k8s_secrets_from_vault(
+      vault_base_url,
+      shasta_token,
+      site_name,
+      socks5_proxy,
+    )
+    .await
+    .map_err(Error::from)?;
+
+    crate::commands::i_apply_sat_file::command::validate_sat_file(
+      crate::commands::i_apply_sat_file::command::ValidateSatFileParams {
+        shasta_token,
+        shasta_base_url: &self.base_url,
+        shasta_root_cert: &self.root_cert,
+        socks5_proxy,
+        vault_base_url,
+        site_name,
+        k8s_api_url,
+        hsm_group_available_vec,
+        sat_template_file_yaml,
+      },
+      shasta_k8s_secrets,
+    )
+    .await
+    .map_err(|e| Error::Message(e.to_string()))
   }
 
   async fn apply_configuration(
