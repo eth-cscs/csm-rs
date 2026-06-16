@@ -108,38 +108,44 @@ pub async fn try_get_by_name(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  hsm_name_available_vec: &[String],
   image_name: &str,
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
   // Get images available to the user
-  let mut image_available_vec: Vec<Image> = get_image_available_vec(
-    shasta_token,
+  // let mut image_available_vec: Vec<Image> = get_image_available_vec(
+  //   shasta_token,
+  //   shasta_base_url,
+  //   shasta_root_cert,
+  //   socks5_proxy,
+  //   hsm_name_available_vec,
+  //   None, // NOTE: don't put any limit here since we may be looking in a large number of
+  //         // HSM groups and we will filter the results by image name below
+  // )
+  // .await?;
+
+  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
     shasta_base_url,
-    shasta_root_cert,
-    socks5_proxy,
-    hsm_name_available_vec,
-    None, // NOTE: don't put any limit here since we may be looking in a large number of
-          // HSM groups and we will filter the results by image name below
-  )
+    shasta_root_cert.to_vec(),
+    socks5_proxy.map(str::to_owned),
+  )?
+  .ims_image_get_all(shasta_token)
   .await?;
 
-  image_available_vec.retain(|image| image.name.eq(image_name));
+  image_vec.retain(|image| image.name.eq(image_name));
 
   // If image name is provided, we try to find an image with the exact name match
-  if image_available_vec.is_empty() {
+  if image_vec.is_empty() {
     return Err(Error::ImageNotFound(image_name.to_string()));
   }
 
   if let Some(limit_number) = limit_number_opt {
     // Limiting the number of results to return to client
-    image_available_vec = image_available_vec[image_available_vec
-      .len()
-      .saturating_sub(*limit_number as usize)..]
+    image_vec = image_vec
+      [image_vec.len().saturating_sub(*limit_number as usize)..]
       .to_vec();
   }
 
-  Ok(image_available_vec.clone())
+  Ok(image_vec.clone())
 }
 
 /// Just sorts images by creation time in ascendent order. Images with no

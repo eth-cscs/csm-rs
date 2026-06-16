@@ -64,7 +64,8 @@ pub async fn validate_sat_file_session_template_section(
         boot_sets_uan.node_groups.clone().unwrap_or_default()
       } else {
         return Err(Error::SatFile(
-          "No HSM group found in session_templates section in SAT file".to_string(),
+          "No HSM group found in session_templates section in SAT file"
+            .to_string(),
         ));
       };
 
@@ -133,7 +134,6 @@ pub async fn validate_sat_file_session_template_section(
               shasta_base_url,
               shasta_root_cert,
               socks5_proxy,
-              hsm_group_available_vec,
               image_name_substr_to_find,
               Some(&1),
             )
@@ -292,7 +292,6 @@ pub async fn process_session_template_section_in_sat_file(
               shasta_base_url,
               shasta_root_cert,
               socks5_proxy,
-              hsm_group_available_vec,
               &image_reference,
               is_image_id,
             )
@@ -343,7 +342,6 @@ pub async fn process_session_template_section_in_sat_file(
             shasta_base_url,
             shasta_root_cert,
             socks5_proxy,
-            hsm_group_available_vec,
             &image_reference,
             is_image_id,
           )
@@ -450,7 +448,8 @@ pub async fn process_session_template_section_in_sat_file(
           .is_some_and(|node_roles_groups| !node_roles_groups.is_empty())
       {
         return Err(Error::SatFile(
-          "User type tenant can't user node roles in BOS sessiontemplate. Exit".to_string(),
+          "User type tenant can't user node roles in BOS sessiontemplate. Exit"
+            .to_string(),
         ));
       }
 
@@ -500,7 +499,10 @@ pub async fn process_session_template_section_in_sat_file(
           shasta_base_url,
           shasta_root_cert,
           socks5_proxy,
-          &node_list.iter().map(std::string::String::as_str).collect::<Vec<&str>>(),
+          &node_list
+            .iter()
+            .map(std::string::String::as_str)
+            .collect::<Vec<&str>>(),
         )
         .await?;
       }
@@ -736,7 +738,6 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   shasta_base_url: &str,
   shasta_root_cert: &[u8],
   socks5_proxy: Option<&str>,
-  hsm_group_available_vec: &[String],
   image_reference: &str,
   is_image_id: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {
@@ -749,9 +750,10 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
     .ims_image_get(shasta_token, Some(image_reference))
     .await
     .and_then(|image_vec| {
-      image_vec.first().cloned().ok_or_else(|| {
-        Error::ImageNotFound(image_reference.to_string())
-      })
+      image_vec
+        .first()
+        .cloned()
+        .ok_or_else(|| Error::ImageNotFound(image_reference.to_string()))
     })
   } else {
     ims::image::utils::try_get_by_name(
@@ -759,15 +761,15 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
       shasta_base_url,
       shasta_root_cert,
       socks5_proxy,
-      hsm_group_available_vec,
       image_reference,
       Some(&1),
     )
     .await
     .and_then(|image_vec| {
-      image_vec.first().cloned().ok_or_else(|| {
-        Error::ImageNotFound(image_reference.to_string())
-      })
+      image_vec
+        .first()
+        .cloned()
+        .ok_or_else(|| Error::ImageNotFound(image_reference.to_string()))
     })
   }
 }
@@ -826,7 +828,8 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
           .await?
         } else {
           return Err(Error::SatFile(
-            "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
+            "Can't process SAT file 'images.base.ims' is missing. Exit"
+              .to_string(),
           ));
         }
       } else if let image::Base::Ims { ims } = base {
@@ -838,17 +841,20 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
             id.clone()
           } else {
             return Err(Error::SatFile(
-              "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
+              "Can't process SAT file 'images.base.ims' is missing. Exit"
+                .to_string(),
             ));
           }
         } else {
           return Err(Error::SatFile(
-            "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
+            "Can't process SAT file 'images.base.ims' is missing. Exit"
+              .to_string(),
           ));
         }
       } else {
         return Err(Error::SatFile(
-          "Can't process SAT file 'images.base.ims' is missing. Exit".to_string(),
+          "Can't process SAT file 'images.base.ims' is missing. Exit"
+            .to_string(),
         ));
       }
     // ----------- BASE IMAGE - CRAY PRODUCT CATALOG
@@ -942,7 +948,8 @@ pub(super) async fn get_base_image_id_from_sat_file_image_yaml(
       }
     } else {
       return Err(Error::SatFile(
-        "Can't process SAT file 'images.base.product' is missing. Exit".to_string(),
+        "Can't process SAT file 'images.base.product' is missing. Exit"
+          .to_string(),
       ));
     }
   } else {
