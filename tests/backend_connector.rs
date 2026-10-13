@@ -634,37 +634,7 @@ async fn cfs_post_session_posts_to_v3_sessions() {
 
 // ---------- AuthenticationTrait ----------
 
-#[tokio::test]
-async fn auth_validate_api_token_hits_cfs_healthz() {
-  let server = MockServer::start().await;
-  Mock::given(method("GET"))
-    .and(path("/cfs/healthz"))
-    .and(bearer_token(TEST_TOKEN))
-    .respond_with(ResponseTemplate::new(200))
-    .expect(1)
-    .mount(&server)
-    .await;
-
-  let csm = make_csm(&server.uri());
-  csm.validate_api_token(TEST_TOKEN).await.expect("ok");
-}
-
-#[tokio::test]
-async fn auth_validate_api_token_returns_err_on_401() {
-  let server = MockServer::start().await;
-  Mock::given(method("GET"))
-    .and(path("/cfs/healthz"))
-    .respond_with(ResponseTemplate::new(401))
-    .expect(1)
-    .mount(&server)
-    .await;
-
-  let csm = make_csm(&server.uri());
-  csm
-    .validate_api_token(TEST_TOKEN)
-    .await
-    .expect_err("401 should map to Err");
-}
+// `exchange_api_token`: see the `token_exchange` module at the end.
 
 // ---------- HardwareInventory::get_inventory_hardware ----------
 
@@ -871,4 +841,147 @@ async fn redfish_update_returns_not_implemented_error() {
     err.to_string().contains("not implemented"),
     "expected 'not implemented' in {err}"
   );
+}
+
+// ---------- AuthenticationTrait::exchange_api_token ----------
+
+mod token_exchange {
+  use super::*;
+  use csm_rs::backend_connector::TokenExchange;
+  use manta_backend_dispatcher::error::Error;
+  use wiremock::matchers::{body_string_contains, header};
+
+  const TOKEN_PATH: &str =
+    "/keycloak/realms/shasta/protocol/openid-connect/token";
+
+  /// `Csm` whose base URL ends in `/apis`, as configured sites do, so the
+  /// tests also cover the Keycloak URL derivation.
+  fn make_exchanging_csm(server: &MockServer) -> Csm {
+    make_csm(&format!("{}/apis", server.uri())).with_token_exchange(
+      TokenExchange {
+        client_id: "exchanger".to_string(),
+        client_secret: "s3cret".to_string(),
+        subject_issuer: "cscs".to_string(),
+      },
+    )
+  }
+
+  async fn mount_error(server: &MockServer, status: u16, error: &str) {
+    Mock::given(method("POST"))
+      .and(path(TOKEN_PATH))
+      .respond_with(ResponseTemplate::new(status).set_body_json(json!({
+        "error": error,
+        "error_description": "described by keycloak",
+      })))
+      .mount(server)
+      .await;
+  }
+
+  #[tokio::test]
+  async fn posts_rfc8693_exchange_and_returns_access_token() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+      .and(path(TOKEN_PATH))
+      // base64("exchanger:s3cret")
+      .and(header("authorization", "Basic ZXhjaGFuZ2VyOnMzY3JldA=="))
+      .and(body_string_contains(
+        "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange",
+      ))
+      .and(body_string_contains("subject_token=cscs-token"))
+      .and(body_string_contains("subject_issuer=cscs"))
+      .and(body_string_contains(
+        "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token",
+      ))
+      .and(body_string_contains(
+        "requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token",
+      ))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+        "access_token": "csm-token",
+        "token_type": "Bearer",
+      })))
+      .expect(1)
+      .mount(&server)
+      .await;
+
+    let token = make_exchanging_csm(&server)
+      .exchange_api_token("cscs-token")
+      .await
+      .expect("exchange ok");
+    assert_eq!(token, "csm-token");
+  }
+
+  #[tokio::test]
+  async fn rejected_subject_token_is_unauthorized() {
+    let server = MockServer::start().await;
+    mount_error(&server, 400, "invalid_token").await;
+    let err = make_exchanging_csm(&server)
+      .exchange_api_token("cscs-token")
+      .await
+      .unwrap_err();
+    assert!(
+      matches!(err, Error::Unauthorized(ref m) if m.contains("described by keycloak")),
+      "{err}"
+    );
+  }
+
+  #[tokio::test]
+  async fn refused_exchange_is_forbidden() {
+    let server = MockServer::start().await;
+    mount_error(&server, 403, "access_denied").await;
+    let err = make_exchanging_csm(&server)
+      .exchange_api_token("cscs-token")
+      .await
+      .unwrap_err();
+    assert!(matches!(err, Error::Forbidden(_)), "{err}");
+  }
+
+  #[tokio::test]
+  async fn wrong_client_secret_is_not_unauthorized() {
+    // A misconfigured exchange client is the server's fault; it must not
+    // look like an expired user token (which would make the CLI log in
+    // again for nothing).
+    let server = MockServer::start().await;
+    mount_error(&server, 401, "invalid_client").await;
+    let err = make_exchanging_csm(&server)
+      .exchange_api_token("cscs-token")
+      .await
+      .unwrap_err();
+    assert!(
+      matches!(err, Error::Message(ref m) if m.contains("invalid_client")),
+      "{err}"
+    );
+  }
+
+  #[tokio::test]
+  async fn keycloak_5xx_keeps_its_status() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+      .and(path(TOKEN_PATH))
+      .respond_with(ResponseTemplate::new(503).set_body_string("down"))
+      .mount(&server)
+      .await;
+    let err = make_exchanging_csm(&server)
+      .exchange_api_token("cscs-token")
+      .await
+      .unwrap_err();
+    assert!(matches!(err, Error::CsmError { status: 503, .. }), "{err}");
+  }
+
+  #[tokio::test]
+  async fn without_configuration_fails_without_a_request() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+      .respond_with(ResponseTemplate::new(200))
+      .expect(0)
+      .mount(&server)
+      .await;
+    let err = make_csm(&server.uri())
+      .exchange_api_token("cscs-token")
+      .await
+      .unwrap_err();
+    assert!(
+      matches!(err, Error::Message(ref m) if m.contains("not configured")),
+      "{err}"
+    );
+  }
 }

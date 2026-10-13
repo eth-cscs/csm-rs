@@ -60,12 +60,18 @@ pub mod sat; // SatTrait, ApplyHwClusterPin
 /// [`crate::ShastaClient`] (constructed once at [`Csm::new`] time and
 /// shared across every dispatcher call). Bearer tokens are passed in
 /// per request by the dispatcher and are **not** stored.
+///
+/// [`AuthenticationTrait::exchange_api_token`](manta_backend_dispatcher::interfaces::authentication::AuthenticationTrait::exchange_api_token)
+/// needs the client credentials set with [`Csm::with_token_exchange`].
 #[derive(Debug, Clone)]
 pub struct Csm {
   pub(crate) base_url: String,
   pub(crate) root_cert: Vec<u8>,
   pub(crate) client: crate::ShastaClient,
+  pub(crate) token_exchange: Option<TokenExchange>,
 }
+
+pub use crate::common::authentication::TokenExchange;
 
 impl Csm {
   /// Construct a `Csm` from a base URL and a PEM-encoded root cert.
@@ -90,7 +96,26 @@ impl Csm {
       base_url: base_url.to_string(),
       root_cert: root_cert.to_vec(),
       client,
+      token_exchange: None,
     })
+  }
+
+  /// Set the client credentials used to exchange a caller's token for
+  /// a CSM token at the site's Keycloak.
+  #[must_use]
+  pub fn with_token_exchange(mut self, token_exchange: TokenExchange) -> Self {
+    self.token_exchange = Some(token_exchange);
+    self
+  }
+
+  /// Base URL of the site's Keycloak: the API base URL without its
+  /// `/apis` suffix, plus `/keycloak`.
+  pub(crate) fn keycloak_base_url(&self) -> String {
+    let base_url = self
+      .base_url
+      .strip_suffix("/apis")
+      .unwrap_or(&self.base_url);
+    format!("{base_url}/keycloak")
   }
 
   /// Borrow the cached [`crate::ShastaClient`].
