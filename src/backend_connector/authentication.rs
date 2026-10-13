@@ -15,12 +15,7 @@ impl AuthenticationTrait for Csm {
   ) -> Result<String, Error> {
     // FIXME: this is not nice but authentication/authorization will potentially move out to an
     // external crate since this is type of logic is external to each site ...
-    let base_url = self
-      .base_url
-      .strip_suffix("/apis")
-      .unwrap_or(&self.base_url);
-
-    let keycloak_base_url = base_url.to_string() + "/keycloak";
+    let keycloak_base_url = self.keycloak_base_url();
 
     let token = get_token_from_shasta_endpoint(
       &keycloak_base_url,
@@ -31,16 +26,27 @@ impl AuthenticationTrait for Csm {
     .await
     .map_err(Error::from)?;
 
-    self.validate_api_token(&token).await?;
+    authentication::validate_api_token(&self.base_url, &token, &self.root_cert)
+      .await?;
 
     Ok(token)
   }
 
-  async fn validate_api_token(&self, token: &str) -> Result<(), Error> {
-    authentication::validate_api_token(
-      &self.base_url,
-      token,
-      &self.root_cert,
+  async fn exchange_api_token(
+    &self,
+    subject_token: &str,
+  ) -> Result<String, Error> {
+    let token_exchange = self.token_exchange.as_ref().ok_or_else(|| {
+      Error::Message(
+        "token exchange is not configured for this CSM site".to_string(),
+      )
+    })?;
+
+    authentication::exchange_token(
+      self.client.http(),
+      &self.keycloak_base_url(),
+      token_exchange,
+      subject_token,
     )
     .await
     .map_err(Error::from)

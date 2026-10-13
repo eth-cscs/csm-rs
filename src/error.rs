@@ -38,6 +38,14 @@ use tokio::task::JoinError;
 pub enum Error {
   #[error("CSM-RS > Generic error: {0}")]
   Message(String),
+  /// The caller's credentials were rejected (e.g. Keycloak refused the
+  /// subject token of a token exchange); logging in again may fix it.
+  #[error("CSM-RS > Unauthorized: {0}")]
+  Unauthorized(String),
+  /// The caller is authenticated but not permitted to do this (e.g.
+  /// Keycloak refused the token exchange for this user).
+  #[error("CSM-RS > Forbidden: {0}")]
+  Forbidden(String),
   #[error("CSM-RS > Environment variable: {0}")]
   EnvVarError(#[from] VarError),
   #[error("CSM-RS > IO: {0}")]
@@ -308,6 +316,8 @@ impl From<crate::error::Error> for MantaError {
 
       // Direct 1:1 dispatcher variants.
       Error::Message(s) => MantaError::Message(s),
+      Error::Unauthorized(s) => MantaError::Unauthorized(s),
+      Error::Forbidden(s) => MantaError::Forbidden(s),
       Error::ConsoleError(s) => MantaError::ConsoleError(s),
       Error::ConfigurationAlreadyExists(s) => {
         MantaError::ConfigurationAlreadyExistsError(s)
