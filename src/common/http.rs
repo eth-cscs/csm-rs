@@ -733,8 +733,11 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     let result: Result<Widget, _> =
       handle_json_or_text_response(response).await;
     match result {
-      Err(Error::Message(m)) => assert_eq!(m, "server boom"),
-      other => panic!("expected Message('server boom'), got {other:?}"),
+      Err(Error::CsmError { status, detail, .. }) => {
+        assert_eq!(status, 500);
+        assert_eq!(detail, "server boom");
+      }
+      other => panic!("expected CsmError, got {other:?}"),
     }
   }
 
