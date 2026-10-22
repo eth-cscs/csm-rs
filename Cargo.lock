@@ -778,7 +778,6 @@ version = "1.0.0-beta.23"
 dependencies = [
  "aws-config",
  "aws-sdk-s3",
- "aws-smithy-runtime",
  "aws-smithy-types",
  "base64 0.22.1",
  "chrono",
