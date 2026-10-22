@@ -66,8 +66,8 @@ manta-backend-dispatcher = { version = "1.0.0-beta.15", optional = true }
 # the corresponding traits through the `strum` crate at the call site;
 # even though we never write `use strum::*` directly, the runtime crate
 # has to be in scope for the macros to compile.
-strum = { version = "0.27.1", default-features = false }
-strum_macros = "0.27.1"
+strum = { version = "0.28.0", default-features = false }
+strum_macros = "0.28.0"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
 # reqwest stays on 0.12 because `kube 2.0.1` (gated by `k8s-console`)
 # transitively pins reqwest 0.12; mixing 0.12 and 0.13 breaks the
