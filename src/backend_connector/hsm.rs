@@ -235,7 +235,7 @@ impl ComponentTrait for Csm {
       for hsm_component in hsm_component_vec {
         let nid_long = format!(
           "nid{:06}",
-          &hsm_component
+          hsm_component
             .nid
             .ok_or(crate::Error::ValidationFailed("No NID found"))?
         );

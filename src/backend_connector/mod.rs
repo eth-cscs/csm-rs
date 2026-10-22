@@ -30,6 +30,10 @@
 //! [`crate::ShastaClient`] instead — this module exists specifically to
 //! satisfy the dispatcher contract.
 
+// The dispatcher traits declare async methods; stubs that only return
+// "not implemented" are still written as `async fn` to match.
+#![allow(clippy::unused_async_trait_impl)]
+
 pub mod authentication;
 pub mod bos; // ApplySessionTrait, ClusterSessionTrait, ClusterTemplateTrait
 pub mod bss; // BootParametersTrait

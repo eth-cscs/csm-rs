@@ -6,6 +6,7 @@
 #![allow(
   dead_code,
   clippy::all,
+  clippy::pedantic,
   missing_docs,
   non_camel_case_types,
   non_snake_case,

@@ -187,14 +187,14 @@ pub async fn s3_download_object(
   let mut file = File::create(&file_path).map_err(|e| {
     Error::S3Transport(format!(
       "Error creating file {}: {}",
-      &file_path.to_string_lossy(),
+      file_path.to_string_lossy(),
       e
     ))
   })?;
 
   log::debug!(
     "Created file '{}' successfully",
-    &file_path.to_string_lossy()
+    file_path.to_string_lossy()
   );
 
   let mut object = client
@@ -304,12 +304,11 @@ pub async fn s3_remove_object(
     .await
   {
     Ok(_file) => {
-      log::debug!("Cleaned file '{}' successfully", &object_path);
+      log::debug!("Cleaned file '{object_path}' successfully");
       Ok(String::from("client"))
     }
     Err(error) => Err(Error::S3Transport(format!(
-      "Error cleaning file {}: {}",
-      &object_path, error
+      "Error cleaning file {object_path}: {error}"
     ))),
   }
 }

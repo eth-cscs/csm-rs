@@ -297,7 +297,7 @@ impl ShastaClient {
       members: Some(myxnames),
     };
 
-    log::debug!("{:#?}", &group);
+    log::debug!("{group:#?}");
 
     let add_group_rslt = self.hsm_group_post(token, group.clone()).await;
 

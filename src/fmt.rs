@@ -1,5 +1,4 @@
-//! Byte-size formatting helpers used by the migrate commands and the
-//! S3 client.
+//! Byte-size formatting helpers used by the migrate commands.
 
 /// Format `bytes` as a decimal-unit size string.
 ///

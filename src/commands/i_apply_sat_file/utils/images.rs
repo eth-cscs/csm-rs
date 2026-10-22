@@ -56,6 +56,7 @@ use super::{
 ///  - The image it depends to is already processed (`image.base.image_ref` included in
 ///  `ref_name_processed`)
 ///  - It has not been already processed
+#[must_use]
 pub fn get_next_image_in_sat_file_to_process_struct(
   image_yaml_vec: &[image::Image],
   ref_name_processed_vec: &[String],
@@ -94,6 +95,7 @@ pub fn get_next_image_in_sat_file_to_process_struct(
 /// been processed in order to find the next image to process. We assume not all images in the yaml
 /// will have an "`image_ref`" value, therefore we will use "`ref_name`" or "name" field if the former
 /// is missing
+#[must_use]
 pub fn get_image_name_or_ref_name_to_process_struct(
   image_yaml: &image::Image,
 ) -> String {
