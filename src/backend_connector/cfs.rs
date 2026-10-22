@@ -634,15 +634,17 @@ impl CfsTrait for Csm {
     // GET (no `ids` query param) instead, which is what every consumer
     // of "all components matching this filter" expects.
     let component_vec = if let Some(component_ids) = components_ids {
-      let xname_vec: Vec<String> =
-        component_ids.split(',').map(|v| v.to_string()).collect();
+      let xname_vec: Vec<String> = component_ids
+        .split(',')
+        .map(std::string::ToString::to_string)
+        .collect();
       self
         .shasta_client()
         .cfs_component_v3_get_query_batch(
           shasta_token,
-          configuration_name.map(|v| v.to_string()),
+          configuration_name.map(std::string::ToString::to_string),
           &xname_vec,
-          status.map(|v| v.to_string()),
+          status.map(std::string::ToString::to_string),
         )
         .await
     } else {

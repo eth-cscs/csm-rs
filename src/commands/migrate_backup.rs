@@ -80,9 +80,9 @@ pub async fn exec(
     log::info!(
       "Downloading BOS session template {} to {} [{}/{}]",
       bos,
-      &bos_file_path.clone().to_string_lossy(),
-      &download_counter,
-      &files2download_count
+      bos_file_path.clone().to_string_lossy(),
+      download_counter,
+      files2download_count
     );
 
     // Save to file only the first one returned, we don't expect other BOS templates in the array
@@ -95,9 +95,9 @@ pub async fn exec(
     log::info!(
       "Downloading HSM configuration in bos template {} to {} [{}/{}]",
       bos,
-      &hsm_file_path.clone().to_string_lossy(),
-      &download_counter,
-      &files2download_count
+      hsm_file_path.clone().to_string_lossy(),
+      download_counter,
+      files2download_count
     );
     download_counter += 1;
 
@@ -123,7 +123,7 @@ pub async fn exec(
         )
         .await?;
 
-    log::debug!("{:#?}", &hsm_group_json);
+    log::debug!("{hsm_group_json:#?}");
     let _hsmjson = serde_json::to_writer_pretty(&hsm_file, &hsm_group_json);
 
     // CFS ------------------------------------------------------------------------------------
@@ -149,10 +149,10 @@ pub async fn exec(
 
     log::info!(
       "Downloading CFS configuration {} to {} [{}/{}]",
-      &configuration_name,
-      &cfs_file_path.clone().to_string_lossy(),
-      &download_counter,
-      &files2download_count
+      configuration_name,
+      cfs_file_path.clone().to_string_lossy(),
+      download_counter,
+      files2download_count
     );
 
     // Save to file only the first one returned, we don't expect other BOS templates in the array
@@ -187,10 +187,10 @@ pub async fn exec(
 
         log::info!(
           "Downloading IMS image record {} to {} [{}/{}]",
-          &image_id_related_to_bos_sessiontemplate,
-          &ims_file_path.clone().to_string_lossy(),
-          &download_counter,
-          &files2download_count
+          image_id_related_to_bos_sessiontemplate,
+          ims_file_path.clone().to_string_lossy(),
+          download_counter,
+          files2download_count
         );
         match crate::ShastaClient::new(
           shasta_base_url,
@@ -232,12 +232,12 @@ pub async fn exec(
               .unwrap_or(-1);
               log::info!(
                 "Downloading image file {} ({}) to {}/{} [{}/{}]",
-                &src,
+                src,
                 crate::fmt::format_bytes(object_size as u64),
-                &dest,
-                &file,
-                &download_counter,
-                &files2download_count
+                dest,
+                file,
+                download_counter,
+                files2download_count
               );
               match ims::s3_client::s3_download_object(
                 &sts_value,
@@ -252,17 +252,16 @@ pub async fn exec(
                 }
                 Err(error) => {
                   return Err(Error::MigrateOp(format!(
-                    "unable to download file {} from s3. Error returned: {}",
-                    &src, error
+                    "unable to download file {src} from s3. Error returned: {error}"
                   )));
                 }
               }
             } // for file in files2download
             log::info!("\nDone, the following image bundle was generated:");
-            log::info!("\tBOS file: {}", &bos_file_path.to_string_lossy());
-            log::info!("\tCFS file: {}", &cfs_file_path.to_string_lossy());
-            log::info!("\tHSM file: {}", &hsm_file_path.to_string_lossy());
-            log::info!("\tIMS file: {}", &ims_file_path.to_string_lossy());
+            log::info!("\tBOS file: {}", bos_file_path.to_string_lossy());
+            log::info!("\tCFS file: {}", cfs_file_path.to_string_lossy());
+            log::info!("\tHSM file: {}", hsm_file_path.to_string_lossy());
+            log::info!("\tIMS file: {}", ims_file_path.to_string_lossy());
             let ims_image_name = migrate_restore::get_image_name_from_ims_file(
               &ims_file_path.to_string_lossy(),
             )?;

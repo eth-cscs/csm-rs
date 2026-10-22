@@ -63,17 +63,20 @@ pub async fn validate_target_hsm_members(
 }
 
 /// Check if input is a NID
+#[must_use]
 pub fn validate_nid_format_regex(node_vec: Vec<String>, regex: Regex) -> bool {
   node_vec.iter().all(|nid| regex.is_match(nid))
 }
 
 /// Check if input is a NID
+#[must_use]
 pub fn validate_nid_format_vec(node_vec: Vec<String>) -> bool {
   node_vec.iter().all(|nid| validate_nid_format(nid))
 }
 
 /// Check if input is a NID. The check is case-insensitive: `nid000001`,
 /// `NID000001`, and `Nid000001` are all valid.
+#[must_use]
 pub fn validate_nid_format(nid: &str) -> bool {
   let lower = nid.to_lowercase();
   lower.len() == 9
@@ -83,6 +86,7 @@ pub fn validate_nid_format(nid: &str) -> bool {
 }
 
 /// Validate xname is correct (it uses regex taken from HPE Cray CSM docs)
+#[must_use]
 pub fn validate_xname_format_regex(
   node_vec: Vec<String>,
   regex: Regex,
@@ -91,11 +95,13 @@ pub fn validate_xname_format_regex(
 }
 
 /// Validate xname is correct (it uses regex taken from HPE Cray CSM docs)
+#[must_use]
 pub fn validate_xname_format_vec(node_vec: Vec<String>) -> bool {
   node_vec.iter().all(|nid| validate_xname_format(nid))
 }
 
 /// Validate xname is correct (it uses regex taken from HPE Cray CSM docs)
+#[must_use]
 pub fn validate_xname_format(xname: &str) -> bool {
   let xname_re =
     Regex::new(r"^x\d{4}c[0-7]s([0-9]|[1-5][0-9]|6[0-4])b[0-1]n[0-7]$")

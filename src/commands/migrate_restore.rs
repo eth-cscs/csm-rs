@@ -129,8 +129,7 @@ pub async fn exec(
   for file in &vec_backup_image_files {
     if !PathBuf::from(&file).exists() {
       return Err(Error::MigrateOp(format!(
-        "Error, file {} does not exist or cannot be open.",
-        &file
+        "Error, file {file} does not exist or cannot be open."
       )));
     }
   }
@@ -156,7 +155,7 @@ pub async fn exec(
     }
   };
 
-  log::info!("IMS image ID: {}", &ims_image_id);
+  log::info!("IMS image ID: {ims_image_id}");
 
   log::info!("\nUploading image artifacts to s3...");
   s3_upload_image_artifacts(
@@ -245,7 +244,7 @@ async fn create_bos_sessiontemplate(
   })?;
 
   // BOS sessiontemplates need the new ID of the image!
-  log::debug!("BOS sessiontemplate name: {}", &bos_sessiontemplate_name);
+  log::debug!("BOS sessiontemplate name: {bos_sessiontemplate_name}");
 
   let shasta_client =
     crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
@@ -267,8 +266,7 @@ async fn create_bos_sessiontemplate(
         .await
       {
         Ok(()) => log::debug!(
-          "Ok BOS session template {}, deleted.",
-          &bos_sessiontemplate_name
+          "Ok BOS session template {bos_sessiontemplate_name}, deleted."
         ),
         Result::Err(err1) => {
           return Err(Error::MigrateOp(format!(
@@ -303,7 +301,7 @@ async fn create_bos_sessiontemplate(
     .path = Some(path_modified);
 
   log::debug!("BOS sessiontemplate loaded:\n{bos_sessiontemplate:#?}");
-  log::debug!("BOS sessiontemplate modified:\n{:#?}", &bos_sessiontemplate);
+  log::debug!("BOS sessiontemplate modified:\n{bos_sessiontemplate:#?}");
 
   match shasta_client
     .bos_template_v2_put(
@@ -314,8 +312,7 @@ async fn create_bos_sessiontemplate(
     .await
   {
     Ok(_result) => log::info!(
-      "Ok, BOS session template {} created successfully.",
-      &bos_sessiontemplate_name
+      "Ok, BOS session template {bos_sessiontemplate_name} created successfully."
     ),
     Err(e1) => {
       return Err(Error::MigrateOp(format!(
@@ -385,7 +382,7 @@ async fn create_cfs_config(
   let cfs_configuration: CfsConfigurationRequest =
     serde_json::from_reader(BufReader::new(file_content))?;
 
-  log::debug!("CFS config:\n{:#?}", &cfs_configuration);
+  log::debug!("CFS config:\n{cfs_configuration:#?}");
 
   match shasta_client
     .cfs_configuration_v3_put(
@@ -398,8 +395,7 @@ async fn create_cfs_config(
     Ok(result) => {
       log::debug!("Ok, result: {result:#?}");
       log::info!(
-        "Ok, CFS configuration {} created successfully.",
-        &cfs_config_name
+        "Ok, CFS configuration {cfs_config_name} created successfully."
       );
     }
     Err(e1) => {
@@ -434,15 +430,13 @@ async fn ims_update_image_add_manifest(
     Ok(vector) => {
       if vector.is_empty() {
         return Err(Error::MigrateOp(format!(
-          "no images stored with id {} in IMS, unable to update the image manifest",
-          &ims_image_id
+          "no images stored with id {ims_image_id} in IMS, unable to update the image manifest"
         )));
       }
     }
     Err(error) => {
       return Err(Error::MigrateOp(format!(
-        "unable to determine if there are other images in IMS with the name {}: {}",
-        &ims_image_name, &error
+        "unable to determine if there are other images in IMS with the name {ims_image_name}: {error}"
       )));
     }
   }
@@ -454,10 +448,7 @@ async fn ims_update_image_add_manifest(
     arch: None,
     link: Some(ims::image::http_client::types::Link {
       etag: None,
-      path: format!(
-        "s3://boot-images/{}/manifest.json",
-        &ims_image_id.to_string()
-      ),
+      path: format!("s3://boot-images/{ims_image_id}/manifest.json"),
       r#type: "s3".to_string(),
     }),
     metadata: None,
@@ -465,10 +456,7 @@ async fn ims_update_image_add_manifest(
 
   let ims_link = Link {
     etag: None,
-    path: format!(
-      "s3://boot-images/{}/manifest.json",
-      &ims_image_id.to_string()
-    ),
+    path: format!("s3://boot-images/{ims_image_id}/manifest.json"),
     r#type: "s3".to_string(),
   };
   let rec = PatchImage {
@@ -546,13 +534,9 @@ async fn s3_upload_image_artifacts(
     };
 
     let full_object_path =
-      format!("{}/{}", &object_path, &filename.to_string_lossy());
+      format!("{}/{}", object_path, filename.to_string_lossy());
     log::info!(
-      "File {:?} ({}) to s3://{}/{}.",
-      &file,
-      &file_size,
-      &bucket_name,
-      &full_object_path
+      "File {file:?} ({file_size}) to s3://{bucket_name}/{full_object_path}."
     );
     let etag: String = if fs::metadata(file)?.len() > 1024 * 1024 * 5 {
       match ims::s3_client::s3_multipart_upload_object(
@@ -657,12 +641,9 @@ async fn s3_upload_image_artifacts(
   serde_json::to_writer_pretty(&new_manifest_file, &ims_image_manifest)?;
 
   log::debug!("Uploading the new manifest.json file");
-  let manifest_full_object_path = format!("{}/manifest.json", &object_path);
+  let manifest_full_object_path = format!("{object_path}/manifest.json");
   log::info!(
-    "File {:?} -> s3://{}/{}.",
-    &new_manifest_file_name,
-    &bucket_name,
-    &manifest_full_object_path
+    "File {new_manifest_file_name:?} -> s3://{bucket_name}/{manifest_full_object_path}."
   );
 
   match ims::s3_client::s3_upload_object(
@@ -748,14 +729,14 @@ fn calculate_image_checksums(
         "-1".to_string()
       }
     };
-    log::info!("File {:?} ({})...", &file, &file_size);
-    let artifact;
+    log::info!("File {file:?} ({file_size})...");
+
     let mut fp = PathBuf::new();
     fp.push(file);
     let digest = file_md5sum(fp)?;
 
-    if file.contains("kernel") {
-      artifact = Artifact {
+    let artifact = if file.contains("kernel") {
+      Artifact {
         md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
@@ -763,9 +744,9 @@ fn calculate_image_checksums(
           etag: None,
         },
         r#type: "application/vnd.cray.image.kernel".to_string(),
-      };
+      }
     } else if file.contains("rootfs") {
-      artifact = Artifact {
+      Artifact {
         md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
@@ -773,9 +754,9 @@ fn calculate_image_checksums(
           etag: None,
         },
         r#type: "application/vnd.cray.image.rootfs.squashfs".to_string(),
-      };
+      }
     } else {
-      artifact = Artifact {
+      Artifact {
         md5: format!("{digest:x}"),
         link: Link {
           path: "path".to_string(),
@@ -783,8 +764,8 @@ fn calculate_image_checksums(
           etag: None,
         },
         r#type: "application/vnd.cray.image.initrd".to_string(),
-      };
-    }
+      }
+    };
     image_manifest.artifacts.push(artifact);
   }
   Ok(())
@@ -927,7 +908,7 @@ pub async fn create_hsm_group_from_file(
       Ok(group) => {
         log::info!(
           "The HSM group {} has been created successfully.",
-          &group.label.0
+          group.label.0
         );
       }
       Err(error) => {
@@ -947,7 +928,7 @@ pub async fn create_hsm_group_from_file(
                   Ok(_json) => {
                     log::info!(
                       "The HSM group {} has been created successfully.",
-                      &group.label.0
+                      group.label.0
                     );
                   }
                   Err(e) => {
@@ -962,7 +943,7 @@ pub async fn create_hsm_group_from_file(
                 log::error!("Error message {e}");
                 return Err(Error::MigrateOp(format!(
                   "error deleting the HSM group {}: {}",
-                  &group.label.0, e
+                  group.label.0, e
                 )));
               }
             }

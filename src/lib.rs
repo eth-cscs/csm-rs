@@ -103,6 +103,7 @@
   clippy::redundant_else,              // tolerated in HTTP error-handling shape
   clippy::assigning_clones,            // x = y.clone() reads fine; .clone_from is unidiomatic at call sites
   clippy::unreadable_literal,          // status codes (404 etc.) read better unseparated
+  clippy::assert_is_empty,             // assert!(v.is_empty()) reads fine in tests
 )]
 
 /// Backend-dispatcher integration layer. Implements the trait families
@@ -126,6 +127,7 @@ mod client;
 pub mod commands;
 pub(crate) mod common;
 pub mod error;
+#[cfg(feature = "commands-admin")]
 pub(crate) mod fmt;
 pub mod hsm;
 pub mod ims;

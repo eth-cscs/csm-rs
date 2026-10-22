@@ -71,7 +71,7 @@ pub fn is_session_image_generic(cfs_session: &CfsSessionGetResponse) -> bool {
 
     log::debug!(
       "CFS session {} is generic: {}",
-      &cfs_session.name,
+      cfs_session.name,
       target_group_vec.is_empty()
     );
 
