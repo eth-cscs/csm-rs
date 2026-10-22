@@ -243,9 +243,7 @@ pub async fn test_hsm_hw_management_1() {
   let target_hsm_hw_summary: HashMap<String, usize> =
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
-  println!(
-    "DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}"
-  );
+  println!("DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}");
 
   // Check if user request is fulfilled
   let mut success = true;
@@ -431,9 +429,7 @@ pub async fn test_hsm_hw_management_2() {
   let target_hsm_hw_summary: HashMap<String, usize> =
     calculate_hsm_hw_component_summary(&target_hsm_node_hw_component_count_vec);
 
-  println!(
-    "DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}"
-  );
+  println!("DEBUG - target HSM group hw summary:\n{target_hsm_hw_summary:#?}");
 
   // Check if user request is fulfilled
   // Check new target HSM group hw summary fulfills the user request

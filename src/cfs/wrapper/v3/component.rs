@@ -358,7 +358,11 @@ impl ShastaClient {
   ) -> Result<Vec<Component>, Error> {
     let mut out = Vec::with_capacity(component_list.len());
     for component in component_list {
-      out.push(self.cfs_component_v3_put_component(token, component).await?);
+      out.push(
+        self
+          .cfs_component_v3_put_component(token, component)
+          .await?,
+      );
     }
     Ok(out)
   }

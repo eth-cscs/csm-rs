@@ -30,8 +30,8 @@ impl ShastaClient {
   ) -> Result<Vec<Membership>, Error> {
     run(self, token, |c| async move {
       c.do_memberships_get(
-        None, None, None, None, None, None, None, None, None, None, None,
-        None, None, None, None, None,
+        None, None, None, None, None, None, None, None, None, None, None, None,
+        None, None, None, None,
       )
       .await
     })
@@ -52,9 +52,11 @@ impl ShastaClient {
     xname: &str,
   ) -> Result<Membership, Error> {
     log::debug!("Get membership of node '{xname}'");
-    run(self, token, |c| async move {
-      c.do_membership_get(xname).await
-    })
+    run(
+      self,
+      token,
+      |c| async move { c.do_membership_get(xname).await },
+    )
     .await
   }
 }

@@ -167,7 +167,12 @@ mod tests {
       cfs: None,
       node_list: None,
       node_roles_groups: None,
-      node_groups: Some(node_groups.iter().map(std::string::ToString::to_string).collect()),
+      node_groups: Some(
+        node_groups
+          .iter()
+          .map(std::string::ToString::to_string)
+          .collect(),
+      ),
       rootfs_provider: None,
       rootfs_provider_passthrough: None,
       arch: None,
@@ -182,7 +187,12 @@ mod tests {
       etag: None,
       kernel_parameters: None,
       cfs: None,
-      node_list: Some(node_list.iter().map(std::string::ToString::to_string).collect()),
+      node_list: Some(
+        node_list
+          .iter()
+          .map(std::string::ToString::to_string)
+          .collect(),
+      ),
       node_roles_groups: None,
       node_groups: None,
       rootfs_provider: None,
@@ -345,7 +355,12 @@ mod tests {
       cfs: None,
       node_list: None,
       node_roles_groups: None,
-      node_groups: Some(node_groups.iter().map(std::string::ToString::to_string).collect()),
+      node_groups: Some(
+        node_groups
+          .iter()
+          .map(std::string::ToString::to_string)
+          .collect(),
+      ),
       rootfs_provider: None,
       rootfs_provider_passthrough: None,
       arch: None,

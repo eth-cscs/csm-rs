@@ -31,8 +31,9 @@ impl ShastaClient {
     token: &str,
     username_opt: &str,
   ) -> Result<Option<PublicKey>, Error> {
-    let mut keys =
-      self.ims_public_keys_v3_get(token, Some(username_opt)).await?;
+    let mut keys = self
+      .ims_public_keys_v3_get(token, Some(username_opt))
+      .await?;
     if keys.len() == 1 {
       Ok(Some(keys.remove(0)))
     } else {

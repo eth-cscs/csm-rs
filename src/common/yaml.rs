@@ -42,7 +42,7 @@ pub(crate) fn yaml_seq<'a>(
 /// inside a chain where the caller already extracted the value but
 /// wants to fail cleanly if it's the wrong type).
 pub(crate) fn as_yaml_str(value: &serde_yaml::Value) -> Result<&str, Error> {
-  value.as_str().ok_or_else(|| {
-    Error::YamlShape("value is not a string".to_string())
-  })
+  value
+    .as_str()
+    .ok_or_else(|| Error::YamlShape("value is not a string".to_string()))
 }

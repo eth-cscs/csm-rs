@@ -180,10 +180,9 @@ impl SatTrait for Csm {
     )
     .await
     .map_err(Error::from)?;
-    let kube_client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-        .await
-        .map_err(Error::from)?;
+    let kube_client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
+      .await
+      .map_err(Error::from)?;
     let cray_product_catalog = kubernetes::try_get_configmap(
       kube_client,
       crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
@@ -251,10 +250,9 @@ impl SatTrait for Csm {
     )
     .await
     .map_err(Error::from)?;
-    let kube_client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-        .await
-        .map_err(Error::from)?;
+    let kube_client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
+      .await
+      .map_err(Error::from)?;
     let cray_product_catalog = kubernetes::try_get_configmap(
       kube_client,
       crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
@@ -321,10 +319,9 @@ impl SatTrait for Csm {
     )
     .await
     .map_err(Error::from)?;
-    let kube_client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-        .await
-        .map_err(Error::from)?;
+    let kube_client = kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
+      .await
+      .map_err(Error::from)?;
     let cray_product_catalog = kubernetes::try_get_configmap(
       kube_client,
       crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,

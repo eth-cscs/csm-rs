@@ -54,10 +54,8 @@
 use std::time::Instant;
 
 use crate::{
-  ShastaClient,
-  cfs::component::http_client::v2::types::Component,
-  common::http,
-  error::Error,
+  ShastaClient, cfs::component::http_client::v2::types::Component,
+  common::http, error::Error,
 };
 
 impl ShastaClient {
@@ -289,7 +287,11 @@ impl ShastaClient {
   ) -> Result<Vec<Component>, Error> {
     let mut out = Vec::with_capacity(component_list.len());
     for component in component_list {
-      out.push(self.cfs_component_v2_put_component(token, component).await?);
+      out.push(
+        self
+          .cfs_component_v2_put_component(token, component)
+          .await?,
+      );
     }
     Ok(out)
   }

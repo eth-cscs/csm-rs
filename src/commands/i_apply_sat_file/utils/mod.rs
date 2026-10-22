@@ -240,7 +240,6 @@ pub mod image;
 /// struct to represent the `configurations` section in SAT file
 pub mod configuration;
 
-
 /// CFS configuration creation helpers driven by a SAT file's
 /// `configurations` section.
 pub(crate) mod configurations;
@@ -271,4 +270,3 @@ pub(crate) use session_templates::{
   process_session_template_section_in_sat_file,
   validate_sat_file_session_template_section,
 };
-

@@ -35,7 +35,9 @@ pub struct BootParameters {
 /// pairs. Values containing `=` keep everything after the first `=`
 /// (e.g. `path=s3://bucket/key=etag` → `("path", "s3://bucket/key=etag")`).
 /// Flags with no `=` map to an empty value (e.g. `quiet` → `("quiet", "")`).
-fn parse_kernel_params(kernel_params: &str) -> impl Iterator<Item = (&str, &str)> {
+fn parse_kernel_params(
+  kernel_params: &str,
+) -> impl Iterator<Item = (&str, &str)> {
   kernel_params.split_whitespace().map(|kernel_param| {
     kernel_param
       .split_once('=')
@@ -68,7 +70,8 @@ impl BootParameters {
   // FIXME: Change function signature so it returns a Result<String, Error> instead of String
   #[must_use]
   pub fn get_boot_image(&self) -> String {
-    let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
+    let params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
 
     // NOTE: CN nodes have UIID image id in 'root' kernel parameter
     // Get `root` kernel parameter and split it by '/'
@@ -214,7 +217,8 @@ impl BootParameters {
   }
 
   pub fn get_kernel_param_value(&self, key: &str) -> Option<String> {
-    let params: HashMap<&str, &str> = parse_kernel_params(&self.params).collect();
+    let params: HashMap<&str, &str> =
+      parse_kernel_params(&self.params).collect();
     params.get(key).copied().map(str::to_string)
   }
 
@@ -230,7 +234,8 @@ impl BootParameters {
   pub fn apply_kernel_params(&mut self, new_params: &str) -> bool {
     let mut change = false;
 
-    let new_params: Vec<(&str, &str)> = parse_kernel_params(new_params).collect();
+    let new_params: Vec<(&str, &str)> =
+      parse_kernel_params(new_params).collect();
 
     let mut params: HashMap<&str, &str> = HashMap::new();
 
@@ -272,7 +277,8 @@ impl BootParameters {
   pub fn update_kernel_params(&mut self, new_params: &str) -> bool {
     let mut change = false;
 
-    let new_params: Vec<(&str, &str)> = parse_kernel_params(new_params).collect();
+    let new_params: Vec<(&str, &str)> =
+      parse_kernel_params(new_params).collect();
 
     let mut params: HashMap<&str, &str> =
       parse_kernel_params(&self.params).collect();

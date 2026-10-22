@@ -14,9 +14,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
-use strum_macros::{
-  AsRefStr, Display, EnumIter, EnumString, IntoStaticStr,
-};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
 use crate::error::Error;
 
@@ -79,9 +77,7 @@ impl NodeSummary {
   /// Returns an [`Error`] variant on CSM, transport, or
   /// deserialization failure; see the crate-level `Error` enum
   /// for the full set.
-  pub fn try_from_csm_value(
-    hw_artifact_value: &Value,
-  ) -> Result<Self, Error> {
+  pub fn try_from_csm_value(hw_artifact_value: &Value) -> Result<Self, Error> {
     let processors = parse_artifact_array(
       hw_artifact_value,
       "Processors",
@@ -133,9 +129,7 @@ pub struct ArtifactSummary {
 }
 
 impl ArtifactSummary {
-  fn try_from_processor_value(
-    processor_value: &Value,
-  ) -> Result<Self, Error> {
+  fn try_from_processor_value(processor_value: &Value) -> Result<Self, Error> {
     Ok(Self {
       xname: required_str(processor_value, "ID")?,
       r#type: parse_artifact_type(processor_value)?,

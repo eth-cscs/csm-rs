@@ -61,12 +61,10 @@ pub async fn exec(
   let hsm_file_path = dest_path.join(hsm_file_name);
 
   let _empty_hsm_group_name: Vec<String> = Vec::new();
-  let mut bos_templates = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .bos_template_v2_get(shasta_token, Some(bos))
-  .await?;
+  let mut bos_templates =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .bos_template_v2_get(shasta_token, Some(bos))
+      .await?;
 
   let _ =
     bos::template::utils::filter(&mut bos_templates, None, &[], &[], None);
@@ -116,12 +114,14 @@ pub async fn exec(
         ))
       })?;
 
-    let hsm_group_json = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .hsm_group_get(shasta_token, Some(std::slice::from_ref(&hsm_group_name)), None)
-    .await?;
+    let hsm_group_json =
+      crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+        .hsm_group_get(
+          shasta_token,
+          Some(std::slice::from_ref(&hsm_group_name)),
+          None,
+        )
+        .await?;
 
     log::debug!("{:#?}", &hsm_group_json);
     let _hsmjson = serde_json::to_writer_pretty(&hsm_file, &hsm_group_json);
@@ -137,12 +137,10 @@ pub async fn exec(
         ))
       })?;
 
-    let cfs_configurations = crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .cfs_configuration_v3_get(shasta_token, Some(configuration_name))
-    .await?;
+    let cfs_configurations =
+      crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+        .cfs_configuration_v3_get(shasta_token, Some(configuration_name))
+        .await?;
 
     let cfs_file_name =
       String::from(configuration_name.clone().as_str()) + ".json";

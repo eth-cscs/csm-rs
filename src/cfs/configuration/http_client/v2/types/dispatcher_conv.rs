@@ -96,9 +96,7 @@ impl From<CfsConfigurationRequest> for FrontEndCfsConfigurationRequest {
   fn from(val: CfsConfigurationRequest) -> Self {
     FrontEndCfsConfigurationRequest {
       description: None,
-      layers: Some(
-        val.layers.into_iter().map(RequestLayer::into).collect(),
-      ),
+      layers: Some(val.layers.into_iter().map(RequestLayer::into).collect()),
       additional_inventory: None,
     }
   }

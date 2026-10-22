@@ -61,7 +61,9 @@ use crate::{
   common::http,
   error::Error,
   hsm::{
-    hw_inventory::hw_component::types::{HWInventory, HWInventoryByLocationList},
+    hw_inventory::hw_component::types::{
+      HWInventory, HWInventoryByLocationList,
+    },
     types::HsmActionResponse,
     wrapper::hw_component_types::NodeSummary,
   },

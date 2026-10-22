@@ -87,9 +87,7 @@ pub async fn get_data_to_delete(
   )?;
 
   let duration = start.elapsed();
-  log::info!(
-    "Time elapsed to fetch information from backend: {duration:?}"
-  );
+  log::info!("Time elapsed to fetch information from backend: {duration:?}");
 
   let mut cfs_session_to_delete_vec = cfs_session_vec.clone();
   let mut bos_sessiontemplate_to_delete_vec = bos_sessiontemplate_vec.clone();
@@ -245,7 +243,8 @@ pub async fn get_data_to_delete(
       cfs_configuration_name_used_to_configure_nodes_vec
         .push(cfs_configuration_name.to_string());
 
-      nodes_using_cfs_configuration_as_dessired_configuration_vec.sort_unstable();
+      nodes_using_cfs_configuration_as_dessired_configuration_vec
+        .sort_unstable();
 
       log::warn!(
         "CFS configuration '{}' can't be deleted. Reason:\nCFS configuration '{}' used as desired configuration for nodes: {}",
@@ -280,9 +279,6 @@ pub async fn get_data_to_delete(
       .contains(&cfs_configuration_value.name)
   });
 
-  
-  
-
   // EVALUATE IF NEED TO CONTINUE.
   // CHECK IF ANY CFS CONFIGURAION OR IMAGE IS CURRENTLY USED TO CONFIGURE OR BOOT NODES
   if !cfs_configuration_name_used_to_configure_nodes_vec.is_empty()
@@ -315,24 +311,24 @@ pub async fn get_data_to_delete(
     String,
     String,
   )> = cfs_session_cfs_configuration_image_id_tuple_vec
-      .into_iter()
-      .filter(|(_, cfs_configuration_name, image_id)| {
-        !cfs_configuration_name_used_to_configure_nodes_vec
-          .contains(&cfs_configuration_name.clone())
-          && !image_id_used_to_boot_nodes_vec.contains(&image_id.clone())
-      })
-      .collect();
+    .into_iter()
+    .filter(|(_, cfs_configuration_name, image_id)| {
+      !cfs_configuration_name_used_to_configure_nodes_vec
+        .contains(&cfs_configuration_name.clone())
+        && !image_id_used_to_boot_nodes_vec.contains(&image_id.clone())
+    })
+    .collect();
 
   let bos_sessiontemplate_cfs_configuration_image_id_tuple_filtered_vec: Vec<
     (String, String, String),
   > = bos_sessiontemplate_cfs_configuration_image_id_tuple_vec
-      .into_iter()
-      .filter(|(_, cfs_configuration_name, image_id)| {
-        !cfs_configuration_name_used_to_configure_nodes_vec
-          .contains(cfs_configuration_name)
-          && !image_id_used_to_boot_nodes_vec.contains(image_id)
-      })
-      .collect();
+    .into_iter()
+    .filter(|(_, cfs_configuration_name, image_id)| {
+      !cfs_configuration_name_used_to_configure_nodes_vec
+        .contains(cfs_configuration_name)
+        && !image_id_used_to_boot_nodes_vec.contains(image_id)
+    })
+    .collect();
 
   // Return ERROR IF THERE IS NO DATA TO DELETE
   if image_id_vec.is_empty()
@@ -424,8 +420,8 @@ pub async fn delete(
 
       log::info!(
         "BOS session deleted: {bos_session_id}" // For some reason CSM API to delete a BOS
-                       // session does not returns the BOS session
-                       // ID in the payload...
+                                                // session does not returns the BOS session
+                                                // ID in the payload...
       );
     } else {
       log::debug!("Ignoring BOS session template {bos_session_id}");
@@ -464,9 +460,7 @@ pub async fn delete(
   // DELETE BOS SESSIONTEMPLATES
   let max_attempts = 5;
   for bos_sessiontemplate_name in bos_sessiontemplate_name_vec {
-    log::info!(
-      "Deleting BOS sessiontemplate '{bos_sessiontemplate_name}'"
-    );
+    log::info!("Deleting BOS sessiontemplate '{bos_sessiontemplate_name}'");
     let mut counter = 0;
     loop {
       let deletion_rslt = shasta_client

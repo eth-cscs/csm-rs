@@ -84,6 +84,6 @@ where
   }
 }
 
+mod health_check;
 mod v1;
 mod v2;
-mod health_check;

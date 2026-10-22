@@ -10,7 +10,7 @@
 //! impls) keep working.
 
 pub(crate) mod v2 {
-  pub(crate) mod types;
   #[cfg(feature = "manta-dispatcher")]
   mod dispatcher_conv;
+  pub(crate) mod types;
 }

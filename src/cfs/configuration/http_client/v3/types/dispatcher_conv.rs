@@ -6,8 +6,7 @@ use manta_backend_dispatcher::types::cfs::cfs_configuration_details::LayerDetail
 use manta_backend_dispatcher::types::cfs::cfs_configuration_request::{
   AdditionalInventory as FrontEndRequestAdditionalInventory,
   CfsConfigurationRequest as FrontEndCfsConfigurationRequest,
-  Layer as FrontEndRequestLayer,
-  SpecialParameter as FrontEndSpecialParameter,
+  Layer as FrontEndRequestLayer, SpecialParameter as FrontEndSpecialParameter,
 };
 use manta_backend_dispatcher::types::cfs::cfs_configuration_response::{
   AdditionalInventory as FrontEndResponseAdditionalInventory,
@@ -144,11 +143,9 @@ impl From<FrontEndCfsConfigurationRequest> for CfsConfigurationRequest {
   ) -> Self {
     Self {
       description: front_end_cfs_configuration_request.description,
-      layers: front_end_cfs_configuration_request
-        .layers
-        .map(|layer_vec| {
-          layer_vec.into_iter().map(RequestLayer::from).collect()
-        }),
+      layers: front_end_cfs_configuration_request.layers.map(|layer_vec| {
+        layer_vec.into_iter().map(RequestLayer::from).collect()
+      }),
       additional_inventory: front_end_cfs_configuration_request
         .additional_inventory
         .map(std::convert::Into::into),

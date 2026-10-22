@@ -146,8 +146,7 @@ impl ShastaClient {
       .bearer_auth(token)
       .send()
       .await?;
-    http::handle_json_or_request_error_text::<Vec<Group>>(response, "GET")
-      .await
+    http::handle_json_or_request_error_text::<Vec<Group>>(response, "GET").await
   }
 
   /// List every HSM group on the system.

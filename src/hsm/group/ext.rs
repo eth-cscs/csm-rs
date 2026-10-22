@@ -81,9 +81,7 @@ impl GroupExt for Group {
 
   fn add_xnames(&mut self, xnames: &[String]) -> Vec<String> {
     let members = self.members.get_or_insert_with(|| Members { ids: vec![] });
-    members
-      .ids
-      .extend(xnames.iter().cloned().map(XNameRw100));
+    members.ids.extend(xnames.iter().cloned().map(XNameRw100));
     self.get_members()
   }
 }

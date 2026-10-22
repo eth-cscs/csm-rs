@@ -52,9 +52,7 @@
 //! be migrated incrementally without a second scaffolding pass.
 
 use crate::{
-  ShastaClient,
-  bos::session::http_client::v2::types::BosSession,
-  common::http,
+  ShastaClient, bos::session::http_client::v2::types::BosSession, common::http,
   error::Error,
 };
 

@@ -215,16 +215,14 @@ pub async fn validate_sat_file_session_template_section(
         session_template_yaml.name
       );
 
-      configuration_found = crate::ShastaClient::new(
-        shasta_base_url,
-        shasta_root_cert.to_vec(),
-      )?
-      .cfs_configuration_v3_get(
-        shasta_token,
-        Some(&session_template_yaml.configuration),
-      )
-      .await
-      .is_ok();
+      configuration_found =
+        crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+          .cfs_configuration_v3_get(
+            shasta_token,
+            Some(&session_template_yaml.configuration),
+          )
+          .await
+          .is_ok();
 
       if !configuration_found {
         return Err(Error::SatFile(format!(
@@ -362,15 +360,12 @@ pub async fn process_session_template_section_in_sat_file(
         "Dry run mode: CFS configuration '{bos_session_template_configuration_name}' found in CSM."
       );
     } else {
-      crate::ShastaClient::new(
-        shasta_base_url,
-        shasta_root_cert.to_vec(),
-      )?
-      .cfs_configuration_v3_get(
-        shasta_token,
-        Some(&bos_session_template_configuration_name),
-      )
-      .await?;
+      crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+        .cfs_configuration_v3_get(
+          shasta_token,
+          Some(&bos_session_template_configuration_name),
+        )
+        .await?;
     }
 
     // let ims_image_name = image_details.name.to_string();
@@ -562,16 +557,14 @@ pub async fn process_session_template_section_in_sat_file(
       mock_template.name = Some(dry_run_bos_sessiontemplate_name);
       bos_st_created_vec.push(mock_template);
     } else {
-      let bos_sessiontemplate = crate::ShastaClient::new(
-        shasta_base_url,
-        shasta_root_cert.to_vec(),
-      )?
-      .bos_template_v2_put(
-        shasta_token,
-        &create_bos_session_template_payload,
-        &bos_sessiontemplate_name,
-      )
-      .await?;
+      let bos_sessiontemplate =
+        crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+          .bos_template_v2_put(
+            shasta_token,
+            &create_bos_session_template_payload,
+            &bos_sessiontemplate_name,
+          )
+          .await?;
 
       log::debug!(
         "BOS sessiontemplate name '{bos_sessiontemplate_name}' created"
@@ -617,12 +610,10 @@ pub async fn process_session_template_section_in_sat_file(
           serde_json::to_string_pretty(&bos_session)?
         );
       } else {
-        let created = crate::ShastaClient::new(
-          shasta_base_url,
-          shasta_root_cert.to_vec(),
-        )?
-        .bos_session_v2_post(shasta_token, bos_session)
-        .await?;
+        let created =
+          crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+            .bos_session_v2_post(shasta_token, bos_session)
+            .await?;
         bos_sessions_created.push(created);
       }
     }
@@ -730,18 +721,15 @@ async fn get_image_details_from_bos_sessiontemplate_yaml(
   is_image_id: bool,
 ) -> Result<ims::image::http_client::types::Image, Error> {
   if is_image_id {
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .ims_image_get(shasta_token, Some(image_reference))
-    .await
-    .and_then(|image_vec| {
-      image_vec
-        .first()
-        .cloned()
-        .ok_or_else(|| Error::ImageNotFound(image_reference.to_string()))
-    })
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_image_get(shasta_token, Some(image_reference))
+      .await
+      .and_then(|image_vec| {
+        image_vec
+          .first()
+          .cloned()
+          .ok_or_else(|| Error::ImageNotFound(image_reference.to_string()))
+      })
   } else {
     ims::image::utils::try_get_by_name(
       shasta_token,

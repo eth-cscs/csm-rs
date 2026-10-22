@@ -388,11 +388,17 @@ impl From<HWInvByLocNode> for FrontEndHWInvByLocNode {
       }),
       drives: None,
       memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(std::convert::Into::into).collect()
+        memory_vec
+          .into_iter()
+          .map(std::convert::Into::into)
+          .collect()
       }),
       node_accel_risers: None,
       node_hsn_nics: val.node_hsn_nics.map(|node_hsn_nic_vec| {
-        node_hsn_nic_vec.into_iter().map(std::convert::Into::into).collect()
+        node_hsn_nic_vec
+          .into_iter()
+          .map(std::convert::Into::into)
+          .collect()
       }),
     }
   }
@@ -457,9 +463,9 @@ impl From<HWInventory> for FrontEndHWInventory {
       mgmt_switches: None,
       mgmt_hl_switches: None,
       cdu_mgmt_switches: None,
-      nodes: val
-        .nodes
-        .map(|node_vec| node_vec.into_iter().map(std::convert::Into::into).collect()),
+      nodes: val.nodes.map(|node_vec| {
+        node_vec.into_iter().map(std::convert::Into::into).collect()
+      }),
       processors: val.processors.map(|processor_vec| {
         processor_vec
           .into_iter()
@@ -474,7 +480,10 @@ impl From<HWInventory> for FrontEndHWInventory {
       }),
       drives: None,
       memory: val.memory.map(|memory_vec| {
-        memory_vec.into_iter().map(std::convert::Into::into).collect()
+        memory_vec
+          .into_iter()
+          .map(std::convert::Into::into)
+          .collect()
       }),
       cabinet_pdus: None,
       cabinet_pdu_power_connectors: None,
@@ -570,7 +579,14 @@ bidirectional_from!(
 bidirectional_from!(
   RedfishManagerLocationInfo,
   FrontEndRedfishManagerLocationInfo,
-  [id, name, description, date_time, date_time_local_offset, firmware_version]
+  [
+    id,
+    name,
+    description,
+    date_time,
+    date_time_local_offset,
+    firmware_version
+  ]
 );
 
 // Per-leaf From impls for the 17 HWInventoryByLocation variants not
@@ -698,10 +714,14 @@ impl From<FrontEndHWInventoryByLocation> for HWInventoryByLocation {
         HWInventoryByLocation::HWInvByLocCMMRectifier(v.into())
       }
       FrontEndHWInventoryByLocation::HWInvByLocCabinet(v) => {
-        HWInventoryByLocation::HWInvByLocCabinet(Box::new(HWInvByLocCabinet::from(v)))
+        HWInventoryByLocation::HWInvByLocCabinet(Box::new(
+          HWInvByLocCabinet::from(v),
+        ))
       }
       FrontEndHWInventoryByLocation::HWInvByLocChassis(v) => {
-        HWInventoryByLocation::HWInvByLocChassis(Box::new(HWInvByLocChassis::from(v)))
+        HWInventoryByLocation::HWInvByLocChassis(Box::new(
+          HWInvByLocChassis::from(v),
+        ))
       }
       FrontEndHWInventoryByLocation::HWInvByLocComputeModule(v) => {
         HWInventoryByLocation::HWInvByLocComputeModule(v.into())

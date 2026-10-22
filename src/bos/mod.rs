@@ -55,10 +55,10 @@
 pub(crate) mod generated;
 pub mod session;
 pub mod template;
-mod wrapper;
 /// Integration-style tests for the BOS namespace.
 #[cfg(test)]
 pub mod tests;
+mod wrapper;
 
 // Domain-root canonical names for the most commonly used BOS types.
 // Callers should prefer these over the deep `*::http_client::v2::types::*`

@@ -230,9 +230,7 @@ impl From<CfsSessionGetResponse> for FrontEndCfsSessionGetResponse {
   fn from(val: CfsSessionGetResponse) -> Self {
     FrontEndCfsSessionGetResponse {
       name: val.name,
-      configuration: val
-        .configuration
-        .map(std::convert::Into::into),
+      configuration: val.configuration.map(std::convert::Into::into),
       ansible: val.ansible.map(std::convert::Into::into),
       target: val.target.map(std::convert::Into::into),
       status: val.status.map(std::convert::Into::into),

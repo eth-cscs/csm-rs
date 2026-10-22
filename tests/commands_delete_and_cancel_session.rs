@@ -55,18 +55,17 @@ async fn delete_and_cancel_image_session_with_no_results_only_hits_cfs_delete()
     tags: None,
   };
 
-  let client =
-    csm_rs::ShastaClient::new(server.uri(), TEST_PEM.as_bytes())
-      .expect("client construction");
+  let client = csm_rs::ShastaClient::new(server.uri(), TEST_PEM.as_bytes())
+    .expect("client construction");
 
   delete_and_cancel_session::exec(
     &client,
     TEST_TOKEN,
-    Vec::new(),    // no HSM groups available — no group-based xname expansion
+    Vec::new(), // no HSM groups available — no group-based xname expansion
     &cfs_session,
-    &[],           // no CFS components
-    &[],           // no BSS boot parameters
-    false,         // dry_run = false: we *want* the DELETE to fire
+    &[],   // no CFS components
+    &[],   // no BSS boot parameters
+    false, // dry_run = false: we *want* the DELETE to fire
   )
   .await
   .expect("delete_and_cancel_session::exec ok");

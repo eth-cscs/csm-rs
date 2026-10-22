@@ -168,9 +168,7 @@ async fn cancel_session(
   dry_run: bool,
 ) -> Result<(), Error> {
   // Set CFS components error_count == retry_policy so CFS batcher stops retrying running
-  log::info!(
-    "Set 'error_count' {retry_policy} to xnames {xname_vec:?}"
-  );
+  log::info!("Set 'error_count' {retry_policy} to xnames {xname_vec:?}");
 
   // Update CFS component error_count
   let cfs_component_vec: Vec<Component> = cfs_component_vec_opt
@@ -188,9 +186,7 @@ async fn cancel_session(
     })
     .ok_or(Error::ValidationFailed("No CFS components"))?;
 
-  log::info!(
-    "Update error count on nodes {xname_vec:?} to {retry_policy}"
-  );
+  log::info!("Update error count on nodes {xname_vec:?} to {retry_policy}");
 
   if dry_run {
     log::info!(

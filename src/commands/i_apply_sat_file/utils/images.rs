@@ -84,8 +84,8 @@ pub fn get_next_image_in_sat_file_to_process_struct(
 
       !ref_name_processed_vec.contains(&ref_name.to_string())
         && image_base_image_ref_opt.is_none_or(|image_base_image_ref| {
-            ref_name_processed_vec.contains(&image_base_image_ref.clone())
-          })
+          ref_name_processed_vec.contains(&image_base_image_ref.clone())
+        })
     })
     .cloned()
 }
@@ -445,8 +445,7 @@ async fn wait_or_stream_cfs_session(
     .await?;
 
     let client =
-      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets)
-        .await?;
+      kubernetes::get_client(k8s_api_url, shasta_k8s_secrets).await?;
 
     i_print_cfs_session_logs(client, &cfs_session_name, timestamps).await?;
   }
@@ -525,10 +524,8 @@ pub async fn collect_and_stamp_image(
 
   log::debug!("Image '{image_name}' ({image_id}) created");
 
-  let client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let mut image = client
     .ims_image_get(shasta_token, Some(image_id))
     .await?
@@ -639,9 +636,7 @@ async fn get_session_from_image_yaml(
   // Get CFS image name from SAT file
   let image_name = image_yaml.name.clone();
 
-  log::debug!(
-    "Creating CFS session related to build image '{image_name}'"
-  );
+  log::debug!("Creating CFS session related to build image '{image_name}'");
 
   // Get CFS configuration related to CFS session in SAT file
   let configuration_name =
@@ -716,13 +711,11 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
-  .await?
-  .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
+  let root_public_ssh_key =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
+      .await?
+      .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
   let root_public_ssh_key_id = root_public_ssh_key.id.ok_or_else(|| {
     Error::Message(
@@ -763,12 +756,9 @@ pub(super) async fn process_sat_file_image_product_type_ims_recipe(
     dry_run_ims_job.resultant_image_id = Some(Uuid::new_v4().to_string());
     dry_run_ims_job
   } else {
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .ims_job_post_sync(shasta_token, &ims_job)
-    .await?
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_job_post_sync(shasta_token, &ims_job)
+      .await?
   };
 
   ims_job.resultant_image_id.ok_or_else(|| {
@@ -789,12 +779,9 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   // Base image needs to be created from a IMS job using an IMS recipe
   // Get all IMS recipes
   let recipe_detail_vec: Vec<ims::recipe::types::RecipeGetResponse> =
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .ims_recipe_get(shasta_token, None)
-    .await?;
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_recipe_get(shasta_token, None)
+      .await?;
 
   // Filter recipes by name
   let recipe_detail_opt = recipe_detail_vec
@@ -818,13 +805,11 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
   let root_ims_key_name = "mgmt root key";
 
   // Get root public ssh key
-  let root_public_ssh_key = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
-  .await?
-  .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
+  let root_public_ssh_key =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_public_keys_v3_get_single(shasta_token, root_ims_key_name)
+      .await?
+      .ok_or_else(|| Error::ImsKeyNotFound(root_ims_key_name.to_string()))?;
 
   let root_public_ssh_key_id = root_public_ssh_key.id.ok_or_else(|| {
     Error::Message(
@@ -862,12 +847,9 @@ pub(super) async fn process_sat_file_image_ims_type_recipe(
     );
     ims_job
   } else {
-    crate::ShastaClient::new(
-      shasta_base_url,
-      shasta_root_cert.to_vec(),
-    )?
-    .ims_job_post_sync(shasta_token, &ims_job)
-    .await?
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_job_post_sync(shasta_token, &ims_job)
+      .await?
   };
 
   log::debug!("IMS job response:\n{ims_job:#?}");
@@ -1042,9 +1024,7 @@ pub fn validate_sat_file_images_section(
       if let image::Base::ImageRef { image_ref } = base {
         // New format
         // Validate base image
-        log::debug!(
-          "Validate 'image' '{image_name}' base image '{image_ref}'"
-        );
+        log::debug!("Validate 'image' '{image_name}' base image '{image_ref}'");
 
         // Check there is another image with 'ref_name' that matches this 'image_ref'
         let image_found = image_yaml_vec.iter().any(|image_yaml| {

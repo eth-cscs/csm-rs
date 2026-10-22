@@ -43,10 +43,8 @@ pub async fn create_new_configuration(
   // Check if CFS configuration already exists
   log::debug!("Check CFS configuration '{configuration_name}' exists");
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let cfs_configuration_vec = shasta_client
     .cfs_configuration_v2_get(shasta_token, Some(configuration_name))
     .await
@@ -265,10 +263,8 @@ pub async fn get_and_filter(
     )
     .await?;
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let (
     mut cfs_configuration_vec,
     mut cfs_session_vec,
@@ -327,10 +323,8 @@ pub async fn get_derivatives(
   // List of image ids from CFS sessions and BOS sessiontemplates related to CFS configuration
   let mut image_id_vec: Vec<&str> = Vec::new();
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let (mut cfs_session_vec, mut bos_sessiontemplate_vec, mut ims_image_vec) = tokio::try_join!(
     shasta_client.cfs_session_v2_get_all(shasta_token),
     shasta_client.bos_template_v2_get_all(shasta_token),
@@ -360,11 +354,9 @@ pub async fn get_derivatives(
   );
 
   // Add boot images from BOS sessiontemplate to image_id_vec
-  image_id_vec.extend(
-    bos_sessiontemplate_vec
-      .iter()
-      .flat_map(crate::bos::template::http_client::v2::types::BosSessionTemplate::images_id),
-  );
+  image_id_vec.extend(bos_sessiontemplate_vec.iter().flat_map(
+    crate::bos::template::http_client::v2::types::BosSessionTemplate::images_id,
+  ));
 
   // Filter images
   ims_image_vec.retain(|image| {
@@ -441,32 +433,25 @@ pub async fn get_configuration_layer_details(
     let ref_type: &str = ref_value
       .pointer("/object/type")
       .and_then(Value::as_str)
-      .ok_or_else(|| {
-        Error::GitRepoShape("ref type".to_string())
-      })?;
+      .ok_or_else(|| Error::GitRepoShape("ref type".to_string()))?;
 
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
       .map(|v| v.split('/').skip(1))
-      .ok_or_else(|| {
-        Error::GitRepoShape("ref".to_string())
-      })?;
+      .ok_or_else(|| Error::GitRepoShape("ref".to_string()))?;
 
     let ref_2 = ref_iter.nth(1);
 
     if ref_type == "tag" {
       // Yes, we are processing an annotated tag
-      let tag_name = ref_2.ok_or_else(|| {
-        Error::GitRepoShape("tag name".to_string())
-      })?;
+      let tag_name =
+        ref_2.ok_or_else(|| Error::GitRepoShape("tag name".to_string()))?;
 
       let git_repo_tag_url = ref_value
         .get("url")
         .and_then(Value::as_str)
-        .ok_or_else(|| {
-          Error::GitRepoShape("tag url".to_string())
-        })?;
+        .ok_or_else(|| Error::GitRepoShape("tag url".to_string()))?;
 
       let commit_sha_value = gitea::http_client::get_commit_from_tag(
         git_repo_tag_url,
@@ -481,9 +466,7 @@ pub async fn get_configuration_layer_details(
         .pointer("/commit/sha")
         .and_then(Value::as_str)
         .ok_or_else(|| {
-          Error::GitRepoShape(
-            "commit sha from git repo tag".to_string(),
-          )
+          Error::GitRepoShape("commit sha from git repo tag".to_string())
         })?;
 
       let annotated_tag_commit_sha =
@@ -496,9 +479,7 @@ pub async fn get_configuration_layer_details(
             .pointer("/object/sha")
             .and_then(Value::as_str)
             .map(str::to_string)
-            .is_some_and(|ref_sha| {
-              annotated_tag_commit_sha.contains(&ref_sha)
-            })
+            .is_some_and(|ref_sha| annotated_tag_commit_sha.contains(&ref_sha))
         })
         .collect();
     }
@@ -509,16 +490,12 @@ pub async fn get_configuration_layer_details(
     let ref_type: &str = ref_value
       .pointer("/object/type")
       .and_then(Value::as_str)
-      .ok_or_else(|| {
-        Error::GitRepoShape("ref type".to_string())
-      })?;
+      .ok_or_else(|| Error::GitRepoShape("ref type".to_string()))?;
     let mut ref_iter = ref_value
       .get("ref")
       .and_then(Value::as_str)
       .map(|v| v.split('/').skip(1))
-      .ok_or_else(|| {
-        Error::GitRepoShape("ref".to_string())
-      })?;
+      .ok_or_else(|| Error::GitRepoShape("ref".to_string()))?;
 
     let ref_1 = ref_iter.next();
     let ref_2 = ref_iter.collect::<Vec<_>>().join("/");

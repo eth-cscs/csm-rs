@@ -117,12 +117,10 @@ pub async fn try_get_by_name(
   // )
   // .await?;
 
-  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .ims_image_get_all(shasta_token)
-  .await?;
+  let mut image_vec: Vec<Image> =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_image_get_all(shasta_token)
+      .await?;
 
   image_vec.retain(|image| image.name.eq(image_name));
 
@@ -233,12 +231,10 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
 
   // Sort images by creation time order ASC
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_value_vec = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .bos_template_v2_get(shasta_token, None)
-  .await?;
+  let mut bos_sessiontemplate_value_vec =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .bos_template_v2_get(shasta_token, None)
+      .await?;
 
   let _ = bos::template::utils::filter(
     &mut bos_sessiontemplate_value_vec,
@@ -292,13 +288,11 @@ pub async fn get_image_cfs_config_name_hsm_group_name(
   )
   .await?;
 
-  let boot_param_vec = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .bss_bootparameters_get_multiple(shasta_token, &hsm_member_vec)
-  .await
-  .unwrap_or_default();
+  let boot_param_vec =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .bss_bootparameters_get_multiple(shasta_token, &hsm_member_vec)
+      .await
+      .unwrap_or_default();
 
   let image_id_from_boot_params: Vec<String> = boot_param_vec
     .iter()
@@ -383,22 +377,18 @@ pub async fn get_image_available_vec(
   hsm_name_available_vec: &[String],
   limit_number_opt: Option<&u8>,
 ) -> Result<Vec<Image>, Error> {
-  let mut image_vec: Vec<Image> = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .ims_image_get_all(shasta_token)
-  .await?;
+  let mut image_vec: Vec<Image> =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_image_get_all(shasta_token)
+      .await?;
 
   ims::image::utils::filter(&mut image_vec);
 
   // We need BOS session templates to find an image created by SAT
-  let mut bos_sessiontemplate_vec = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .bos_template_v2_get(shasta_token, None)
-  .await?;
+  let mut bos_sessiontemplate_vec =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .bos_template_v2_get(shasta_token, None)
+      .await?;
 
   let xname_from_group_vec =
     crate::hsm::group::utils::get_member_vec_from_hsm_name_vec(

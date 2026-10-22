@@ -90,7 +90,9 @@ impl From<FrontEndBosSessionTemplate> for BosSessionTemplate {
       tenant: frontend_bos_session_template.tenant,
       description: frontend_bos_session_template.description,
       enable_cfs: frontend_bos_session_template.enable_cfs,
-      cfs: frontend_bos_session_template.cfs.map(std::convert::Into::into),
+      cfs: frontend_bos_session_template
+        .cfs
+        .map(std::convert::Into::into),
       boot_sets: frontend_bos_session_template.boot_sets.map(|boot_sets| {
         boot_sets.into_iter().map(|(k, v)| (k, v.into())).collect()
       }),

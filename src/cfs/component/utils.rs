@@ -25,10 +25,9 @@ pub async fn update_component_desired_configuration(
     logs: None,
   };
 
-  let Ok(client) = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  ) else {
+  let Ok(client) =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())
+  else {
     return;
   };
 
@@ -71,12 +70,9 @@ pub async fn update_component_list_desired_configuration(
     component_list.push(component);
   }
 
-  crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .cfs_component_v3_patch_component_list(shasta_token, component_list)
-  .await?;
+  crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+    .cfs_component_v3_patch_component_list(shasta_token, component_list)
+    .await?;
 
   Ok(())
 }

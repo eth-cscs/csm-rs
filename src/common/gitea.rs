@@ -61,13 +61,8 @@ pub mod http_client {
   ) -> Result<Vec<Value>, Error> {
     let repo_name = get_repo_name_from_url(repo_url)?;
 
-    get_all_refs(
-      gitea_base_url,
-      gitea_token,
-      &repo_name,
-      shasta_root_cert,
-    )
-    .await
+    get_all_refs(gitea_base_url, gitea_token, &repo_name, shasta_root_cert)
+      .await
   }
 
   /// Get all refs for a repository
@@ -79,9 +74,8 @@ pub mod http_client {
     shasta_root_cert: &[u8],
   ) -> Result<Vec<Value>, Error> {
     let client = http::build_client(shasta_root_cert)?;
-    let api_url = format!(
-      "{gitea_base_url}/api/v1/repos/cray/{repo_name}/git/refs"
-    );
+    let api_url =
+      format!("{gitea_base_url}/api/v1/repos/cray/{repo_name}/git/refs");
 
     log::debug!("Get refs in gitea using through API call: {api_url}");
 
@@ -158,8 +152,7 @@ pub mod http_client {
       .trim_end_matches(".git");
 
     let client = http::build_client(shasta_root_cert)?;
-    let api_url =
-      format!("{gitea_api_base_url}/repos/{repo_name}/tags/{tag}");
+    let api_url = format!("{gitea_api_base_url}/repos/{repo_name}/tags/{tag}");
 
     log::debug!("Request to {api_url}");
 
@@ -183,9 +176,8 @@ pub mod http_client {
     shasta_root_cert: &[u8],
     site_name: &str,
   ) -> Result<Value, Error> {
-    let external_vcs_base_url = format!(
-      "https://vcs.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/"
-    );
+    let external_vcs_base_url =
+      format!("https://vcs.cmn.{site_name}.cscs.ch/vcs/api/v1/repos/cray/");
     let repo_name: &str = gitea_api_tag_url
       .trim_start_matches(&external_vcs_base_url)
       .split('/')
