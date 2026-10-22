@@ -36,7 +36,10 @@ impl From<FrontEndComponent> for Component {
     Component {
       id: component.id,
       state: component.state.map(|state_vec| {
-        state_vec.into_iter().map(std::convert::Into::into).collect()
+        state_vec
+          .into_iter()
+          .map(std::convert::Into::into)
+          .collect()
       }),
       desired_config: component.desired_config,
       error_count: component.error_count,
@@ -54,7 +57,10 @@ impl From<Component> for FrontEndComponent {
     FrontEndComponent {
       id: val.id,
       state: val.state.map(|state_vec| {
-        state_vec.into_iter().map(std::convert::Into::into).collect()
+        state_vec
+          .into_iter()
+          .map(std::convert::Into::into)
+          .collect()
       }),
       desired_config: val.desired_config,
       error_count: val.error_count,

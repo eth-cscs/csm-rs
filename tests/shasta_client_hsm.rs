@@ -16,7 +16,8 @@ async fn hsm_group_get_all_hits_smd_v2_groups() {
     .and(path("/smd/hsm/v2/groups"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -33,7 +34,8 @@ async fn hsm_group_get_one_hits_singular_endpoint() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"label": "zinal"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -49,7 +51,8 @@ async fn hsm_group_get_one_unauthorized_returns_request_error() {
   Mock::given(method("GET"))
     .and(path("/smd/hsm/v2/groups/zinal"))
     .respond_with(ResponseTemplate::new(401).set_body_string("nope"))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -70,7 +73,8 @@ async fn hsm_group_delete_member_hits_nested_endpoint() {
     .and(path("/smd/hsm/v2/groups/zinal/members/x1000c0s0b0n0"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -91,7 +95,8 @@ async fn hsm_component_get_all_hits_smd_v2_state_components() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"Components": []})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -135,7 +140,8 @@ async fn hsm_memberships_get_all_hits_v2_memberships() {
     .and(path("/smd/hsm/v2/memberships"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -156,7 +162,8 @@ async fn hsm_memberships_get_xname_hits_singular_endpoint() {
       "partitionName": "p1",
       "groupLabels": ["zinal"],
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -179,7 +186,8 @@ async fn hsm_redfish_get_one_hits_singular_endpoint() {
       ResponseTemplate::new(200)
         .set_body_json(json!({"ID": "x1000c0s0b0", "FQDN": "host"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -198,7 +206,8 @@ async fn hsm_hw_inventory_get_query_hits_correct_endpoint() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"Nodes": []})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -219,7 +228,8 @@ async fn hsm_roles_get_hits_service_values_role() {
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "Role": ["Compute", "Service", "Storage"]
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -241,7 +251,8 @@ async fn hsm_group_post_member_sends_id_body_to_members_endpoint() {
       ResponseTemplate::new(200)
         .set_body_json(json!({"code": 0, "message": "ok"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());

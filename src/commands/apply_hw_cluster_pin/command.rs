@@ -79,7 +79,9 @@ pub async fn exec(
   // Check user input is correct
   for hw_component_counter in pattern_element_vec.chunks(2) {
     if hw_component_counter.len() < 2 {
-      return Err(Error::ValidationFailed("Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8"));
+      return Err(Error::ValidationFailed(
+        "Error in pattern. Please make sure to follow <hsm name>:<hw component>:<counter>:... eg tasna:a100:4:epyc:10:instinct:8",
+      ));
     }
     let count = hw_component_counter[1].parse::<usize>().map_err(|_| {
       Error::ApplySession(format!(
@@ -288,9 +290,7 @@ pub async fn exec(
 
   // *********************************************************************************************************
   // UPDATE TARGET HSM GROUP IN CSM
-  log::info!(
-    "Updating target HSM group '{target_hsm_group_name}' members"
-  );
+  log::info!("Updating target HSM group '{target_hsm_group_name}' members");
   if nodryrun {
     // The target HSM group will never be empty, the way the pattern works it'll always
     // contain at least one node, so there is no need to add code to delete it if it's empty.
@@ -315,9 +315,7 @@ pub async fn exec(
 
   // *********************************************************************************************************
   // UPDATE PARENT GROUP IN CSM
-  log::info!(
-    "Updating parent HSM group '{parent_hsm_group_name}' members"
-  );
+  log::info!("Updating parent HSM group '{parent_hsm_group_name}' members");
   if nodryrun {
     // The parent group might be out of resources after applying this, so it's safe to check
     // if there are still nodes there and, delete it after moving out the resources.

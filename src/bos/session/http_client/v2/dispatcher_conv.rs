@@ -14,9 +14,7 @@ impl From<FrontEndBosSession> for BosSession {
     Self {
       name: frontend_bos_session.name,
       tenant: frontend_bos_session.tenant,
-      operation: frontend_bos_session
-        .operation
-        .map(std::convert::Into::into),
+      operation: frontend_bos_session.operation.map(std::convert::Into::into),
       template_name: frontend_bos_session.template_name,
       limit: frontend_bos_session.limit,
       stage: frontend_bos_session.stage,

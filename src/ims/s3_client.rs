@@ -30,7 +30,9 @@ fn parse_sts_credentials(
     value
       .pointer(&format!("/Credentials/{name}"))
       .and_then(Value::as_str)
-      .ok_or_else(|| Error::S3Transport(format!("Missing {name} in STS response")))
+      .ok_or_else(|| {
+        Error::S3Transport(format!("Missing {name} in STS response"))
+      })
   }
   let credentials = Credentials::new(
     field(sts_value, "AccessKeyId")?,
@@ -436,9 +438,7 @@ pub async fn s3_multipart_upload_object(
     upload_parts.push(
       CompletedPart::builder()
         .e_tag(upload_part_res.e_tag.ok_or_else(|| {
-          Error::S3Transport(
-            "could not get ETag from upload part.".to_string(),
-          )
+          Error::S3Transport("could not get ETag from upload part.".to_string())
         })?)
         .part_number(part_number)
         .build(),
@@ -461,7 +461,9 @@ pub async fn s3_multipart_upload_object(
     .send()
     .await
     .map_err(|e| {
-      Error::S3Transport(format!("ERROR - could not upload to S3.\nReason:\n{e}"))
+      Error::S3Transport(format!(
+        "ERROR - could not upload to S3.\nReason:\n{e}"
+      ))
     })?;
 
   complete_multipart_upload_res.e_tag.ok_or_else(|| {

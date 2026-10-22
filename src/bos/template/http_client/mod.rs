@@ -20,7 +20,7 @@ pub(crate) mod v1 {
 /// `crate::bos::wrapper::v2::template` (Task 5 of the BOS progenitor
 /// migration).
 pub(crate) mod v2 {
-  pub(crate) mod types;
   #[cfg(feature = "manta-dispatcher")]
   mod dispatcher_conv;
+  pub(crate) mod types;
 }

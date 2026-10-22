@@ -1,9 +1,7 @@
 //! Run a CFS session against a set of nodes.
 
 use crate::{
-  cfs::{
-    self, v2::CfsSessionPostRequest, v3::CfsConfigurationRequest,
-  },
+  cfs::{self, v2::CfsSessionPostRequest, v3::CfsConfigurationRequest},
   error::Error,
   node::utils::validate_xnames_format_and_membership_against_single_hsm,
 };
@@ -78,14 +76,13 @@ pub async fn exec(
   // * Process/validate hsm group value (and ansible limit)
   if let Some(hsm_group_value) = hsm_group_value_opt {
     // Get all hsm groups details related to hsm_group input
-    hsm_group_list =
-      crate::hsm::group::utils::get_members_for_groups_matching(
-        shasta_token,
-        shasta_base_url,
-        shasta_root_cert,
-        hsm_group_value,
-      )
-      .await?;
+    hsm_group_list = crate::hsm::group::utils::get_members_for_groups_matching(
+      shasta_token,
+      shasta_base_url,
+      shasta_root_cert,
+      hsm_group_value,
+    )
+    .await?;
 
     // Take all nodes for all hsm_groups found and put them in a Vec
     hsm_groups_node_list = hsm_group_list
@@ -236,8 +233,7 @@ pub async fn check_nodes_are_ready_to_run_cfs_configuration_and_run_cfs_session(
 
   // Convert limit (String with list of target nodes for new CFS session) into list of String
   let limit_value = limit.unwrap_or("");
-  let nodes_list: Vec<&str> =
-    limit_value.split(',').map(str::trim).collect();
+  let nodes_list: Vec<&str> = limit_value.split(',').map(str::trim).collect();
 
   // Check each node if it has a CFS session already running
   for node in nodes_list {

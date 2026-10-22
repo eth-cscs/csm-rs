@@ -209,9 +209,7 @@ pub enum Error {
   /// on non-2xx). Mirror of [`Error::CsmError`] for endpoints whose
   /// failure bodies don't follow RFC 7807; carries the same
   /// `{method, url, status}` context plus the raw text.
-  #[error(
-    "CSM-RS > CSM (text): {method} {url} -> status={status} {payload}"
-  )]
+  #[error("CSM-RS > CSM (text): {method} {url} -> status={status} {payload}")]
   CsmText {
     method: String,
     url: String,

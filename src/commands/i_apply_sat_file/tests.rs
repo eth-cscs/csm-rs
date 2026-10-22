@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-  cfs::v2::{
-    CfsConfigurationResponse, Layer,
-  },
+  cfs::v2::{CfsConfigurationResponse, Layer},
   commands::i_apply_sat_file::utils::{
     configuration, image,
     images::{

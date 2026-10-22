@@ -68,7 +68,12 @@ impl ShastaClient {
     &self,
     token: &str,
   ) -> Result<PowerCapTaskList, Error> {
-    run(self, token, |c| async move { c.get_power_cap_tasks().await }).await
+    run(
+      self,
+      token,
+      |c| async move { c.get_power_cap_tasks().await },
+    )
+    .await
   }
 
   /// Fetch a single power-cap task (with components) by its `task_id`.
@@ -122,9 +127,8 @@ impl ShastaClient {
     let xnames = xname_vec
       .iter()
       .map(|x| {
-        x.parse().map_err(|e| {
-          Error::Message(format!("invalid xname {x:?}: {e}"))
-        })
+        x.parse()
+          .map_err(|e| Error::Message(format!("invalid xname {x:?}: {e}")))
       })
       .collect::<Result<Vec<_>, _>>()?;
 

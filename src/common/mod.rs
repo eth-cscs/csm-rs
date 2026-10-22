@@ -24,12 +24,12 @@ pub mod authentication;
 pub mod gitea;
 pub(crate) mod http;
 pub mod jwt_ops;
-pub(crate) mod poll;
 /// In-cluster Kubernetes client helpers (used to read `ConfigMaps` such
 /// as `cray-product-catalog`). Requires the `k8s-console` Cargo
 /// feature.
 #[cfg(feature = "k8s-console")]
 pub mod kubernetes;
+pub(crate) mod poll;
 // The only user of `vault::http_client::fetch_shasta_k8s_secrets_from_vault`
 // is the Kubernetes secret-fetching path (CFS session log streaming
 // and `cfs::session::i_post_sync`), so the whole module rides the

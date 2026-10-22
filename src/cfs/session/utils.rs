@@ -101,9 +101,7 @@ pub fn filter(
   keep_generic_sessions: bool,
 ) -> Result<(), Error> {
   log::debug!("Filter CFS sessions by groups");
-  log::debug!(
-    "HSM groups to filter from: {hsm_group_name_available_vec:?}"
-  );
+  log::debug!("HSM groups to filter from: {hsm_group_name_available_vec:?}");
   log::debug!("Xnames to filter from: {xname_available_vec:?}");
 
   if let Some(configuration_name_pattern) = configuration_name_pattern_opt {
@@ -352,9 +350,7 @@ pub async fn wait_cfs_session_to_finish(
   )
   .await?;
 
-  log::debug!(
-    "CFS session '{cfs_session_id}' finished with status '{status}'"
-  );
+  log::debug!("CFS session '{cfs_session_id}' finished with status '{status}'");
   Ok(())
 }
 
@@ -370,18 +366,19 @@ pub async fn get_list_xnames_related_to_session(
   group_available_vec: Vec<Group>,
   cfs_session: CfsSessionGetResponse,
 ) -> Result<Vec<String>, Error> {
-  let target_group_xname_vec: Vec<String> = if let Some(target_hsm_vec) =
-    cfs_session.get_target_hsm()
-  {
-    group_available_vec
-      .into_iter()
-      // `Group.label` is `ResourceName(pub String)` post-progenitor.
-      .filter(|group_available| target_hsm_vec.contains(&group_available.label.0))
-      .flat_map(|group_available| group_available.get_members())
-      .collect()
-  } else {
-    vec![]
-  };
+  let target_group_xname_vec: Vec<String> =
+    if let Some(target_hsm_vec) = cfs_session.get_target_hsm() {
+      group_available_vec
+        .into_iter()
+        // `Group.label` is `ResourceName(pub String)` post-progenitor.
+        .filter(|group_available| {
+          target_hsm_vec.contains(&group_available.label.0)
+        })
+        .flat_map(|group_available| group_available.get_members())
+        .collect()
+    } else {
+      vec![]
+    };
 
   let target_xname_vec = cfs_session.get_target_xname().unwrap_or_default();
 

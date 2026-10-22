@@ -175,12 +175,7 @@ pub(crate) async fn handle_json_or_text_response<T: DeserializeOwned>(
     let url = response.url().to_string();
     let text = response.text().await.map_err(Error::NetError)?;
     match serde_json::from_str::<Value>(&text) {
-      Ok(payload) => Err(Error::csm_from_response(
-        "?",
-        &url,
-        status,
-        payload,
-      )),
+      Ok(payload) => Err(Error::csm_from_response("?", &url, status, payload)),
       Err(_) => Err(Error::CsmError {
         method: "?".into(),
         url,
@@ -540,9 +535,8 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
       .mount(&server)
       .await;
 
-    let client =
-      build_client_with_auth(TEST_PEM.as_bytes(), Some("token-x"))
-        .expect("should build");
+    let client = build_client_with_auth(TEST_PEM.as_bytes(), Some("token-x"))
+      .expect("should build");
     let resp = client
       .get(format!("{}/ping", server.uri()))
       .send()

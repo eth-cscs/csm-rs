@@ -110,4 +110,3 @@ pub struct TransitionStartOutput {
   pub transition_id: String,
   pub operation: Operation,
 }
-

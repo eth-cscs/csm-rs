@@ -39,13 +39,11 @@ impl ConsoleTrait for Csm {
       K8sAuth::Vault {
         base_url,
         // secret_path: _secret_path,
-      } => fetch_shasta_k8s_secrets_from_vault(
-        base_url,
-        shasta_token,
-        site_name,
-      )
-      .await
-      .map_err(Error::from)?,
+      } => {
+        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name)
+          .await
+          .map_err(Error::from)?
+      }
     };
 
     let mut attached: AttachedProcess =
@@ -58,13 +56,11 @@ impl ConsoleTrait for Csm {
       .map_err(Error::from)?;
 
     let pod = xname;
-    let mut terminal_size_writer: Sender<TerminalSize> =
-      attached.terminal_size().ok_or_else(|| {
-        crate::Error::ConsoleAttach {
-          pod: pod.to_string(),
-          cause: "kube exec did not provide a terminal-size channel"
-            .to_string(),
-        }
+    let mut terminal_size_writer: Sender<TerminalSize> = attached
+      .terminal_size()
+      .ok_or_else(|| crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a terminal-size channel".to_string(),
       })?;
     terminal_size_writer
       .try_send(TerminalSize {
@@ -79,18 +75,20 @@ impl ConsoleTrait for Csm {
     log::info!("Connected to {xname}!");
     log::info!("Use &. key combination to exit the console.");
 
-    let stdin = attached.stdin().ok_or_else(|| {
-      crate::Error::ConsoleAttach {
-        pod: pod.to_string(),
-        cause: "kube exec did not provide a stdin stream".to_string(),
-      }
-    })?;
-    let stdout = attached.stdout().ok_or_else(|| {
-      crate::Error::ConsoleAttach {
-        pod: pod.to_string(),
-        cause: "kube exec did not provide a stdout stream".to_string(),
-      }
-    })?;
+    let stdin =
+      attached
+        .stdin()
+        .ok_or_else(|| crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a stdin stream".to_string(),
+        })?;
+    let stdout =
+      attached
+        .stdout()
+        .ok_or_else(|| crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a stdout stream".to_string(),
+        })?;
     Ok((
       Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,
       Box::new(stdout) as Box<dyn AsyncRead + Unpin + Send>,
@@ -117,13 +115,11 @@ impl ConsoleTrait for Csm {
       K8sAuth::Vault {
         base_url,
         // secret_path: _secret_path,
-      } => fetch_shasta_k8s_secrets_from_vault(
-        base_url,
-        shasta_token,
-        site_name,
-      )
-      .await
-      .map_err(Error::from)?,
+      } => {
+        fetch_shasta_k8s_secrets_from_vault(base_url, shasta_token, site_name)
+          .await
+          .map_err(Error::from)?
+      }
     };
 
     let mut attached: AttachedProcess =
@@ -136,13 +132,11 @@ impl ConsoleTrait for Csm {
       .map_err(Error::from)?;
 
     let pod = session_name;
-    let mut terminal_size_writer: Sender<TerminalSize> =
-      attached.terminal_size().ok_or_else(|| {
-        crate::Error::ConsoleAttach {
-          pod: pod.to_string(),
-          cause: "kube exec did not provide a terminal-size channel"
-            .to_string(),
-        }
+    let mut terminal_size_writer: Sender<TerminalSize> = attached
+      .terminal_size()
+      .ok_or_else(|| crate::Error::ConsoleAttach {
+        pod: pod.to_string(),
+        cause: "kube exec did not provide a terminal-size channel".to_string(),
       })?;
     terminal_size_writer
       .try_send(TerminalSize {
@@ -159,18 +153,20 @@ impl ConsoleTrait for Csm {
     );
     log::info!("Use &. key combination to exit the console.");
 
-    let stdin = attached.stdin().ok_or_else(|| {
-      crate::Error::ConsoleAttach {
-        pod: pod.to_string(),
-        cause: "kube exec did not provide a stdin stream".to_string(),
-      }
-    })?;
-    let stdout = attached.stdout().ok_or_else(|| {
-      crate::Error::ConsoleAttach {
-        pod: pod.to_string(),
-        cause: "kube exec did not provide a stdout stream".to_string(),
-      }
-    })?;
+    let stdin =
+      attached
+        .stdin()
+        .ok_or_else(|| crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a stdin stream".to_string(),
+        })?;
+    let stdout =
+      attached
+        .stdout()
+        .ok_or_else(|| crate::Error::ConsoleAttach {
+          pod: pod.to_string(),
+          cause: "kube exec did not provide a stdout stream".to_string(),
+        })?;
     Ok((
       Box::new(stdin) as Box<dyn AsyncWrite + Unpin + Send>,
       Box::new(stdout) as Box<dyn AsyncRead + Unpin + Send>,

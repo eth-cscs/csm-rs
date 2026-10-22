@@ -57,10 +57,10 @@ pub mod configuration;
 pub(crate) mod generated;
 pub mod health;
 pub mod session;
-mod wrapper;
 /// Integration-style tests for the CFS namespace.
 #[cfg(test)]
 pub mod tests;
+mod wrapper;
 
 // CFS exposes both v2 (legacy) and v3 (current) endpoints on
 // `ShastaClient`. v2 and v3 are structurally distinct on the wire

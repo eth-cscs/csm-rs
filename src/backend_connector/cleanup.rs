@@ -50,12 +50,18 @@ impl DeleteConfigurationsAndDataRelatedTrait for Csm {
         configurations,
       )| {
         (
-          cfs_sessions.into_iter().map(std::convert::Into::into).collect(),
+          cfs_sessions
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect(),
           images,
           bos_templates,
           hsm_groups,
           boot_params,
-          configurations.into_iter().map(std::convert::Into::into).collect(),
+          configurations
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect(),
         )
       },
     )

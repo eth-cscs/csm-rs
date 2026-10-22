@@ -16,7 +16,8 @@ async fn bos_session_v2_get_all_hits_v2_sessions() {
     .and(path("/bos/v2/sessions"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -37,7 +38,8 @@ async fn bos_session_v2_get_by_id_hits_singular_endpoint() {
       "name": "sess-1",
       "template_name": "tmpl-1",
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -56,7 +58,8 @@ async fn bos_session_v2_delete_hits_singular_endpoint() {
     .and(path("/bos/v2/sessions/sess-1"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -75,7 +78,8 @@ async fn bos_template_v2_get_all_hits_v2_sessiontemplates() {
     .and(path("/bos/v2/sessiontemplates"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -94,7 +98,8 @@ async fn bos_template_v2_get_by_name_hits_singular_endpoint() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"name": "tmpl-1"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -113,7 +118,8 @@ async fn bos_template_v2_delete_propagates_non_2xx_errors() {
     .and(path("/bos/v2/sessiontemplates/tmpl-1"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(500))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -131,7 +137,8 @@ async fn bos_template_v2_delete_succeeds_on_204() {
     .and(path("/bos/v2/sessiontemplates/tmpl-1"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -154,7 +161,8 @@ async fn bos_template_v2_put_sends_json_body_to_singular_endpoint() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"name": "tmpl-1"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -186,7 +194,8 @@ async fn bos_health_check_hits_v2_healthz() {
       ResponseTemplate::new(200)
         .set_body_json(json!({"apiStatus": "ok", "dbStatus": "ok"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());

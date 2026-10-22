@@ -41,9 +41,7 @@ pub fn get_name(token: &str) -> Result<String, Error> {
 
   match jwt_name {
     Some(name) => Ok(name.to_string()),
-    None => Err(Error::JwtShape(
-      "claim 'name' not found in JWT auth token",
-    )),
+    None => Err(Error::JwtShape("claim 'name' not found in JWT auth token")),
   }
 }
 
@@ -86,8 +84,9 @@ pub fn get_roles(token: &str) -> Result<Vec<String>, Error> {
 pub fn is_user_admin(shasta_token: &str) -> bool {
   let roles_rslt = get_roles(shasta_token);
 
-  roles_rslt
-    .is_ok_and(|roles| roles.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string()))
+  roles_rslt.is_ok_and(|roles| {
+    roles.contains(&crate::hsm::group::hacks::PA_ADMIN.to_string())
+  })
 }
 
 #[cfg(test)]

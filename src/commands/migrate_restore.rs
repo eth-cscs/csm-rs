@@ -247,10 +247,8 @@ async fn create_bos_sessiontemplate(
   // BOS sessiontemplates need the new ID of the image!
   log::debug!("BOS sessiontemplate name: {}", &bos_sessiontemplate_name);
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let vector = shasta_client
     .bos_template_v2_get(shasta_token, Some(&bos_sessiontemplate_name))
     .await
@@ -280,7 +278,8 @@ async fn create_bos_sessiontemplate(
       }
     } else {
       return Err(Error::MigrateOp(
-        "BOS sessiontemplate already exists and --overwrite was not set".to_string(),
+        "BOS sessiontemplate already exists and --overwrite was not set"
+          .to_string(),
       ));
     }
   }
@@ -290,8 +289,7 @@ async fn create_bos_sessiontemplate(
   let mut bos_sessiontemplate: BosSessionTemplate =
     serde_json::from_reader(BufReader::new(file_content))?;
 
-  let path_modified =
-    format!("s3://boot-images/{ims_image_id}/manifest.json");
+  let path_modified = format!("s3://boot-images/{ims_image_id}/manifest.json");
 
   bos_sessiontemplate
     .boot_sets
@@ -347,10 +345,8 @@ async fn create_cfs_config(
   let cfs_config_name = cfs_configuration.name;
 
   // Get all CFS configurations, this is ugly
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let cfs_config_vec = shasta_client
     .cfs_configuration_v3_get(shasta_token, Some(&cfs_config_name))
     .await
@@ -361,7 +357,8 @@ async fn create_cfs_config(
   if !cfs_config_vec.is_empty() {
     if !overwrite {
       return Err(Error::MigrateOp(
-        "CFS configuration already exists and --overwrite was not set".to_string(),
+        "CFS configuration already exists and --overwrite was not set"
+          .to_string(),
       ));
     }
 
@@ -605,11 +602,8 @@ async fn s3_upload_image_artifacts(
           artifact.link.etag = Some(etag.clone());
         }
         if artifact.r#type.contains("kernel") {
-          artifact.link.path = "s3://".to_string()
-            + bucket_name
-            + "/"
-            + object_path
-            + "/kernel";
+          artifact.link.path =
+            "s3://".to_string() + bucket_name + "/" + object_path + "/kernel";
           break;
         }
       }
@@ -620,11 +614,8 @@ async fn s3_upload_image_artifacts(
           artifact.link.etag = Some(etag.clone());
         }
         if artifact.r#type.contains("rootfs") {
-          artifact.link.path = "s3://".to_string()
-            + bucket_name
-            + "/"
-            + object_path
-            + "/rootfs";
+          artifact.link.path =
+            "s3://".to_string() + bucket_name + "/" + object_path + "/rootfs";
           break;
         }
       }
@@ -635,11 +626,8 @@ async fn s3_upload_image_artifacts(
           artifact.link.etag = Some(etag.clone());
         }
         if artifact.r#type.contains("initrd") {
-          artifact.link.path = "s3://".to_string()
-            + bucket_name
-            + "/"
-            + object_path
-            + "/initrd";
+          artifact.link.path =
+            "s3://".to_string() + bucket_name + "/" + object_path + "/initrd";
           break;
         }
       }
@@ -726,10 +714,7 @@ fn file_md5sum(filename: PathBuf) -> Result<Digest, Error> {
   loop {
     // Get a chunk of the file
     let part = buf.fill_buf().map_err(|e| {
-      Error::MigrateOp(format!(
-        "file_md5sum: read {}: {e}",
-        filename.display()
-      ))
+      Error::MigrateOp(format!("file_md5sum: read {}: {e}", filename.display()))
     })?;
     // If that chunk was empty, the reader has reached EOF
     if part.is_empty() {
@@ -838,21 +823,17 @@ async fn ims_register_image(
     )));
   }
 
-  let json_response = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .ims_image_post(shasta_token, &ims_record)
-  .await?;
+  let json_response =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .ims_image_post(shasta_token, &ims_record)
+      .await?;
 
   json_response
     .get("id")
     .and_then(Value::as_str)
     .map(|id| id.replace('"', ""))
     .ok_or_else(|| {
-      Error::MigrateOp(
-        "IMS image post response is missing 'id'".to_string(),
-      )
+      Error::MigrateOp("IMS image post response is missing 'id'".to_string())
     })
 }
 
@@ -863,9 +844,7 @@ async fn ims_register_image(
 /// Returns an [`Error`] variant on CSM, transport, or
 /// deserialization failure; see the crate-level `Error` enum
 /// for the full set.
-pub fn get_image_name_from_ims_file(
-  ims_file: &str,
-) -> Result<String, Error> {
+pub fn get_image_name_from_ims_file(ims_file: &str) -> Result<String, Error> {
   // load into memory
   let ims_data = fs::read_to_string(PathBuf::from(&ims_file))?;
 
@@ -909,10 +888,8 @@ pub async fn create_hsm_group_from_file(
 
   let group_vec: Vec<Group> = serde_json::from_str(&hsm_data)?;
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   for group in group_vec {
     // Create the HSM group.
     //
@@ -991,7 +968,8 @@ pub async fn create_hsm_group_from_file(
             }
           } else {
             return Err(Error::MigrateOp(
-              "Not deleting the group, cannot continue the operation.".to_string(),
+              "Not deleting the group, cannot continue the operation."
+                .to_string(),
             ));
           }
         } else if error.to_string().to_lowercase().contains("400") {

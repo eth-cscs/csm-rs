@@ -146,12 +146,13 @@ pub async fn exec(
   //
   // Parse the SAT file and fetch the live CSM / k8s state it is validated
   // against.
-  let (sat_file, cray_product_catalog, configuration_vec, image_vec, ims_recipe_vec) =
-    gather_sat_apply_data(
-      &ctx,
-      shasta_k8s_secrets,
-      &sat_template_file_yaml,
-    )
+  let (
+    sat_file,
+    cray_product_catalog,
+    configuration_vec,
+    image_vec,
+    ims_recipe_vec,
+  ) = gather_sat_apply_data(&ctx, shasta_k8s_secrets, &sat_template_file_yaml)
     .await?;
 
   // VALIDATION
@@ -257,19 +258,15 @@ async fn gather_sat_apply_data(
   Error,
 > {
   // Get k8s credentials needed to check HPE/Cray product catalog in k8s
-  let kube_client = kubernetes::get_client(
-    ctx.k8s_api_url,
-    shasta_k8s_secrets,
-  )
-  .await?;
+  let kube_client =
+    kubernetes::get_client(ctx.k8s_api_url, shasta_k8s_secrets).await?;
 
   // Get HPE product catalog from k8s
-  let cray_product_catalog =
-    kubernetes::try_get_configmap(
-      kube_client,
-      crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
-    )
-    .await?;
+  let cray_product_catalog = kubernetes::try_get_configmap(
+    kube_client,
+    crate::common::kubernetes::CRAY_PRODUCT_CATALOG_CONFIGMAP,
+  )
+  .await?;
 
   // Get data from CSM
   let start = Instant::now();
@@ -285,9 +282,7 @@ async fn gather_sat_apply_data(
   )?;
 
   let duration = start.elapsed();
-  log::info!(
-    "Time elapsed to fetch information from backend: {duration:?}"
-  );
+  log::info!("Time elapsed to fetch information from backend: {duration:?}");
 
   let sat_file: SatFile =
     serde_yaml::from_str(&serde_yaml::to_string(sat_template_file_yaml)?)?;
@@ -454,8 +449,7 @@ async fn process_configurations_section(
   let mut cfs_configurations_created: Vec<CfsConfigurationResponse> =
     Vec::new();
 
-  for configuration_yaml in configuration_yaml_vec_opt.unwrap_or(&vec![])
-  {
+  for configuration_yaml in configuration_yaml_vec_opt.unwrap_or(&vec![]) {
     let cfs_configuration: CfsConfigurationResponse =
       utils::create_cfs_configuration_from_sat_file(
         ctx.shasta_token,
@@ -549,13 +543,18 @@ pub async fn validate_sat_file(
     dry_run: true,
   };
 
-  let (sat_file, cray_product_catalog, configuration_vec, image_vec, ims_recipe_vec) =
-    gather_sat_apply_data(
-      &ctx,
-      shasta_k8s_secrets,
-      &params.sat_template_file_yaml,
-    )
-    .await?;
+  let (
+    sat_file,
+    cray_product_catalog,
+    configuration_vec,
+    image_vec,
+    ims_recipe_vec,
+  ) = gather_sat_apply_data(
+    &ctx,
+    shasta_k8s_secrets,
+    &params.sat_template_file_yaml,
+  )
+  .await?;
 
   validate_sat_file_sections(
     &ctx,

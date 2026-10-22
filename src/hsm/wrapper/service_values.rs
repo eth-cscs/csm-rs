@@ -19,14 +19,9 @@ impl ShastaClient {
   /// Returns an [`Error`] variant on CSM, transport, or
   /// deserialization failure; see the crate-level `Error` enum
   /// for the full set.
-  pub async fn hsm_roles_get(
-    &self,
-    token: &str,
-  ) -> Result<Vec<String>, Error> {
-    let arr = run(self, token, |c| async move {
-      c.do_role_values_get().await
-    })
-    .await?;
+  pub async fn hsm_roles_get(&self, token: &str) -> Result<Vec<String>, Error> {
+    let arr =
+      run(self, token, |c| async move { c.do_role_values_get().await }).await?;
     Ok(arr.role.into_iter().map(|r| r.0).collect())
   }
 }

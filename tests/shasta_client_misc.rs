@@ -16,7 +16,8 @@ async fn bss_bootparameters_get_all_hits_boot_v1_bootparameters() {
     .and(path("/bss/boot/v1/bootparameters"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -35,7 +36,8 @@ async fn bss_bootparameters_get_passes_xnames_as_name_query_params() {
     .and(query_param("name", "x1000c0s0b0n0"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -53,7 +55,8 @@ async fn bss_bootparameters_post_hits_bss_boot_v1_bootparameters() {
     .and(path("/bss/boot/v1/bootparameters"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -80,7 +83,8 @@ async fn bss_bootparameters_patch_sends_patch_request() {
     .and(path("/bss/boot/v1/bootparameters"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());

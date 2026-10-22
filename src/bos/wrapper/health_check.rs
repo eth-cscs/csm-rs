@@ -26,10 +26,7 @@ impl ShastaClient {
   /// Returns an [`Error`] variant on CSM, transport, or
   /// deserialization failure; see the crate-level `Error` enum
   /// for the full set.
-  pub async fn bos_health_check(
-    &self,
-    token: &str,
-  ) -> Result<Value, Error> {
+  pub async fn bos_health_check(&self, token: &str) -> Result<Value, Error> {
     let typed =
       run(self, token, |c| async move { c.get_v2_healthz().await }).await?;
     serde_json::to_value(typed).map_err(Error::SerdeJsonError)

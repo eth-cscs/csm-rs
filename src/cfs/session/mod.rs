@@ -32,12 +32,17 @@ pub async fn get_one(
   shasta_root_cert: &[u8],
   session_name: &String,
 ) -> Result<CfsSessionGetResponse, Error> {
-  let cfs_session_vec = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .cfs_session_v2_get(shasta_token, None, None, None, Some(session_name), None)
-  .await?;
+  let cfs_session_vec =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .cfs_session_v2_get(
+        shasta_token,
+        None,
+        None,
+        None,
+        Some(session_name),
+        None,
+      )
+      .await?;
 
   let mut iter = cfs_session_vec.into_iter();
   match (iter.next(), iter.next()) {
@@ -67,22 +72,21 @@ pub async fn get_and_sort(
   session_name_opt: Option<&String>,
   is_succeded_opt: Option<bool>,
 ) -> Result<Vec<CfsSessionGetResponse>, Error> {
-  let mut cfs_session_vec = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .cfs_session_v2_get(
-    shasta_token,
-    min_age_opt,
-    max_age_opt,
-    status_opt,
-    session_name_opt,
-    is_succeded_opt,
-  )
-  .await?;
+  let mut cfs_session_vec =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .cfs_session_v2_get(
+        shasta_token,
+        min_age_opt,
+        max_age_opt,
+        status_opt,
+        session_name_opt,
+        is_succeded_opt,
+      )
+      .await?;
 
   // Sort CFS sessions by start time order ASC
-  cfs_session_vec.sort_by_key(http_client::v2::types::CfsSessionGetResponse::get_start_time);
+  cfs_session_vec
+    .sort_by_key(http_client::v2::types::CfsSessionGetResponse::get_start_time);
 
   Ok(cfs_session_vec)
 }
@@ -104,12 +108,9 @@ pub async fn post(
   log::info!("Create CFS session '{}'", session.name);
   log::debug!("Create CFS session request payload:\n{session:#?}");
 
-  crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .cfs_session_v2_post(shasta_token, session)
-  .await
+  crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+    .cfs_session_v2_post(shasta_token, session)
+    .await
 }
 
 /// Creates a CFS session and waits for it to finish. When `watch_logs`

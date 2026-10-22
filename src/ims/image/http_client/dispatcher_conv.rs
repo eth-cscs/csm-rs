@@ -8,7 +8,9 @@ use manta_backend_dispatcher::types::ims::{
   PatchImage as FrontEndPatchImage, PatchMetadata as FrontEndPatchMetadata,
 };
 
-use super::types::{Image, ImsImageRecord2Update, Link, PatchImage, PatchMetadata};
+use super::types::{
+  Image, ImsImageRecord2Update, Link, PatchImage, PatchMetadata,
+};
 
 // Provenance metadata keys stamped by the apply_sat_file flow. Keep in
 // sync with `commands::i_apply_sat_file::utils::images::META_*` —

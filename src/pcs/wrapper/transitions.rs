@@ -78,8 +78,8 @@ use crate::{
   common::http,
   error::Error,
   pcs::transitions::types::{
-    Location, Operation, Transition, TransitionResponse, TransitionResponseList,
-    TransitionStartOutput,
+    Location, Operation, Transition, TransitionResponse,
+    TransitionResponseList, TransitionStartOutput,
   },
 };
 

@@ -16,7 +16,8 @@ async fn cfs_component_v2_get_all_hits_v2_components() {
     .and(path("/cfs/v2/components"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -36,7 +37,8 @@ async fn cfs_component_v2_get_single_component_hits_singular_endpoint() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"id": "xname-1"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -58,7 +60,8 @@ async fn cfs_component_v3_get_options_hits_v3_options() {
     .respond_with(ResponseTemplate::new(200).set_body_json(json!({
       "default_batcher_retry_policy": 3
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -80,7 +83,8 @@ async fn cfs_component_v3_get_returns_components_from_wrapped_payload() {
       ResponseTemplate::new(200)
         .set_body_json(json!({"components": [{"id": "xname-1"}]})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -101,7 +105,8 @@ async fn cfs_configuration_v2_get_all_hits_v2_configurations() {
     .and(path("/cfs/v2/configurations"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -122,7 +127,8 @@ async fn cfs_configuration_v2_get_by_name_hits_singular_endpoint() {
       "lastUpdated": "2024-01-01T00:00:00Z",
       "layers": []
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -140,7 +146,8 @@ async fn cfs_configuration_v2_delete_hits_singular_endpoint() {
     .and(path("/cfs/v2/configurations/zinal-config"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -159,7 +166,8 @@ async fn cfs_session_v2_get_all_hits_v2_sessions() {
     .and(path("/cfs/v2/sessions"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -173,7 +181,8 @@ async fn cfs_session_v2_delete_hits_singular_endpoint() {
     .and(path("/cfs/v2/sessions/sess-1"))
     .and(bearer_token(TEST_TOKEN))
     .respond_with(ResponseTemplate::new(204))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -195,7 +204,8 @@ async fn cfs_session_v3_get_returns_sessions_from_wrapped_payload() {
       "sessions": [{"name": "sess-1", "debug_on_failure": false}],
       "next": null,
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -220,7 +230,8 @@ async fn cfs_health_check_hits_healthz() {
     .respond_with(
       ResponseTemplate::new(200).set_body_json(json!({"status": "ok"})),
     )
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());
@@ -245,7 +256,8 @@ async fn cfs_configuration_v2_put_sends_layers_body_to_singular_endpoint() {
       "lastUpdated": "2025-01-01T00:00:00Z",
       "layers": [],
     })))
-    .expect(1).mount(&server)
+    .expect(1)
+    .mount(&server)
     .await;
 
   let client = make_client(&server.uri());

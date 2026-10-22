@@ -153,10 +153,8 @@ pub async fn get_node_details(
 ) -> Result<Vec<NodeDetails>, Error> {
   let start = Instant::now();
 
-  let shasta_client = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let shasta_client =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
 
   let (
     components_status_rslt,
@@ -308,9 +306,11 @@ pub async fn get_node_details(
       .clone()
       .unwrap_or_else(|| "Not found".to_string());
     let enabled_str = enabled
-      .as_ref().map_or_else(|| "Not found".to_string(), bool::to_string);
+      .as_ref()
+      .map_or_else(|| "Not found".to_string(), bool::to_string);
     let error_count_str = error_count
-      .as_ref().map_or_else(|| "Not found".to_string(), u64::to_string);
+      .as_ref()
+      .map_or_else(|| "Not found".to_string(), u64::to_string);
 
     node_details_map
       .entry(xname.clone())
@@ -391,7 +391,6 @@ pub async fn get_node_details(
 
   Ok(node_details_map.into_values().collect())
 }
-
 
 #[cfg(test)]
 mod tests {

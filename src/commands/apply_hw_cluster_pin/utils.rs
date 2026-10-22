@@ -371,9 +371,7 @@ pub fn calculate_target_hsm_pin(
         target_hsm_node_hw_component_count_vec,
         parent_hsm_node_hw_component_count_vec,
       )
-      .ok_or_else(|| {
-        Error::Message("no best candidate found.".to_string())
-      })?;
+      .ok_or_else(|| Error::Message("no best candidate found.".to_string()))?;
 
     // Check if we need to keep iterating
     work_to_do = keep_iterating_final_hsm(
@@ -530,12 +528,10 @@ pub async fn get_node_hw_component_count(
   hsm_member: &str,
   user_defined_hw_profile_vec: Vec<String>,
 ) -> Result<(String, Vec<String>, Vec<u64>), Error> {
-  let hw_inventory = crate::ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?
-  .hsm_hw_inventory_get_query(&shasta_token, hsm_member)
-  .await?;
+  let hw_inventory =
+    crate::ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?
+      .hsm_hw_inventory_get_query(&shasta_token, hsm_member)
+      .await?;
 
   // The downstream `get_node_hw_properties_from_value` and its three
   // `get_list_*_from_hw_inventory_value` helpers walk JSON paths

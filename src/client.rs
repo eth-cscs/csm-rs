@@ -147,8 +147,7 @@ Wf86aX6PepsntZv2GYlA5UpabfT2EZICICpJ5h/iI+i341gBmLiAFQOyTDT+/wQc\n\
     )
     .unwrap();
     // &str
-    let _ =
-      ShastaClient::new("https://api.example.com", TEST_PEM.as_bytes())
-        .unwrap();
+    let _ = ShastaClient::new("https://api.example.com", TEST_PEM.as_bytes())
+      .unwrap();
   }
 }

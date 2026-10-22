@@ -298,8 +298,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error::<ComponentArray>(response, "POST")
-      .await
+    http::handle_json_or_request_error::<ComponentArray>(response, "POST").await
   }
 
   /// `POST /hsm/v2/State/Components/ByNID/Query` — components matching
@@ -326,8 +325,7 @@ impl ShastaClient {
       .send()
       .await?;
 
-    http::handle_json_or_request_error::<ComponentArray>(response, "POST")
-      .await
+    http::handle_json_or_request_error::<ComponentArray>(response, "POST").await
   }
 
   /// `PUT /hsm/v2/State/Components/{xname}` — replace a component.
@@ -370,12 +368,7 @@ impl ShastaClient {
         let status = response.status().as_u16();
         let url = response.url().to_string();
         let payload = response.json::<Value>().await?;
-        return Err(Error::csm_from_response(
-          "PUT",
-          &url,
-          status,
-          payload,
-        ));
+        return Err(Error::csm_from_response("PUT", &url, status, payload));
       }
     }
 

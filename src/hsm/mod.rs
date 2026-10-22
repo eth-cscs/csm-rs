@@ -50,15 +50,15 @@
 
 pub mod component;
 pub mod component_status;
+pub(crate) mod generated;
 pub mod group;
 pub mod hw_inventory;
 pub mod memberships;
 pub mod service;
-pub(crate) mod generated;
-mod wrapper;
 /// Shared HSM response types (`HsmActionResponse`, `ResourceURI`) used
 /// across the submodules above.
 pub mod types;
+mod wrapper;
 
 /// Bidirectional `From` impls between [`types`] and the dispatcher's
 /// HSM mirrors. Gated behind the `manta-dispatcher` Cargo feature.

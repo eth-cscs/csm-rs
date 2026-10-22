@@ -15,10 +15,7 @@ pub async fn wait_ims_job_to_finish(
   shasta_root_cert: &[u8],
   ims_job_id: &str,
 ) -> Result<(), Error> {
-  let client = ShastaClient::new(
-    shasta_base_url,
-    shasta_root_cert.to_vec(),
-  )?;
+  let client = ShastaClient::new(shasta_base_url, shasta_root_cert.to_vec())?;
   let mut i = 0;
   let max = 1800;
   loop {
