@@ -23,7 +23,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 # expand to reference (`::strum::IntoEnumIterator`, etc.). Even though
 # nothing under `src/` writes `use strum::*`, the macro-generated code
 # resolves through it. Removing the dep breaks `EnumIter` and friends.
-ignored = ["strum"]
+# `regress` is referenced only by the progenitor-generated code that is
+# `include!`d from OUT_DIR (see the comment on the dependency).
+ignored = ["regress", "strum"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -52,8 +54,7 @@ k8s-console = ["dep:kube", "dep:k8s-openapi", "dep:tokio-util"]
 # `aws-config`, `aws-smithy-*`. Uses the AWS SDK's default
 # rustls HTTP client. Default-on for backwards compatibility.
 ims-s3 = [
-    "dep:aws-sdk-s3", "dep:aws-config", "dep:aws-smithy-runtime",
-    "dep:aws-smithy-types",
+    "dep:aws-sdk-s3", "dep:aws-config", "dep:aws-smithy-types",
 ]
 
 [dependencies]
@@ -98,7 +99,6 @@ secrecy = { version = "0.10.3", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 aws-sdk-s3 = { version = "1.135", features = ["default-https-client", "http-1x", "rt-tokio"], default-features = false, optional = true }
 aws-config = { version = "1.8", default-features = false, features = ["behavior-version-latest"], optional = true }
-aws-smithy-runtime = { version = "1.11", optional = true }
 aws-smithy-types = { version = "1.4", features = ["rt-tokio"], optional = true }
 globset = { version = "0.4.18", default-features = false }
 thiserror = "2.0.18"
