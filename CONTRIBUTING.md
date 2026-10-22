@@ -9,8 +9,8 @@ or PR to update this file is welcome.
 ## Toolchain
 
 Install Rust via [rustup](https://www.rust-lang.org/tools/install). The
-crate's MSRV tracks the edition declared in `Cargo.toml` (`edition =
-"2024"`), so a recent stable toolchain is required.
+crate's MSRV is the `rust-version` declared in `Cargo.toml`, so a
+recent stable toolchain is required.
 
 ## IDE
 
