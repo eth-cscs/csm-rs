@@ -119,7 +119,7 @@ pub fn get_image_name_or_ref_name_to_process_struct(
 /// returns a `(Image, CfsSessionGetResponse)` tuple; this bulk path
 /// destructures and discards the session because the whole-SAT-file
 /// flow does not emit per-image provenance metadata. The single-image
-/// flow ([`crate::backend_connector::sat::Csm`]'s `apply_image`) is
+/// flow ([`crate::backend_connector::Csm`]'s `apply_image`) is
 /// where metadata stamping is wired up.
 #[allow(clippy::too_many_arguments)]
 pub async fn i_import_images_section_in_sat_file(
@@ -215,7 +215,7 @@ const META_CONFIG: &str = "manta.image_session.configuration";
 /// Build one image entry from a SAT file YAML node: resolve the base
 /// (recipe or existing image), create the IMS image, kick off a CFS
 /// session, stream its container logs through `log::debug!` if
-/// `watch_logs` is on, then call [`stamp_image_session_metadata`] to
+/// `watch_logs` is on, then call `stamp_image_session_metadata` to
 /// fill in `manta.image_session.*` and PATCH the image back so the
 /// metadata survives the request.
 ///
@@ -290,7 +290,7 @@ pub async fn i_create_image_from_sat_file_serde_yaml(
 /// `CfsSessionGetResponse` (`DRYRUN-<uuid>` result id) with no network
 /// call. Otherwise POSTs to CFS and returns the just-created session —
 /// the response carries only the session name and initial status, so
-/// callers must drive it to completion via [`wait_or_stream_cfs_session`].
+/// callers must drive it to completion via `wait_or_stream_cfs_session`.
 ///
 /// Exposed `pub` so the [`crate::backend_connector::sat`]
 /// `SatTrait::apply_sat_image_create_session` impl can call this
