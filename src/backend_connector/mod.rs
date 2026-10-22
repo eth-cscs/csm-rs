@@ -11,6 +11,8 @@
 //! the connection metadata (base URL, root cert) those impls need;
 //! per-request bearer tokens are passed in by the dispatcher.
 //!
+//! [`Csm`]: crate::backend_connector::Csm
+//!
 //! As a rule, dispatcher trait impls call into the domain namespaces
 //! (`crate::cfs`, `crate::ims`, `crate::hsm`, ...) rather than into
 //! `crate::commands`. The remaining `crate::commands::*` reaches are:
