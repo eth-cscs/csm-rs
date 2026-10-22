@@ -63,10 +63,6 @@ jobs:
         run: cargo install cargo-audit --locked --quiet || true
 
       - name: Security audit
-        # `.cargo/audit.toml` allowlists known CVEs in the AWS SDK
-        # transitive chain (rustls-webpki 0.101.7 via aws-smithy-http-client).
-        # See `README.md` "Security advisories" for the rationale. New
-        # advisories beyond the allowlist will fail this step.
         run: cargo audit
 
   msrv:
